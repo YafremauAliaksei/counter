@@ -14,7 +14,35 @@ Dla tego projektu SemVer czyta się tak:
 
 ## Niewydane
 
+### Zmieniono
+
+- **Wyłączone linie nie są składane.** Widocznością linii steruje CSS, więc
+  render szedł bezwarunkowo: raz na sekundę powstawał komplet węzłów linii,
+  których nikt nie ogląda, a linia 6 przy okazji przechodziła po całym dzienniku
+  wartości i przeliczała każdą pozycję po kursie. Przy ustawieniach domyślnych
+  widoczna jest jedna linia z siedmiu. Pomiar w atrapie DOM (500 przebiegów):
+  12,0 → 0,0 utworzonych węzłów na render, 0,069 → 0,024 ms na render, a przy
+  dzienniku na 1000 pozycji 0,229 → 0,024 ms — koszt przestał zależeć od długości
+  zmiany. Liczby na ekranie się nie zmieniają: pętla po kartach chodzi jak
+  dotąd, bo `gTotal` potrzebny jest także linii 7.
+
 ### Naprawiono
+
+- **Pełny magazyn nie zabija skryptu.** `localStorage` tej domeny dzielimy
+  z samym TREX, więc kwota potrafi się skończyć nie z naszej winy. Wyjątek
+  z `setItem` szedł ze `StorageManager.write()` nieprzechwycony aż do `Main.init()`
+  i skrypt nie wstawał wcale — zamiast stracić przeniesienie liczników przez F5,
+  człowiek tracił licznik. Teraz nieudany zapis wraca `false`, praca idzie dalej
+  na stanie w pamięci, a notatka „już zapisane” stawia się dopiero po udanym
+  zapisie, więc po zwolnieniu kwoty ta sama wartość da się zapisać.
+
+- **Wspólny dziennik: dopisanie po wyścigu dwóch kart.** O tym, czy scalony
+  dziennik wraca do wspólnego klucza, decydowała długość listy. Gdy sąsiednia
+  karta nadpisała naszą pozycję swoją, starszą wersją (długość bez zmian),
+  dopisanie się nie planowało i w magazynie zostawała wersja starsza. Naprawiało
+  się to przy następnym przedmiocie, więc realnie ginął kierunek OSTATNIEGO
+  przedmiotu zmiany — akurat na podsumowaniu. Teraz porównanie idzie po `id`
+  i `updated`, czyli tą samą miarą, którą rozstrzyga scalanie.
 
 - **Karta ceny znikała na stałe po wyjątku.** Rezerwowe szukanie ASIN chowa
   kartę na czas odczytu `document.body.innerText` (inaczej podałaby nam własny,
