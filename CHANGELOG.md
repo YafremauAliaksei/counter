@@ -44,6 +44,13 @@ Dla tego projektu SemVer czyta się tak:
   przedmiotu zmiany — akurat na podsumowaniu. Teraz porównanie idzie po `id`
   i `updated`, czyli tą samą miarą, którą rozstrzyga scalanie.
 
+- **Karta ceny znikała na stałe po wyjątku.** Rezerwowe szukanie ASIN chowa
+  kartę na czas odczytu `document.body.innerText` (inaczej podałaby nam własny,
+  poprzedni ASIN). Przywrócenie stało PO odczycie, więc wyjątek w trakcie —
+  rozbierane drzewo, cudzy skrypt — zostawiał kartę schowaną do końca zmiany.
+  Z zewnątrz wygląda to jak zepsuty skrypt. Przywracanie przeniesione do
+  `finally`.
+
 ---
 
 ## 1.0.0 — 2026-09-16
