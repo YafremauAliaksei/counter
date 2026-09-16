@@ -12,6 +12,20 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Naprawiono
+
+- **Wspólny dziennik: dopisanie po wyścigu dwóch kart.** O tym, czy scalony
+  dziennik wraca do wspólnego klucza, decydowała długość listy. Gdy sąsiednia
+  karta nadpisała naszą pozycję swoją, starszą wersją (długość bez zmian),
+  dopisanie się nie planowało i w magazynie zostawała wersja starsza. Naprawiało
+  się to przy następnym przedmiocie, więc realnie ginął kierunek OSTATNIEGO
+  przedmiotu zmiany — akurat na podsumowaniu. Teraz porównanie idzie po `id`
+  i `updated`, czyli tą samą miarą, którą rozstrzyga scalanie.
+
+---
+
 ## 1.0.0 — 2026-09-16
 
 Pierwsze oficjalne wydanie. Kod ten sam, co w poprzedniej numeracji 9.2.0;
