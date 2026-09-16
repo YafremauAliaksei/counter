@@ -20,7 +20,7 @@
             this.write(this.getKey(CONFIG.STORAGE_KEY_SESSION_CONFIG), JSON.stringify(store.sessionConfig));
 
             const allLocalsKey = this.getKey(CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
-            let allLocals = {};
+            let allLocals;
             try { allLocals = JSON.parse(localStorage.getItem(allLocalsKey) || "{}"); } catch (e) { allLocals = {}; }
             if (store.currentTabInstanceId) {
                 allLocals[store.currentTabInstanceId] = store.localTabConfig;
