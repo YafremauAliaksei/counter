@@ -4393,8 +4393,11 @@ const SCRIPT_LOGS_ENABLED = false;
             // `finally`: gdyby odczyt innerText rzucił (a robi to przy
             // rozbieranym drzewie), karta zostałaby schowana na zawsze i wyglądało
             // by to jak zepsuty skrypt, choć powodem byłby jeden wyjątek.
+            // Bez wartości początkowej: przypisanie w `try` jest jedyną drogą
+            // do użycia `text` niżej, więc `= ''` byłoby wartością, której nikt
+            // nigdy nie przeczyta (ESLint, no-useless-assignment).
             const prev = this.el && this.el.style.display;
-            let text = '';
+            let text;
             try {
                 if (this.el) this.el.style.display = 'none';
                 text = document.body.innerText || '';
