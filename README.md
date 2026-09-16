@@ -190,18 +190,18 @@ celowo: potwierdzenie sprzedaży przychodzi zawsze, niesprzedaży — nie zawsze
 
 Otwiera się po wpisaniu hasła `GORDONPAULE` na stronie.
 
-| Sekcja              | Co się ustawia                                                                                     |
-| ------------------- | -------------------------------------------------------------------------------------------------- |
-| Ogólne              | język (pl/en/ru), pełny reset danych, reset samych liczników                                       |
-| Pomoce wizualne     | kolorowa nakładka na stronę, duży napis z nazwą działu                                             |
-| Stylizacja okna     | tło okna, czcionka, **wszystkie siedem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji |
-| Statystyki globalne | które działy wchodzą do sumy, ręczna poprawka liczników                                            |
-| Skróty klawiszowe   | klawisze `+1` i `−1`                                                                               |
-| Auto-inkrementacja  | odstęp skanowania strony (50–200 ms)                                                               |
-| **Moduł cen**       | **główny wyłącznik sieci**                                                                         |
+| Sekcja              | Co się ustawia                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| Ogólne              | język (pl/en/ru), pełny reset danych, reset samych liczników                                         |
+| Pomoce wizualne     | kolorowa nakładka na stronę, duży napis z nazwą działu                                               |
+| Stylizacja okna     | tło okna, czcionka, **wszystkie siedem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji   |
+| Statystyki globalne | które działy wchodzą do sumy, ręczna poprawka liczników                                              |
+| Skróty klawiszowe   | klawisze `+1` i `−1`                                                                                 |
+| Auto-inkrementacja  | odstęp skanowania strony (50–200 ms)                                                                 |
+| **Moduł cen**       | **główny wyłącznik sieci**                                                                           |
 | Karta ceny          | sklep, źródło ceny, co pokazać, klikalność kodu, krój, rozmiary, tło — _tylko przy włączonym module_ |
-| Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_  |
-| Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                               |
+| Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_    |
+| Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                                 |
 
 Język interfejsu domyślnie polski, są też angielski i rosyjski.
 
