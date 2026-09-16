@@ -1791,6 +1791,68 @@ const SCRIPT_LOGS_ENABLED = false;
             }
         },
 
+        /**
+         * Składanie linii 6 — bilansu zmiany.
+         *
+         * Wyniesione z renderContent() RAZEM z wywołaniem ValueLog.totals():
+         * przy wyłączonej linii nie ma po co przechodzić po całym dzienniku
+         * i przeliczać każdej pozycji po kursie, skoro wynik nie trafi na ekran.
+         * Linia 6 jest jedynym odbiorcą totals(), więc nic innego tego przebiegu
+         * nie potrzebuje.
+         */
+        renderValueSum() {
+            const vt = ValueLog.totals();
+            const l6 = this.lines.line6_valueSum;
+            const cfg6 = store.localTabConfig.linesConfig.line6_valueSum;
+            l6.innerHTML = '';
+            const a6 = Math.max(0, Math.min(100, Number(cfg6.alpha))) / 100;
+            const tone = (hex, k = 1) => `rgba(${Utils.hexToRgb(hex)}, ${(a6 * k).toFixed(3)})`;
+            const GREEN = tone('#7CFFA8'), RED = tone('#FF9A9A');
+            const WARN = tone('#FFC46B'), DIM = tone(cfg6.colorHex, 0.85);
+            const piece = (text, color, bold) => {
+                const sp = h('span', { textContent: text });
+                if (color) sp.style.color = color;
+                if (bold) sp.style.fontWeight = '700';
+                return sp;
+            };
+            const money = (v) => v.toFixed(2);
+
+            l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
+            l6.appendChild(document.createTextNode(' '));
+            l6.appendChild(piece(`-${money(vt.unsold)}`, RED));
+            l6.appendChild(document.createTextNode(' = '));
+            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} €`,
+                                 vt.net >= 0 ? GREEN : RED, true));
+            l6.appendChild(document.createTextNode('  '));
+            l6.appendChild(piece(I18n.get('statsLine6_items', { n: vt.count }), DIM));
+            const pending = vt.undetermined + vt.unpriced + vt.noRate;
+            if (pending) {
+                l6.appendChild(document.createTextNode(' '));
+                l6.appendChild(piece(I18n.get('statsLine6_undet', { n: pending }), WARN));
+            }
+        },
+
+        /**
+         * Czy linia jest w ogóle widoczna.
+         *
+         * Widocznością steruje wyłącznie CSS (zmienna `--sh-<klucz>-display`),
+         * więc do tej poprawki render szedł bezwarunkowo: raz na sekundę składały
+         * się linie, których nikt nie ogląda. Przy ustawieniach domyślnych
+         * widoczna jest JEDNA linia z siedmiu, a każdy takt i tak tworzył komplet
+         * węzłów i przechodził po całym dzienniku wartości.
+         *
+         * Brak wpisu w konfiguracji znaczy „pokaż”, a nie „ukryj”: nowa linia
+         * dodana bez wartości domyślnej ma się pojawić, a nie zniknąć po cichu.
+         *
+         * Zmiana `visible` idzie przez onStorePaths(['localTabConfig']), czyli
+         * przez tę samą subskrypcję, która wywołuje renderContent() — włączona
+         * linia zapełnia się natychmiast, a nie dopiero przy następnym takcie.
+         */
+        isLineVisible(key) {
+            const cfg = store.localTabConfig.linesConfig[key];
+            return !cfg || cfg.visible !== false;
+        },
+
         renderContent() {
             const { workedMs } = ShiftManager.getWorkTime();
             const hWorked = workedMs / 3600000;
@@ -1808,7 +1870,19 @@ const SCRIPT_LOGS_ENABLED = false;
                 workTimeFormatted: Utils.formatDuration(workedMs)
             });
 
-            // Linia 2: podsumowanie globalne
+            /**
+             * Linia 2: podsumowanie globalne.
+             *
+             * Pętla po kartach chodzi ZAWSZE, bo `gTotal` potrzebuje go także
+             * linia 7, a obie muszą pokazywać tę samą liczbę: dwa niezależne
+             * przebiegi prędzej czy później by się rozjechały. Pod warunkiem
+             * widoczności stoi natomiast SKŁADANIE WĘZŁÓW — to ono kosztuje,
+             * a nie przejście po trzech kluczach.
+             */
+            const showLine2 = this.isLineVisible('line2_globalSummary');
+            // Czyścimy ZAWSZE, także przy wyłączonej linii: inaczej po jej
+            // schowaniu w węźle zostawałaby ostatnia treść — niewidoczna,
+            // ale wciąż wisząca w DOM i myląca przy diagnostyce.
             this.lines.line2_globalSummary.innerHTML = '';
             let gTotal = 0;
             const allKeys =[...Object.keys(CONFIG.KNOWN_TAB_TYPES), ...Object.keys(store.userConfig.customTabSettings)];
@@ -1823,6 +1897,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
                 if (included && active) {
                     gTotal += count;
+                    if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),
                         itemsPerHour: getIph(count), statsPerHourUnit: I18n.get('statsPerHourUnit'), count: count
@@ -1848,7 +1923,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 }
             });
 
-            if (fragments.length > 0) {
+            if (showLine2 && fragments.length > 0) {
                 fragments.forEach(f => this.lines.line2_globalSummary.appendChild(f));
                 this.lines.line2_globalSummary.appendChild(document.createTextNode(
                     I18n.get('statsLine2_global_total_format', {
@@ -1910,35 +1985,12 @@ const SCRIPT_LOGS_ENABLED = false;
              * 9.2.0: linia domyślnie wyłączona — przy wyłączonym module cen nie
              * ma czego sumować.
              */
-            const vt = ValueLog.totals();
-            const l6 = this.lines.line6_valueSum;
-            const cfg6 = store.localTabConfig.linesConfig.line6_valueSum;
-            l6.innerHTML = '';
-            const a6 = Math.max(0, Math.min(100, Number(cfg6.alpha))) / 100;
-            const tone = (hex, k = 1) => `rgba(${Utils.hexToRgb(hex)}, ${(a6 * k).toFixed(3)})`;
-            const GREEN = tone('#7CFFA8'), RED = tone('#FF9A9A');
-            const WARN = tone('#FFC46B'), DIM = tone(cfg6.colorHex, 0.85);
-            const piece = (text, color, bold) => {
-                const sp = h('span', { textContent: text });
-                if (color) sp.style.color = color;
-                if (bold) sp.style.fontWeight = '700';
-                return sp;
-            };
-            const money = (v) => v.toFixed(2);
-
-            l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
-            l6.appendChild(document.createTextNode(' '));
-            l6.appendChild(piece(`-${money(vt.unsold)}`, RED));
-            l6.appendChild(document.createTextNode(' = '));
-            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} €`,
-                                 vt.net >= 0 ? GREEN : RED, true));
-            l6.appendChild(document.createTextNode('  '));
-            l6.appendChild(piece(I18n.get('statsLine6_items', { n: vt.count }), DIM));
-            const pending = vt.undetermined + vt.unpriced + vt.noRate;
-            if (pending) {
-                l6.appendChild(document.createTextNode(' '));
-                l6.appendChild(piece(I18n.get('statsLine6_undet', { n: pending }), WARN));
-            }
+            // Linia 6: przy wyłączonej nie ma po co przechodzić po całym
+            // dzienniku i przeliczać pozycji po kursie — wynik i tak nie trafi
+            // na ekran. Czyszczenie zostaje bezwarunkowe, z tego samego powodu
+            // co w linii 2.
+            if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
+            else this.lines.line6_valueSum.innerHTML = '';
 
             /**
              * Line 7 — TRYB ZWIĘZŁY (9.2.0).
