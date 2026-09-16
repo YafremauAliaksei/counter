@@ -14,6 +14,18 @@ Dla tego projektu SemVer czyta się tak:
 
 ## Niewydane
 
+### Zmieniono
+
+- **Wyłączone linie nie są składane.** Widocznością linii steruje CSS, więc
+  render szedł bezwarunkowo: raz na sekundę powstawał komplet węzłów linii,
+  których nikt nie ogląda, a linia 6 przy okazji przechodziła po całym dzienniku
+  wartości i przeliczała każdą pozycję po kursie. Przy ustawieniach domyślnych
+  widoczna jest jedna linia z siedmiu. Pomiar w atrapie DOM (500 przebiegów):
+  12,0 → 0,0 utworzonych węzłów na render, 0,069 → 0,024 ms na render, a przy
+  dzienniku na 1000 pozycji 0,229 → 0,024 ms — koszt przestał zależeć od długości
+  zmiany. Liczby na ekranie się nie zmieniają: pętla po kartach chodzi jak
+  dotąd, bo `gTotal` potrzebny jest także linii 7.
+
 ### Naprawiono
 
 - **Pełny magazyn nie zabija skryptu.** `localStorage` tej domeny dzielimy
