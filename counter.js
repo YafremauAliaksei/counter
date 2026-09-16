@@ -1296,10 +1296,45 @@ const SCRIPT_LOGS_ENABLED = false;
 
         getKey(key) { return `${CONFIG.SCRIPT_ID_PREFIX}${key}`; },
 
+        /**
+         * Zapis z odnotowaniem wartości — JEDYNE miejsce, z którego skrypt pisze
+         * do localStorage poza dziennikiem wartości i kursami.
+         *
+         * ZAPIS MA PRAWO NIE DOJŚĆ i to nie jest sytuacja teoretyczna:
+         * localStorage tej domeny dzielimy z samym TREX, więc kwota potrafi się
+         * skończyć nie z naszej winy. Do tego część konfiguracji przeglądarki
+         * (zablokowany magazyn dla witryny) sprawia, że setItem rzuca wyjątek
+         * przy każdym wywołaniu.
+         *
+         * Wcześniej wyjątek szedł stąd w górę nieprzechwycony. Skutek był
+         * nieproporcjonalny do przyczyny: saveState() woła się w Main.init(),
+         * więc przy pełnym magazynie catch w init() rozbierał całość i skrypt
+         * NIE WSTAWAŁ WCALE. Licznik, który doskonale policzyłby zmianę
+         * w pamięci, nie pokazywał się na ekranie.
+         *
+         * Teraz nieudany zapis jest zdarzeniem zwykłym: wraca `false`, skrypt
+         * pracuje dalej na stanie w pamięci, a człowiek traci tylko przeniesienie
+         * liczników przez F5 — czyli dokładnie tyle, ile naprawdę zepsuł pełny
+         * magazyn.
+         *
+         * Notatka `_lastWritten` stawia się DOPIERO PO UDANYM zapisie i to jest
+         * druga połowa tej poprawki. Gdy stała przed nim, po nieudanym zapisie
+         * pamięć twierdziła, że wartość leży w magazynie, i deduplikacja
+         * odrzucała następną, już możliwą próbę zapisania tego samego.
+         *
+         * @returns {boolean} czy wartość naprawdę trafiła do magazynu.
+         */
         write(key, value) {
             if (this._lastWritten[key] === value) return false;
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                delete this._lastWritten[key];
+                Utils.error(`Zapis do magazynu nie powiódł się (${key}): ${e.name}. `
+                          + 'Skrypt pracuje dalej, ale stan nie przeżyje przeładowania strony.');
+                return false;
+            }
             this._lastWritten[key] = value;
-            localStorage.setItem(key, value);
             return true;
         },
         saveState() {
@@ -1856,6 +1891,68 @@ const SCRIPT_LOGS_ENABLED = false;
             }
         },
 
+        /**
+         * Składanie linii 6 — bilansu zmiany.
+         *
+         * Wyniesione z renderContent() RAZEM z wywołaniem ValueLog.totals():
+         * przy wyłączonej linii nie ma po co przechodzić po całym dzienniku
+         * i przeliczać każdej pozycji po kursie, skoro wynik nie trafi na ekran.
+         * Linia 6 jest jedynym odbiorcą totals(), więc nic innego tego przebiegu
+         * nie potrzebuje.
+         */
+        renderValueSum() {
+            const vt = ValueLog.totals();
+            const l6 = this.lines.line6_valueSum;
+            const cfg6 = store.localTabConfig.linesConfig.line6_valueSum;
+            l6.innerHTML = '';
+            const a6 = Math.max(0, Math.min(100, Number(cfg6.alpha))) / 100;
+            const tone = (hex, k = 1) => `rgba(${Utils.hexToRgb(hex)}, ${(a6 * k).toFixed(3)})`;
+            const GREEN = tone('#7CFFA8'), RED = tone('#FF9A9A');
+            const WARN = tone('#FFC46B'), DIM = tone(cfg6.colorHex, 0.85);
+            const piece = (text, color, bold) => {
+                const sp = h('span', { textContent: text });
+                if (color) sp.style.color = color;
+                if (bold) sp.style.fontWeight = '700';
+                return sp;
+            };
+            const money = (v) => v.toFixed(2);
+
+            l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
+            l6.appendChild(document.createTextNode(' '));
+            l6.appendChild(piece(`-${money(vt.unsold)}`, RED));
+            l6.appendChild(document.createTextNode(' = '));
+            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} €`,
+                                 vt.net >= 0 ? GREEN : RED, true));
+            l6.appendChild(document.createTextNode('  '));
+            l6.appendChild(piece(I18n.get('statsLine6_items', { n: vt.count }), DIM));
+            const pending = vt.undetermined + vt.unpriced + vt.noRate;
+            if (pending) {
+                l6.appendChild(document.createTextNode(' '));
+                l6.appendChild(piece(I18n.get('statsLine6_undet', { n: pending }), WARN));
+            }
+        },
+
+        /**
+         * Czy linia jest w ogóle widoczna.
+         *
+         * Widocznością steruje wyłącznie CSS (zmienna `--sh-<klucz>-display`),
+         * więc do tej poprawki render szedł bezwarunkowo: raz na sekundę składały
+         * się linie, których nikt nie ogląda. Przy ustawieniach domyślnych
+         * widoczna jest JEDNA linia z siedmiu, a każdy takt i tak tworzył komplet
+         * węzłów i przechodził po całym dzienniku wartości.
+         *
+         * Brak wpisu w konfiguracji znaczy „pokaż”, a nie „ukryj”: nowa linia
+         * dodana bez wartości domyślnej ma się pojawić, a nie zniknąć po cichu.
+         *
+         * Zmiana `visible` idzie przez onStorePaths(['localTabConfig']), czyli
+         * przez tę samą subskrypcję, która wywołuje renderContent() — włączona
+         * linia zapełnia się natychmiast, a nie dopiero przy następnym takcie.
+         */
+        isLineVisible(key) {
+            const cfg = store.localTabConfig.linesConfig[key];
+            return !cfg || cfg.visible !== false;
+        },
+
         renderContent() {
             const { workedMs } = ShiftManager.getWorkTime();
             const hWorked = workedMs / 3600000;
@@ -1873,7 +1970,19 @@ const SCRIPT_LOGS_ENABLED = false;
                 workTimeFormatted: Utils.formatDuration(workedMs)
             });
 
-            // Linia 2: podsumowanie globalne
+            /**
+             * Linia 2: podsumowanie globalne.
+             *
+             * Pętla po kartach chodzi ZAWSZE, bo `gTotal` potrzebuje go także
+             * linia 7, a obie muszą pokazywać tę samą liczbę: dwa niezależne
+             * przebiegi prędzej czy później by się rozjechały. Pod warunkiem
+             * widoczności stoi natomiast SKŁADANIE WĘZŁÓW — to ono kosztuje,
+             * a nie przejście po trzech kluczach.
+             */
+            const showLine2 = this.isLineVisible('line2_globalSummary');
+            // Czyścimy ZAWSZE, także przy wyłączonej linii: inaczej po jej
+            // schowaniu w węźle zostawałaby ostatnia treść — niewidoczna,
+            // ale wciąż wisząca w DOM i myląca przy diagnostyce.
             this.lines.line2_globalSummary.innerHTML = '';
             let gTotal = 0;
             const allKeys =[...Object.keys(CONFIG.KNOWN_TAB_TYPES), ...Object.keys(store.userConfig.customTabSettings)];
@@ -1888,6 +1997,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
                 if (included && active) {
                     gTotal += count;
+                    if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),
                         itemsPerHour: getIph(count), statsPerHourUnit: I18n.get('statsPerHourUnit'), count: count
@@ -1913,7 +2023,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 }
             });
 
-            if (fragments.length > 0) {
+            if (showLine2 && fragments.length > 0) {
                 fragments.forEach(f => this.lines.line2_globalSummary.appendChild(f));
                 this.lines.line2_globalSummary.appendChild(document.createTextNode(
                     I18n.get('statsLine2_global_total_format', {
@@ -1975,35 +2085,12 @@ const SCRIPT_LOGS_ENABLED = false;
              * 9.2.0: linia domyślnie wyłączona — przy wyłączonym module cen nie
              * ma czego sumować.
              */
-            const vt = ValueLog.totals();
-            const l6 = this.lines.line6_valueSum;
-            const cfg6 = store.localTabConfig.linesConfig.line6_valueSum;
-            l6.innerHTML = '';
-            const a6 = Math.max(0, Math.min(100, Number(cfg6.alpha))) / 100;
-            const tone = (hex, k = 1) => `rgba(${Utils.hexToRgb(hex)}, ${(a6 * k).toFixed(3)})`;
-            const GREEN = tone('#7CFFA8'), RED = tone('#FF9A9A');
-            const WARN = tone('#FFC46B'), DIM = tone(cfg6.colorHex, 0.85);
-            const piece = (text, color, bold) => {
-                const sp = h('span', { textContent: text });
-                if (color) sp.style.color = color;
-                if (bold) sp.style.fontWeight = '700';
-                return sp;
-            };
-            const money = (v) => v.toFixed(2);
-
-            l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
-            l6.appendChild(document.createTextNode(' '));
-            l6.appendChild(piece(`-${money(vt.unsold)}`, RED));
-            l6.appendChild(document.createTextNode(' = '));
-            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} €`,
-                                 vt.net >= 0 ? GREEN : RED, true));
-            l6.appendChild(document.createTextNode('  '));
-            l6.appendChild(piece(I18n.get('statsLine6_items', { n: vt.count }), DIM));
-            const pending = vt.undetermined + vt.unpriced + vt.noRate;
-            if (pending) {
-                l6.appendChild(document.createTextNode(' '));
-                l6.appendChild(piece(I18n.get('statsLine6_undet', { n: pending }), WARN));
-            }
+            // Linia 6: przy wyłączonej nie ma po co przechodzić po całym
+            // dzienniku i przeliczać pozycji po kursie — wynik i tak nie trafi
+            // na ekran. Czyszczenie zostaje bezwarunkowe, z tego samego powodu
+            // co w linii 2.
+            if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
+            else this.lines.line6_valueSum.innerHTML = '';
 
             /**
              * Line 7 — TRYB ZWIĘZŁY (9.2.0).
@@ -3086,6 +3173,39 @@ const SCRIPT_LOGS_ENABLED = false;
             return null;
         },
 
+        /**
+         * Czy po scaleniu mamy coś, czego we wspólnym dzienniku nie ma.
+         *
+         * Wcześniej rozstrzygała o tym sama DŁUGOŚĆ: `merged.length >
+         * shared.entries.length`. Gubiło to przypadek, w którym liczba pozycji
+         * się zgadza, a różni się ich TREŚĆ — czyli dokładnie skutek wyścigu
+         * przy odczycie i zapisie wspólnego klucza (localStorage nie daje tu
+         * żadnej atomowości):
+         *
+         *   1. stawiamy kierunek przedmiotu, save() czyta wspólny dziennik;
+         *   2. sąsiednia karta zdążyła w tej szparze zapisać swoją, starszą
+         *      wersję tej samej pozycji;
+         *   3. dostajemy zdarzenie `storage`, scalamy — nasza wersja wygrywa
+         *      po `updated`, ale długość się zgadza, więc dopisanie się nie
+         *      planowało i we wspólnym kluczu zostawała wersja starsza.
+         *
+         * Naprawiało się to samo przy następnym przedmiocie (save() scala),
+         * więc realnie zagrożony był wyłącznie OSTATNI przedmiot zmiany — ten,
+         * po którym nic już nie zapisywało. Cicho i akurat na podsumowaniu.
+         *
+         * Teraz porównanie idzie po id i po `updated`: to ta sama miara, którą
+         * rozstrzyga _merge(), więc obie strony wymiany widzą tak samo.
+         */
+        _aheadOfShared(merged, sharedEntries) {
+            const theirs = new Map();
+            for (const e of sharedEntries) if (e && e.id) theirs.set(e.id, e.updated || 0);
+            return merged.some(e => {
+                if (!e || !e.id) return false;
+                if (!theirs.has(e.id)) return true;
+                return (e.updated || 0) > theirs.get(e.id);
+            });
+        },
+
         /** Scalenie dwóch list po id; przy konflikcie wygrywa świeższy updated. */
         _merge(base, mine) {
             const map = new Map();
@@ -3139,7 +3259,7 @@ const SCRIPT_LOGS_ENABLED = false;
             }
             const before = this.entries.length;
             const merged = this._merge(shared.entries, this.entries);
-            const haveOurOwn = merged.length > shared.entries.length;
+            const haveOurOwn = this._aheadOfShared(merged, shared.entries);
             this.entries = merged;
             if (shared.shiftStart) this.shiftStart = shared.shiftStart;
             bus.emit('valueLog:changed');
@@ -4355,10 +4475,19 @@ const SCRIPT_LOGS_ENABLED = false;
             // z cudzego panelu stanu. Oba warianty kłamały, więc przy
             // niejednoznaczności uczciwiej nie zgadywać, tylko zostawić na karcie
             // ostatnie, co było wiadome na pewno.
+            // Karta znika na czas odczytu, żeby nie podać nam WŁASNEGO ASIN —
+            // pokazuje przecież poprzedni przedmiot. Przywrócenie idzie przez
+            // `finally`: gdyby odczyt innerText rzucił (a robi to przy
+            // rozbieranym drzewie), karta zostałaby schowana na zawsze i wyglądało
+            // by to jak zepsuty skrypt, choć powodem byłby jeden wyjątek.
             const prev = this.el && this.el.style.display;
-            if (this.el) this.el.style.display = 'none';
-            const text = document.body.innerText || '';
-            if (this.el) this.el.style.display = prev || '';
+            let text = '';
+            try {
+                if (this.el) this.el.style.display = 'none';
+                text = document.body.innerText || '';
+            } finally {
+                if (this.el) this.el.style.display = prev || '';
+            }
 
             const all = text.match(new RegExp(CONFIG.PRICE_ASIN_FROM_TEXT.source, 'g'));
             if (!all || !all.length) return null;

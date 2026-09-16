@@ -34,10 +34,64 @@ test('dwie liczby oddzielone jedną spacją, bez jednostek i nawiasów', () => {
 });
 
 test('liczba w linii 7 zgadza się z sumą linii 2', () => {
+    // Linia 2 jest domyślnie wyłączona, a wyłączonych linii render nie składa —
+    // więc porównanie ma sens dopiero po jej włączeniu. Sprawdzana jest zgodność
+    // liczb, a nie to, czy linia jest widoczna.
+    const cfg = env.SH.store.localTabConfig.linesConfig.line2_globalSummary;
+    const before = cfg.visible;
+    cfg.visible = true;
+    env.SH.StatsWindowRenderer.renderContent();
+
     const l2 = env.SH.StatsWindowRenderer.lines.line2_globalSummary.textContent;
     const [iph, count] = line7().split(' ');
     ok(l2.includes(iph), 'wydajność z linii 7 („' + iph + '”) musi być w linii 2: ' + l2);
     ok(l2.includes('(' + count + ')'), 'liczba sztuk z linii 7 musi być w linii 2');
+
+    cfg.visible = before;
+    env.SH.StatsWindowRenderer.renderContent();
+});
+
+test('wyłączona linia 2 nie jest składana, a linia 7 liczy dalej', () => {
+    // Sedno poprawki wydajnościowej: przy ustawieniach domyślnych widoczna jest
+    // jedna linia z siedmiu i tylko ona ma powstawać raz na sekundę. Liczba
+    // w linii 7 nie ma prawa się przez to zmienić — obie linie liczą z tej samej
+    // pętli po kartach.
+    const l2 = env.SH.StatsWindowRenderer.lines.line2_globalSummary;
+    eq(env.SH.store.localTabConfig.linesConfig.line2_globalSummary.visible, false,
+       'linia 2 musi być domyślnie wyłączona');
+    env.SH.StatsWindowRenderer.renderContent();
+    eq(l2.textContent, '', 'wyłączona linia 2 zostaje pusta');
+    eq(l2.children.length, 0, 'wyłączona linia 2 nie tworzy węzłów');
+    eq(line7(), '17.5 35', 'linia 7 pokazuje tę samą sumę co przy włączonej linii 2');
+});
+
+test('wyłączona linia 6 nie rusza dziennika wartości', () => {
+    // ValueLog.totals() przechodzi po WSZYSTKICH wpisach i każdy przelicza po
+    // kursie. Linia 6 jest jedynym odbiorcą tego przebiegu, więc przy wyłączonej
+    // linii nie ma prawa się wykonać ani razu.
+    const VL = env.SH.ValueLog;
+    const realTotals = VL.totals;
+    let wywolan = 0;
+    VL.totals = function() { wywolan++; return realTotals.call(this); };
+
+    eq(env.SH.store.localTabConfig.linesConfig.line6_valueSum.visible, false,
+       'linia 6 musi być domyślnie wyłączona');
+    env.SH.StatsWindowRenderer.renderContent();
+    eq(wywolan, 0, 'totals() przy wyłączonej linii 6');
+    eq(env.SH.StatsWindowRenderer.lines.line6_valueSum.textContent, '',
+       'wyłączona linia 6 zostaje pusta');
+
+    // Włączenie linii samo w sobie wywołuje render (onStorePaths po
+    // 'localTabConfig'), więc liczba wywołań rośnie od razu — sprawdzamy fakt
+    // widoczny dla człowieka: linia zapełnia się natychmiast, a nie po sekundzie.
+    env.SH.store.localTabConfig.linesConfig.line6_valueSum.visible = true;
+    ok(wywolan > 0, 'totals() po włączeniu linii 6');
+    ok(env.SH.StatsWindowRenderer.lines.line6_valueSum.textContent.length > 0,
+       'włączona linia 6 zapełnia się od razu');
+
+    env.SH.store.localTabConfig.linesConfig.line6_valueSum.visible = false;
+    VL.totals = realTotals;
+    env.SH.StatsWindowRenderer.renderContent();
 });
 
 test('działy wyłączone z sumy globalnej nie wchodzą do linii 7', () => {
