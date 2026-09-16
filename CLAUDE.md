@@ -72,6 +72,21 @@ nie istnieje.
 `innerHTML` czegokolwiek poza `''`. Sprawdza to `tests/09-artifact.test.js`.
 Cały tekst trafia do DOM przez `createTextNode` (generator `h()`).
 
+### 6. Testów ma być więcej, a każda linia ma być obowiązkowa
+
+Nowa funkcja bez testu nie wchodzi. Test na wartości typowej nie liczy się za
+test: obowiązkowe są wartości graniczne — zero, jeden, przekroczenie rzędu
+(`999` / `1000`), `null`, `NaN`, przepełniony magazyn, spreparowana wartość
+z `localStorage`, przejście przez północ. Wzorzec kosztował wydanie: cena
+`2 991,39 €` szła do dziennika jako `991,39`, bo nikt nie sprawdził przedmiotu
+droższego niż tysiąc euro (CHANGELOG 9.1.1).
+
+Każdy test ma mieć powód zapisany w nagłówku albo w komentarzu, a każda linia
+kodu ma być obowiązkowa: jeśli po jej usunięciu nic się nie psuje, ma zniknąć.
+Poprawka podana jako „szybsza” przychodzi z pomiarem, nie z przekonaniem.
+
+Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
+
 ---
 
 ## Polecenia
