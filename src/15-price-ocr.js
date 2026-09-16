@@ -122,7 +122,9 @@
             try {
                 return ctx.getImageData(0, 0, c.width, c.height);
             } catch (e) {
-                throw new Error('canvas skażony — obrazek bez crossOrigin');
+                // cause zachowuje pierwotny SecurityError: bez niego w konsoli zostaje
+                // sam nasz komunikat i nie widać, co dokładnie zablokowała przeglądarka.
+                throw new Error('canvas skażony — obrazek bez crossOrigin', { cause: e });
             }
         },
 
