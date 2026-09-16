@@ -4268,10 +4268,19 @@ const SCRIPT_LOGS_ENABLED = false;
             // z cudzego panelu stanu. Oba warianty kłamały, więc przy
             // niejednoznaczności uczciwiej nie zgadywać, tylko zostawić na karcie
             // ostatnie, co było wiadome na pewno.
+            // Karta znika na czas odczytu, żeby nie podać nam WŁASNEGO ASIN —
+            // pokazuje przecież poprzedni przedmiot. Przywrócenie idzie przez
+            // `finally`: gdyby odczyt innerText rzucił (a robi to przy
+            // rozbieranym drzewie), karta zostałaby schowana na zawsze i wyglądało
+            // by to jak zepsuty skrypt, choć powodem byłby jeden wyjątek.
             const prev = this.el && this.el.style.display;
-            if (this.el) this.el.style.display = 'none';
-            const text = document.body.innerText || '';
-            if (this.el) this.el.style.display = prev || '';
+            let text = '';
+            try {
+                if (this.el) this.el.style.display = 'none';
+                text = document.body.innerText || '';
+            } finally {
+                if (this.el) this.el.style.display = prev || '';
+            }
 
             const all = text.match(new RegExp(CONFIG.PRICE_ASIN_FROM_TEXT.source, 'g'));
             if (!all || !all.length) return null;
