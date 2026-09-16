@@ -36,15 +36,15 @@ skąd pochodzi fragment) i poprawiać tam.
 Cały projekt jest prowadzony po polsku: zespół jest polskojęzyczny, więc kod
 i dokumentacja muszą być czytelne bez tłumacza.
 
-| Co | Język |
-|---|---|
-| Komentarze w `src/**`, `tests/**`, `build.js` | **polski** |
-| Komunikaty `Utils.log/error/fatal`, teksty `new Error(...)`, klucze obiektów diagnostycznych | **polski** |
-| README, CHANGELOG, CONTRIBUTING, HANDOFF, `src/README.md`, szablony `.github/**` | **polski** |
-| `LANG_STRINGS.ru`, `Русский` na liście języków | rosyjski — **nie ruszać** |
-| `видите ниже`, `канирование номера LP:` w wyrażeniach wyzwalaczy | **nie ruszać**, to tekst samego T-REX |
-| Nazwy plików, commity, nazwy gałęzi | angielski |
-| Rozmowa z autorem projektu | **rosyjski** |
+| Co                                                                                           | Język                                 |
+| -------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Komentarze w `src/**`, `tests/**`, `build.js`                                                | **polski**                            |
+| Komunikaty `Utils.log/error/fatal`, teksty `new Error(...)`, klucze obiektów diagnostycznych | **polski**                            |
+| README, CHANGELOG, CONTRIBUTING, HANDOFF, `src/README.md`, szablony `.github/**`             | **polski**                            |
+| `LANG_STRINGS.ru`, `Русский` na liście języków                                               | rosyjski — **nie ruszać**             |
+| `видите ниже`, `канирование номера LP:` w wyrażeniach wyzwalaczy                             | **nie ruszać**, to tekst samego T-REX |
+| Nazwy plików, commity, nazwy gałęzi                                                          | angielski                             |
+| Rozmowa z autorem projektu                                                                   | **rosyjski**                          |
 
 Cyrylica w komentarzach, w wywołaniach logów albo w dokumentacji wywraca testy:
 pilnują tego `tests/09-artifact.test.js` (artefakt) i `tests/10-language.test.js`
@@ -112,12 +112,12 @@ Mapa modułów z opisem każdego: `src/README.md`.
 
 Najważniejsze miejsca:
 
-| Plik | Dlaczego ważny |
-|---|---|
-| `src/01-config.js` | wszystkie wartości domyślne; zmieniać świadomie |
-| `src/04-core-state.js` | `priceModuleOn()` — od niego zależą wszystkie bezpieczniki sieciowe |
-| `src/19-price-module.js` | jedyne miejsce, z którego wychodzi pierwsze zapytanie do sieci |
-| `src/03-utils.js` | `deepMerge`, `clampNum`, `hexToRgb` — ochrona przed wstrzyknięciami |
+| Plik                     | Dlaczego ważny                                                      |
+| ------------------------ | ------------------------------------------------------------------- |
+| `src/01-config.js`       | wszystkie wartości domyślne; zmieniać świadomie                     |
+| `src/04-core-state.js`   | `priceModuleOn()` — od niego zależą wszystkie bezpieczniki sieciowe |
+| `src/19-price-module.js` | jedyne miejsce, z którego wychodzi pierwsze zapytanie do sieci      |
+| `src/03-utils.js`        | `deepMerge`, `clampNum`, `hexToRgb` — ochrona przed wstrzyknięciami |
 
 ---
 

@@ -54,13 +54,13 @@ Hasło stoi w jednej linii na początku pliku i można je zmienić dowolnie.
 
 ## Co robi domyślnie
 
-| | |
-|---|---|
-| Zapytań sieciowych po uruchomieniu | **0** |
-| Linii w konsoli po uruchomieniu | **0** |
-| Widocznych elementów na ekranie | jedna linia, 13 px, szara, alfa 50 % |
-| Położenie | lewy dolny róg, 20 px od lewej, 8 px od dołu |
-| Co jest liczone | przedmioty ze **wszystkich** otwartych kart T-REX |
+|                                    |                                                   |
+| ---------------------------------- | ------------------------------------------------- |
+| Zapytań sieciowych po uruchomieniu | **0**                                             |
+| Linii w konsoli po uruchomieniu    | **0**                                             |
+| Widocznych elementów na ekranie    | jedna linia, 13 px, szara, alfa 50 %              |
+| Położenie                          | lewy dolny róg, 20 px od lewej, 8 px od dołu      |
+| Co jest liczone                    | przedmioty ze **wszystkich** otwartych kart T-REX |
 
 To nie jest przypadkowy zestaw, tylko jawny cel tej wersji: skrypt ma przeżyć
 dziesięciogodzinną zmianę, niczego nie zużywając i nie przeszkadzając.
@@ -78,15 +78,15 @@ samo, jak nie zalicza go sam system.
 W oknie jest siedem niezależnych linii. Każda włącza się osobno, każda ma własny
 kolor, przezroczystość i rozmiar czcionki.
 
-| Linia | Co pokazuje | Domyślnie |
-|---|---|---|
-| **1** | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m)` | wył. |
-| **2** | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11)` | wył. |
-| **3** | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)` | wył. |
-| **4** | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)` | wył. |
-| **5** | zegar: `[ 14:32:07 ]` | wył. |
-| **6** | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1` | wył. |
-| **7** | **kompaktowy licznik: `17.4 28`** | **wł.** |
+| Linia | Co pokazuje                                                         | Domyślnie |
+| ----- | ------------------------------------------------------------------- | --------- |
+| **1** | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m)`       | wył.      |
+| **2** | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11)`   | wył.      |
+| **3** | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)`                  | wył.      |
+| **4** | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                       | wył.      |
+| **5** | zegar: `[ 14:32:07 ]`                                               | wył.      |
+| **6** | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1` | wył.      |
+| **7** | **kompaktowy licznik: `17.4 28`**                                   | **wł.**   |
 
 ### Linia 7 dokładniej
 
@@ -142,11 +142,11 @@ Bezpośrednie zapytanie na `amazon.*` ze strony T-REX jest niemożliwe — Same-
 Policy. Sprawdzone: blokowane jest wszystko, łącznie z `no-cors`, `iframe`,
 `script src` i widżetami partnerskimi. Działają dokładnie dwa źródła:
 
-| Źródło | Co to jest | Kiedy używane |
-|---|---|---|
-| `graph.keepa.com` | PNG z wykresem ceny; cena jest **rozpoznawana z pikseli legendy** | domyślnie |
-| `r.jina.ai` | tekst strony towaru przez proxy z CORS | tryb `jina` |
-| `api.keepa.com` | oficjalne API | tylko po wpisaniu płatnego klucza |
+| Źródło            | Co to jest                                                        | Kiedy używane                     |
+| ----------------- | ----------------------------------------------------------------- | --------------------------------- |
+| `graph.keepa.com` | PNG z wykresem ceny; cena jest **rozpoznawana z pikseli legendy** | domyślnie                         |
+| `r.jina.ai`       | tekst strony towaru przez proxy z CORS                            | tryb `jina`                       |
+| `api.keepa.com`   | oficjalne API                                                     | tylko po wpisaniu płatnego klucza |
 
 Rozpoznawanie ceny z obrazka nie jest OCR-em w zwykłym sensie: czcionka legendy
 Keepa jest rastrowa i niezmienna, więc glify porównuje się z tablicą wzorców bit
@@ -179,18 +179,18 @@ celowo: potwierdzenie sprzedaży przychodzi zawsze, niesprzedaży — nie zawsze
 
 Otwiera się po wpisaniu hasła `GORDONPAULE` na stronie.
 
-| Sekcja | Co się ustawia |
-|---|---|
-| Ogólne | język (pl/en/ru), pełny reset danych, reset samych liczników |
-| Pomoce wizualne | kolorowa nakładka na stronę, duży napis z nazwą działu |
-| Stylizacja okna | tło okna, czcionka, **wszystkie siedem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji |
-| Statystyki globalne | które działy wchodzą do sumy, ręczna poprawka liczników |
-| Skróty klawiszowe | klawisze `+1` i `−1` |
-| Auto-inkrementacja | odstęp skanowania strony (50–200 ms) |
-| **Moduł cen** | **główny wyłącznik sieci** |
-| Karta ceny | sklep, źródło ceny, wygląd, rozmiary, tło — *tylko przy włączonym module* |
-| Dziennik wartości | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — *tylko przy włączonym module* |
-| Wybór przerwy | który obiad jest wybrany (wpływa na liczenie godzin) |
+| Sekcja              | Co się ustawia                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| Ogólne              | język (pl/en/ru), pełny reset danych, reset samych liczników                                       |
+| Pomoce wizualne     | kolorowa nakładka na stronę, duży napis z nazwą działu                                             |
+| Stylizacja okna     | tło okna, czcionka, **wszystkie siedem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji |
+| Statystyki globalne | które działy wchodzą do sumy, ręczna poprawka liczników                                            |
+| Skróty klawiszowe   | klawisze `+1` i `−1`                                                                               |
+| Auto-inkrementacja  | odstęp skanowania strony (50–200 ms)                                                               |
+| **Moduł cen**       | **główny wyłącznik sieci**                                                                         |
+| Karta ceny          | sklep, źródło ceny, wygląd, rozmiary, tło — _tylko przy włączonym module_                          |
+| Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_  |
+| Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                               |
 
 Język interfejsu domyślnie polski, są też angielski i rosyjski.
 
@@ -202,31 +202,31 @@ Po uruchomieniu dostępny jest obiekt `SH`:
 
 ```js
 // Moduł cen
-SH.priceOn()            // włączyć (pierwsze i jedyne wejście do sieci)
-SH.priceOff()           // wyłączyć
-SH.priceStats()         // ile zapytań poszło, co siedzi w pamięci
+SH.priceOn(); // włączyć (pierwsze i jedyne wejście do sieci)
+SH.priceOff(); // wyłączyć
+SH.priceStats(); // ile zapytań poszło, co siedzi w pamięci
 
 // Logi
-SH.logsOn()             // włączyć wypisywanie do konsoli
-SH.logsOff()            // wyłączyć
-SH.logs()               // sprawdzić stan
+SH.logsOn(); // włączyć wypisywanie do konsoli
+SH.logsOff(); // wyłączyć
+SH.logs(); // sprawdzić stan
 
 // Dane
-SH.valueReport()        // tabela dziennika wartości do konsoli
-SH.valueArchive()       // archiwum podsumowań zmian
-SH.fxStatus()           // skąd wzięto kursy walut
-SH.routeInfo()          // co obecnie wiadomo o kierunku przedmiotu
+SH.valueReport(); // tabela dziennika wartości do konsoli
+SH.valueArchive(); // archiwum podsumowań zmian
+SH.fxStatus(); // skąd wzięto kursy walut
+SH.routeInfo(); // co obecnie wiadomo o kierunku przedmiotu
 
 // Diagnostyka
-SH.cspReport()          // co dopuszcza polityka strony (async)
-SH.forcePrice(asin)     // odpytać o cenę ręcznie
-SH.readPrice(asin)      // odczytać cenę z wykresu z pominięciem cache
-SH.setLimits({ images: 3000 })   // podnieść limity zapytań w locie
+SH.cspReport(); // co dopuszcza polityka strony (async)
+SH.forcePrice(asin); // odpytać o cenę ręcznie
+SH.readPrice(asin); // odczytać cenę z wykresu z pominięciem cache
+SH.setLimits({ images: 3000 }); // podnieść limity zapytań w locie
 
 // Wnętrzności
-SH.store                // cały stan
-SH.CONFIG               // wszystkie stałe
-SH.Main.teardown()      // poprawnie zdjąć skrypt ze strony
+SH.store; // cały stan
+SH.CONFIG; // wszystkie stałe
+SH.Main.teardown(); // poprawnie zdjąć skrypt ze strony
 ```
 
 Zmiany w `SH.store` działają od razu, ale żeby przeżyły `F5`, trzeba wywołać
@@ -255,10 +255,10 @@ Karta otwarta w połowie zmiany od razu widzi cudze liczniki.
 
 Zmianę ustala się po lokalnym czasie przeglądarki:
 
-| | Okno zmiany | Początek odliczania |
-|---|---|---|
-| Dzienna | 06:19 – 17:55 | 06:30 |
-| Nocna | 18:19 – 05:55 | 18:30 |
+|         | Okno zmiany   | Początek odliczania |
+| ------- | ------------- | ------------------- |
+| Dzienna | 06:19 – 17:55 | 06:30               |
+| Nocna   | 18:19 – 05:55 | 18:30               |
 
 Między zmianami jest „martwa strefa” (17:55–18:19 i 05:55–06:19) — w niej
 zapisana zmiana **nie jest resetowana**, żeby komuś, kto został dłużej,
@@ -281,20 +281,20 @@ Skrypt działa na cudzej stronie i czyta dane z trzech źródeł, których nie
 kontroluje: `localStorage` domeny (wspólny z samym T-REX), tekst i DOM strony,
 odpowiedzi zewnętrznych serwisów. Dlatego:
 
-| Zabezpieczenie | Gdzie |
-|---|---|
-| Żadnego parsowania HTML: cały tekst przez `createTextNode` | generator DOM `h()` |
-| `innerHTML` tylko do czyszczenia (`= ''`), nigdy z treścią | sprawdzane testem |
-| Ani `eval`, ani `new Function`, ani `document.write` | sprawdzane testem |
-| Ochrona przed prototype pollution (`__proto__`, `constructor`) | `Utils.deepMerge` |
-| Liczby z konfiguracji są zaciskane do zakresu, zanim trafią do CSS | `Utils.clampNum` |
-| Kolory sprawdzane zakotwiczonym wyrażeniem, inaczej — szary | `Utils.hexToRgb` |
-| ASIN sprawdzany po `^[A-Z0-9]{10}$` przed wyjściem do sieci | `KeepaOCR.url` |
-| Host linku wyłącznie z białej listy, schemat wszyty na stałe | `productUrl` |
-| Kody sortowania są ekranowane przed złożeniem wyrażenia | `Routing.codeRegex` |
-| Kursy walut sprawdzane pod kątem sensu, także przy odczycie z pamięci | `FxRates.normalize` |
-| Skrypt rusza wyłącznie własne klucze `localStorage` | `StorageManager.ownKeys` |
-| Pięć niezależnych sprawdzeń przed każdym wyjściem do sieci | `priceModuleOn()` |
+| Zabezpieczenie                                                        | Gdzie                    |
+| --------------------------------------------------------------------- | ------------------------ |
+| Żadnego parsowania HTML: cały tekst przez `createTextNode`            | generator DOM `h()`      |
+| `innerHTML` tylko do czyszczenia (`= ''`), nigdy z treścią            | sprawdzane testem        |
+| Ani `eval`, ani `new Function`, ani `document.write`                  | sprawdzane testem        |
+| Ochrona przed prototype pollution (`__proto__`, `constructor`)        | `Utils.deepMerge`        |
+| Liczby z konfiguracji są zaciskane do zakresu, zanim trafią do CSS    | `Utils.clampNum`         |
+| Kolory sprawdzane zakotwiczonym wyrażeniem, inaczej — szary           | `Utils.hexToRgb`         |
+| ASIN sprawdzany po `^[A-Z0-9]{10}$` przed wyjściem do sieci           | `KeepaOCR.url`           |
+| Host linku wyłącznie z białej listy, schemat wszyty na stałe          | `productUrl`             |
+| Kody sortowania są ekranowane przed złożeniem wyrażenia               | `Routing.codeRegex`      |
+| Kursy walut sprawdzane pod kątem sensu, także przy odczycie z pamięci | `FxRates.normalize`      |
+| Skrypt rusza wyłącznie własne klucze `localStorage`                   | `StorageManager.ownKeys` |
+| Pięć niezależnych sprawdzeń przed każdym wyjściem do sieci            | `priceModuleOn()`        |
 
 Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 113 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
@@ -351,11 +351,11 @@ oraz PR — w [CONTRIBUTING.md](CONTRIBUTING.md).
 
 [SemVer](https://semver.org/lang/pl/), a dla tego projektu czyta się go tak:
 
-| | Kiedy podnosić | Co to znaczy dla człowieka |
-|---|---|---|
-| **MAJOR** | zmienia się `SCRIPT_ID_PREFIX` | liczniki i ustawienia **nie przenoszą się**, aktualizować tylko między zmianami |
-| **MINOR** | nowa możliwość, dane zgodne wstecz | można aktualizować w dowolnej chwili |
-| **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili |
+|           | Kiedy podnosić                     | Co to znaczy dla człowieka                                                      |
+| --------- | ---------------------------------- | ------------------------------------------------------------------------------- |
+| **MAJOR** | zmienia się `SCRIPT_ID_PREFIX`     | liczniki i ustawienia **nie przenoszą się**, aktualizować tylko między zmianami |
+| **MINOR** | nowa możliwość, dane zgodne wstecz | można aktualizować w dowolnej chwili                                            |
+| **PATCH** | naprawa bez nowych pól             | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu koduje **schemat danych**, a nie numer buildu: `1.1.0` i `1.2.0`
 zostaną przy `statsHelper_v1_0_0_`, dopóki nie zmieni się skład zapisywanych pól.

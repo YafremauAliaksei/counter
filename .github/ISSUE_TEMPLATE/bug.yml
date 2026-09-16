@@ -13,7 +13,7 @@ body:
     attributes:
       label: Wersja skryptu
       description: Wynik `SH.CONFIG.SCRIPT_VERSION` w konsoli
-      placeholder: "1.0.0"
+      placeholder: '1.0.0'
     validations:
       required: true
 
@@ -22,9 +22,9 @@ body:
     attributes:
       label: Czy moduł cen był włączony?
       options:
-        - "Nie (ustawienie domyślne)"
-        - "Tak"
-        - "Nie wiem"
+        - 'Nie (ustawienie domyślne)'
+        - 'Tak'
+        - 'Nie wiem'
     validations:
       required: true
 

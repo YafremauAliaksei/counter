@@ -102,7 +102,7 @@
             bus.clear();
             // Dostęp z konsoli należał do zdjętego egzemplarza: zostawić go znaczy
             // trzymać w pamięci cały stan i wszystkie menedżery.
-            try { delete window[CONFIG.SCRIPT_ID_PREFIX + 'API']; delete window.SH; } catch (e) {}
+            try { delete window[CONFIG.SCRIPT_ID_PREFIX + 'API']; delete window.SH; } catch (e) { /* własność mogła być niekasowalna — rozbiórki to nie zatrzymuje */ }
             // Egzemplarza na stronie już nie ma — więc i zamek na powtórne
             // uruchomienie się zdejmuje, inaczej poprawionego pliku nie dałoby się
             // już wkleić.
@@ -209,7 +209,7 @@
                 // ValueLog.scheduleArchive), więc ostatnia paczka przedmiotów
                 // inaczej by do niego nie zdążyła. Sam dziennik pozycji jest
                 // w tym momencie już w localStorage — on pisze się od razu.
-                this.onPageHide = () => { try { ValueLog.flushArchive(); } catch (e) {} };
+                this.onPageHide = () => { try { ValueLog.flushArchive(); } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ } };
                 window.addEventListener('pagehide', this.onPageHide);
 
                 // Autozapis ustawień. Do 8.1.0 stan zapisywał się dopiero przy

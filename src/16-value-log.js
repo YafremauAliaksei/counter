@@ -220,7 +220,7 @@
             if (keys.length > CONFIG.VALUE_ARCHIVE_MAX_SHIFTS) {
                 keys.slice(0, keys.length - CONFIG.VALUE_ARCHIVE_MAX_SHIFTS).forEach(k => delete arc[k]);
             }
-            try { localStorage.setItem(this.archiveKey(), JSON.stringify(arc)); } catch (e) {}
+            try { localStorage.setItem(this.archiveKey(), JSON.stringify(arc)); } catch (e) { /* magazyn pełny albo zablokowany — archiwum jest wygodą, nie danymi krytycznymi */ }
         },
 
         // ---------------- wpisy ----------------
@@ -363,7 +363,7 @@
             this._writeBackTimer = null;
             this.entries = [];
             this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
-            try { localStorage.removeItem(this.key()); } catch (e) {}
+            try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
             delete StorageManager._lastWritten[this.key()];
             Utils.log(`[DZIENNIK] wyczyszczony: ${reason}`);
             bus.emit('valueLog:changed');

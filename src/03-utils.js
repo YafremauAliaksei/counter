@@ -105,7 +105,7 @@
         },
         formatDuration(ms) {
             if (isNaN(ms) || ms <= 0) return I18n.get('notApplicable');
-            let s = Math.floor(ms / 1000); let m = Math.floor(s / 60); let h = Math.floor(m / 60);
+            let s = Math.floor(ms / 1000); let m = Math.floor(s / 60); const h = Math.floor(m / 60);
             s %= 60; m %= 60;
             const hS = I18n.get('hoursShort'), mS = I18n.get('minutesShort'), sS = I18n.get('secondsShort');
             if (h > 0) return `${h}${hS} ${String(m).padStart(2, '0')}${mS}`;

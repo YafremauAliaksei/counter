@@ -30,6 +30,10 @@ module.exports = [
             sourceType: 'script',
             globals: {
                 ...globals.browser,
+                // Przeglądarka ma własny globalny typ StorageManager (navigator.storage),
+                // a projekt ma swój obiekt o tej nazwie. Kolizja jest pozorna: nasz
+                // żyje wewnątrz IIFE i niczego nie przesłania na stronie.
+                StorageManager: 'off',
             },
         },
         rules: {
@@ -41,10 +45,13 @@ module.exports = [
 
             // Nieużywana zmienna to prawie zawsze pozostałość po refaktorze.
             // Argumenty pomijamy: obsługi zdarzeń często ich nie używają.
-            'no-unused-vars': ['warn', {
-                args: 'none',
-                varsIgnorePattern: '^_',
-            }],
+            'no-unused-vars': [
+                'warn',
+                {
+                    args: 'none',
+                    varsIgnorePattern: '^_',
+                },
+            ],
 
             // Te dwie klasy błędów projekt traktuje wyjątkowo poważnie —
             // wszystkie dotyczą wykonywania tekstu jako kodu.
@@ -66,7 +73,7 @@ module.exports = [
             // Styl: tylko to, czego nie pilnuje Prettier.
             'prefer-const': 'error',
             'no-var': 'error',
-            'no-console': 'off',        // konsola to interfejs tego skryptu
+            'no-console': 'off', // konsola to interfejs tego skryptu
         },
     },
 

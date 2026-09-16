@@ -4,3 +4,14 @@ counter.js
 
 node_modules/
 tests/manual/
+
+# src/ — moduły są fragmentami jednej IIFE i mają wcięcie 4 spacji, którego
+# Prettier nie rozumie: widzi je jako pliki najwyższego poziomu i wcięcie
+# zdejmuje, przez co artefakt przestaje się składać tak, jak jest napisany.
+# Do tego komentarze w src/ niosą treść w układzie: tabele ASCII, schematy
+# zależności i wyrównane kolumny liczb, które przeformatowanie łamie.
+src/
+
+# tests/ — ten sam powód w mniejszej skali: komentarze na końcu linii są
+# wyrównane celowo i czyta się po nich, który przypadek czego dotyczy.
+tests/

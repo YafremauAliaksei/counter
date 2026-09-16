@@ -29,12 +29,12 @@ i artefakt**.
 
 Rozdział „źródło ≠ artefakt” nie jest naszym wymysłem:
 
-| Projekt | Źródło | Narzędzie budujące | Artefakt |
-|---|---|---|---|
-| lodash | ~300 plików, po funkcji na plik | rollup | `lodash.js` |
-| React | `packages/*/src/` | rollup | `react.production.min.js` |
-| TypeScript | `src/compiler/*.ts`, setki plików | sam `tsc` | `lib/typescript.js`, jeden plik |
-| Node.js | `lib/*.js` + C++ | `js2c` wszywa JS w binarkę | `node` |
+| Projekt    | Źródło                            | Narzędzie budujące         | Artefakt                        |
+| ---------- | --------------------------------- | -------------------------- | ------------------------------- |
+| lodash     | ~300 plików, po funkcji na plik   | rollup                     | `lodash.js`                     |
+| React      | `packages/*/src/`                 | rollup                     | `react.production.min.js`       |
+| TypeScript | `src/compiler/*.ts`, setki plików | sam `tsc`                  | `lib/typescript.js`, jeden plik |
+| Node.js    | `lib/*.js` + C++                  | `js2c` wszywa JS w binarkę | `node`                          |
 
 U nas jest tak samo, tylko narzędzie budujące jest własne i ma sto linii —
 bo potrzebujemy dokładnie jednego formatu wyjścia i zera zależności.
@@ -59,7 +59,7 @@ zarazem mapą projektu: każdy moduł ma tam opis w jednym zdaniu.
 **Zasada jednego zdania.** Opis modułu w manifeście nie powinien zawierać
 spójnika „i”. Jeśli zawiera — moduł robi dwie rzeczy i trzeba go rozdzielić.
 
-**Zależności idą w dół.** Moduł może korzystać *w momencie deklaracji* tylko
+**Zależności idą w dół.** Moduł może korzystać _w momencie deklaracji_ tylko
 z tego, co zadeklarowano wyżej na liście. Wywołania w momencie **wykonania**
 (metody, procedury obsługi) mogą iść w dowolną stronę — do chwili uruchomienia
 zadeklarowane jest już wszystko. Praktycznie:
@@ -77,6 +77,7 @@ zadeklarować `const` o tej samej nazwie. To cena za jeden plik na wyjściu;
 w praktyce wystarczy nie wymyślać drugiego `Utils`.
 
 **Nowy moduł:**
+
 1. utworzyć `src/NN-nazwa.js` (numer = miejsce w kolejności budowania);
 2. wpisać do `build.manifest.json` wraz z opisem;
 3. `npm run build`;
@@ -85,15 +86,15 @@ w praktyce wystarczy nie wymyślać drugiego `Utils`.
 
 ### Język
 
-| Co | Język |
-|---|---|
-| Komentarze w kodzie | **polski** |
-| Komunikaty logów, teksty wyjątków, klucze obiektów diagnostycznych | **polski** |
-| README, CHANGELOG, ten plik, pozostała dokumentacja | **polski** |
-| Lokalizacja `LANG_STRINGS.ru` i `Русский` na liście języków | rosyjski, nie ruszać |
-| Wyzwalacze z cyrylicą (`видите ниже`, `канирование номера LP`) | nie ruszać — to tekst, który drukuje T-REX |
-| Nazwy plików, commity, nazwy gałęzi | angielski |
-| Rozmowa z autorem projektu | rosyjski |
+| Co                                                                 | Język                                      |
+| ------------------------------------------------------------------ | ------------------------------------------ |
+| Komentarze w kodzie                                                | **polski**                                 |
+| Komunikaty logów, teksty wyjątków, klucze obiektów diagnostycznych | **polski**                                 |
+| README, CHANGELOG, ten plik, pozostała dokumentacja                | **polski**                                 |
+| Lokalizacja `LANG_STRINGS.ru` i `Русский` na liście języków        | rosyjski, nie ruszać                       |
+| Wyzwalacze z cyrylicą (`видите ниже`, `канирование номера LP`)     | nie ruszać — to tekst, który drukuje T-REX |
+| Nazwy plików, commity, nazwy gałęzi                                | angielski                                  |
+| Rozmowa z autorem projektu                                         | rosyjski                                   |
 
 Sprawdzane testami: cyrylica w komentarzach, w `Utils.log/error/fatal`
 i w `new Error(...)` wywraca budowanie. Osobny test pilnuje, żeby cyrylica
@@ -139,14 +140,19 @@ Treść commita mówi **dlaczego**, a nie „co”. „Co” widać w diffie.
 
 ## 4. Bramki, które muszą być zielone
 
-| Bramka | Polecenie | Co łapie |
-|---|---|---|
-| Budowanie | `npm run build:check` | artefakt rozjechał się ze źródłami |
-| Testy | `npm test` | 113 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
-| Linter | `npm run lint` | literówki, martwy kod, nieużywane zmienne |
-| Format | `npm run format:check` | rozjazdy w stylu |
+| Bramka    | Polecenie              | Co łapie                                                  |
+| --------- | ---------------------- | --------------------------------------------------------- |
+| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
+| Testy     | `npm test`             | 113 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
+| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
+| Format    | `npm run format:check` | rozjazdy w stylu                                          |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
+
+Prettier świadomie omija `src/` i `tests/` (patrz `.prettierignore`): moduły
+w `src/` są fragmentami jednej IIFE i mają wcięcie, którego formatter nie rozumie,
+a w obu katalogach wyrównane komentarze niosą treść. Reszta repozytorium jest pod
+Prettierem i ma taka zostać.
 
 ### Ustawienie ochrony gałęzi na GitHubie
 

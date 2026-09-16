@@ -60,10 +60,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Bez 'cache: npm' — projekt nie trzyma w repozytorium pliku blokady
+      # (package-lock.json jest w .gitignore, bo zależności produkcyjnych nie ma),
+      # a setup-node z włączonym cache wymaga go i przerywa zadanie.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Instalacja narzędzi
         run: npm install --no-audit --no-fund

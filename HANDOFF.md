@@ -13,26 +13,26 @@ Repozytorium to userscriptowy licznik dla wewnętrznego systemu T-REX. Ten katal
 jest **korzeniem repozytorium git**: wszystko, co potrzebne do pracy, leży tutaj,
 niczego z zewnątrz podłączać nie trzeba.
 
-Część przygotowawcza powstała na maszynie bez działającego `npm`, więc wszystko,
-co wymaga instalacji pakietów (ESLint, Prettier), jest **opisane i skonfigurowane,
-ale ani razu nie uruchomione**. To pierwsza rzecz do sprawdzenia.
+Wszystkie bramki są przepuszczone lokalnie i zielone: budowanie, testy, ESLint
+i Prettier. Pierwszą rzeczą w nowej sesji jest `npm run ci` — jeśli coś jest
+czerwone, znaczy że różni się środowisko, a nie kod.
 
 ---
 
 ## 1. Co jest już gotowe
 
-| | Stan |
-|---|---|
-| `counter.js` w wersji 1.0.0 | zbudowany ze `src/`, sprawdzony |
-| 25 modułów w `src/` | pocięte z monolitu, zweryfikowane linia po linii |
-| `build.js` + `build.manifest.json` | działają, zero zależności |
-| 10 plików testów, 113 sprawdzeń | **wszystkie zielone** |
-| README, CHANGELOG, CONTRIBUTING, `src/README.md` | napisane, **po polsku** |
-| `tests/10-language.test.js` | bramka językowa: cyrylica poza wyjątkami wywraca testy |
-| `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei` |
-| ESLint, Prettier | skonfigurowane, **ani razu nie uruchomione** |
-| `.gitignore`, `.editorconfig`, `.gitattributes` | są |
-| repozytorium git | zainicjowane, `main` wypchnięty na `github.com/YafremauAliaksei/counter` |
+|                                                           | Stan                                                                     |
+| --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `counter.js` w wersji 1.0.0                               | zbudowany ze `src/`, sprawdzony                                          |
+| 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                         |
+| `build.js` + `build.manifest.json`                        | działają, zero zależności                                                |
+| 10 plików testów, 113 sprawdzeń                           | **wszystkie zielone**                                                    |
+| README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                                  |
+| `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy                   |
+| `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |
+| ESLint, Prettier                                          | uruchomione, zielone; `src/` i `tests/` poza zasięgiem Prettiera         |
+| `.gitignore`, `.editorconfig`, `.gitattributes`           | są                                                                       |
+| repozytorium git                                          | zainicjowane, `main` wypchnięty na `github.com/YafremauAliaksei/counter` |
 
 Sprawdzenie, że podstawa jest w porządku:
 
@@ -61,40 +61,43 @@ w `LEGACY_ID_PREFIXES`.
 
 Jeśli monolitu nie ma — wystarczą zielone testy, pokrywają zachowanie.
 
-### 2.2. Uruchomić linter i formatter (pierwszy raz)
+### 2.2. Linter i formatter — co już postanowiono
 
 ```bash
 npm install
-npm run lint
-npm run format:check
+npm run ci          # build:check + test + lint + format:check
 ```
 
-**Czego się spodziewać.** Kod był pisany pod Prettiera, ale ani razu przez niego
-nie przeszedł, więc `format:check` niemal na pewno znajdzie rozjazdy. Decyzję
-podjąć świadomie, a nie automatycznie:
+To jest zrobione i zielone, ale warto wiedzieć, czemu wygląda tak, a nie inaczej.
 
-- wariant A — przepuścić `npm run format` po `src/**` i zacommitować jednym
-  commitem `style: prettier` **przed** pierwszymi zmianami merytorycznymi;
-- wariant B — dopisać `src/**` do `.prettierignore`, jeśli przeformatowanie
-  za mocno psuje wyrównanie komentarzy (w tym projekcie ono niesie treść:
-  tabele, schematy, wyrównane kolumny).
+**Prettier omija `src/` i `tests/`** (patrz `.prettierignore`). Moduły w `src/`
+są fragmentami jednej IIFE z wcięciem 4 spacji; Prettier widzi je jako pliki
+najwyższego poziomu i to wcięcie zdejmuje — na próbę wyszło 11 tysięcy zmienionych
+linii. W `tests/` łamie wyrównane komentarze na końcach linii, po których czyta się,
+którego przypadku dotyczy dany wiersz. Reszta repozytorium (`build.js`,
+`eslint.config.js`, `*.md`, `*.json`, `*.yml`) jest sformatowana Prettierem
+i tak ma zostać.
 
-Rekomendacja: **wariant B dla `src/`, wariant A dla reszty**. Komentarze w `src/`
-zawierają tabele ASCII i wyrównane bloki, które Prettier połamie. Ale decyduj
-po fakcie — najpierw obejrzyj diff.
+Gdyby kiedyś wciągać `src/` pod Prettiera, to osobnym commitem `style: prettier`
+i przed jakąkolwiek zmianą merytoryczną — inaczej nie da się czytać diffów.
 
-ESLint najprawdopodobniej znajdzie nieużywane zmienne. Naprawiać je, a nie
-wyciszać regułę.
+**ESLint**: 11 błędów naprawiono u źródła (`prefer-const` w pięciu miejscach,
+komentarze w pustych blokach `catch`, kolizja nazwy `StorageManager` z globalnym
+typem przeglądarki — wyciszona w `eslint.config.js` z uzasadnieniem).
+Zostało ~40 ostrzeżeń `no-unused-vars` na obiektach modułów (`const ValueLog = …`
+używany dopiero w innym pliku po sklejeniu) — to wynika z budowy projektu i nie
+jest błędem. Reguły nie wyciszać: gdyby zniknęła, prawdziwa pozostałość po
+refaktorze przestałaby być widoczna.
 
 ### 2.3. Upewnić się, że CI jest zielone
 
 Po pierwszym pushu powinny wykonać się trzy zadania z `.github/workflows/ci.yml`:
 
-| Zadanie | Co robi | Zależności |
-|---|---|---|
-| `verify` | `build:check` + `test` + kontrola, że przebudowa nie zmienia pliku | brak |
-| `lint` | ESLint + Prettier | `npm install` |
-| `matrix` | budowanie i testy na Node 18/20/22 × Linux/Windows/macOS | brak |
+| Zadanie  | Co robi                                                            | Zależności    |
+| -------- | ------------------------------------------------------------------ | ------------- |
+| `verify` | `build:check` + `test` + kontrola, że przebudowa nie zmienia pliku | brak          |
+| `lint`   | ESLint + Prettier                                                  | `npm install` |
+| `matrix` | budowanie i testy na Node 18/20/22 × Linux/Windows/macOS           | brak          |
 
 Jeśli `matrix` pada na Windowsie z powodu końców linii — sprawdzić, czy
 `.gitattributes` się zastosował (`git add --renormalize .`).
@@ -202,14 +205,14 @@ Malejąco według pożytku:
 
 ## 5. Jeśli coś się nie zgadza
 
-| Objaw | Gdzie patrzeć |
-|---|---|
-| `build:check` pada | ktoś poprawiał `counter.js` ręcznie — `npm run build` i zacommitować |
-| test „w src/ nie ma plików spoza manifestu” pada | nowy plik w `src/` nie jest wpisany do `build.manifest.json` |
-| test „w komentarzach nie ma cyrylicy” pada | komentarz po rosyjsku — przetłumaczyć na polski |
-| test „pliki .md są po polsku” pada | dokumentacja po rosyjsku — przetłumaczyć, patrz `tests/10-language.test.js` |
-| test „każde wejście do sieci jest osłonięte” pada | doszedł `fetch`/`new Image` bez sprawdzenia `priceModuleOn()` |
-| CI zielone lokalnie, czerwone na GitHubie | prawie zawsze końce linii; `git add --renormalize .` |
+| Objaw                                             | Gdzie patrzeć                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| `build:check` pada                                | ktoś poprawiał `counter.js` ręcznie — `npm run build` i zacommitować        |
+| test „w src/ nie ma plików spoza manifestu” pada  | nowy plik w `src/` nie jest wpisany do `build.manifest.json`                |
+| test „w komentarzach nie ma cyrylicy” pada        | komentarz po rosyjsku — przetłumaczyć na polski                             |
+| test „pliki .md są po polsku” pada                | dokumentacja po rosyjsku — przetłumaczyć, patrz `tests/10-language.test.js` |
+| test „każde wejście do sieci jest osłonięte” pada | doszedł `fetch`/`new Image` bez sprawdzenia `priceModuleOn()`               |
+| CI zielone lokalnie, czerwone na GitHubie         | prawie zawsze końce linii; `git add --renormalize .`                        |
 
 ---
 
@@ -217,6 +220,7 @@ Malejąco według pożytku:
 
 Warto zadać je na początku sesji, bo odpowiedzi wpływają na resztę:
 
-1. Przeformatować `src/**` Prettierem, czy zostawić ręczne wyrównanie (patrz 2.2)?
-2. Czy repozytorium ma zostać publiczne, czy przejść na prywatne?
-3. Czy wydawać tag `v1.0.0` od razu, czy najpierw przepuścić pokazowy PR?
+1. Czy repozytorium ma zostać publiczne, czy przejść na prywatne? (dziś jest publiczne)
+2. Czy wydawać tag `v1.0.0` od razu, czy najpierw przepuścić pokazowy PR?
+3. Czy ruszać ~40 ostrzeżeń `no-unused-vars`, czy zostawić je jako świadomy szum
+   wynikający z budowy projektu (patrz 2.2)?
