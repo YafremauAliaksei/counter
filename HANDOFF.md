@@ -32,6 +32,7 @@ czerwone, znaczy że różni się środowisko, a nie kod.
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |
 | ESLint, Prettier                                          | uruchomione, zielone; `src/` i `tests/` poza zasięgiem Prettiera         |
 | `.gitignore`, `.editorconfig`, `.gitattributes`           | są                                                                       |
+| `package-lock.json`, `.claude/settings.json`              | w repozytorium — patrz 2.0                                               |
 | repozytorium git                                          | zainicjowane, `main` wypchnięty na `github.com/YafremauAliaksei/counter` |
 
 Sprawdzenie, że podstawa jest w porządku:
@@ -45,10 +46,37 @@ npm run verify
 
 ## 2. Zadania — po kolei
 
-### 2.1. Sprawdzić spójność (najpierw to)
+### 2.0. Środowisko sesji
+
+Świeża sesja (chmura, nowa maszyna, nowy czat) potrzebuje dokładnie dwóch rzeczy:
 
 ```bash
-node --version            # potrzebny >= 18
+node --version      # potrzebny >= 20.19 (tyle wymaga ESLint 10)
+npm ci              # instaluje linter i formatter z package-lock.json
+```
+
+Poza tym nic. `npm run build` i `npm test` działają bez żadnej instalacji —
+projekt nie ma zależności produkcyjnych i nigdy mieć nie będzie.
+
+Czego oczekiwać w repozytorium:
+
+| Plik                          | Po co                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| `package-lock.json`           | leży w repozytorium, więc `npm ci` daje wszędzie te same wersje                       |
+| `.claude/settings.json`       | lista poleceń, o które agent nie musi dopytywać, plus bramka językowa po każdej turze |
+| `.claude/settings.local.json` | osobiste nadpisania, ignorowane przez gita                                            |
+
+**Bramka językowa jest wpięta jako hook `Stop`.** Po każdej turze uruchamia
+`node tests/run.js 10-language` i milczy, dopóki jest zielona. Gdy w repozytorium
+pojawi się cyrylica poza wyjątkami, wypisuje ostrzeżenie w tej samej chwili,
+a nie dopiero w CI.
+
+Narzędzia, które muszą być dostępne poza tym: `git` i `gh` (zalogowany:
+`gh auth status`). Bez `gh` wszystko poza otwieraniem PR-ów nadal działa.
+
+### 2.1. Sprawdzić spójność
+
+```bash
 npm run build:check       # artefakt == przebudowa src/
 npm test                  # 113/113
 ```
@@ -64,7 +92,7 @@ Jeśli monolitu nie ma — wystarczą zielone testy, pokrywają zachowanie.
 ### 2.2. Linter i formatter — co już postanowiono
 
 ```bash
-npm install
+npm ci
 npm run ci          # build:check + test + lint + format:check
 ```
 
@@ -93,11 +121,11 @@ refaktorze przestałaby być widoczna.
 
 Po pierwszym pushu powinny wykonać się trzy zadania z `.github/workflows/ci.yml`:
 
-| Zadanie  | Co robi                                                            | Zależności    |
-| -------- | ------------------------------------------------------------------ | ------------- |
-| `verify` | `build:check` + `test` + kontrola, że przebudowa nie zmienia pliku | brak          |
-| `lint`   | ESLint + Prettier                                                  | `npm install` |
-| `matrix` | budowanie i testy na Node 18/20/22 × Linux/Windows/macOS           | brak          |
+| Zadanie  | Co robi                                                            | Zależności               |
+| -------- | ------------------------------------------------------------------ | ------------------------ |
+| `verify` | `build:check` + `test` + kontrola, że przebudowa nie zmienia pliku | brak                     |
+| `lint`   | ESLint + Prettier                                                  | `npm ci` z pliku blokady |
+| `matrix` | budowanie i testy na Node 18/20/22 × Linux/Windows/macOS           | brak                     |
 
 Jeśli `matrix` pada na Windowsie z powodu końców linii — sprawdzić, czy
 `.gitattributes` się zastosował (`git add --renormalize .`).

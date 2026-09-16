@@ -60,15 +60,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Bez 'cache: npm' — projekt nie trzyma w repozytorium pliku blokady
-      # (package-lock.json jest w .gitignore, bo zależności produkcyjnych nie ma),
-      # a setup-node z włączonym cache wymaga go i przerywa zadanie.
+      # Cache działa, bo package-lock.json leży w repozytorium. Node 20 jest
+      # tu wymogiem ESLinta 10 (^20.19 || ^22.13 || >=24), a nie przypadkiem.
       - uses: actions/setup-node@v7
         with:
           node-version: 20
+          cache: npm
 
+      # npm ci, a nie npm install: instaluje dokładnie to, co w pliku blokady,
+      # i przerywa się, gdy blokada rozjedzie się z package.json.
       - name: Instalacja narzędzi
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: ESLint
         run: npm run lint

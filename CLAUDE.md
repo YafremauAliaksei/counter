@@ -82,12 +82,17 @@ npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
 npm test             # 113 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
-npm run lint         # ESLint (potrzebny npm install)
-npm run format       # Prettier (potrzebny npm install)
+npm run lint         # ESLint (potrzebny npm ci)
+npm run format       # Prettier (potrzebny npm ci)
 npm run ci           # wszystko naraz
 ```
 
-`npm test` i `npm run build` działają **bez `npm install`** — zależności nie ma.
+`npm test` i `npm run build` działają **bez instalacji** — zależności produkcyjnych
+nie ma. Linter i formatter wymagają `npm ci` (plik blokady leży w repozytorium)
+oraz Node 20.19+, bo tyle wymaga ESLint 10.
+
+W `.claude/settings.json` leży lista poleceń, o które nie trzeba dopytywać,
+i hook `Stop`, który po każdej turze sprawdza bramkę językową.
 
 Ręczne sprawdzenie w przeglądarce:
 

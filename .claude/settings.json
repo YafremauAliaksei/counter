@@ -1,0 +1,57 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npm test)",
+      "Bash(npm install *)",
+      "Bash(npm install)",
+      "Bash(npm ci)",
+      "Bash(npx prettier *)",
+      "Bash(npx eslint *)",
+      "Bash(node build.js *)",
+      "Bash(node build.js)",
+      "Bash(node tests/run.js *)",
+      "Bash(node tests/run.js)",
+      "Bash(node --version)",
+      "Bash(git status *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git diff)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git switch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git fetch *)",
+      "Bash(git fetch)",
+      "Bash(git pull *)",
+      "Bash(git pull)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr list)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh run list *)",
+      "Bash(gh run list)",
+      "Bash(gh run view *)",
+      "Bash(gh repo view *)"
+    ],
+    "deny": ["Bash(npm publish *)", "Bash(npm publish)"]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node tests/run.js 10-language >/dev/null 2>&1 || echo '{\"systemMessage\":\"Bramka jezykowa jest czerwona: w repozytorium pojawila sie cyrylica poza wyjatkami. Uruchom: npm test 10-language\"}'",
+            "timeout": 30,
+            "statusMessage": "Sprawdzanie bramki jezykowej"
+          }
+        ]
+      }
+    ]
+  }
+}
