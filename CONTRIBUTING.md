@@ -149,6 +149,10 @@ Treść commita mówi **dlaczego**, a nie „co”. „Co” widać w diffie.
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 
+Linter i formatter wymagają `npm ci` (plik blokady `package-lock.json` leży
+w repozytorium) oraz Node 20.19+, bo tyle wymaga ESLint 10. Same `npm run build`
+i `npm test` nadal działają bez żadnej instalacji.
+
 Prettier świadomie omija `src/` i `tests/` (patrz `.prettierignore`): moduły
 w `src/` są fragmentami jednej IIFE i mają wcięcie, którego formatter nie rozumie,
 a w obu katalogach wyrównane komentarze niosą treść. Reszta repozytorium jest pod

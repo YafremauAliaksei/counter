@@ -1,8 +1,11 @@
 # Zależności
 node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# package-lock.json NIE jest ignorowany: bez niego npm ci nie działa, a świeża
+# sesja (chmura, nowa maszyna, CI) instaluje za każdym razem inne wersje
+# lintera i formattera. Zależności produkcyjnych projekt nadal nie ma.
 
 # Wyniki narzędzi
 .eslintcache
@@ -19,6 +22,9 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Osobiste ustawienia Claude Code (wspólne leżą w .claude/settings.json)
+.claude/settings.local.json
 
 # Edytory
 .idea/

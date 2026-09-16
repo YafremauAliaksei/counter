@@ -335,12 +335,13 @@ npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
 npm test             # 113 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
-npm run lint         # ESLint (potrzebny npm install)
-npm run format       # Prettier (potrzebny npm install)
+npm run lint         # ESLint (potrzebny npm ci)
+npm run format       # Prettier (potrzebny npm ci)
 ```
 
-`npm test` i `npm run build` działają **bez `npm install`** — nie ma ani jednej
-zależności. Linter i formatter wymagają instalacji, ale bez nich nic się nie psuje.
+`npm test` i `npm run build` działają **bez żadnej instalacji** — nie ma ani jednej
+zależności produkcyjnej. Linter i formatter wymagają `npm ci` (plik blokady leży
+w repozytorium) oraz Node 20.19+, ale bez nich nic się nie psuje.
 
 Szczegółowo o tym, jak dodać moduł, jakie są zasady i jak wygląda przepływ gałęzi
 oraz PR — w [CONTRIBUTING.md](CONTRIBUTING.md).
