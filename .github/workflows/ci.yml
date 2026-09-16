@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
 
@@ -63,7 +63,7 @@ jobs:
       # Bez 'cache: npm' — projekt nie trzyma w repozytorium pliku blokady
       # (package-lock.json jest w .gitignore, bo zależności produkcyjnych nie ma),
       # a setup-node z włączonym cache wymaga go i przerywa zadanie.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
 
@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
 
