@@ -14,6 +14,12 @@ Dla tego projektu SemVer czyta się tak:
 
 ## Niewydane
 
+### Dodano
+
+- **Wyłączniki zawartości karty ceny** — te same klocki, co przy liniach okna
+  statystyk: kod produktu, jego klikalność i czas zdobycia ceny w milisekundach.
+  Do tego wybór kroju pisma z listy okna statystyk.
+
 ### Zmieniono
 
 - **Wyłączone linie nie są składane.** Widocznością linii steruje CSS, więc
@@ -25,6 +31,19 @@ Dla tego projektu SemVer czyta się tak:
   dzienniku na 1000 pozycji 0,229 → 0,024 ms — koszt przestał zależeć od długości
   zmiany. Liczby na ekranie się nie zmieniają: pętla po kartach chodzi jak
   dotąd, bo `gTotal` potrzebny jest także linii 7.
+
+- **Karta ceny wygląda teraz jak linie, a nie jak okno aplikacji.** Domyślnie:
+  tło przezroczyste (`bgAlpha` 88 → 0), cena cienka w rozmiarze 16 px zamiast
+  tłustych 30 px, bez ramki i cienia — ramka i cień wracają razem z tłem, gdy
+  ktoś podniesie suwak. Dolna granica suwaka rozmiaru zeszła z 14 na 11 px,
+  żeby kartę dało się zrównać z liniami.
+- **Kod produktu domyślnie nie jest linkiem** (`asinClickable: false`).
+  `pointer-events:auto` na linku było jedynym wyjątkiem od przezroczystej dla
+  myszy karty, czyli jedynym miejscem, w którym karta mogła przykryć przycisk
+  T-REX. Link włącza się w panelu ustawień; przy wyłączonym kod produktu nie ma
+  `href`, więc nie otworzy go ani tabulator, ani środkowy przycisk myszy.
+- **Czas zdobycia ceny nie jest już dopisywany zawsze** (`showLatency: false`).
+  To liczba dla kogoś, kto dobiera źródło ceny, a nie dla kogoś, kto pracuje.
 
 ### Naprawiono
 

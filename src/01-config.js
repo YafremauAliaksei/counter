@@ -492,6 +492,42 @@
             showPrice: true,
             showRrp: true,
             showGraph: true,
+            /**
+             * CO POKAZAĆ W SAMEJ KARCIE — te same klocki, co przy liniach okna
+             * statystyk: wyłącznik na każdy element osobno.
+             *
+             * showAsin       — wiersz z kodem produktu;
+             * asinClickable  — czy ten kod jest linkiem do sklepu;
+             * showLatency    — ile milisekund zajęło zdobycie ceny.
+             */
+            showAsin: true,
+            /**
+             * DOMYŚLNIE WYŁĄCZONY, I TO JEST ŚWIADOMA ZMIANA WYGLĄDU (patrz
+             * CHANGELOG).
+             *
+             * Karta jest przezroczysta dla myszy — `pointer-events:none` — żeby
+             * kliknięcia dochodziły do interfejsu T-REX. Link z kodem produktu był
+             * JEDYNYM wyjątkiem od tej zasady, czyli jedynym miejscem, w którym
+             * karta przykrywała cudzy przycisk. Skoro karta ma nie przeszkadzać,
+             * ten wyjątek włącza się ręcznie.
+             *
+             * Przy `false` kod produktu jest zwykłym tekstem: bez `href`, bez
+             * podkreślenia, bez kursora i bez `pointer-events`. Nie ma czego
+             * kliknąć ani przypadkiem, ani celowo.
+             */
+            asinClickable: false,
+            /**
+             * Czas zdobycia ceny (np. „keepa-ocr · 96ms”). Do 1.0.0 dopisywał się
+             * ZAWSZE. To liczba dla kogoś, kto dobiera źródło ceny, a nie dla
+             * kogoś, kto pracuje — w zwykłej zmianie jest wyłącznie hałasem.
+             */
+            showLatency: false,
+            /**
+             * Krój pisma karty — ta sama lista, co w oknie statystyk
+             * (CONFIG.FONT_FAMILY_OPTIONS). Domyślnie ten sam, co w liniach:
+             * karta ma wyglądać jak reszta interfejsu, a nie jak osobny widżet.
+             */
+            fontFamily: 'default',
             // top puste = karta przyklejona do dołu; po przeciągnięciu trafia
             // tam współrzędna i przyklejenie znika.
             position: { left: '14px', top: '' },
@@ -499,13 +535,30 @@
             // 280px widać prawą część w naturalnej wielkości, a tam jest legenda
             // z cenami.
             width: 280,
-            fontSize: 30,
+            /**
+             * ROZMIAR CENY (1.0.0: 30 -> 16).
+             *
+             * Trzydzieści pikseli tłustą czcionką na nieprzezroczystym tle robiło
+             * z karty najbardziej krzykliwy element ekranu — a jest to element
+             * pomocniczy. Szesnaście to rozmiar bliski liniom okna statystyk
+             * (14 px), więc karta czyta się jak one, a nie jak baner.
+             */
+            fontSize: 16,
             // Tryb wyświetlania wykresu Keepa:
             //   'legend' — tylko blok z cenami (domyślnie)
             //   'right'  — prawa część wykresu w naturalnej wielkości
             //   'full'   — cały wykres wpisany w szerokość karty
             graphMode: 'legend',
             bgColorHex: '#0a0e18',
-            bgAlpha: 88,
+            /**
+             * TŁO KARTY (1.0.0: 88 -> 0, czyli przezroczyste).
+             *
+             * Nieprzezroczysty prostokąt z ramką i cieniem zasłaniał kawałek
+             * strony i wyglądał jak okno cudzej aplikacji. Przy zerowej
+             * przezroczystości znikają razem z nim ramka i cień (patrz
+             * applyStyle) — zostaje sam tekst, dokładnie jak w liniach 1-7.
+             * Komu potrzebne tło, podnosi ten suwak i wszystko wraca.
+             */
+            bgAlpha: 0,
         },
     };

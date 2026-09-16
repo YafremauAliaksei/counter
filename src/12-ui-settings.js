@@ -316,6 +316,26 @@
                     I18n.get('priceCard_showRrp'), pc.showRrp,
                     v => store.localTabConfig.priceCard.showRrp = v)));
 
+                // Zawartość karty — wyłącznik na każdy element osobno, tak samo
+                // jak przy liniach okna statystyk.
+                secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                    I18n.get('priceCard_showAsin'), pc.showAsin !== false,
+                    v => { store.localTabConfig.priceCard.showAsin = v; this.rerender(); })));
+                if (pc.showAsin !== false) {
+                    secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                        I18n.get('priceCard_asinClickable'), pc.asinClickable === true,
+                        v => store.localTabConfig.priceCard.asinClickable = v)));
+                    secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_asinClickableHint')));
+                }
+                secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                    I18n.get('priceCard_showLatency'), pc.showLatency === true,
+                    v => store.localTabConfig.priceCard.showLatency = v)));
+
+                secPrice.appendChild(UIBuilder.row(I18n.get('fontFamily'), UIBuilder.select(
+                    Object.keys(CONFIG.FONT_FAMILY_OPTIONS).map(k => ({ value: k, text: I18n.get(`fontFamily_${k}`) })),
+                    pc.fontFamily || 'default',
+                    v => store.localTabConfig.priceCard.fontFamily = v)));
+
                 // Dolna granica jest celowo niska: w trybie przycięcia wąska
                 // karta nadal jest użyteczna — legenda Keepa nigdzie nie znika.
                 secPrice.appendChild(UIBuilder.row('', ...UIBuilder.slider(
@@ -323,8 +343,10 @@
                     v => store.localTabConfig.priceCard.width = v,
                     v => I18n.get('priceCard_width', { value: v }))));
 
+                // Dolna granica zeszła z 14 na 11: karta ma dać się zrównać
+                // z liniami okna statystyk, a te schodzą niżej.
                 secPrice.appendChild(UIBuilder.row('', ...UIBuilder.slider(
-                    14, 48, pc.fontSize,
+                    11, 48, pc.fontSize,
                     v => store.localTabConfig.priceCard.fontSize = v,
                     v => I18n.get('priceCard_fontSize', { value: v }))));
 
