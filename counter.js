@@ -1231,10 +1231,45 @@ const SCRIPT_LOGS_ENABLED = false;
 
         getKey(key) { return `${CONFIG.SCRIPT_ID_PREFIX}${key}`; },
 
+        /**
+         * Zapis z odnotowaniem wartości — JEDYNE miejsce, z którego skrypt pisze
+         * do localStorage poza dziennikiem wartości i kursami.
+         *
+         * ZAPIS MA PRAWO NIE DOJŚĆ i to nie jest sytuacja teoretyczna:
+         * localStorage tej domeny dzielimy z samym TREX, więc kwota potrafi się
+         * skończyć nie z naszej winy. Do tego część konfiguracji przeglądarki
+         * (zablokowany magazyn dla witryny) sprawia, że setItem rzuca wyjątek
+         * przy każdym wywołaniu.
+         *
+         * Wcześniej wyjątek szedł stąd w górę nieprzechwycony. Skutek był
+         * nieproporcjonalny do przyczyny: saveState() woła się w Main.init(),
+         * więc przy pełnym magazynie catch w init() rozbierał całość i skrypt
+         * NIE WSTAWAŁ WCALE. Licznik, który doskonale policzyłby zmianę
+         * w pamięci, nie pokazywał się na ekranie.
+         *
+         * Teraz nieudany zapis jest zdarzeniem zwykłym: wraca `false`, skrypt
+         * pracuje dalej na stanie w pamięci, a człowiek traci tylko przeniesienie
+         * liczników przez F5 — czyli dokładnie tyle, ile naprawdę zepsuł pełny
+         * magazyn.
+         *
+         * Notatka `_lastWritten` stawia się DOPIERO PO UDANYM zapisie i to jest
+         * druga połowa tej poprawki. Gdy stała przed nim, po nieudanym zapisie
+         * pamięć twierdziła, że wartość leży w magazynie, i deduplikacja
+         * odrzucała następną, już możliwą próbę zapisania tego samego.
+         *
+         * @returns {boolean} czy wartość naprawdę trafiła do magazynu.
+         */
         write(key, value) {
             if (this._lastWritten[key] === value) return false;
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                delete this._lastWritten[key];
+                Utils.error(`Zapis do magazynu nie powiódł się (${key}): ${e.name}. `
+                          + 'Skrypt pracuje dalej, ale stan nie przeżyje przeładowania strony.');
+                return false;
+            }
             this._lastWritten[key] = value;
-            localStorage.setItem(key, value);
             return true;
         },
         saveState() {

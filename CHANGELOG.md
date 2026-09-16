@@ -26,6 +26,16 @@ Dla tego projektu SemVer czyta się tak:
   zmiany. Liczby na ekranie się nie zmieniają: pętla po kartach chodzi jak
   dotąd, bo `gTotal` potrzebny jest także linii 7.
 
+### Naprawiono
+
+- **Pełny magazyn nie zabija skryptu.** `localStorage` tej domeny dzielimy
+  z samym TREX, więc kwota potrafi się skończyć nie z naszej winy. Wyjątek
+  z `setItem` szedł ze `StorageManager.write()` nieprzechwycony aż do `Main.init()`
+  i skrypt nie wstawał wcale — zamiast stracić przeniesienie liczników przez F5,
+  człowiek tracił licznik. Teraz nieudany zapis wraca `false`, praca idzie dalej
+  na stanie w pamięci, a notatka „już zapisane” stawia się dopiero po udanym
+  zapisie, więc po zwolnieniu kwoty ta sama wartość da się zapisać.
+
 ---
 
 ## 1.0.0 — 2026-09-16

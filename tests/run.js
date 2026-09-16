@@ -15,7 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { state } = require('./harness');
+const { state, settle } = require('./harness');
 
 const DIR = __dirname;
 const filter = process.argv[2] || '';
@@ -48,9 +48,10 @@ for (const f of files) {
     }
 }
 
-// Asercje w obietnicach zgłaszają się w mikrozadaniu, więc podsumowanie
-// musi poczekać na opróżnienie kolejki.
-Promise.resolve().then(() => setTimeout(summary, 50));
+// Testy asynchroniczne rozstrzygają się po przejściu przez wszystkie pliki,
+// więc podsumowanie czeka na nie jawnie. Wcześniej stało tu `setTimeout(…, 50)`
+// i sprawdzenie wolniejsze niż ta granica nie było liczone wcale.
+settle().then(summary);
 
 function summary() {
     const ms = Date.now() - started;
