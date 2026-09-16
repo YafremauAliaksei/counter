@@ -136,6 +136,42 @@ chore: zaktualizować eslint
 
 Treść commita mówi **dlaczego**, a nie „co”. „Co” widać w diffie.
 
+### Nazwy gałęzi: JEDEN PROBLEM — JEDNA GAŁĄŹ
+
+Gałąź nazywa się od problemu, który rozwiązuje, a nie od tego, kto albo co ją
+założyło. Nazwa `claude/intelligent-bardeen-j4wmrf` nie mówi nic — po pół roku
+nikt nie odtworzy z niej, czego dotyczyła poprawka.
+
+```
+<typ>/<problem-po-angielsku-przez-myslniki>
+
+fix/storage-write-survives-failure
+perf/skip-hidden-stats-lines
+test/price-boundary-values
+docs/testing-and-branch-rules
+```
+
+Typ jest ten sam, co w nagłówku commita (`feat`, `fix`, `perf`, `docs`, `test`,
+`refactor`, `chore`).
+
+**Jeden problem — jedna gałąź i jeden PR.** Dwie niezwiązane poprawki w jednej
+gałęzi znaczą, że nie da się wycofać jednej z nich, nie ruszając drugiej,
+a historia `main` przestaje odpowiadać na pytanie „kiedy to się zepsuło”.
+Jeśli w trakcie pracy znajdzie się drugi problem — notatka i osobna gałąź,
+a nie „skoro już tu jestem”.
+
+Konsekwencja techniczna, o której trzeba pamiętać: każda gałąź niosąca zmianę
+w `src/` przebudowuje `counter.js`, więc dwie równoległe gałęzie **zawsze**
+konfliktują na artefakcie. Po scaleniu pierwszej w drugiej robi się merge `main`,
+`npm run build` i dopiero potem push — bramka `build:check` i tak tego pilnuje.
+
+### Przebieg sprawdzeń zapisuje się w PR
+
+Do opisu każdego PR wkleja się wynik `npm run verify` (linia podsumowania
+wystarczy), a przy poprawkach wydajnościowych — pomiar sprzed i po zmianie.
+Po to, żeby z samej historii było widać, że gałąź była sprawdzona, i czym
+dokładnie.
+
 ---
 
 ## 4. Bramki, które muszą być zielone
