@@ -97,7 +97,9 @@ function build() {
     // --- podstawienie wersji ---
     const placeholders = (out.match(/__VERSION__/g) || []).length;
     if (placeholders === 0) {
-        throw new Error('w źródłach nie ma ani jednego __VERSION__ — wersja nie zostałaby podstawiona');
+        throw new Error(
+            'w źródłach nie ma ani jednego __VERSION__ — wersja nie zostałaby podstawiona'
+        );
     }
     out = out.split('__VERSION__').join(version);
 
@@ -163,7 +165,7 @@ function main() {
     const problems = validate(built.text);
     if (problems.length) {
         console.error('BŁĄD WERYFIKACJI ARTEFAKTU:');
-        problems.forEach(p => console.error('  - ' + p));
+        problems.forEach((p) => console.error('  - ' + p));
         process.exit(1);
     }
 
@@ -179,7 +181,8 @@ function main() {
             console.error('ARTEFAKT NIE ZGADZA SIĘ ZE ŹRÓDŁAMI.');
             console.error('counter.js różni się od tego, co daje sklejenie src/.');
             console.error('Uruchom "npm run build" i dołącz wynik do commita.');
-            const a = current.split('\n'), b = built.text.split('\n');
+            const a = current.split('\n'),
+                b = built.text.split('\n');
             for (let i = 0; i < Math.max(a.length, b.length); i++) {
                 if (a[i] !== b[i]) {
                     console.error(`  pierwsza różnica w linii ${i + 1}:`);
@@ -190,15 +193,19 @@ function main() {
             }
             process.exit(1);
         }
-        console.log(`counter.js zgadza się ze źródłami (v${built.version}, ${built.moduleCount} modułów).`);
+        console.log(
+            `counter.js zgadza się ze źródłami (v${built.version}, ${built.moduleCount} modułów).`
+        );
         return;
     }
 
     fs.writeFileSync(targetPath, built.text, 'utf8');
     const kb = (Buffer.byteLength(built.text, 'utf8') / 1024).toFixed(1);
     const changed = current !== built.text;
-    console.log(`counter.js zbudowany: v${built.version}, ${built.moduleCount} modułów, ${kb} KB` +
-                (changed ? '' : ' (bez zmian)'));
+    console.log(
+        `counter.js zbudowany: v${built.version}, ${built.moduleCount} modułów, ${kb} KB` +
+            (changed ? '' : ' (bez zmian)')
+    );
 }
 
 main();

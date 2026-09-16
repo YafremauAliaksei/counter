@@ -176,7 +176,7 @@
          * Przy wyłączonym module cen sprowadza się do odczytu bez sieci.
          */
         async refresh() {
-            try { localStorage.removeItem(this.key()); } catch (e) {}
+            try { localStorage.removeItem(this.key()); } catch (e) { /* zapisanych kursów mogło nie być — odświeżenie i tak pobierze je od nowa */ }
             this.rates = null; this.source = null; this.fetchedAt = null;
             await this.init();
             bus.emit('valueLog:changed');     // sumy przeliczają się w locie

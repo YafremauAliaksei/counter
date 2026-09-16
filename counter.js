@@ -994,7 +994,7 @@ const SCRIPT_LOGS_ENABLED = false;
         },
         formatDuration(ms) {
             if (isNaN(ms) || ms <= 0) return I18n.get('notApplicable');
-            let s = Math.floor(ms / 1000); let m = Math.floor(s / 60); let h = Math.floor(m / 60);
+            let s = Math.floor(ms / 1000); let m = Math.floor(s / 60); const h = Math.floor(m / 60);
             s %= 60; m %= 60;
             const hS = I18n.get('hoursShort'), mS = I18n.get('minutesShort'), sS = I18n.get('secondsShort');
             if (h > 0) return `${h}${hS} ${String(m).padStart(2, '0')}${mS}`;
@@ -1489,7 +1489,7 @@ const SCRIPT_LOGS_ENABLED = false;
             const nEnd = ST.NIGHT_SHIFT_END_H * 60 + ST.NIGHT_SHIFT_END_M;
 
             let sType = null;
-            let sTime = new Date(now);
+            const sTime = new Date(now);
 
             if (minutes >= dStart && minutes < dEnd) {
                 sType = 'day'; sTime.setHours(CST.DAY.H, CST.DAY.M, 0, 0);
@@ -1548,7 +1548,7 @@ const SCRIPT_LOGS_ENABLED = false;
             if (!store.sessionConfig.shiftCalculatedStartTime) return { workedMs: 0, lunchMs: 0 };
             const now = Date.now();
             const start = store.sessionConfig.shiftCalculatedStartTime;
-            let elapsed = Math.max(0, now - start);
+            const elapsed = Math.max(0, now - start);
             let lunchMs = 0;
 
             const idx = store.sessionConfig.selectedLunchIndex;
@@ -1556,8 +1556,8 @@ const SCRIPT_LOGS_ENABLED = false;
                 const opt = CONFIG.LUNCH_OPTIONS_BASE[idx];
                 const shiftDate = new Date(start);
 
-                let lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
-                let lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+                const lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+                const lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
 
                 if (lEndObj < lStartObj) lEndObj.setDate(lEndObj.getDate() + 1);
 
@@ -3131,7 +3131,7 @@ const SCRIPT_LOGS_ENABLED = false;
             if (keys.length > CONFIG.VALUE_ARCHIVE_MAX_SHIFTS) {
                 keys.slice(0, keys.length - CONFIG.VALUE_ARCHIVE_MAX_SHIFTS).forEach(k => delete arc[k]);
             }
-            try { localStorage.setItem(this.archiveKey(), JSON.stringify(arc)); } catch (e) {}
+            try { localStorage.setItem(this.archiveKey(), JSON.stringify(arc)); } catch (e) { /* magazyn pełny albo zablokowany — archiwum jest wygodą, nie danymi krytycznymi */ }
         },
 
         // ---------------- wpisy ----------------
@@ -3274,7 +3274,7 @@ const SCRIPT_LOGS_ENABLED = false;
             this._writeBackTimer = null;
             this.entries = [];
             this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
-            try { localStorage.removeItem(this.key()); } catch (e) {}
+            try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
             delete StorageManager._lastWritten[this.key()];
             Utils.log(`[DZIENNIK] wyczyszczony: ${reason}`);
             bus.emit('valueLog:changed');
@@ -3487,7 +3487,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * Przy wyłączonym module cen sprowadza się do odczytu bez sieci.
          */
         async refresh() {
-            try { localStorage.removeItem(this.key()); } catch (e) {}
+            try { localStorage.removeItem(this.key()); } catch (e) { /* zapisanych kursów mogło nie być — odświeżenie i tak pobierze je od nowa */ }
             this.rates = null; this.source = null; this.fetchedAt = null;
             await this.init();
             bus.emit('valueLog:changed');     // sumy przeliczają się w locie
@@ -5039,7 +5039,7 @@ const SCRIPT_LOGS_ENABLED = false;
             bus.clear();
             // Dostęp z konsoli należał do zdjętego egzemplarza: zostawić go znaczy
             // trzymać w pamięci cały stan i wszystkie menedżery.
-            try { delete window[CONFIG.SCRIPT_ID_PREFIX + 'API']; delete window.SH; } catch (e) {}
+            try { delete window[CONFIG.SCRIPT_ID_PREFIX + 'API']; delete window.SH; } catch (e) { /* własność mogła być niekasowalna — rozbiórki to nie zatrzymuje */ }
             // Egzemplarza na stronie już nie ma — więc i zamek na powtórne
             // uruchomienie się zdejmuje, inaczej poprawionego pliku nie dałoby się
             // już wkleić.
@@ -5146,7 +5146,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // ValueLog.scheduleArchive), więc ostatnia paczka przedmiotów
                 // inaczej by do niego nie zdążyła. Sam dziennik pozycji jest
                 // w tym momencie już w localStorage — on pisze się od razu.
-                this.onPageHide = () => { try { ValueLog.flushArchive(); } catch (e) {} };
+                this.onPageHide = () => { try { ValueLog.flushArchive(); } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ } };
                 window.addEventListener('pagehide', this.onPageHide);
 
                 // Autozapis ustawień. Do 8.1.0 stan zapisywał się dopiero przy

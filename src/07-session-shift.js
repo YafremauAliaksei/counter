@@ -119,7 +119,7 @@
             const nEnd = ST.NIGHT_SHIFT_END_H * 60 + ST.NIGHT_SHIFT_END_M;
 
             let sType = null;
-            let sTime = new Date(now);
+            const sTime = new Date(now);
 
             if (minutes >= dStart && minutes < dEnd) {
                 sType = 'day'; sTime.setHours(CST.DAY.H, CST.DAY.M, 0, 0);
@@ -178,7 +178,7 @@
             if (!store.sessionConfig.shiftCalculatedStartTime) return { workedMs: 0, lunchMs: 0 };
             const now = Date.now();
             const start = store.sessionConfig.shiftCalculatedStartTime;
-            let elapsed = Math.max(0, now - start);
+            const elapsed = Math.max(0, now - start);
             let lunchMs = 0;
 
             const idx = store.sessionConfig.selectedLunchIndex;
@@ -186,8 +186,8 @@
                 const opt = CONFIG.LUNCH_OPTIONS_BASE[idx];
                 const shiftDate = new Date(start);
 
-                let lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
-                let lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+                const lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+                const lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
 
                 if (lEndObj < lStartObj) lEndObj.setDate(lEndObj.getDate() + 1);
 
