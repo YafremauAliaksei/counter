@@ -136,6 +136,42 @@ chore: zaktualizować eslint
 
 Treść commita mówi **dlaczego**, a nie „co”. „Co” widać w diffie.
 
+### Nazwy gałęzi: JEDEN PROBLEM — JEDNA GAŁĄŹ
+
+Gałąź nazywa się od problemu, który rozwiązuje, a nie od tego, kto albo co ją
+założyło. Nazwa `claude/intelligent-bardeen-j4wmrf` nie mówi nic — po pół roku
+nikt nie odtworzy z niej, czego dotyczyła poprawka.
+
+```
+<typ>/<problem-po-angielsku-przez-myslniki>
+
+fix/storage-write-survives-failure
+perf/skip-hidden-stats-lines
+test/price-boundary-values
+docs/testing-and-branch-rules
+```
+
+Typ jest ten sam, co w nagłówku commita (`feat`, `fix`, `perf`, `docs`, `test`,
+`refactor`, `chore`).
+
+**Jeden problem — jedna gałąź i jeden PR.** Dwie niezwiązane poprawki w jednej
+gałęzi znaczą, że nie da się wycofać jednej z nich, nie ruszając drugiej,
+a historia `main` przestaje odpowiadać na pytanie „kiedy to się zepsuło”.
+Jeśli w trakcie pracy znajdzie się drugi problem — notatka i osobna gałąź,
+a nie „skoro już tu jestem”.
+
+Konsekwencja techniczna, o której trzeba pamiętać: każda gałąź niosąca zmianę
+w `src/` przebudowuje `counter.js`, więc dwie równoległe gałęzie **zawsze**
+konfliktują na artefakcie. Po scaleniu pierwszej w drugiej robi się merge `main`,
+`npm run build` i dopiero potem push — bramka `build:check` i tak tego pilnuje.
+
+### Przebieg sprawdzeń zapisuje się w PR
+
+Do opisu każdego PR wkleja się wynik `npm run verify` (linia podsumowania
+wystarczy), a przy poprawkach wydajnościowych — pomiar sprzed i po zmianie.
+Po to, żeby z samej historii było widać, że gałąź była sprawdzona, i czym
+dokładnie.
+
 ---
 
 ## 4. Bramki, które muszą być zielone
@@ -208,7 +244,79 @@ parametrami: `?gradingMode=CRETURN` i `?gradingMode=WAREHOUSE_DEALS`.
 
 ---
 
-## 6. Wymiana narzędzi
+## 6. Testy: ile, jakie i po co
+
+### Zasada: testów ma być WIĘCEJ, niż wydaje się potrzebne
+
+Ten skrypt prowadzi ewidencję pracy człowieka. Błąd nie objawia się tu wyjątkiem
+w konsoli, tylko liczbą, która wygląda normalnie i jest nieprawdziwa — a poznać
+tego po samej liczbie nie sposób. Dlatego każda funkcja, która coś liczy, rozbiera
+albo zapisuje, ma mieć własny test, nawet jeśli wygląda na oczywistą.
+
+Wzorzec jest jeden i kosztował wydanie: forma kwoty przepuszczała tylko trzy
+cyfry przed przecinkiem, więc cena `2 991,39 €` szła do dziennika jako `991,39`
+(patrz CHANGELOG, 9.1.1). Kod działał. Testy przechodziły. Nikomu nie przyszło do
+głowy sprawdzić przedmiot droższy niż tysiąc euro, bo „przecież ceny są
+dwucyfrowe”. Suma zmiany po cichu zaniżała się o dwa tysiące.
+
+### Wartości graniczne są obowiązkowe
+
+Test na wartości typowej nie jest testem — sprawdza to, co i tak było widać
+z kodu. Dla każdej nowej funkcji trzeba świadomie przejść listę:
+
+- **zero i pustka**: pusta lista, `0`, `''`, brak wpisów w dzienniku;
+- **jeden**: jedna pozycja, jedna karta, jeden znak;
+- **przekroczenie rzędu**: `999` i `1000`, `9999` i `10000` — dokładnie tam
+  psują się wzorce z ograniczoną liczbą cyfr i formaty z separatorem tysięcy;
+- **liczby ujemne i ułamkowe** tam, gdzie mogą się pojawić;
+- **`null`, `undefined`, `NaN`, `Infinity`** — wszystko to przychodzi
+  z `localStorage`, którego nie kontrolujemy w całości;
+- **przepełnienie**: limit wpisów dziennika, limit zapytań, pełny magazyn
+  (`setItem` rzucający wyjątek — to stan realny, bo `localStorage` tej domeny
+  dzielimy z samym TREX);
+- **wartość spreparowana**: tekst zamiast liczby, cudzy klucz, `__proto__`;
+- **granice czasu**: przejście przez północ, zmiana trwająca zero minut,
+  znacznik z przyszłości.
+
+Jeśli którejś z tych granic nie da się osiągnąć — to też jest wynik i warto
+zapisać go w komentarzu do testu.
+
+### Każdy test musi być uzasadniony
+
+Test bez powodu jest gorszy niż brak testu: utrwala przypadkowy szczegół
+wykonania i przy pierwszej poprawce zaczyna przeszkadzać. Dlatego:
+
+1. Nagłówek testu mówi, **jakie zachowanie widoczne dla człowieka** jest
+   sprawdzane, a nie jaka metoda jest wywoływana.
+2. Jeśli test sprawdza coś, co kiedyś było zepsute — w komentarzu ma być jedno
+   zdanie o tym, jak to się objawiało na stanowisku.
+3. Test sprawdzający wewnętrzny szczegół, który wolno zmienić bez zmiany
+   zachowania, nie powinien powstać w ogóle.
+
+### Każda linia kodu ma być obowiązkowa
+
+Ta sama miara dotyczy samego kodu. Przed wysłaniem poprawki trzeba przejść własny
+diff i dla każdej linii umieć odpowiedzieć, co się stanie, jeśli ją usunąć. Jeśli
+odpowiedź brzmi „nic” — linia ma zniknąć. To dotyczy również pól stanu, wpisów
+w konfiguracji i gałęzi `if`, które „na wszelki wypadek” obsługują sytuację
+niemożliwą do osiągnięcia: takie gałęzie nie są sprawdzane przez nikogo i przy
+następnej poprawce zaczynają kłamać.
+
+Wyjątek jest jeden i jest świadomy: **bezpieczniki postawione dwa razy**
+(sprawdzenie `priceModuleOn()` na wejściu i na wyjściu ścieżki sieciowej).
+Powielenie jest tam opisane komentarzem i wynika z tego, że koszt pominięcia jest
+nieporównanie większy niż koszt zbędnego sprawdzenia.
+
+### Mierzyć, a nie zgadywać
+
+Poprawka podana jako „szybsza” albo „lżejsza” ma przyjść z liczbą. Wystarczy
+najprostszy pomiar w atrapie DOM (liczba przerysowań, liczba odczytów
+`innerText`, czas przebiegu) sprzed i po zmianie, wpisany do opisu PR. Bez tego
+nie da się odróżnić przyspieszenia od przestawienia kodu.
+
+---
+
+## 7. Wymiana narzędzi
 
 Na dziś narzędzie budujące jest własne, zależności nie ma. Gdyby potrzebna była
 minifikacja albo kilka formatów wyjścia — zmienia się **wyłącznie `build.js`**,
