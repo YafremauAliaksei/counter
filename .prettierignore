@@ -1,0 +1,6 @@
+# Artefakt jest generowany przez build.js — formatowanie go rozjechałoby
+# porównanie "artefakt == sklejenie źródeł".
+counter.js
+
+node_modules/
+tests/manual/

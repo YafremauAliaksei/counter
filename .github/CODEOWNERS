@@ -1,0 +1,16 @@
+# Kto z automatu trafia na listę recenzentów.
+# Format: wzorzec ścieżki, potem @użytkownik lub @organizacja/zespół.
+#
+# Zamień poniższą nazwę na swoją nazwę użytkownika GitHub.
+
+*                       @YafremauAliaksei
+
+# Miejsca, w których pomyłka kosztuje najwięcej — warto mieć je wypisane
+# osobno, nawet gdy właściciel jest ten sam. To dokumentacja, nie tylko reguła.
+
+/src/01-config.js       @YafremauAliaksei
+/src/19-price-module.js @YafremauAliaksei
+/src/20-price-card.js   @YafremauAliaksei
+/build.js               @YafremauAliaksei
+/build.manifest.json    @YafremauAliaksei
+/.github/               @YafremauAliaksei

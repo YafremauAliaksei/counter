@@ -1,0 +1,63 @@
+name: Błąd
+description: Coś nie działa tak, jak opisuje README
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Zanim zgłosisz: włącz logi (`SH.logsOn()`), powtórz sytuację i dołącz,
+        co pojawiło się w konsoli. Bez tego trudno cokolwiek ustalić.
+
+  - type: input
+    id: version
+    attributes:
+      label: Wersja skryptu
+      description: Wynik `SH.CONFIG.SCRIPT_VERSION` w konsoli
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Czy moduł cen był włączony?
+      options:
+        - "Nie (ustawienie domyślne)"
+        - "Tak"
+        - "Nie wiem"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Co się stało
+      description: Co zobaczyłeś i czego się spodziewałeś
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Jak to powtórzyć
+      placeholder: |
+        1. Wkleiłem counter.js do konsoli na karcie CRET
+        2. Obsłużyłem trzy przedmioty
+        3. Linia 7 pokazuje ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Konsola po SH.logsOn()
+      render: text
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Środowisko
+      placeholder: |
+        Przeglądarka:
+        System:
+        Ile kart T-REX było otwartych:

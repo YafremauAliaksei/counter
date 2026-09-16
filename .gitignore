@@ -1,0 +1,41 @@
+# Zależności
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Wyniki narzędzi
+.eslintcache
+*.tsbuildinfo
+coverage/
+.nyc_output/
+
+# Logi
+*.log
+npm-debug.log*
+logs/
+
+# Systemowe
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Edytory
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# Tymczasowe i robocze
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+scratch/
+
+# NIE ignorujemy counter.js — to artefakt, który celowo leży w repozytorium:
+# ludzie kopiują go prosto z GitHuba i wklejają do konsoli. CI pilnuje, żeby
+# zgadzał się ze źródłami (build.js --check).

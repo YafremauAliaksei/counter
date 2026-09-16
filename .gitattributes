@@ -1,0 +1,12 @@
+# Jeden koniec linii we wszystkich systemach. Bez tego artefakt zbudowany
+# na Windows różniłby się od zbudowanego na Linuksie, a CI porównuje go
+# co do bajtu.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+
+# Artefakt jest generowany — GitHub nie powinien liczyć go do statystyk
+# języków ani pokazywać w diffach jako zwykły kod.
+counter.js linguist-generated=true

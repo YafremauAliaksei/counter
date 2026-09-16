@@ -1,0 +1,49 @@
+{
+  "$comment": [
+    "KARTA PROJEKTU I JEDNOCZEŚNIE KOLEJNOŚĆ SKLEJANIA.",
+    "",
+    "Moduły trafiają do artefaktu DOKŁADNIE w tej kolejności, w jednym zakresie",
+    "(wszystkie są wewnątrz jednego IIFE), więc obowiązuje jedna zasada:",
+    "moduł może korzystać z tego, co zadeklarowano WYŻEJ na liście.",
+    "",
+    "Wyjątek, świadomy: funkcje i metody obiektów wołają się nawzajem w czasie",
+    "działania, a nie w czasie deklaracji. Dlatego 10-ui-window może wołać",
+    "ValueLog z 16-value-log — w momencie renderu wszystko jest już zadeklarowane.",
+    "Zakazane jest tylko UŻYCIE W CZASIE DEKLARACJI czegoś z niższego modułu.",
+    "",
+    "Dodajesz moduł: wpisz go tutaj w odpowiednim miejscu i opisz jednym zdaniem.",
+    "Jeśli opis wymaga słowa 'i' — moduł robi dwie rzeczy i trzeba go podzielić."
+  ],
+  "target": "counter.js",
+  "wrapper": {
+    "open": "(function() {\n    'use strict';\n",
+    "close": "})();\n"
+  },
+  "banner": "src/00-banner.js",
+  "footer": "src/99-footer.js",
+  "modules": [
+    { "file": "src/01-config.js",        "desc": "Stałe, domyślna konfiguracja linii i karty." },
+    { "file": "src/02-i18n-strings.js",  "desc": "Trzy słowniki tłumaczeń (pl, en, ru)." },
+    { "file": "src/03-utils.js",         "desc": "Funkcje pomocnicze i generator DOM h()." },
+    { "file": "src/04-core-state.js",    "desc": "EventBus, reaktywny store, priceModuleOn()." },
+    { "file": "src/05-i18n-runtime.js",  "desc": "Odczyt tłumaczeń i nazw kart w czasie działania." },
+    { "file": "src/06-storage.js",       "desc": "Zapis i odczyt stanu w localStorage." },
+    { "file": "src/07-session-shift.js", "desc": "Cykl życia zmiany i reset danych między zmianami." },
+    { "file": "src/08-drag.js",          "desc": "Przeciąganie okna statystyk i karty ceny." },
+    { "file": "src/09-ui-css.js",        "desc": "Generowanie zmiennych CSS z konfiguracji." },
+    { "file": "src/10-ui-window.js",     "desc": "Okno statystyk: linie 1-7." },
+    { "file": "src/11-ui-builder.js",    "desc": "Klocki interfejsu panelu ustawień." },
+    { "file": "src/12-ui-settings.js",   "desc": "Panel ustawień." },
+    { "file": "src/13-ui-visuals.js",    "desc": "Nakładka na stronę, wskaźnik działu i powiadomienia." },
+    { "file": "src/14-marketplace.js",   "desc": "Wybrany sklep Amazon i budowanie linku do produktu." },
+    { "file": "src/15-price-ocr.js",     "desc": "Odczyt ceny z pikseli wykresu Keepa." },
+    { "file": "src/16-value-log.js",     "desc": "Dziennik wartości wspólny dla wszystkich kart." },
+    { "file": "src/17-fx-rates.js",      "desc": "Kursy walut i przeliczanie na euro." },
+    { "file": "src/18-routing.js",       "desc": "Ustalanie, czy przedmiot poszedł na sprzedaż." },
+    { "file": "src/19-price-module.js",  "desc": "Główny wyłącznik sieci: enable/disable." },
+    { "file": "src/20-price-card.js",    "desc": "Karta ceny wraz z warstwą sieciową." },
+    { "file": "src/21-input.js",         "desc": "Klawiatura i obserwator zmian strony." },
+    { "file": "src/22-bootstrap.js",     "desc": "Main.init, rozbiórka i konsolowe API SH." },
+    { "file": "src/23-presets.js",       "desc": "Blok konfiguracji osobistej i uruchomienie." }
+  ]
+}

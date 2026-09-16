@@ -1,0 +1,93 @@
+name: CI
+
+# Bramki jakości. Wszystkie muszą być zielone, żeby dało się scalić PR
+# (patrz: Settings -> Branches -> branch protection rule dla main).
+#
+# Podział na trzy zadania jest celowy:
+#   verify  — zero zależności, musi działać zawsze i wszędzie; to jest
+#             prawdziwa bramka i to ją ustawia się jako "required check";
+#   lint    — wymaga npm install, więc zależy od dostępności rejestru;
+#   matrix  — sprawdza, że artefakt buduje się tak samo na Linuksie,
+#             Windowsie i macOS (końce linii!) i na kilku wersjach Node.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Testy i spójność artefaktu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Bez npm ci — projekt nie ma zależności potrzebnych do testów i budowania.
+      - name: Artefakt zgadza się ze źródłami
+        run: npm run build:check
+
+      - name: Testy
+        run: npm test
+
+      # Ostatnia linia obrony przed rozjazdem: przebuduj naprawdę i sprawdź,
+      # czy git widzi jakąkolwiek zmianę. build:check porównuje w pamięci,
+      # to porównuje na dysku.
+      - name: Przebudowa nie zmienia repozytorium
+        run: |
+          npm run build
+          git diff --exit-code -- counter.js || {
+            echo "::error file=counter.js::counter.js rozjechał się ze źródłami. Uruchom 'npm run build' i dołącz wynik do commita."
+            exit 1
+          }
+
+  lint:
+    name: Lint i format
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalacja narzędzi
+        run: npm install --no-audit --no-fund
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier
+        run: npm run format:check
+
+  matrix:
+    name: Node ${{ matrix.node }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: npm run build:check
+      - run: npm test

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Stanowisko T-REX — sprawdzenie karty ceny</title>
+<style>
+  /* CIEMNY (domyślny) */
+  :root{--bg:#0f1115;--panel:#171a21;--line:#2a2f3a;--txt:#e6e8ee;--dim:#8b93a7;
+        --acc:#4f8cff;--ok:#5ee88a;--warn:#ffc53d;--screen:#12151b;--logbg:#0c0e13;--code:#9fd0ff}
+  /* JASNY — sprawdzić czytelność karty na białym tle */
+  :root[data-theme="light"]{--bg:#f4f6fa;--panel:#ffffff;--line:#d8dee9;--txt:#1c2430;--dim:#5d6b82;
+        --acc:#1c6ef2;--ok:#127a3a;--warn:#9a6b00;--screen:#fbfcfe;--logbg:#f0f2f7;--code:#134a8f}
+  /* PRZYCIEMNIONY — tło stonowanego losowego odcienia, ustawiane z JS */
+  :root[data-theme="dim"]{--bg:var(--rnd-bg);--panel:var(--rnd-panel);--line:var(--rnd-line);
+        --txt:#eef1f6;--dim:#aab3c4;--acc:#7aa7ff;--ok:#7fe3a4;--warn:#ffd36b;
+        --screen:var(--rnd-screen);--logbg:var(--rnd-log);--code:#cfe2ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 Segoe UI,Roboto,Arial,sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 3px;font-size:17px}
+  .sub{color:var(--dim);font-size:12px}
+  .wrap{display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px 20px;align-items:start}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .panel h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.7px;color:var(--dim)}
+
+  /* ---- naśladowanie ekranu T-REX ---- */
+  #trex{min-height:270px;display:flex;flex-direction:column;gap:12px;justify-content:center;
+        border:1px dashed var(--line);border-radius:8px;padding:22px;background:var(--screen)}
+  #stepName{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--acc)}
+  #stepText{font-size:22px;font-weight:600;line-height:1.3}
+  #itemBox{min-height:46px}
+  #itemBox a{color:#79b0ff}
+  .muted{color:var(--dim);font-size:13px}
+
+  button{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:6px;
+         padding:8px 13px;cursor:pointer;font:13px inherit;transition:.15s}
+  button:hover{border-color:var(--acc);filter:brightness(1.12)}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#08101f;font-weight:600}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .btns{display:flex;flex-wrap:wrap;gap:8px}
+  label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:10px}
+  input[type=range]{flex:1}
+
+  #log{height:250px;overflow:auto;background:var(--logbg);border:1px solid var(--line);border-radius:6px;
+       padding:8px;font:11px/1.55 Consolas,monospace;color:#b9c0d0}
+  #log div{border-bottom:1px solid var(--line);padding:2px 0}
+  .t-pre{color:var(--warn)} .t-post{color:var(--ok)} .t-asin{color:#79b0ff} .t-sys{color:var(--dim)}
+  .stat{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--line)}
+  .stat b{font-family:Consolas,monospace}
+  code{background:var(--logbg);padding:1px 5px;border-radius:3px;font-size:12px;color:var(--code)}
+  .hint{font-size:12px;color:var(--dim);margin-top:10px;line-height:1.6}
+  #themeBar button[aria-pressed="true"]{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Stanowisko T-REX — sprawdzenie karty ceny</h1>
+  <div class="sub">Naśladuje cykl obsługi przedmiotu: <code>poni&#8203;żej</code> → 2 kroki pośrednie → <code>Przypisz&#8203; nowy</code><br><span style="color:#6b7280">w tekście pomocniczym strony słowa-wyzwalacze są rozerwane niewidocznym znakiem, inaczej skrypt liczyłby je jako prawdziwe zadziałania</span></div>
+  <div id="themeBar" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="sub">Wygląd strony:</span>
+    <button data-theme-set="dark">Ciemny</button>
+    <button data-theme-set="light">Jasny</button>
+    <button data-theme-set="dim">Przyciemniony (losowe tło)</button>
+    <span class="sub" id="themeNote"></span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="panel">
+      <h2>Ekran obsługi</h2>
+      <div id="trex">
+        <div id="stepName">—</div>
+        <div id="stepText">Zeskanuj LP przedmiotu</div>
+        <!-- Link do towaru pojawia się TUTAJ i tylko na kroku poniżej -->
+        <div id="itemBox"></div>
+    <div id="routeBox" style="min-height:24px;font-size:16px;font-weight:600;color:var(--warn)"></div>
+      </div>
+
+      <div class="btns" style="margin-top:14px">
+        <button class="primary" id="bNew">Nowy przedmiot (losowy)</button>
+        <button id="bSame">Ten sam ASIN jeszcze raz</button>
+        <button id="bStep">Następny krok</button>
+        <button id="bAbort">Przerwij → nowy przedmiot</button>
+        <button id="bAuto">▶ Autocykl</button>
+        <button id="bReset">Reset</button>
+      </div>
+
+      <label>Tempo kroku: <input type="range" id="speed" min="400" max="4000" step="100" value="1400">
+        <b id="speedVal" style="font-family:Consolas,monospace;color:var(--txt)">1400 ms</b></label>
+
+      <div class="hint">
+        <b>Jak używać:</b> otwórz konsolę (F12), wklej <code>counter.js</code>,
+        a potem naciskaj „Nowy przedmiot”. Karta z ceną pojawi się <b>po lewej na dole</b>
+        i będzie przezroczysta dla kliknięć — spróbuj kliknąć przyciski przez nią.<br>
+        „Ten sam ASIN jeszcze raz” to sytuacja, w której klient zwrócił 5 jednakowych rzeczy:
+        przedmiot liczy się jako nowy, ale <b>zapytanie do sieci nie wychodzi</b>,
+        cena bierze się z pamięci.
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Stan stanowiska</h2>
+      <div class="stat"><span>Przedmiotów obsłużonych</span><b id="sItems">0</b></div>
+      <div class="stat"><span>Bieżący ASIN na stronie</span><b id="sAsin">—</b></div>
+      <div class="stat"><span>Link w DOM</span><b id="sLink">nie</b></div>
+      <div class="stat"><span>Unikalnych ASIN pokazano</span><b id="sUniq">0</b></div>
+      <div class="btns" style="margin-top:12px">
+        <button id="bStats">SH.priceStats()</button>
+      </div>
+      <div class="stat" style="margin-top:8px"><span>Zapytań tekstowych</span><b id="sNet">—</b></div>
+      <div class="stat"><span>ASIN w pamięci sesji</span><b id="sCache">—</b></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Dziennik</h2>
+      <div id="log"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Dokąd pojechał przedmiot</h2>
+      <label>Kod sortowania
+        <select id="routeCode" style="flex:1">
+        <option value="">— kodu nie pokazywać —</option>
+        <optgroup label="sprzedaż">
+        <option value="CRITS-PRG2">CR&#8203;ITS-PRG2</option>
+        <option value="CRITS-MXP6">CR&#8203;ITS-MXP6</option>
+        <option value="CRITS-POZ1">CR&#8203;ITS-POZ1</option>
+        <option value="CRITS-LEJ5">CR&#8203;ITS-LEJ5</option>
+        </optgroup><optgroup label="niesprzedaż">
+        <option value="Liquidation">Li&#8203;quidation</option>
+        <option value="FBA-DE-Unsellable">FB&#8203;A-DE-Unsellable</option>
+        <option value="Remove">Re&#8203;move</option>
+        <option value="WHD">WH&#8203;D</option>
+        <option value="Stow-Unsellable">St&#8203;ow-Unsellable</option>
+        <option value="Refurb">Re&#8203;furb</option>
+        </optgroup><optgroup label="niejednoznaczny">
+        <option value="Secondary-Sorting">Se&#8203;condary-Sorting</option>
+        </optgroup>
+        </select>
+      </label>
+      <label>Kiedy się pojawi
+        <select id="routeWhen" style="flex:1">
+          <option value="before">przed finalnym wyzwalaczem</option>
+          <option value="at">razem z finalnym wyzwalaczem</option>
+          <option value="after" selected>po finalnym wyzwalaczu</option>
+        </select>
+      </label>
+      <label>Zapis
+        <select id="routeDash" style="flex:1">
+          <option value="plain">Zeskanuj KOD</option>
+          <option value="dash">Zeskanuj - KOD</option>
+          <option value="rand" selected>losowo</option>
+        </select>
+      </label>
+      <label>Uściślenie dla Se&#8203;condary-Sorting
+        <select id="routeConfirm" style="flex:1">
+          <option value="">— brak —</option>
+          <option value="sell">Transfer&#8203; - Sellable (sprzedaż)</option>
+          <option value="unsell">FBA&#8203;Transfer (niesprzedaż)</option>
+        </select>
+      </label>
+      <div class="hint">Linia pojawia się w oknie roboczym po lewej. Kody na tej
+        liście są rozerwane niewidocznym znakiem, inaczej skrypt czytałby je
+        prosto stąd.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+   20 PRAWDZIWYCH TOWARÓW Z AMAZON.DE
+   Zebrane z autentycznej strony bestsellerów, a nie wymyślone: sprawdzenie
+   w Keepie pokazało, że losowo zgadnięte ASIN-y nie mają danych w 20
+   przypadkach na 22.
+
+   Dlaczego to jest bezpieczne dla testu: zawartość <script> NIE trafia
+   do document.body.innerText i nie pasuje do selektora a[href*="/dp/"].
+   Dlatego skrypt nie widzi tutaj ani jednego ASIN-u, dopóki losowanie
+   nie wstawi konkretnego linku do DOM na kroku "poniżej".
+   =========================================================================== */
+const CATALOG = [
+  ['B07FJ78GBC','adidas Adilette Aqua Badelatschen'],
+  ['B0F5B9SC2D','adidas Cushioned Crew Socken, 6 Paar'],
+  ['B001BEAWZM','Calvin Klein Herren Boxershorts Trunks'],
+  ['B08P4YPB8Q','Maybelline New York Mascara Schwarz'],
+  ['B0B2RM68G2','Biodance Bio-Collagen Maske, 4 Stück'],
+  ['B0CS68SFRB','Handseife Nachfüllpack 2x1000 ml by Amazon'],
+  ['B01BYTG0WM','Jacobson Jersey Spannbettlaken 180x200'],
+  ['B008YETL18',"De'Longhi EcoDecalk DLSC500 Entkalker"],
+  ['B0BF9W3WC4','Jura Claris Smart+ Wasserfilter, 3er-Pack'],
+  ['B0C3M5MS3N','Auvon Nachtlicht mit Bewegungsmelder'],
+  ['B0F1C56SR1','Gritin 26 cm Unterbauleuchte Küche'],
+  ['B0C3BC4QG2','Gritin Leselampe Buchklemme USB'],
+  ['B01KHILJ5O','Philips LEDclassic GU10, 50 W Ersatz'],
+  ['B0BLYQGD2Z','Jsdoin LED Mini-Lichterkette, 6x20'],
+  ['B0DCBHQPH7','slochi LED-Deckenleuchte flach 30 cm'],
+  ['B093SWH4D8','ARNOMED Einweghandschuhe Nitril, 100er'],
+  ['B099S5JM9R','Shadowhawk LED Taschenlampe, sehr hell'],
+  ['B019ETZ2ZU','fischer DuoPower 6x30 Universaldübel'],
+  ['B00569J8CQ','tesa Fliegengitter für Fenster'],
+  ['B00006JCUB','Hama 3-fach Steckdosenleiste 1,4 m'],
+];
+
+/* Kroki cyklu. Między poniżej a Przypisz są dwa pośrednie, tak jak w realnym
+   przebiegu. Teksty wyzwalaczy są dosłownie te, na które reaguje licznik.   */
+const STEPS = [
+  { name:'krok 0 / bezczynność', text:'Zeskanuj LP przedmiotu', link:false, trigger:null },
+  { name:'krok 1 / szczegóły',   text:'Sprawdź szczegóły przedmiotu poniżej i potwierdź zgodność', link:true,  trigger:'pre'  },
+  { name:'krok 2 / stan',        text:'Oceń stan fizyczny przedmiotu',        link:true,  trigger:null },
+  { name:'krok 3 / kategoria',   text:'Wybierz kategorię i powód zwrotu',     link:true,  trigger:null },
+  { name:'krok 4 / LPN',         text:'Przypisz nowy kod LPN do przedmiotu',  link:false, trigger:'post' },
+];
+
+const $ = (id) => document.getElementById(id);
+let stepIdx = 0, current = null, items = 0, autoTimer = null;
+const uniqueShown = new Set();
+
+function logLine(msg, cls='t-sys'){
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = new Date().toLocaleTimeString('pl-PL') + '  ' + msg;
+  $('log').appendChild(d);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+function pickRandom(){
+  let next;
+  do { next = CATALOG[Math.floor(Math.random()*CATALOG.length)]; }
+  while (CATALOG.length > 1 && current && next[0] === current[0]);
+  return next;
+}
+
+/* ---------------- KOD SORTOWANIA ----------------
+   Moment pojawienia się kodu jest celowo odwiązany od kroku: w T-REX wyskakuje
+   on raz przed finalnym wyzwalaczem, raz razem z nim, a raz już po nim — i skrypt
+   musi poradzić sobie ze wszystkimi trzema przypadkami. Tutaj odtwarza to
+   przełącznik. */
+let routeLines = [];          // co w tej chwili wisi w oknie trasy
+let routeConfirmPending = null;
+
+function routeReset(){ routeLines = []; routeConfirmPending = null; paintRoute(); }
+function paintRoute(){ $('routeBox').textContent = routeLines.join('   '); }
+
+function routeSeparator(){
+  const mode = $('routeDash').value;
+  if (mode === 'dash') return ' - ';
+  if (mode === 'plain') return ' ';
+  return Math.random() < 0.5 ? ' - ' : ' ';
+}
+
+function routeEmit(){
+  const code = $('routeCode').value;
+  if (!code) return;
+  routeLines.push('Zeskanuj' + routeSeparator() + code);
+  // W dzienniku kod jest ROZERWANY niewidocznym znakiem: dziennik nie czyści się
+  // między przedmiotami, a cały kod skrypt czytałby w nim jako prawdziwe zadziałanie.
+  logLine('KOD SORTOWANIA: ' + code.slice(0,2) + '​' + code.slice(2), 't-asin');
+  const conf = $('routeConfirm').value;
+  if (code === 'Secondary-Sorting' && conf){
+    // Przy pojawieniu się „po finale” kolejnej klatki wewnątrz przedmiotu już nie
+    // będzie, więc uściślenie pokazujemy od razu.
+    if ($('routeWhen').value === 'after') routeConfirmEmit(conf);
+    else routeConfirmPending = conf;
+  }
+  paintRoute();
+}
+
+function routeConfirmEmit(kind){
+  const txt = kind === 'sell'
+    ? 'Przedmiot wysłano do Transfer - Sellable'
+    : 'Przedmiot wysłano do FBATransfer-EU';
+  routeLines.push(txt);
+  // Tu tak samo, a nawet krytyczniej: „Przedmiot wysłano do ...” to również
+  // wyzwalacz ZAKOŃCZENIA przedmiotu. Zostawiony w dzienniku w całości trzymałby
+  // licznik podniesiony na zawsze i przedmioty przestałyby się liczyć w ogóle.
+  logLine('UŚCIŚLENIE: ' + txt.replace('Przedmiot', 'Przed​miot'), 't-post');
+  paintRoute();
+}
+
+function renderStep(){
+  const s = STEPS[stepIdx];
+  $('stepName').textContent = s.name;
+  $('stepText').textContent = s.text;
+
+  // Moment pokazania kodu względem finalnego wyzwalacza
+  const when = $('routeWhen').value;
+  if (stepIdx === 3 && when === 'before') routeEmit();
+  else if (s.trigger === 'post' && when === 'at') routeEmit();
+  else if (stepIdx === 0 && when === 'after' && routeArmed) { routeEmit(); routeArmed = false; }
+  else if (routeConfirmPending){ const c = routeConfirmPending; routeConfirmPending = null; routeConfirmEmit(c); }
+
+  const box = $('itemBox');
+  box.innerHTML = '';
+  if (s.link && current){
+    // Dokładnie tak link wygląda w T-REX: zwykły <a> wewnątrz body
+    const a = document.createElement('a');
+    a.href = 'https://www.amazon.de/dp/' + current[0];
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = current[1];
+    box.appendChild(a);
+    const sub = document.createElement('div');
+    sub.className = 'muted';
+    sub.textContent = 'LPN: LPN' + Math.random().toString(36).slice(2,10).toUpperCase();
+    box.appendChild(sub);
+  } else {
+    box.innerHTML = '';
+    const dash = document.createElement('div');
+    dash.className = 'muted';
+    dash.textContent = '—';
+    box.appendChild(dash);
+  }
+
+  if (s.trigger === 'pre')  logLine('WYZWALACZ «poni​żej» → początek przedmiotu, link w DOM', 't-pre');
+  if (s.trigger === 'post') logLine('WYZWALACZ «Przypisz​ nowy» → koniec przedmiotu', 't-post');
+
+  updateStats();
+}
+
+function nextStep(){
+  stepIdx = (stepIdx + 1) % STEPS.length;
+  if (stepIdx === 1){                      // weszliśmy w krok poniżej — to nowy przedmiot
+    routeReset();                          // kierunek poprzedniego przedmiotu zapomniany
+    routeArmed = true;
+    if (!current) current = pickRandom();
+    items++;
+    uniqueShown.add(current[0]);
+    logLine(`przedmiot #${items}: ${current[0]} — ${current[1]}`, 't-asin');
+  }
+  if (stepIdx === 0) current = null;        // cykl zakończony
+  renderStep();
+}
+
+function startItem(sameAsin){
+  if (!sameAsin || !lastAsin) current = pickRandom();
+  else current = CATALOG.find(c => c[0] === lastAsin) || pickRandom();
+  lastAsin = current[0];
+  stepIdx = 0; renderStep();
+  nextStep();                               // od razu przechodzimy na poniżej
+}
+let lastAsin = null;
+let routeArmed = false;
+
+function updateStats(){
+  $('sItems').textContent = items;
+  $('sAsin').textContent  = current ? current[0] : '—';
+  $('sLink').textContent  = document.querySelector('#itemBox a') ? 'tak' : 'nie';
+  $('sUniq').textContent  = uniqueShown.size;
+}
+
+$('bNew').onclick   = () => startItem(false);
+$('bSame').onclick  = () => { if(!lastAsin) return startItem(false); startItem(true); logLine('powtórka tego samego ASIN — sieć nie powinna zostać użyta','t-asin'); };
+$('bStep').onclick  = () => nextStep();
+// Przerwanie: rzucamy przedmiot w połowie, NIE dochodząc do Przypisz nowy,
+// i od razu zaczynamy nowy z innym towarem. Właśnie w tym scenariuszu
+// itemInProgress zostaje podniesiony i powtórnego armNewItem nie będzie.
+$('bAbort').onclick = () => {
+  logLine('PRZERWANE na kroku ' + stepIdx + ' — Przypisz​ nowy nie było', 't-pre');
+  current = pickRandom(); lastAsin = current[0];
+  items++; uniqueShown.add(current[0]);
+  logLine(`przedmiot #${items}: ${current[0]} — ${current[1]}`, 't-asin');
+  stepIdx = 1; renderStep();
+};
+$('bReset').onclick = () => { stopAuto(); stepIdx=0; current=null; lastAsin=null; items=0; uniqueShown.clear();
+                              $('log').innerHTML=''; renderStep(); logLine('stanowisko zresetowane'); };
+$('bStats').onclick = () => {
+  if (!window.SH){ logLine('SH nie jest załadowany — wklej counter.js do konsoli'); return; }
+  const s = SH.priceStats();
+  $('sNet').textContent   = s['zapytań tekstowych'];
+  $('sCache').textContent = s['ASIN w pamięci sesji'];
+  logLine('stats: ' + JSON.stringify(s));
+  console.table(s);
+};
+
+function stopAuto(){ clearInterval(autoTimer); autoTimer=null; $('bAuto').textContent='▶ Autocykl'; }
+$('bAuto').onclick = () => {
+  if (autoTimer) return stopAuto();
+  $('bAuto').textContent = '■ Stop';
+  autoTimer = setInterval(() => {
+    if (stepIdx === 0) startItem(Math.random() < 0.35);   // 35% — ten sam ASIN pod rząd
+    else nextStep();
+  }, Number($('speed').value));
+};
+$('speed').oninput = (e) => {
+  $('speedVal').textContent = e.target.value + ' ms';
+  if (autoTimer){ stopAuto(); $('bAuto').click(); }
+};
+
+/* ---------------- WYGLĄD STANOWISKA ----------------
+   Trzy motywy są potrzebne, żeby sprawdzić czytelność karty ceny na różnych tłach:
+   ciemnym (jak teraz w T-REX), jasnym i przyciemnionym o dowolnym odcieniu.
+   Karta jest półprzezroczysta, więc tło strony prześwituje przez nią — na białym
+   i na kolorowym wygląda inaczej i trzeba to zobaczyć wcześniej. */
+function mutedBackdrop() {
+  // Stonowany losowy odcień: nasycenie niskie, jasność niewielka, inaczej wychodzi
+  // „kwasowe” tło, na którym nie da się ocenić czytelności.
+  const hue = Math.floor(Math.random() * 360);
+  const sat = 12 + Math.floor(Math.random() * 14);   // 12..25 %
+  const lum = 13 + Math.floor(Math.random() * 8);    // 13..20 %
+  const set = (k, l, s2) =>
+    document.documentElement.style.setProperty(k, `hsl(${hue} ${s2 != null ? s2 : sat}% ${l}%)`);
+  set('--rnd-bg', lum);
+  set('--rnd-panel', lum + 5);
+  set('--rnd-line', lum + 16, Math.min(40, sat + 10));
+  set('--rnd-screen', lum + 2);
+  set('--rnd-log', Math.max(6, lum - 4));
+  return `hsl(${hue} ${sat}% ${lum}%)`;
+}
+function setTheme(name) {
+  let note = '';
+  if (name === 'dark') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', name);
+  if (name === 'dim') note = 'tło: ' + mutedBackdrop() + ' — naciśnij jeszcze raz po nowe';
+  document.getElementById('themeNote').textContent = note;
+  document.querySelectorAll('#themeBar button').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.themeSet === name)));
+  try { localStorage.setItem('standTheme', name); } catch (e) {}
+  logLine('wygląd: ' + name + (note ? ' (' + note + ')' : ''), 't-sys');
+}
+document.querySelectorAll('#themeBar button').forEach(b => {
+  b.onclick = () => setTheme(b.dataset.themeSet);
+});
+let savedTheme = 'dark';
+try { savedTheme = localStorage.getItem('standTheme') || 'dark'; } catch (e) {}
+
+renderStep();
+setTheme(savedTheme);
+logLine('stanowisko gotowe. Wklej counter.js do konsoli i naciskaj „Nowy przedmiot”.');
+</script>
+</body>
+</html>

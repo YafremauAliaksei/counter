@@ -1,0 +1,85 @@
+name: Release
+
+# Wydanie powstaje z TAGU, nie z ręcznego wgrania pliku. Dzięki temu to, co
+# ludzie pobierają, na pewno pochodzi z kodu oznaczonego tym tagiem.
+#
+# Jak wydać:
+#   1. na main: npm version minor      (podnosi package.json i robi commit+tag)
+#   2. npm run build && git add counter.js && git commit --amend --no-edit
+#   3. git push --follow-tags
+#
+# Reszta dzieje się tutaj.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Zbuduj i opublikuj
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Wydajemy tylko to, co przechodzi te same bramki, co PR.
+      - name: Bramki jakości
+        run: |
+          npm run build:check
+          npm test
+
+      - name: Wersja z tagu zgadza się z package.json
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag v$TAG nie zgadza się z wersją w package.json ($PKG)."
+            exit 1
+          fi
+          echo "Wersja: $PKG"
+
+      - name: Wersja w artefakcie zgadza się z tagiem
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          grep -q "SCRIPT_VERSION: '$PKG'" counter.js || {
+            echo "::error file=counter.js::W artefakcie nie ma SCRIPT_VERSION: '$PKG'."
+            exit 1
+          }
+          grep -q "@version      $PKG" counter.js || {
+            echo "::error file=counter.js::Nagłówek ==UserScript== ma inną wersję niż package.json."
+            exit 1
+          }
+
+      - name: Wyciągnij opis wydania z CHANGELOG
+        id: notes
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          # Sekcja od nagłówka tej wersji do następnego nagłówka drugiego poziomu.
+          awk -v v="## $VERSION" '
+            $0 ~ "^"v {found=1; next}
+            found && /^## / {exit}
+            found {print}
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Wydanie $VERSION. Szczegóły w CHANGELOG.md." > RELEASE_NOTES.md
+          fi
+          cat RELEASE_NOTES.md
+
+      - name: Utwórz wydanie
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: counter.js
+          draft: false
+          prerelease: false

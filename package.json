@@ -1,0 +1,41 @@
+{
+  "name": "statshelper-counter",
+  "version": "1.0.0",
+  "description": "Licznik przetworzonych przedmiotów dla T-REX: cichy tryb domyślny, opcjonalny moduł cen, dziennik wartości zmiany.",
+  "private": true,
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "counter.js",
+  "files": [
+    "counter.js",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "build:check": "node build.js --check",
+    "test": "node tests/run.js",
+    "verify": "npm run build:check && npm test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,json,md,yml}\"",
+    "format:check": "prettier --check \"**/*.{js,json,md,yml}\"",
+    "ci": "npm run build:check && npm test && npm run lint && npm run format:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2"
+  },
+  "keywords": [
+    "userscript",
+    "trex",
+    "counter",
+    "amazon"
+  ]
+}

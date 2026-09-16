@@ -1,0 +1,47 @@
+name: Nowa możliwość
+description: Propozycja zmiany lub rozbudowy
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Jaki problem to rozwiązuje
+      description: Zacznij od sytuacji, a nie od rozwiązania
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Jak miałoby to działać
+    validations:
+      required: true
+
+  - type: dropdown
+    id: default
+    attributes:
+      label: Czy ma być włączone domyślnie?
+      description: |
+        Zasada projektu: po wklejeniu pliku człowiek nie dostaje niczego,
+        o co nie prosił. Nowe rzeczy startują wyłączone.
+      options:
+        - "Nie, wyłączone (zgodnie z zasadą projektu)"
+        - "Tak, włączone — uzasadnienie poniżej"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Czy wymaga dostępu do sieci?
+      options:
+        - "Nie"
+        - "Tak — tylko przy włączonym module cen"
+        - "Tak — potrzebne nowe źródło"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Uwagi
