@@ -773,46 +773,86 @@
             if (pc.position.top) { this.el.style.top = pc.position.top; this.el.style.bottom = 'auto'; }
             else { this.el.style.top = 'auto'; this.el.style.bottom = '14px'; }
 
+            /**
+             * TŁO, RAMKA I CIEŃ IDĄ RAZEM (1.0.0).
+             *
+             * Przy przezroczystym tle — a takie jest teraz domyślne — ramka
+             * i cień zostawiłyby na ekranie pustą obwódkę wiszącą nad stroną:
+             * najgorsze z obu światów. Dlatego wszystkie trzy zależą od jednej
+             * wartości: jest tło, jest oprawa; nie ma tła, zostaje sam tekst,
+             * dokładnie jak w liniach okna statystyk.
+             */
+            const bgAlpha = Utils.clampNum(pc.bgAlpha, 0, 100, 0);
             const rgb = Utils.hexToRgb(pc.bgColorHex);
-            this.el.style.background = `rgba(${rgb}, ${Utils.clampNum(pc.bgAlpha, 0, 100, 88) / 100})`;
-            this.el.style.border = '1px solid rgba(130,170,255,.40)';
-            this.el.style.boxShadow = '0 6px 26px rgba(0,0,0,.55)';
+            this.el.style.background = bgAlpha > 0 ? `rgba(${rgb}, ${bgAlpha / 100})` : 'transparent';
+            this.el.style.border = bgAlpha > 0 ? '1px solid rgba(130,170,255,.40)' : 'none';
+            this.el.style.boxShadow = bgAlpha > 0 ? '0 6px 26px rgba(0,0,0,.55)' : 'none';
+            this.el.style.padding = bgAlpha > 0 ? '10px 14px' : '0';
+            // Krój z tej samej listy, co okno statystyk: karta ma czytać się jak
+            // reszta interfejsu, a nie jak osobny widżet.
+            this.el.style.fontFamily =
+                CONFIG.FONT_FAMILY_OPTIONS[pc.fontFamily] || CONFIG.FONT_FAMILY_OPTIONS.default;
 
             // WAŻNE: skrót `font:` wymaga podania rodziny, a `inherit` jest w nim
             // niedopuszczalny — przeglądarka po cichu wyrzuca CAŁĄ regułę.
             // Złapane na stanowisku: cena rysowała się 14px/400 zamiast 30px/800.
             // Dlatego właściwości ustawia się osobno.
-            const fs = Utils.clampNum(pc.fontSize, 10, 96, 30);
-            const px = (k) => Math.round(fs * k) + 'px';
+            const fs = Utils.clampNum(pc.fontSize, 10, 96, 16);
+            const px = (k) => Math.max(9, Math.round(fs * k)) + 'px';
+
+            /**
+             * Cień tekstu jest tu obowiązkowy właśnie DLATEGO, że tło bywa
+             * przezroczyste: jasny tekst na jasnym fragmencie cudzej strony
+             * przestaje być czytelny. Jest słaby — ma odciąć literę od tła,
+             * a nie rysować się sam.
+             */
+            const SHADOW = 'text-shadow:0 1px 3px rgba(0,0,0,.6)';
 
             // pointer-events:auto — ten jedyny wyjątek od przezroczystej karty.
             // Przy włączonym przeciąganiu jest zdejmowany: wtedy ciągnie się całą
             // kartę, a kliknięcie w link wyprowadziłoby ze strony w środku gestu.
             const dragging = store.uiFlags.isPriceCardDragging;
+            /**
+             * KLIKALNOŚĆ KODU PRODUKTU (1.0.0: domyślnie WYŁĄCZONA).
+             *
+             * `pointer-events:auto` na linku było jedynym wyjątkiem od
+             * przezroczystej karty, czyli jedynym miejscem, w którym karta mogła
+             * przykryć przycisk T-REX. Skoro jej zadaniem jest nie przeszkadzać,
+             * wyjątek włącza się ręcznie.
+             *
+             * Przy przeciąganiu link jest zdejmowany niezależnie od ustawienia:
+             * wtedy ciągnie się całą kartę, a kliknięcie wyprowadziłoby ze strony
+             * w środku gestu.
+             */
+            const linkOn = pc.asinClickable === true && !dragging;
             this.asinEl.style.cssText = [
-                'font-family:Consolas,Monaco,monospace', 'font-weight:600',
-                'font-size:' + px(0.46), 'line-height:1.3',
-                'color:rgba(190,215,255,.9)', 'letter-spacing:.6px', 'text-transform:uppercase',
-                'display:inline-block',
-                'pointer-events:' + (dragging ? 'none' : 'auto'),
-                'cursor:' + (dragging ? 'inherit' : 'pointer'),
-                'text-decoration:underline', 'text-decoration-style:dotted',
-                'text-underline-offset:2px',
+                'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
+                'color:rgba(190,215,255,.75)', 'letter-spacing:.5px', 'text-transform:uppercase',
+                'display:' + (pc.showAsin === false ? 'none' : 'inline-block'),
+                'pointer-events:' + (linkOn ? 'auto' : 'none'),
+                'cursor:' + (linkOn ? 'pointer' : 'inherit'),
+                'text-decoration:' + (linkOn ? 'underline' : 'none'),
+                'text-decoration-style:dotted', 'text-underline-offset:2px',
+                SHADOW,
             ].join(';');
 
+            // Cena: ta sama grubość, co w liniach okna statystyk. Tłuste 800
+            // przy przezroczystym tle wyglądało jak baner, a nie jak podpowiedź.
             this.priceEl.style.cssText = [
-                'font-weight:800', 'font-size:' + px(1), 'line-height:1.15',
-                'margin:4px 0 2px', 'text-shadow:0 2px 8px rgba(0,0,0,.75)', 'letter-spacing:.3px',
+                'font-weight:400', 'font-size:' + px(1), 'line-height:1.25',
+                'margin:' + (bgAlpha > 0 ? '4px 0 2px' : '1px 0 0'),
+                SHADOW, 'letter-spacing:.2px',
             ].join(';');
 
             this.rrpEl.style.cssText = [
-                'font-weight:600', 'font-size:' + px(0.52), 'line-height:1.35',
-                'color:rgba(255,214,130,.95)',
+                'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
+                'color:rgba(255,214,130,.8)', SHADOW,
             ].join(';');
 
             this.srcEl.style.cssText = [
-                'font-family:Consolas,Monaco,monospace', 'font-size:' + px(0.36),
-                'line-height:1.4', 'color:rgba(205,220,245,.6)', 'margin-top:4px',
+                'font-size:' + px(0.7), 'line-height:1.35',
+                'color:rgba(205,220,245,.5)', 'margin-top:' + (bgAlpha > 0 ? '4px' : '1px'),
+                SHADOW,
             ].join(';');
 
             // Dwa różne tryby wyświetlania wykresu.
@@ -891,9 +931,18 @@
             // wybranego nie wolno: człowiek otworzyłby amazon.de i nie zobaczył
             // tam pokazanej ceny.
             const found = this.cache.get(asin);
-            const url = productUrl(asin, found && found.market);
-            this.asinEl.setAttribute('href', url);
-            this.asinEl.title = url;
+            if (pc.asinClickable === true) {
+                const url = productUrl(asin, found && found.market);
+                this.asinEl.setAttribute('href', url);
+                this.asinEl.title = url;
+            } else {
+                // Przy wyłączonej klikalności kod produktu jest ZWYKŁYM TEKSTEM.
+                // Samo `pointer-events:none` by nie wystarczyło: element z href
+                // zostaje w kolejności tabulacji i otwiera się środkowym
+                // przyciskiem myszy. Bez href nie ma czego otworzyć.
+                this.asinEl.removeAttribute('href');
+                this.asinEl.title = '';
+            }
             // !csp.img jest obowiązkowy także tutaj: applyStyle() ramkę chowa,
             // a render() wywołuje się później i bez tego sprawdzenia przywracałby ją.
             if (pc.source === 'graph' && pc.showGraph && !this.csp.img && priceModuleOn()) {
@@ -971,7 +1020,7 @@
                 if (r.fallback && r.market) {
                     bits.push(I18n.get('priceCard_foundIn', { host: marketplace(r.market).host.replace(/^www\./, '') }));
                 }
-                bits.push(`${r.ms}ms`);
+                if (pc.showLatency) bits.push(`${r.ms}ms`);
                 if (r.stale) bits.push(I18n.get('priceCard_cached'));
                 this.srcEl.textContent = bits.join(' · ');
                 this.srcEl.style.color = r.fallback ? 'rgba(255,214,130,.85)' : 'rgba(205,220,245,.6)';

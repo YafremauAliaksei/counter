@@ -123,9 +123,20 @@ Stan jest zapisywany i przeżywa przeładowanie strony.
 
 ### Co pojawia się po włączeniu
 
-**Karta ceny** — pływający blok z ceną towaru, który jest właśnie obsługiwany.
-ASIN na karcie jest klikalny i prowadzi na stronę towaru w tym sklepie, z którego
-wzięto cenę. Sama karta jest przezroczysta dla myszy, klika się wyłącznie link.
+**Karta ceny** — cena towaru, który jest właśnie obsługiwany. Domyślnie wygląda
+jak linie okna statystyk: przezroczyste tło, cienkie pismo 16 px, bez ramki
+i bez cienia. Ma być pomocą, a nie oknem cudzej aplikacji.
+
+Karta jest **w całości przezroczysta dla myszy** — kliknięcia dochodzą do
+interfejsu T-REX. Kod produktu można zamienić w link do sklepu (prowadzi na ten
+rynek, z którego wzięto cenę), ale domyślnie jest wyłączony: link to jedyne
+miejsce karty, które łapie mysz i potrafi przykryć cudzy przycisk.
+
+Każdy element karty ma własny wyłącznik — kod produktu, jego klikalność, cena,
+cena katalogowa, wykres i czas zdobycia ceny w milisekundach (domyślnie
+wyłączony). Krój pisma bierze się z tej samej listy, co w oknie statystyk,
+a tło podnosi się suwakiem przezroczystości: przy wartości powyżej zera wracają
+razem z nim ramka i cień.
 
 **Dziennik wartości** — każdy zakończony przedmiot zapisuje się z ceną, walutą,
 działem i kierunkiem (sprzedaż/utylizacja). Dziennik jest wspólny dla wszystkich
@@ -188,7 +199,7 @@ Otwiera się po wpisaniu hasła `GORDONPAULE` na stronie.
 | Skróty klawiszowe   | klawisze `+1` i `−1`                                                                               |
 | Auto-inkrementacja  | odstęp skanowania strony (50–200 ms)                                                               |
 | **Moduł cen**       | **główny wyłącznik sieci**                                                                         |
-| Karta ceny          | sklep, źródło ceny, wygląd, rozmiary, tło — _tylko przy włączonym module_                          |
+| Karta ceny          | sklep, źródło ceny, co pokazać, klikalność kodu, krój, rozmiary, tło — _tylko przy włączonym module_ |
 | Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_  |
 | Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                               |
 

@@ -598,6 +598,42 @@ const SCRIPT_LOGS_ENABLED = false;
             showPrice: true,
             showRrp: true,
             showGraph: true,
+            /**
+             * CO POKAZAĆ W SAMEJ KARCIE — te same klocki, co przy liniach okna
+             * statystyk: wyłącznik na każdy element osobno.
+             *
+             * showAsin       — wiersz z kodem produktu;
+             * asinClickable  — czy ten kod jest linkiem do sklepu;
+             * showLatency    — ile milisekund zajęło zdobycie ceny.
+             */
+            showAsin: true,
+            /**
+             * DOMYŚLNIE WYŁĄCZONY, I TO JEST ŚWIADOMA ZMIANA WYGLĄDU (patrz
+             * CHANGELOG).
+             *
+             * Karta jest przezroczysta dla myszy — `pointer-events:none` — żeby
+             * kliknięcia dochodziły do interfejsu T-REX. Link z kodem produktu był
+             * JEDYNYM wyjątkiem od tej zasady, czyli jedynym miejscem, w którym
+             * karta przykrywała cudzy przycisk. Skoro karta ma nie przeszkadzać,
+             * ten wyjątek włącza się ręcznie.
+             *
+             * Przy `false` kod produktu jest zwykłym tekstem: bez `href`, bez
+             * podkreślenia, bez kursora i bez `pointer-events`. Nie ma czego
+             * kliknąć ani przypadkiem, ani celowo.
+             */
+            asinClickable: false,
+            /**
+             * Czas zdobycia ceny (np. „keepa-ocr · 96ms”). Do 1.0.0 dopisywał się
+             * ZAWSZE. To liczba dla kogoś, kto dobiera źródło ceny, a nie dla
+             * kogoś, kto pracuje — w zwykłej zmianie jest wyłącznie hałasem.
+             */
+            showLatency: false,
+            /**
+             * Krój pisma karty — ta sama lista, co w oknie statystyk
+             * (CONFIG.FONT_FAMILY_OPTIONS). Domyślnie ten sam, co w liniach:
+             * karta ma wyglądać jak reszta interfejsu, a nie jak osobny widżet.
+             */
+            fontFamily: 'default',
             // top puste = karta przyklejona do dołu; po przeciągnięciu trafia
             // tam współrzędna i przyklejenie znika.
             position: { left: '14px', top: '' },
@@ -605,14 +641,31 @@ const SCRIPT_LOGS_ENABLED = false;
             // 280px widać prawą część w naturalnej wielkości, a tam jest legenda
             // z cenami.
             width: 280,
-            fontSize: 30,
+            /**
+             * ROZMIAR CENY (1.0.0: 30 -> 16).
+             *
+             * Trzydzieści pikseli tłustą czcionką na nieprzezroczystym tle robiło
+             * z karty najbardziej krzykliwy element ekranu — a jest to element
+             * pomocniczy. Szesnaście to rozmiar bliski liniom okna statystyk
+             * (14 px), więc karta czyta się jak one, a nie jak baner.
+             */
+            fontSize: 16,
             // Tryb wyświetlania wykresu Keepa:
             //   'legend' — tylko blok z cenami (domyślnie)
             //   'right'  — prawa część wykresu w naturalnej wielkości
             //   'full'   — cały wykres wpisany w szerokość karty
             graphMode: 'legend',
             bgColorHex: '#0a0e18',
-            bgAlpha: 88,
+            /**
+             * TŁO KARTY (1.0.0: 88 -> 0, czyli przezroczyste).
+             *
+             * Nieprzezroczysty prostokąt z ramką i cieniem zasłaniał kawałek
+             * strony i wyglądał jak okno cudzej aplikacji. Przy zerowej
+             * przezroczystości znikają razem z nim ramka i cień (patrz
+             * applyStyle) — zostaje sam tekst, dokładnie jak w liniach 1-7.
+             * Komu potrzebne tło, podnosi ten suwak i wszystko wraca.
+             */
+            bgAlpha: 0,
         },
     };
 
@@ -704,6 +757,10 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_section: 'Price Card', priceCard_enabled: 'Show price card',
             priceCard_showPrice: 'Show current price', priceCard_showRrp: 'Show list price (RRP)',
             priceCard_showGraph: 'Show Keepa chart',
+            priceCard_showAsin: 'Show product code (ASIN)',
+            priceCard_asinClickable: 'Product code is a link to the store',
+            priceCard_asinClickableHint: 'Off by default: a link is the only part of the card that catches the mouse and can cover a T-REX button.',
+            priceCard_showLatency: 'Show price lookup time (ms)',
             priceCard_width: 'Card width: ${value}px', priceCard_fontSize: 'Price size: ${value}px',
             priceCard_bg: 'Card background', priceCard_drag: 'Make Card Draggable',
             priceCard_dragActive: 'Card is Draggable (Click to Pin)', priceCard_resetPosition: 'Reset Card Position',
@@ -790,6 +847,10 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_section: 'Karta ceny', priceCard_enabled: 'Pokaż kartę ceny',
             priceCard_showPrice: 'Pokaż aktualną cenę', priceCard_showRrp: 'Pokaż cenę katalogową (RRP)',
             priceCard_showGraph: 'Pokaż wykres Keepa',
+            priceCard_showAsin: 'Pokaż kod produktu (ASIN)',
+            priceCard_asinClickable: 'Kod produktu jest linkiem do sklepu',
+            priceCard_asinClickableHint: 'Domyślnie wyłączone: link to jedyne miejsce karty, które łapie mysz i potrafi przykryć przycisk T-REX.',
+            priceCard_showLatency: 'Pokaż czas zdobycia ceny (ms)',
             priceCard_width: 'Szerokość karty: ${value}px', priceCard_fontSize: 'Rozmiar ceny: ${value}px',
             priceCard_bg: 'Tło karty', priceCard_drag: 'Uaktywnij przeciąganie karty',
             priceCard_dragActive: 'Karta przeciągalna (kliknij by przypiąć)', priceCard_resetPosition: 'Zresetuj pozycję karty',
@@ -876,6 +937,10 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_section: 'Карточка цены', priceCard_enabled: 'Показывать карточку цены',
             priceCard_showPrice: 'Показывать текущую цену', priceCard_showRrp: 'Показывать RRP',
             priceCard_showGraph: 'Показывать график Keepa',
+            priceCard_showAsin: 'Показывать код товара (ASIN)',
+            priceCard_asinClickable: 'Код товара — ссылка на магазин',
+            priceCard_asinClickableHint: 'По умолчанию выключено: ссылка — единственное место карточки, которое ловит мышь и может перекрыть кнопку T-REX.',
+            priceCard_showLatency: 'Показывать время получения цены (мс)',
             priceCard_width: 'Ширина карточки: ${value}px', priceCard_fontSize: 'Размер цены: ${value}px',
             priceCard_bg: 'Фон карточки', priceCard_drag: 'Включить перетаскивание карточки',
             priceCard_dragActive: 'Карточка перемещается (клик чтобы зафиксировать)', priceCard_resetPosition: 'Сбросить позицию карточки',
@@ -2344,6 +2409,26 @@ const SCRIPT_LOGS_ENABLED = false;
                     I18n.get('priceCard_showRrp'), pc.showRrp,
                     v => store.localTabConfig.priceCard.showRrp = v)));
 
+                // Zawartość karty — wyłącznik na każdy element osobno, tak samo
+                // jak przy liniach okna statystyk.
+                secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                    I18n.get('priceCard_showAsin'), pc.showAsin !== false,
+                    v => { store.localTabConfig.priceCard.showAsin = v; this.rerender(); })));
+                if (pc.showAsin !== false) {
+                    secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                        I18n.get('priceCard_asinClickable'), pc.asinClickable === true,
+                        v => store.localTabConfig.priceCard.asinClickable = v)));
+                    secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_asinClickableHint')));
+                }
+                secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                    I18n.get('priceCard_showLatency'), pc.showLatency === true,
+                    v => store.localTabConfig.priceCard.showLatency = v)));
+
+                secPrice.appendChild(UIBuilder.row(I18n.get('fontFamily'), UIBuilder.select(
+                    Object.keys(CONFIG.FONT_FAMILY_OPTIONS).map(k => ({ value: k, text: I18n.get(`fontFamily_${k}`) })),
+                    pc.fontFamily || 'default',
+                    v => store.localTabConfig.priceCard.fontFamily = v)));
+
                 // Dolna granica jest celowo niska: w trybie przycięcia wąska
                 // karta nadal jest użyteczna — legenda Keepa nigdzie nie znika.
                 secPrice.appendChild(UIBuilder.row('', ...UIBuilder.slider(
@@ -2351,8 +2436,10 @@ const SCRIPT_LOGS_ENABLED = false;
                     v => store.localTabConfig.priceCard.width = v,
                     v => I18n.get('priceCard_width', { value: v }))));
 
+                // Dolna granica zeszła z 14 na 11: karta ma dać się zrównać
+                // z liniami okna statystyk, a te schodzą niżej.
                 secPrice.appendChild(UIBuilder.row('', ...UIBuilder.slider(
-                    14, 48, pc.fontSize,
+                    11, 48, pc.fontSize,
                     v => store.localTabConfig.priceCard.fontSize = v,
                     v => I18n.get('priceCard_fontSize', { value: v }))));
 
@@ -4526,46 +4613,86 @@ const SCRIPT_LOGS_ENABLED = false;
             if (pc.position.top) { this.el.style.top = pc.position.top; this.el.style.bottom = 'auto'; }
             else { this.el.style.top = 'auto'; this.el.style.bottom = '14px'; }
 
+            /**
+             * TŁO, RAMKA I CIEŃ IDĄ RAZEM (1.0.0).
+             *
+             * Przy przezroczystym tle — a takie jest teraz domyślne — ramka
+             * i cień zostawiłyby na ekranie pustą obwódkę wiszącą nad stroną:
+             * najgorsze z obu światów. Dlatego wszystkie trzy zależą od jednej
+             * wartości: jest tło, jest oprawa; nie ma tła, zostaje sam tekst,
+             * dokładnie jak w liniach okna statystyk.
+             */
+            const bgAlpha = Utils.clampNum(pc.bgAlpha, 0, 100, 0);
             const rgb = Utils.hexToRgb(pc.bgColorHex);
-            this.el.style.background = `rgba(${rgb}, ${Utils.clampNum(pc.bgAlpha, 0, 100, 88) / 100})`;
-            this.el.style.border = '1px solid rgba(130,170,255,.40)';
-            this.el.style.boxShadow = '0 6px 26px rgba(0,0,0,.55)';
+            this.el.style.background = bgAlpha > 0 ? `rgba(${rgb}, ${bgAlpha / 100})` : 'transparent';
+            this.el.style.border = bgAlpha > 0 ? '1px solid rgba(130,170,255,.40)' : 'none';
+            this.el.style.boxShadow = bgAlpha > 0 ? '0 6px 26px rgba(0,0,0,.55)' : 'none';
+            this.el.style.padding = bgAlpha > 0 ? '10px 14px' : '0';
+            // Krój z tej samej listy, co okno statystyk: karta ma czytać się jak
+            // reszta interfejsu, a nie jak osobny widżet.
+            this.el.style.fontFamily =
+                CONFIG.FONT_FAMILY_OPTIONS[pc.fontFamily] || CONFIG.FONT_FAMILY_OPTIONS.default;
 
             // WAŻNE: skrót `font:` wymaga podania rodziny, a `inherit` jest w nim
             // niedopuszczalny — przeglądarka po cichu wyrzuca CAŁĄ regułę.
             // Złapane na stanowisku: cena rysowała się 14px/400 zamiast 30px/800.
             // Dlatego właściwości ustawia się osobno.
-            const fs = Utils.clampNum(pc.fontSize, 10, 96, 30);
-            const px = (k) => Math.round(fs * k) + 'px';
+            const fs = Utils.clampNum(pc.fontSize, 10, 96, 16);
+            const px = (k) => Math.max(9, Math.round(fs * k)) + 'px';
+
+            /**
+             * Cień tekstu jest tu obowiązkowy właśnie DLATEGO, że tło bywa
+             * przezroczyste: jasny tekst na jasnym fragmencie cudzej strony
+             * przestaje być czytelny. Jest słaby — ma odciąć literę od tła,
+             * a nie rysować się sam.
+             */
+            const SHADOW = 'text-shadow:0 1px 3px rgba(0,0,0,.6)';
 
             // pointer-events:auto — ten jedyny wyjątek od przezroczystej karty.
             // Przy włączonym przeciąganiu jest zdejmowany: wtedy ciągnie się całą
             // kartę, a kliknięcie w link wyprowadziłoby ze strony w środku gestu.
             const dragging = store.uiFlags.isPriceCardDragging;
+            /**
+             * KLIKALNOŚĆ KODU PRODUKTU (1.0.0: domyślnie WYŁĄCZONA).
+             *
+             * `pointer-events:auto` na linku było jedynym wyjątkiem od
+             * przezroczystej karty, czyli jedynym miejscem, w którym karta mogła
+             * przykryć przycisk T-REX. Skoro jej zadaniem jest nie przeszkadzać,
+             * wyjątek włącza się ręcznie.
+             *
+             * Przy przeciąganiu link jest zdejmowany niezależnie od ustawienia:
+             * wtedy ciągnie się całą kartę, a kliknięcie wyprowadziłoby ze strony
+             * w środku gestu.
+             */
+            const linkOn = pc.asinClickable === true && !dragging;
             this.asinEl.style.cssText = [
-                'font-family:Consolas,Monaco,monospace', 'font-weight:600',
-                'font-size:' + px(0.46), 'line-height:1.3',
-                'color:rgba(190,215,255,.9)', 'letter-spacing:.6px', 'text-transform:uppercase',
-                'display:inline-block',
-                'pointer-events:' + (dragging ? 'none' : 'auto'),
-                'cursor:' + (dragging ? 'inherit' : 'pointer'),
-                'text-decoration:underline', 'text-decoration-style:dotted',
-                'text-underline-offset:2px',
+                'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
+                'color:rgba(190,215,255,.75)', 'letter-spacing:.5px', 'text-transform:uppercase',
+                'display:' + (pc.showAsin === false ? 'none' : 'inline-block'),
+                'pointer-events:' + (linkOn ? 'auto' : 'none'),
+                'cursor:' + (linkOn ? 'pointer' : 'inherit'),
+                'text-decoration:' + (linkOn ? 'underline' : 'none'),
+                'text-decoration-style:dotted', 'text-underline-offset:2px',
+                SHADOW,
             ].join(';');
 
+            // Cena: ta sama grubość, co w liniach okna statystyk. Tłuste 800
+            // przy przezroczystym tle wyglądało jak baner, a nie jak podpowiedź.
             this.priceEl.style.cssText = [
-                'font-weight:800', 'font-size:' + px(1), 'line-height:1.15',
-                'margin:4px 0 2px', 'text-shadow:0 2px 8px rgba(0,0,0,.75)', 'letter-spacing:.3px',
+                'font-weight:400', 'font-size:' + px(1), 'line-height:1.25',
+                'margin:' + (bgAlpha > 0 ? '4px 0 2px' : '1px 0 0'),
+                SHADOW, 'letter-spacing:.2px',
             ].join(';');
 
             this.rrpEl.style.cssText = [
-                'font-weight:600', 'font-size:' + px(0.52), 'line-height:1.35',
-                'color:rgba(255,214,130,.95)',
+                'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
+                'color:rgba(255,214,130,.8)', SHADOW,
             ].join(';');
 
             this.srcEl.style.cssText = [
-                'font-family:Consolas,Monaco,monospace', 'font-size:' + px(0.36),
-                'line-height:1.4', 'color:rgba(205,220,245,.6)', 'margin-top:4px',
+                'font-size:' + px(0.7), 'line-height:1.35',
+                'color:rgba(205,220,245,.5)', 'margin-top:' + (bgAlpha > 0 ? '4px' : '1px'),
+                SHADOW,
             ].join(';');
 
             // Dwa różne tryby wyświetlania wykresu.
@@ -4644,9 +4771,18 @@ const SCRIPT_LOGS_ENABLED = false;
             // wybranego nie wolno: człowiek otworzyłby amazon.de i nie zobaczył
             // tam pokazanej ceny.
             const found = this.cache.get(asin);
-            const url = productUrl(asin, found && found.market);
-            this.asinEl.setAttribute('href', url);
-            this.asinEl.title = url;
+            if (pc.asinClickable === true) {
+                const url = productUrl(asin, found && found.market);
+                this.asinEl.setAttribute('href', url);
+                this.asinEl.title = url;
+            } else {
+                // Przy wyłączonej klikalności kod produktu jest ZWYKŁYM TEKSTEM.
+                // Samo `pointer-events:none` by nie wystarczyło: element z href
+                // zostaje w kolejności tabulacji i otwiera się środkowym
+                // przyciskiem myszy. Bez href nie ma czego otworzyć.
+                this.asinEl.removeAttribute('href');
+                this.asinEl.title = '';
+            }
             // !csp.img jest obowiązkowy także tutaj: applyStyle() ramkę chowa,
             // a render() wywołuje się później i bez tego sprawdzenia przywracałby ją.
             if (pc.source === 'graph' && pc.showGraph && !this.csp.img && priceModuleOn()) {
@@ -4724,7 +4860,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 if (r.fallback && r.market) {
                     bits.push(I18n.get('priceCard_foundIn', { host: marketplace(r.market).host.replace(/^www\./, '') }));
                 }
-                bits.push(`${r.ms}ms`);
+                if (pc.showLatency) bits.push(`${r.ms}ms`);
                 if (r.stale) bits.push(I18n.get('priceCard_cached'));
                 this.srcEl.textContent = bits.join(' · ');
                 this.srcEl.style.color = r.fallback ? 'rgba(255,214,130,.85)' : 'rgba(205,220,245,.6)';
