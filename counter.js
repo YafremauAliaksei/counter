@@ -3086,6 +3086,39 @@ const SCRIPT_LOGS_ENABLED = false;
             return null;
         },
 
+        /**
+         * Czy po scaleniu mamy coś, czego we wspólnym dzienniku nie ma.
+         *
+         * Wcześniej rozstrzygała o tym sama DŁUGOŚĆ: `merged.length >
+         * shared.entries.length`. Gubiło to przypadek, w którym liczba pozycji
+         * się zgadza, a różni się ich TREŚĆ — czyli dokładnie skutek wyścigu
+         * przy odczycie i zapisie wspólnego klucza (localStorage nie daje tu
+         * żadnej atomowości):
+         *
+         *   1. stawiamy kierunek przedmiotu, save() czyta wspólny dziennik;
+         *   2. sąsiednia karta zdążyła w tej szparze zapisać swoją, starszą
+         *      wersję tej samej pozycji;
+         *   3. dostajemy zdarzenie `storage`, scalamy — nasza wersja wygrywa
+         *      po `updated`, ale długość się zgadza, więc dopisanie się nie
+         *      planowało i we wspólnym kluczu zostawała wersja starsza.
+         *
+         * Naprawiało się to samo przy następnym przedmiocie (save() scala),
+         * więc realnie zagrożony był wyłącznie OSTATNI przedmiot zmiany — ten,
+         * po którym nic już nie zapisywało. Cicho i akurat na podsumowaniu.
+         *
+         * Teraz porównanie idzie po id i po `updated`: to ta sama miara, którą
+         * rozstrzyga _merge(), więc obie strony wymiany widzą tak samo.
+         */
+        _aheadOfShared(merged, sharedEntries) {
+            const theirs = new Map();
+            for (const e of sharedEntries) if (e && e.id) theirs.set(e.id, e.updated || 0);
+            return merged.some(e => {
+                if (!e || !e.id) return false;
+                if (!theirs.has(e.id)) return true;
+                return (e.updated || 0) > theirs.get(e.id);
+            });
+        },
+
         /** Scalenie dwóch list po id; przy konflikcie wygrywa świeższy updated. */
         _merge(base, mine) {
             const map = new Map();
@@ -3139,7 +3172,7 @@ const SCRIPT_LOGS_ENABLED = false;
             }
             const before = this.entries.length;
             const merged = this._merge(shared.entries, this.entries);
-            const haveOurOwn = merged.length > shared.entries.length;
+            const haveOurOwn = this._aheadOfShared(merged, shared.entries);
             this.entries = merged;
             if (shared.shiftStart) this.shiftStart = shared.shiftStart;
             bus.emit('valueLog:changed');

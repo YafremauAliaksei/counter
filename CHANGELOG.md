@@ -36,6 +36,14 @@ Dla tego projektu SemVer czyta się tak:
   na stanie w pamięci, a notatka „już zapisane” stawia się dopiero po udanym
   zapisie, więc po zwolnieniu kwoty ta sama wartość da się zapisać.
 
+- **Wspólny dziennik: dopisanie po wyścigu dwóch kart.** O tym, czy scalony
+  dziennik wraca do wspólnego klucza, decydowała długość listy. Gdy sąsiednia
+  karta nadpisała naszą pozycję swoją, starszą wersją (długość bez zmian),
+  dopisanie się nie planowało i w magazynie zostawała wersja starsza. Naprawiało
+  się to przy następnym przedmiocie, więc realnie ginął kierunek OSTATNIEGO
+  przedmiotu zmiany — akurat na podsumowaniu. Teraz porównanie idzie po `id`
+  i `updated`, czyli tą samą miarą, którą rozstrzyga scalanie.
+
 ---
 
 ## 1.0.0 — 2026-09-16
