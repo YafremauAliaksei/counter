@@ -29,15 +29,22 @@
             Utils.log(`[RESET] Kasowanie danych o przedmiotach. Powód: ${reason}`);
             this.lastReset = { kind, reason };
 
-            const prefix = StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
+            // Licznik sprzedanych żyje dokładnie tyle samo, co zwykły licznik:
+            // procent sprzedaży opisuje JEDNĄ zmianę, więc zostawienie go przez
+            // granicę zmiany dałoby liczbę z cudzego dnia.
+            const prefixes = [
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
+            ];
             Object.keys(localStorage)
-                .filter(k => k.startsWith(prefix))
+                .filter(k => prefixes.some(p => k.startsWith(p)))
                 .forEach(k => {
                     delete StorageManager._lastWritten[k];
                     localStorage.removeItem(k);
                 });
 
             Object.keys(store.tabCounters).forEach(k => { store.tabCounters[k] = 0; });
+            Object.keys(store.tabSold).forEach(k => { store.tabSold[k] = 0; });
 
             // 8.4.0: dziennik wartości żyje dokładnie tyle samo, co liczniki —
             // to ta sama ewidencja, tylko w pieniądzach. Podsumowania odchodzącej

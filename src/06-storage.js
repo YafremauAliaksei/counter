@@ -76,6 +76,10 @@
         saveCounter(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey), String(count));
         },
+        /** Licznik sprzedanych — mianownikiem procentu jest zwykły licznik obok. */
+        saveSold(tabKey, count) {
+            this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD + tabKey), String(count));
+        },
         removeCounter(tabKey) {
             const key = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey);
             delete this._lastWritten[key];
@@ -137,11 +141,15 @@
                 }
 
                 const prefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
+                const soldPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD);
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
                         const tabKey = key.substring(prefix.length);
                         store.tabCounters[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                    } else if (key && key.startsWith(soldPrefix)) {
+                        const tabKey = key.substring(soldPrefix.length);
+                        store.tabSold[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
                     }
                 }
             } catch (e) { Utils.error("Storage load failed", e); }
@@ -170,6 +178,12 @@
                     // reset liczników przez sąsiednią kartę przy zmianie zmiany.
                     const val = parseInt(e.newValue, 10) || 0;
                     if (store.tabCounters[tabKey] !== val) store.tabCounters[tabKey] = val;
+                } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_SOLD)) {
+                    // Licznik sprzedanych sąsiedniej karty — potrzebny liniom 2 i 7,
+                    // które liczą procent po WSZYSTKICH kartach naraz.
+                    const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
+                    const val = parseInt(e.newValue, 10) || 0;
+                    if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
                 } else if (!store.uiFlags.isSettingsPanelVisible) {
                     this.debouncedLoad();
                 }

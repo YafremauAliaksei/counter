@@ -86,6 +86,16 @@
         STORAGE_KEY_SESSION_CONFIG: 'sessionConfig',
         STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS: 'allLocalTabConfigs',
         STORAGE_PREFIX_TAB_COUNTER: 'counter_',
+        /**
+         * Licznik przedmiotów, które pojechały NA SPRZEDAŻ — osobny klucz na każdą
+         * kartę, dokładnie jak licznik ogólny obok.
+         *
+         * Dlaczego osobno, a nie z dziennika wartości: dziennik napełnia się
+         * wyłącznie przy włączonym module cen, a procent sprzedaży ma działać
+         * w trybie domyślnym, czyli bez ani jednego zapytania do sieci. Kierunek
+         * ustala się z samego tekstu strony (patrz Routing) i sieci nie wymaga.
+         */
+        STORAGE_PREFIX_TAB_SOLD: 'sold_',
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 

@@ -72,6 +72,32 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **Procent sprzedaży na końcu linii 1, 2 i 7.** Liczba od 0 do 100 ze znakiem
+  procentu: ile ze zrobionych przedmiotów pojechało na sprzedaż. Mianownikiem
+  jest licznik przedmiotów, więc przedmiot o nieustalonym kierunku obniża procent
+  zamiast wypadać z rachunku, a same niesprzedaże na początku zmiany dają uczciwe
+  `0%`. Część ułamkowa jest odrzucana, a nie zaokrąglana — 1 z 17 to `5%`, nie
+  `6%`. Linia 1 liczy bieżącą kartę, linie 2 i 7 wszystkie wliczane do sumy.
+  Kierunek bierze się z tekstu strony, więc procent działa przy **wyłączonym**
+  module cen i nie kosztuje ani jednego zapytania. Żyje jedną zmianę i zeruje się
+  razem z licznikami.
+
+### Zmieniono
+
+- **Format linii 7: z dwóch członów na trzy** — `17.4 28` stało się
+  `17.4 28 14%`. Reszta formatu nienaruszona: bez jednostek, nawiasów
+  i przecinków.
+- `Routing.onCompleted()` wywołuje się teraz zawsze, a nie tylko wtedy, gdy
+  dziennik wartości wydał id wpisu. Dopóki jedynym odbiorcą kierunku był
+  dziennik, warunek był poprawny; procent sprzedaży jest drugim odbiorcą i przy
+  ustawieniach domyślnych jedynym.
+
+---
+
 ## 1.0.0 — 2026-09-16
 
 Pierwsze oficjalne wydanie. Kod ten sam, co w poprzedniej numeracji 9.2.0;
