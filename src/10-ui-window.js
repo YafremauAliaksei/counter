@@ -29,7 +29,12 @@
             // 8.3.0: uiFlags tu nie wchodzą — okno statystyk od nich nie zależy,
             // a ruszane są przy każdym przedmiocie. Raz na sekundę linia i tak
             // przerysowuje się z timera poniżej.
-            onStorePaths(['tabCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
+            // tabSold obok tabCounters, bo zmienia się NIEZALEŻNIE od niego:
+            // przedmiot zalicza się w jednym skanie, a kod sortowania potrafi
+            // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
+            // timera, czyli do sekundy — widać by to było jako liczbę, która
+            // „nie nadąża” za ekranem.
+            onStorePaths(['tabCounters', 'tabSold', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());

@@ -183,6 +183,23 @@ test('dział wyłączony z sumy globalnej nie wchodzi też do procentu', () => {
     S.userConfig.globalStatsContributionKnown.WHD = true;
 });
 
+test('zmiana licznika sprzedanych przerysowuje okno od razu', () => {
+    // Kod sortowania potrafi przyjść w INNYM skanie niż zaliczenie przedmiotu,
+    // więc tabSold zmienia się niezależnie od tabCounters. Bez własnej ścieżki
+    // w onStorePaths procent czekałby na takt timera, czyli do sekundy — widać
+    // by to było jako liczbę, która nie nadąża za ekranem.
+    const S = SH.store;
+    S.tabCounters.CRET = 10; S.tabSold.CRET = 1;
+    S.tabCounters.WHD = 0;   S.tabSold.WHD = 0;
+    SH.StatsWindowRenderer.renderContent();
+    eq(SH.StatsWindowRenderer.lines.line7_compact.textContent.split(' ')[2], '10%');
+
+    // Sam zapis do stanu, BEZ jawnego renderContent().
+    S.tabSold.CRET = 3;
+    eq(SH.StatsWindowRenderer.lines.line7_compact.textContent.split(' ')[2], '30%',
+       'okno ma się przerysować samo');
+});
+
 test('reset zmiany zeruje procent razem z licznikami', () => {
     const S = SH.store;
     SH.SessionReset.resetItemData('test', 'manual');
