@@ -86,6 +86,66 @@ test('przeciąganie zdejmuje link nawet przy włączonej klikalności', () => {
     pc().asinClickable = false;
 });
 
+describe('Przezroczystość dla myszy — niezmiennik po CAŁYM poddrzewie karty');
+
+/**
+ * Które węzły karty łapią mysz.
+ *
+ * Poprzednie testy sprawdzają POJEDYNCZE elementy i tym samym pilnują tylko
+ * tego, co już istnieje. Ten obchodzi całe poddrzewo, więc łapie element,
+ * którego jeszcze nie ma: ktoś dołoży karcie nowy wiersz z własnym stylem
+ * i `pointer-events:auto` wjedzie niezauważony, a pod kartą leży interfejs
+ * T-REX, w który człowiek musi trafiać.
+ *
+ * Wartość czyta się z dwóch miejsc, bo w obu postaciach jest ustawiana:
+ * `style.pointerEvents` (karta, przez generator h()) i `style.cssText`
+ * (elementy wnętrza, składane łańcuchem w applyStyle).
+ */
+function lapiaceMysz(root) {
+    const out = [];
+    (function walk(n) {
+        const wprost = n.style && n.style.pointerEvents;
+        const zTekstu = (/pointer-events:\s*([a-z]+)/.exec((n.style && n.style.cssText) || '') || [])[1];
+        if ((wprost || zTekstu) === 'auto') out.push(n);
+        (n.children || []).forEach(walk);
+    })(root);
+    return out;
+}
+
+test('domyślnie ani jeden węzeł karty nie łapie myszy', () => {
+    pc().asinClickable = false;
+    SH.store.uiFlags.isPriceCardDragging = false;
+    zCena();
+    eq(lapiaceMysz(P.el).length, 0,
+       'każde kliknięcie ma dochodzić do interfejsu T-REX pod kartą');
+});
+
+test('po włączeniu klikalności łapie DOKŁADNIE jeden węzeł — link', () => {
+    pc().asinClickable = true;
+    zCena();
+    const lapia = lapiaceMysz(P.el);
+    eq(lapia.length, 1, 'wyjątek ma być jeden, jest ich: ' + lapia.length);
+    ok(lapia[0] === P.asinEl, 'i ma to być kod produktu, a nie cokolwiek innego');
+    pc().asinClickable = false;
+});
+
+test('w trakcie przeciągania łapie tylko sama karta, nie jej wnętrze', () => {
+    // Przeciąganie to jedyny stan, w którym karta ma prawo przejąć mysz:
+    // wtedy ciągnie się ją całą. Link jest wtedy zdjęty niezależnie od
+    // ustawienia — kliknięcie w środku gestu wyprowadziłoby ze strony.
+    pc().asinClickable = true;
+    SH.store.uiFlags.isPriceCardDragging = true;
+    zCena();
+    const lapia = lapiaceMysz(P.el);
+    eq(lapia.length, 1, 'w trakcie gestu łapie dokładnie jeden węzeł');
+    ok(lapia[0] === P.el, 'i jest to sama karta, a nie jej wnętrze');
+
+    SH.store.uiFlags.isPriceCardDragging = false;
+    pc().asinClickable = false;
+    zCena();
+    eq(lapiaceMysz(P.el).length, 0, 'po gescie karta wraca do przezroczystości');
+});
+
 describe('Wyłączniki zawartości');
 
 test('wyłączony kod produktu znika z karty', () => {
