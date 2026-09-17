@@ -97,6 +97,51 @@ test('każde wejście do sieci jest osłonięte sprawdzeniem modułu', () => {
        `sprawdzeń priceModuleOn (${guards}) musi być co najmniej tyle, ile wejść do sieci (${netLines.length})`);
 });
 
+describe('Przezroczystość dla myszy');
+
+/**
+ * ILE MIEJSC W PLIKU PRZEJMUJE MYSZ.
+ *
+ * Skrypt leży NA interfejsie T-REX i człowiek musi w ten interfejs trafiać.
+ * Każde `pointer-events:auto` to jedno miejsce, w którym nasz element zabiera
+ * kliknięcie cudzemu przyciskowi — więc nie może ich przybywać przez przypadek.
+ *
+ * Na dziś są dokładnie cztery i każde ma powód:
+ *
+ *   1. `colorRow` w panelu ustawień — panel jest po to, żeby go klikać;
+ *   2. karta ceny W TRAKCIE PRZECIĄGANIA — wtedy ciągnie się ją całą;
+ *   3. okno statystyk w trakcie przeciągania — z tego samego powodu;
+ *   4. kod produktu na karcie, i tylko przy ręcznie włączonej klikalności
+ *      (domyślnie wyłączonej — patrz CONFIG.priceCard.asinClickable).
+ *
+ * Piąte miejsce nie jest zakazane, ale ma być ŚWIADOME: test pada, autor
+ * dopisuje powód tutaj i podnosi liczbę. O to dokładnie chodzi.
+ *
+ * Komentarze są pomijane, bo o `pointer-events:auto` sporo w nich napisano,
+ * a proza niczego nie przejmuje.
+ */
+test('pointer-events:auto tylko w czterech znanych miejscach', () => {
+    const miejsca = [];
+    LINES.forEach((l, i) => {
+        if (IS_COMMENT[i]) return;
+        if (/pointer-?[eE]vents[^;\n]{0,60}['"]auto['"]/.test(l)) miejsca.push(i + 1);
+    });
+    eq(miejsca.length, 4,
+       'miejsc przejmujących mysz ma być cztery, jest ' + miejsca.length
+       + ' (linie: ' + miejsca.join(', ') + '). Jeśli piąte jest potrzebne — '
+       + 'dopisz powód w komentarzu nad tym testem i podnieś liczbę.');
+});
+
+test('karta ceny jest domyślnie przezroczysta dla myszy', () => {
+    // Sam fakt, że w pliku stoi `pointerEvents: 'none'` na karcie. Zachowania
+    // pilnuje obchód całego poddrzewa w 16-price-card-look, ale tamten test
+    // sprawdza atrapę, a ten — plik, który dostaje człowiek.
+    ok(/id:\s*'priceCard'[\s\S]{0,400}pointerEvents:\s*'none'/.test(ARTIFACT),
+       'karta ceny musi startować z pointer-events:none');
+    ok(/asinClickable:\s*false/.test(ARTIFACT),
+       'klikalność kodu produktu musi być domyślnie wyłączona');
+});
+
 describe('Wymogi językowe');
 
 test('w komentarzach nie ma cyrylicy', () => {
