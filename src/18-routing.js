@@ -100,7 +100,7 @@
                         + '(kod sortowania tak i się nie pojawił)');
             }
             this.state = { completed: false, entryId: null, code: null,
-                           direction: null, pending: false };
+                           direction: null, pending: false, counted: false };
             if (reason) Utils.log(`[KIERUNEK] nowy przedmiot (${reason})`);
         },
 
@@ -183,8 +183,11 @@
 
         /**
          * Przedmiot zaliczony przez licznik: od tego momentu wolno zastosować sumę.
-         * @param {string} entryId — id wpisu dziennika (nie indeks: dziennik jest
-         *   wspólny na wszystkie karty i po scaleniu kolejność się zmienia).
+         * @param {string|null} entryId — id wpisu dziennika (nie indeks: dziennik
+         *   jest wspólny na wszystkie karty i po scaleniu kolejność się zmienia).
+         *   Przy wyłączonym module cen wpisu nie ma i przychodzi tu `null` —
+         *   kierunek i tak trzeba zaliczyć, bo procent sprzedaży dziennika nie
+         *   potrzebuje.
          */
         onCompleted(entryId) {
             if (!this.state) this.startItem('zakończenie bez początku');
@@ -194,10 +197,45 @@
         },
 
         /**
+         * PROCENT SPRZEDAŻY — zliczenie przedmiotu, który pojechał na sprzedaż.
+         *
+         * Liczy się DOKŁADNIE RAZ na przedmiot i dokładnie wtedy, gdy znane są oba
+         * warunki: przedmiot zaliczony przez licznik i kierunek ustalony. Oba
+         * przychodzą niezależnie i w dowolnej kolejności, a `applyTo` woła się po
+         * każdym z nich — bez znacznika `counted` ten sam przedmiot policzyłby
+         * się dwa razy.
+         *
+         * Liczony jest WYŁĄCZNIE mianownik dodatni: mianownikiem procentu jest
+         * zwykły licznik przedmiotów, więc niesprzedaż i kierunek nieustalony nie
+         * wymagają własnego klucza — wchodzą do sumy przez sam licznik. Dzięki
+         * temu „trzy pierwsze przedmioty na niesprzedaż” daje 0%, a nie brak
+         * liczby, o co właśnie chodzi na początku zmiany.
+         *
+         * Ręczna poprawka licznika (skróty klawiszowe, przyciski) tu nie wchodzi
+         * — tak samo, jak nie wchodzi do dziennika wartości. Poprawia się zwykle
+         * to, czego program nie zobaczył, a kierunku takiego przedmiotu nikt nie
+         * zna.
+         */
+        countSold(st) {
+            if (!st || st.counted || !st.completed || !st.direction) return;
+            st.counted = true;
+            if (st.direction !== 'sell') return;
+            const cid = store.currentTabInstanceId;
+            const next = (store.tabSold[cid] || 0) + 1;
+            store.tabSold[cid] = next;
+            StorageManager.saveSold(cid, next);
+        },
+
+        /**
          * Zapisuje znak, gdy znane są OBA warunki: przedmiot zaliczony i kierunek
          * ustalony. Kolejność ich wystąpienia nie ma znaczenia.
+         *
+         * Procent sprzedaży liczy się PRZED sprawdzeniem wpisu dziennika i to
+         * jest sedno: przy wyłączonym module cen wpisu nie ma wcale, a procent
+         * ma działać i wtedy.
          */
         applyTo(st) {
+            this.countSold(st);
             if (!st || !st.completed || !st.entryId || !st.direction) return;
             ValueLog.setDirection(st.entryId, st.direction, st.code);
         },

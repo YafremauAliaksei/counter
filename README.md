@@ -78,28 +78,49 @@ samo, jak nie zalicza go sam system.
 W oknie jest siedem niezależnych linii. Każda włącza się osobno, każda ma własny
 kolor, przezroczystość i rozmiar czcionki.
 
-| Linia | Co pokazuje                                                         | Domyślnie |
-| ----- | ------------------------------------------------------------------- | --------- |
-| **1** | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m)`       | wył.      |
-| **2** | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11)`   | wył.      |
-| **3** | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)`                  | wył.      |
-| **4** | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                       | wył.      |
-| **5** | zegar: `[ 14:32:07 ]`                                               | wył.      |
-| **6** | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1` | wył.      |
-| **7** | **kompaktowy licznik: `17.4 28`**                                   | **wł.**   |
+| Linia | Co pokazuje                                                           | Domyślnie |
+| ----- | --------------------------------------------------------------------- | --------- |
+| **1** | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m) 14%`     | wył.      |
+| **2** | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11) 14%` | wył.      |
+| **3** | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)`                    | wył.      |
+| **4** | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                         | wył.      |
+| **5** | zegar: `[ 14:32:07 ]`                                                 | wył.      |
+| **6** | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`   | wył.      |
+| **7** | **kompaktowy licznik: `17.4 28 14%`**                                 | **wł.**   |
 
 ### Linia 7 dokładniej
 
-Dwie liczby oddzielone jedną spacją, bez jednostek, bez nawiasów, bez nazw działów:
+Trzy człony oddzielone spacjami, bez jednostek, bez nawiasów, bez nazw działów:
 
-- **pierwsza** — przedmiotów na godzinę, suma ze wszystkich liczonych kart;
-- **druga** — ile łącznie zrobiono, też ze wszystkich kart.
+- **pierwszy** — przedmiotów na godzinę, suma ze wszystkich liczonych kart;
+- **drugi** — ile łącznie zrobiono, też ze wszystkich kart;
+- **trzeci** — procent sprzedaży.
 
-To dokładnie te same liczby, które linia 2 pokazuje po `=` i w ostatnim nawiasie.
-Odświeżanie raz na sekundę.
+To dokładnie te same liczby, które linia 2 pokazuje po `=`, w ostatnim nawiasie
+i na swoim końcu. Odświeżanie raz na sekundę.
 
 Linia liczona jest w tym samym przebiegu co linia 2 — celowo. Dwa niezależne
 liczenia tego samego prędzej czy później się rozjadą.
+
+### Procent sprzedaży
+
+Stoi na końcu linii 1, 2 i 7, zawsze jako liczba od 0 do 100 ze znakiem procentu.
+Mówi, ile ze zrobionych przedmiotów pojechało na sprzedaż.
+
+- **mianownikiem jest licznik przedmiotów**, a nie suma sprzedanych
+  i niesprzedanych. Przedmiot, dla którego kod sortowania nie przyszedł, obniża
+  więc procent, zamiast po cichu wypaść z rachunku;
+- **część ułamkowa jest odrzucana, a nie zaokrąglana**: 1 z 17 to `5%`
+  (5,88…%), a nie `6%`. Procent ma nie obiecywać więcej, niż zrobiono;
+- trzy niesprzedaże na początku zmiany dają `0%` — i tak ma być;
+- linia 1 liczy **bieżącą kartę**, linie 2 i 7 — wszystkie karty wliczane
+  do sumy globalnej;
+- **działa przy wyłączonym module cen**: kierunek ustala się z tekstu strony,
+  tak samo jak kod sortowania w linii 6, i nie wymaga ani jednego zapytania;
+- ręczna poprawka licznika (skróty klawiszowe, przyciski) zmienia tylko
+  mianownik — poprawia się zwykle to, czego program nie zobaczył, a kierunku
+  takiego przedmiotu nikt nie zna;
+- żyje jedną zmianę i zeruje się razem z licznikami.
 
 ### Linia 6 dokładniej
 

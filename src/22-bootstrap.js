@@ -184,7 +184,14 @@
                     const entryId = ValueLog.add(asin, price, store.currentTabInstanceId);
                     // Znak stawia Routing: albo od razu (kod już znany), albo
                     // później, gdy kod pojawi się na ekranie.
-                    if (entryId) Routing.onCompleted(entryId);
+                    //
+                    // Wołamy ZAWSZE, także gdy wpisu dziennika nie ma (entryId
+                    // null przy wyłączonym module cen). Do 1.0.0 stał tu warunek
+                    // `if (entryId)` i był poprawny, dopóki jedynym odbiorcą
+                    // kierunku był dziennik. Od czasu procentu sprzedaży kierunek
+                    // ma drugiego odbiorcę, który sieci nie potrzebuje — a przy
+                    // ustawieniach domyślnych to jest JEDYNY odbiorca.
+                    Routing.onCompleted(entryId);
                 });
 
                 /**

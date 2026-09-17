@@ -29,7 +29,12 @@
             // 8.3.0: uiFlags tu nie wchodzą — okno statystyk od nich nie zależy,
             // a ruszane są przy każdym przedmiocie. Raz na sekundę linia i tak
             // przerysowuje się z timera poniżej.
-            onStorePaths(['tabCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
+            // tabSold obok tabCounters, bo zmienia się NIEZALEŻNIE od niego:
+            // przedmiot zalicza się w jednym skanie, a kod sortowania potrafi
+            // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
+            // timera, czyli do sekundy — widać by to było jako liczbę, która
+            // „nie nadąża” za ekranem.
+            onStorePaths(['tabCounters', 'tabSold', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());
@@ -154,12 +159,26 @@
             // Teraz funkcja zwraca zawsze samą liczbę.
             const getIph = (c) => hWorked > 0.0027 ? (c / hWorked).toFixed(1) : '0.0';
 
+            /**
+             * PROCENT SPRZEDAŻY (koniec każdej z linii 1, 2 i 7).
+             *
+             * Liczba od 0 do 100 ze znakiem procentu, zawsze na samym końcu linii.
+             * Mianownikiem jest licznik przedmiotów, a nie suma sprzedanych
+             * i niesprzedanych — dzięki temu przedmiot o nieustalonym kierunku
+             * obniża procent zamiast znikać z rachunku, a trzy niesprzedaże na
+             * początku zmiany dają uczciwe 0%, a nie puste miejsce.
+             *
+             * Tekstu nie ma w słownikach celowo: to liczba i znak, identyczne we
+             * wszystkich trzech językach.
+             */
+            const cSold = store.tabSold[cid] || 0;
+
             // Linia 1: bieżąca zakładka
             this.lines.line1_currentTab.textContent = I18n.get('statsLine1_current', {
                 tabName: I18n.getTabName(cid), itemsPerHour: getIph(cCount), statsPerHourUnit: I18n.get('statsPerHourUnit'),
                 count: cCount, completedUnit: I18n.get('completedUnit'), inUnit: I18n.get('inUnit'),
                 workTimeFormatted: Utils.formatDuration(workedMs)
-            });
+            }) + ` ${Utils.percentFloor(cSold, cCount)}%`;
 
             /**
              * Linia 2: podsumowanie globalne.
@@ -176,6 +195,7 @@
             // ale wciąż wisząca w DOM i myląca przy diagnostyce.
             this.lines.line2_globalSummary.innerHTML = '';
             let gTotal = 0;
+            let gSold = 0;
             const allKeys =[...Object.keys(CONFIG.KNOWN_TAB_TYPES), ...Object.keys(store.userConfig.customTabSettings)];
             const fragments =[];
             const line2Cfg = store.localTabConfig.linesConfig.line2_globalSummary;
@@ -188,6 +208,7 @@
 
                 if (included && active) {
                     gTotal += count;
+                    gSold += store.tabSold[k] || 0;
                     if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),
@@ -219,7 +240,7 @@
                 this.lines.line2_globalSummary.appendChild(document.createTextNode(
                     I18n.get('statsLine2_global_total_format', {
                         totalItemsPerHour: getIph(gTotal), statsPerHourUnit: I18n.get('statsPerHourUnit'), totalCount: gTotal
-                    })
+                    }) + ` ${Utils.percentFloor(gSold, gTotal)}%`
                 ));
             }
 
@@ -306,6 +327,7 @@
              * składania HTML — kolor i rozmiar ustawia CSS ze zmiennych
              * --sh-line7_compact-*.
              */
-            this.lines.line7_compact.textContent = `${getIph(gTotal)} ${gTotal}`;
+            this.lines.line7_compact.textContent =
+                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gTotal)}%`;
         }
     };

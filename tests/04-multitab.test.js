@@ -58,13 +58,13 @@ test('linia 7 sumuje OBIE karty, a nie tylko swoją', () => {
     whd.SH.StorageManager.saveCounter('WHD', 8);
     whd.SH.StatsWindowRenderer.renderContent();
     // 12 + 8 = 20 sztuk przez 2 h = 10.0/h
-    eq(whd.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20');
+    eq(whd.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20 0%');
 });
 
 test('ta sama suma widoczna na pierwszej karcie', () => {
     cret.window._emit('storage', { key: key('WHD'), newValue: '8' });
     cret.SH.StatsWindowRenderer.renderContent();
-    eq(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20');
+    eq(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20 0%');
 });
 
 test('nowa karta otwarta w trakcie zmiany od razu widzi cudze liczniki', () => {
@@ -74,17 +74,17 @@ test('nowa karta otwarta w trakcie zmiany od razu widzi cudze liczniki', () => {
 
     setShift(late, 2, { CRET: Date.now(), WHD: Date.now(), REFURB: Date.now() });
     late.SH.StatsWindowRenderer.renderContent();
-    eq(late.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20');
+    eq(late.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20 0%');
     eq(late.net.fetches, [], 'nowa karta też nie wchodzi do sieci');
 });
 
 test('wyłączenie działu z sumy działa lokalnie, nie zmienia sąsiada', () => {
     whd.SH.store.userConfig.globalStatsContributionKnown.CRET = false;
     whd.SH.StatsWindowRenderer.renderContent();
-    eq(whd.SH.StatsWindowRenderer.lines.line7_compact.textContent, '4.0 8');
+    eq(whd.SH.StatsWindowRenderer.lines.line7_compact.textContent, '4.0 8 0%');
 
     cret.SH.StatsWindowRenderer.renderContent();
-    eq(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20',
+    eq(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20 0%',
        'ustawienie jednej karty nie może zmienić drugiej w tej samej chwili');
 
     whd.SH.store.userConfig.globalStatsContributionKnown.CRET = true;
@@ -94,7 +94,7 @@ test('reset liczników przez jedną kartę dociera do drugiej', () => {
     cret.window._emit('storage', { key: key('WHD'), newValue: null });
     eq(cret.SH.store.tabCounters.WHD, 0);
     cret.SH.StatsWindowRenderer.renderContent();
-    eq(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent, '6.0 12');
+    eq(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent, '6.0 12 0%');
 });
 
 test('karty nie depczą sobie po kluczach magazynu', () => {

@@ -192,6 +192,16 @@ const SCRIPT_LOGS_ENABLED = false;
         STORAGE_KEY_SESSION_CONFIG: 'sessionConfig',
         STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS: 'allLocalTabConfigs',
         STORAGE_PREFIX_TAB_COUNTER: 'counter_',
+        /**
+         * Licznik przedmiotów, które pojechały NA SPRZEDAŻ — osobny klucz na każdą
+         * kartę, dokładnie jak licznik ogólny obok.
+         *
+         * Dlaczego osobno, a nie z dziennika wartości: dziennik napełnia się
+         * wyłącznie przy włączonym module cen, a procent sprzedaży ma działać
+         * w trybie domyślnym, czyli bez ani jednego zapytania do sieci. Kierunek
+         * ustala się z samego tekstu strony (patrz Routing) i sieci nie wymaga.
+         */
+        STORAGE_PREFIX_TAB_SOLD: 'sold_',
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 
@@ -1075,6 +1085,27 @@ const SCRIPT_LOGS_ENABLED = false;
          * rozjechałyby regułę. Dlatego każda liczba idąca do stylu przechodzi
          * tędy.
          */
+        /**
+         * Udział całkowity w procentach, z ODRZUCENIEM części ułamkowej.
+         *
+         * Odrzucenie, a nie zaokrąglenie, i to jest decyzja, a nie skrót: procent
+         * sprzedaży ma nie obiecywać więcej, niż zrobiono. Jeden przedmiot z 17 to
+         * 5,88%, a na ekranie ma stać 5% — zaokrąglone 6% wyglądałoby jak wynik
+         * lepszy od prawdziwego.
+         *
+         * MNOŻENIE IDZIE PRZED DZIELENIEM i to nie jest kosmetyka. `(29/100)*100`
+         * daje w arytmetyce zmiennoprzecinkowej 28.999999999999996, więc odrzucenie
+         * części ułamkowej dałoby 28% zamiast 29%. `29*100/100` jest dokładne.
+         *
+         * Zakres jest zamknięty w 0-100 nawet wtedy, gdy dane są niespójne:
+         * licznik da się poprawić ręcznie w dół, a licznik sprzedanych nie —
+         * bez tego ograniczenia dałoby się zobaczyć 150%.
+         */
+        percentFloor(part, whole) {
+            const p = Number(part), w = Number(whole);
+            if (!isFinite(p) || !isFinite(w) || w <= 0 || p <= 0) return 0;
+            return Math.max(0, Math.min(100, Math.floor(p * 100 / w)));
+        },
         clampNum(value, min, max, fallback) {
             const n = Number(value);
             if (!isFinite(n)) return fallback;
@@ -1215,6 +1246,9 @@ const SCRIPT_LOGS_ENABLED = false;
         currentTabType: CONFIG.UNKNOWN_TAB_TYPE_KEY,
         currentTabInstanceId: null,
         tabCounters: {},
+        // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
+        // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
+        tabSold: {},
         userConfig: {
             language: CONFIG.DEFAULT_LANGUAGE,
             // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
@@ -1364,6 +1398,10 @@ const SCRIPT_LOGS_ENABLED = false;
         saveCounter(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey), String(count));
         },
+        /** Licznik sprzedanych — mianownikiem procentu jest zwykły licznik obok. */
+        saveSold(tabKey, count) {
+            this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD + tabKey), String(count));
+        },
         removeCounter(tabKey) {
             const key = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey);
             delete this._lastWritten[key];
@@ -1425,11 +1463,15 @@ const SCRIPT_LOGS_ENABLED = false;
                 }
 
                 const prefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
+                const soldPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD);
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
                         const tabKey = key.substring(prefix.length);
                         store.tabCounters[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                    } else if (key && key.startsWith(soldPrefix)) {
+                        const tabKey = key.substring(soldPrefix.length);
+                        store.tabSold[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
                     }
                 }
             } catch (e) { Utils.error("Storage load failed", e); }
@@ -1458,6 +1500,12 @@ const SCRIPT_LOGS_ENABLED = false;
                     // reset liczników przez sąsiednią kartę przy zmianie zmiany.
                     const val = parseInt(e.newValue, 10) || 0;
                     if (store.tabCounters[tabKey] !== val) store.tabCounters[tabKey] = val;
+                } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_SOLD)) {
+                    // Licznik sprzedanych sąsiedniej karty — potrzebny liniom 2 i 7,
+                    // które liczą procent po WSZYSTKICH kartach naraz.
+                    const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
+                    const val = parseInt(e.newValue, 10) || 0;
+                    if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
                 } else if (!store.uiFlags.isSettingsPanelVisible) {
                     this.debouncedLoad();
                 }
@@ -1499,15 +1547,22 @@ const SCRIPT_LOGS_ENABLED = false;
             Utils.log(`[RESET] Kasowanie danych o przedmiotach. Powód: ${reason}`);
             this.lastReset = { kind, reason };
 
-            const prefix = StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
+            // Licznik sprzedanych żyje dokładnie tyle samo, co zwykły licznik:
+            // procent sprzedaży opisuje JEDNĄ zmianę, więc zostawienie go przez
+            // granicę zmiany dałoby liczbę z cudzego dnia.
+            const prefixes = [
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
+            ];
             Object.keys(localStorage)
-                .filter(k => k.startsWith(prefix))
+                .filter(k => prefixes.some(p => k.startsWith(p)))
                 .forEach(k => {
                     delete StorageManager._lastWritten[k];
                     localStorage.removeItem(k);
                 });
 
             Object.keys(store.tabCounters).forEach(k => { store.tabCounters[k] = 0; });
+            Object.keys(store.tabSold).forEach(k => { store.tabSold[k] = 0; });
 
             // 8.4.0: dziennik wartości żyje dokładnie tyle samo, co liczniki —
             // to ta sama ewidencja, tylko w pieniądzach. Podsumowania odchodzącej
@@ -1838,7 +1893,12 @@ const SCRIPT_LOGS_ENABLED = false;
             // 8.3.0: uiFlags tu nie wchodzą — okno statystyk od nich nie zależy,
             // a ruszane są przy każdym przedmiocie. Raz na sekundę linia i tak
             // przerysowuje się z timera poniżej.
-            onStorePaths(['tabCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
+            // tabSold obok tabCounters, bo zmienia się NIEZALEŻNIE od niego:
+            // przedmiot zalicza się w jednym skanie, a kod sortowania potrafi
+            // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
+            // timera, czyli do sekundy — widać by to było jako liczbę, która
+            // „nie nadąża” za ekranem.
+            onStorePaths(['tabCounters', 'tabSold', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());
@@ -1963,12 +2023,26 @@ const SCRIPT_LOGS_ENABLED = false;
             // Teraz funkcja zwraca zawsze samą liczbę.
             const getIph = (c) => hWorked > 0.0027 ? (c / hWorked).toFixed(1) : '0.0';
 
+            /**
+             * PROCENT SPRZEDAŻY (koniec każdej z linii 1, 2 i 7).
+             *
+             * Liczba od 0 do 100 ze znakiem procentu, zawsze na samym końcu linii.
+             * Mianownikiem jest licznik przedmiotów, a nie suma sprzedanych
+             * i niesprzedanych — dzięki temu przedmiot o nieustalonym kierunku
+             * obniża procent zamiast znikać z rachunku, a trzy niesprzedaże na
+             * początku zmiany dają uczciwe 0%, a nie puste miejsce.
+             *
+             * Tekstu nie ma w słownikach celowo: to liczba i znak, identyczne we
+             * wszystkich trzech językach.
+             */
+            const cSold = store.tabSold[cid] || 0;
+
             // Linia 1: bieżąca zakładka
             this.lines.line1_currentTab.textContent = I18n.get('statsLine1_current', {
                 tabName: I18n.getTabName(cid), itemsPerHour: getIph(cCount), statsPerHourUnit: I18n.get('statsPerHourUnit'),
                 count: cCount, completedUnit: I18n.get('completedUnit'), inUnit: I18n.get('inUnit'),
                 workTimeFormatted: Utils.formatDuration(workedMs)
-            });
+            }) + ` ${Utils.percentFloor(cSold, cCount)}%`;
 
             /**
              * Linia 2: podsumowanie globalne.
@@ -1985,6 +2059,7 @@ const SCRIPT_LOGS_ENABLED = false;
             // ale wciąż wisząca w DOM i myląca przy diagnostyce.
             this.lines.line2_globalSummary.innerHTML = '';
             let gTotal = 0;
+            let gSold = 0;
             const allKeys =[...Object.keys(CONFIG.KNOWN_TAB_TYPES), ...Object.keys(store.userConfig.customTabSettings)];
             const fragments =[];
             const line2Cfg = store.localTabConfig.linesConfig.line2_globalSummary;
@@ -1997,6 +2072,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
                 if (included && active) {
                     gTotal += count;
+                    gSold += store.tabSold[k] || 0;
                     if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),
@@ -2028,7 +2104,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.lines.line2_globalSummary.appendChild(document.createTextNode(
                     I18n.get('statsLine2_global_total_format', {
                         totalItemsPerHour: getIph(gTotal), statsPerHourUnit: I18n.get('statsPerHourUnit'), totalCount: gTotal
-                    })
+                    }) + ` ${Utils.percentFloor(gSold, gTotal)}%`
                 ));
             }
 
@@ -2115,7 +2191,8 @@ const SCRIPT_LOGS_ENABLED = false;
              * składania HTML — kolor i rozmiar ustawia CSS ze zmiennych
              * --sh-line7_compact-*.
              */
-            this.lines.line7_compact.textContent = `${getIph(gTotal)} ${gTotal}`;
+            this.lines.line7_compact.textContent =
+                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gTotal)}%`;
         }
     };
 
@@ -3807,7 +3884,7 @@ const SCRIPT_LOGS_ENABLED = false;
                         + '(kod sortowania tak i się nie pojawił)');
             }
             this.state = { completed: false, entryId: null, code: null,
-                           direction: null, pending: false };
+                           direction: null, pending: false, counted: false };
             if (reason) Utils.log(`[KIERUNEK] nowy przedmiot (${reason})`);
         },
 
@@ -3890,8 +3967,11 @@ const SCRIPT_LOGS_ENABLED = false;
 
         /**
          * Przedmiot zaliczony przez licznik: od tego momentu wolno zastosować sumę.
-         * @param {string} entryId — id wpisu dziennika (nie indeks: dziennik jest
-         *   wspólny na wszystkie karty i po scaleniu kolejność się zmienia).
+         * @param {string|null} entryId — id wpisu dziennika (nie indeks: dziennik
+         *   jest wspólny na wszystkie karty i po scaleniu kolejność się zmienia).
+         *   Przy wyłączonym module cen wpisu nie ma i przychodzi tu `null` —
+         *   kierunek i tak trzeba zaliczyć, bo procent sprzedaży dziennika nie
+         *   potrzebuje.
          */
         onCompleted(entryId) {
             if (!this.state) this.startItem('zakończenie bez początku');
@@ -3901,10 +3981,45 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         /**
+         * PROCENT SPRZEDAŻY — zliczenie przedmiotu, który pojechał na sprzedaż.
+         *
+         * Liczy się DOKŁADNIE RAZ na przedmiot i dokładnie wtedy, gdy znane są oba
+         * warunki: przedmiot zaliczony przez licznik i kierunek ustalony. Oba
+         * przychodzą niezależnie i w dowolnej kolejności, a `applyTo` woła się po
+         * każdym z nich — bez znacznika `counted` ten sam przedmiot policzyłby
+         * się dwa razy.
+         *
+         * Liczony jest WYŁĄCZNIE mianownik dodatni: mianownikiem procentu jest
+         * zwykły licznik przedmiotów, więc niesprzedaż i kierunek nieustalony nie
+         * wymagają własnego klucza — wchodzą do sumy przez sam licznik. Dzięki
+         * temu „trzy pierwsze przedmioty na niesprzedaż” daje 0%, a nie brak
+         * liczby, o co właśnie chodzi na początku zmiany.
+         *
+         * Ręczna poprawka licznika (skróty klawiszowe, przyciski) tu nie wchodzi
+         * — tak samo, jak nie wchodzi do dziennika wartości. Poprawia się zwykle
+         * to, czego program nie zobaczył, a kierunku takiego przedmiotu nikt nie
+         * zna.
+         */
+        countSold(st) {
+            if (!st || st.counted || !st.completed || !st.direction) return;
+            st.counted = true;
+            if (st.direction !== 'sell') return;
+            const cid = store.currentTabInstanceId;
+            const next = (store.tabSold[cid] || 0) + 1;
+            store.tabSold[cid] = next;
+            StorageManager.saveSold(cid, next);
+        },
+
+        /**
          * Zapisuje znak, gdy znane są OBA warunki: przedmiot zaliczony i kierunek
          * ustalony. Kolejność ich wystąpienia nie ma znaczenia.
+         *
+         * Procent sprzedaży liczy się PRZED sprawdzeniem wpisu dziennika i to
+         * jest sedno: przy wyłączonym module cen wpisu nie ma wcale, a procent
+         * ma działać i wtedy.
          */
         applyTo(st) {
+            this.countSold(st);
             if (!st || !st.completed || !st.entryId || !st.direction) return;
             ValueLog.setDirection(st.entryId, st.direction, st.code);
         },
@@ -5391,7 +5506,14 @@ const SCRIPT_LOGS_ENABLED = false;
                     const entryId = ValueLog.add(asin, price, store.currentTabInstanceId);
                     // Znak stawia Routing: albo od razu (kod już znany), albo
                     // później, gdy kod pojawi się na ekranie.
-                    if (entryId) Routing.onCompleted(entryId);
+                    //
+                    // Wołamy ZAWSZE, także gdy wpisu dziennika nie ma (entryId
+                    // null przy wyłączonym module cen). Do 1.0.0 stał tu warunek
+                    // `if (entryId)` i był poprawny, dopóki jedynym odbiorcą
+                    // kierunku był dziennik. Od czasu procentu sprzedaży kierunek
+                    // ma drugiego odbiorcę, który sieci nie potrzebuje — a przy
+                    // ustawieniach domyślnych to jest JEDYNY odbiorca.
+                    Routing.onCompleted(entryId);
                 });
 
                 /**

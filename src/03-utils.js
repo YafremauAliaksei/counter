@@ -121,6 +121,27 @@
          * rozjechałyby regułę. Dlatego każda liczba idąca do stylu przechodzi
          * tędy.
          */
+        /**
+         * Udział całkowity w procentach, z ODRZUCENIEM części ułamkowej.
+         *
+         * Odrzucenie, a nie zaokrąglenie, i to jest decyzja, a nie skrót: procent
+         * sprzedaży ma nie obiecywać więcej, niż zrobiono. Jeden przedmiot z 17 to
+         * 5,88%, a na ekranie ma stać 5% — zaokrąglone 6% wyglądałoby jak wynik
+         * lepszy od prawdziwego.
+         *
+         * MNOŻENIE IDZIE PRZED DZIELENIEM i to nie jest kosmetyka. `(29/100)*100`
+         * daje w arytmetyce zmiennoprzecinkowej 28.999999999999996, więc odrzucenie
+         * części ułamkowej dałoby 28% zamiast 29%. `29*100/100` jest dokładne.
+         *
+         * Zakres jest zamknięty w 0-100 nawet wtedy, gdy dane są niespójne:
+         * licznik da się poprawić ręcznie w dół, a licznik sprzedanych nie —
+         * bez tego ograniczenia dałoby się zobaczyć 150%.
+         */
+        percentFloor(part, whole) {
+            const p = Number(part), w = Number(whole);
+            if (!isFinite(p) || !isFinite(w) || w <= 0 || p <= 0) return 0;
+            return Math.max(0, Math.min(100, Math.floor(p * 100 / w)));
+        },
         clampNum(value, min, max, fallback) {
             const n = Number(value);
             if (!isFinite(n)) return fallback;

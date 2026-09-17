@@ -94,6 +94,9 @@
         currentTabType: CONFIG.UNKNOWN_TAB_TYPE_KEY,
         currentTabInstanceId: null,
         tabCounters: {},
+        // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
+        // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
+        tabSold: {},
         userConfig: {
             language: CONFIG.DEFAULT_LANGUAGE,
             // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
