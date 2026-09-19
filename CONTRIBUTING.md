@@ -245,6 +245,12 @@ Lista kontrolna sprawdzona na linii 7:
 3. **Napisać test przed kodem** — choćby na format wyjścia.
 4. **Zaktualizować README**, jeśli zmienia się cokolwiek widocznego.
 5. **Wpis w CHANGELOG** — nie „co się zmieniło”, tylko „dlaczego tak, a nie inaczej”.
+   Akapity pisze się tam w JEDNEJ linii, bez ręcznego zawijania — Prettier
+   pilnuje tego ustawieniem `proseWrap: "never"` tylko dla tego pliku. Powód:
+   sekcja z CHANGELOG jedzie żywcem do opisu wydania, a GitHub renderuje opisy
+   wydań tak, że **każde przejście do nowej linii jest widoczne**. Tekst zawinięty
+   na 80 znakach wygląda tam na poszarpany. W README i tym pliku zawijanie
+   zostaje, bo pliki repozytorium renderują się normalnie.
 6. `npm run verify`, potem PR.
 
 ### Ręczne sprawdzenie w przeglądarce

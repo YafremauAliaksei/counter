@@ -17,6 +17,10 @@
     {
       "files": ["*.md"],
       "options": { "tabWidth": 2, "proseWrap": "preserve" }
+    },
+    {
+      "files": ["CHANGELOG.md"],
+      "options": { "proseWrap": "never" }
     }
   ]
 }
