@@ -37,11 +37,46 @@ towaru — istnieje, ale włącza się ręcznie.
 
 ## Szybki start
 
+### Zakładka w przeglądarce (zalecane)
+
+Tam, gdzie konsola jest zamknięta, a i tak wygodniej. Nowa zakładka, dowolna
+nazwa, a jako adres:
+
+```
+javascript:(async()=>{const r=await fetch('https://github.com/YafremauAliaksei/counter/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
+```
+
+Kliknięcie na stronie T-REX pobiera i uruchamia **ostatnie wydanie**.
+
+Trzy szczegóły w tym adresie nie są przypadkowe:
+
+- **`releases/latest/download`, a nie `raw.githubusercontent`.** Wskazuje na
+  wydanie, a nie na bieżący stan gałęzi: to, co ludzie uruchamiają, zmienia się
+  wtedy i tylko wtedy, gdy ktoś świadomie wyda nową wersję. Do tego `raw.` bywa
+  podawany z pamięci podręcznej, przez co połowa zespołu pracuje na starym pliku
+  i nikt nie wie dlaczego;
+- **`cache:'no-store'`** — z tego samego powodu, tylko po stronie przeglądarki;
+- **`void 0` na końcu** — bez tego zakładka, której wyrażenie zwraca tekst,
+  potrafi zastąpić nim całą stronę.
+
+Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
+zamienić `latest/download` na `download/v1.1.0`.
+
+### Wklejenie do konsoli
+
 1. Otworzyć roboczą stronę T-REX.
 2. `F12` → zakładka Console.
-3. Wkleić całą zawartość [`counter.js`](counter.js), nacisnąć Enter.
+3. Wkleić całą zawartość [ostatniego wydania](https://github.com/YafremauAliaksei/counter/releases/latest),
+   nacisnąć Enter.
 
-W lewym dolnym rogu pojawią się dwie liczby. Nic więcej robić nie trzeba.
+W obu przypadkach w lewym dolnym rogu pojawią się dwie liczby i procent. Nic
+więcej robić nie trzeba.
+
+> **Skąd brać plik.** Z **wydania**, nie z `counter.js` w gałęzi `main`. Plik
+> w repozytorium jest artefaktem budowania i zmienia się przy każdym scaleniu;
+> wydanie jest stanem, który przeszedł bramki i został oznaczony tagiem.
+> Do każdego wydania dołączona jest suma SHA-256 oraz poświadczenie pochodzenia,
+> sprawdzalne przez `gh attestation verify counter.js --repo YafremauAliaksei/counter`.
 
 > **Nagłówek `==UserScript==`** został w pliku jako dokumentacja. Menedżer
 > skryptów (Tampermonkey i podobne) nie jest potrzebny, a jego API (`GM_*`)
