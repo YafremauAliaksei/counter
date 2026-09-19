@@ -3,10 +3,20 @@ name: Release
 # Wydanie powstaje z TAGU, nie z ręcznego wgrania pliku. Dzięki temu to, co
 # ludzie pobierają, na pewno pochodzi z kodu oznaczonego tym tagiem.
 #
-# Jak wydać:
-#   1. na main: npm version minor      (podnosi package.json i robi commit+tag)
-#   2. npm run build && git add counter.js && git commit --amend --no-edit
-#   3. git push --follow-tags
+# Jak wydać — JEDNO POLECENIE na main:
+#
+#   npm version minor && git push --follow-tags
+#
+# `npm version` podnosi package.json, potem uruchamia skrypt `version`
+# (`npm run build && git add counter.js`), a dopiero POTEM robi commit i tag.
+# Dzięki temu przebudowany artefakt wchodzi do tego samego commita, na który
+# wskazuje tag.
+#
+# Poprzednia wersja tej instrukcji mówiła „npm version, potem build, potem
+# commit --amend”. To nie mogło zadziałać: amend tworzy NOWY commit, a tag
+# zostaje na starym — czyli na kodzie, w którym artefakt ma jeszcze poprzednią
+# wersję. Sprawdzenie „wersja w artefakcie zgadza się z tagiem” poniżej zapaliłoby
+# się na czerwono przy pierwszym wydaniu.
 #
 # Reszta dzieje się tutaj.
 
@@ -18,6 +28,10 @@ on:
 
 permissions:
   contents: write
+  # Poświadczenie pochodzenia artefaktu (attest-build-provenance) podpisuje się
+  # tożsamością samego przebiegu, stąd te dwa dodatkowe uprawnienia.
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -60,6 +74,17 @@ jobs:
             exit 1
           }
 
+      # Suma kontrolna jest dla człowieka: pozwala sprawdzić, czy plik w konsoli
+      # to naprawdę ten, który wydano. Leci i jako osobny plik przy wydaniu,
+      # i do treści opisu, żeby dało się ją porównać bez pobierania czegokolwiek.
+      - name: Suma kontrolna artefaktu
+        id: sum
+        run: |
+          SHA=$(sha256sum counter.js | cut -d' ' -f1)
+          echo "$SHA  counter.js" > counter.js.sha256
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "SHA-256: $SHA"
+
       - name: Wyciągnij opis wydania z CHANGELOG
         id: notes
         run: |
@@ -75,11 +100,47 @@ jobs:
           fi
           cat RELEASE_NOTES.md
 
+      - name: Dopisz do opisu sposób uruchomienia i sumę kontrolną
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          cat >> RELEASE_NOTES.md <<NOTES
+
+          ---
+
+          ## Jak uruchomić
+
+          Zakładka w przeglądarce (bookmarklet) — adres zawsze wskazuje **ostatnie
+          wydanie**, więc po każdym wydaniu wystarczy kliknąć ją jeszcze raz:
+
+          \`\`\`
+          javascript:(async()=>{const r=await fetch('https://github.com/${{ github.repository }}/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
+          \`\`\`
+
+          Żeby przypiąć się do TEJ wersji i nie dostawać następnych automatycznie,
+          w adresie zamienia się \`latest/download\` na \`download/v$VERSION\`.
+
+          ## Suma kontrolna
+
+          \`\`\`
+          SHA-256  ${{ steps.sum.outputs.sha }}
+          \`\`\`
+          NOTES
+
+      # Poświadczenie pochodzenia: sprawdzalne stwierdzenie „ten plik powstał
+      # w tym przebiegu, z tego commita”. Weryfikacja u odbiorcy:
+      #   gh attestation verify counter.js --repo ${{ github.repository }}
+      - name: Poświadcz pochodzenie artefaktu
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: counter.js
+
       - name: Utwórz wydanie
         uses: softprops/action-gh-release@v3
         with:
           name: ${{ github.ref_name }}
           body_path: RELEASE_NOTES.md
-          files: counter.js
+          files: |
+            counter.js
+            counter.js.sha256
           draft: false
           prerelease: false

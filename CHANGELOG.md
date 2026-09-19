@@ -12,7 +12,7 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.1.0 — 2026-09-19
 
 ### Dodano
 
