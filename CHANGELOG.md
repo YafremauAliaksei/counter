@@ -98,6 +98,31 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **Lista haseł dostępu zamiast jednego hasła.** Na górze pliku stoi teraz
+  `SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA']`; wszystkie pozycje
+  działają tak samo i można dopisywać kolejne. Wielkość liter bez znaczenia,
+  białe znaki z brzegów obcinane, powtórzenia i pozycje, które hasłem nie są,
+  pomijane. Jedno ograniczenie wynika z mechanizmu i jest pilnowane testem:
+  hasło nie może być początkiem innego hasła, bo krótsze zadziałałoby wcześniej
+  i wyczyściło bufor.
+
+### Zmieniono
+
+- **`SETTINGS_ACCESS_PASSWORD` (pojedyncze) zniknęło** — zastąpione tablicą
+  `SETTINGS_ACCESS_PASSWORDS`. Kto miał własne hasło w swojej kopii pliku,
+  przenosi je do tablicy.
+- Bufor klawiatury jest łańcuchem zamiast tablicy sklejanej przez `join('')`
+  przy każdym naciśnięciu, a porównanie z hasłami startuje dopiero wtedy, gdy
+  naciśnięty znak jest ostatnim znakiem któregoś z nich. Przy dwóch domyślnych
+  hasłach pracę uruchamiają wyłącznie litery `E` i `A` — każdy inny klawisz
+  kosztuje jedno nieudane zajrzenie do mapy.
+
+---
+
 ## 1.0.0 — 2026-09-16
 
 Pierwsze oficjalne wydanie. Kod ten sam, co w poprzedniej numeracji 9.2.0;

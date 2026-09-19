@@ -7,10 +7,11 @@
    Są trzy sposoby i różnią się tym, jak długo zmiana żyje.
 
    1. PANEL USTAWIEŃ (najprostszy, nic nie trzeba edytować).
-      Wpisz na stronie hasło — domyślnie GORDONPAULE — a panel się otworzy.
-      Wszystko, co tam zmienisz, zapisze się w przeglądarce i przeżyje F5.
-      Hasło zmienia się w JEDNEJ linii na samej górze pliku:
-          const SETTINGS_ACCESS_PASSWORD = 'GORDONPAULE';
+      Wpisz na stronie hasło — domyślnie GORDONPAULE albo BOMBA — a panel
+      się otworzy. Wszystko, co tam zmienisz, zapisze się w przeglądarce
+      i przeżyje F5. Hasła zmienia się w JEDNEJ linii na samej górze pliku:
+          const SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA'];
+      Można dopisać kolejne; jedyne ograniczenie opisane jest tam w komentarzu.
 
    2. KONSOLA (na próbę, do najbliższego przeładowania strony).
       Po uruchomieniu skryptu dostępny jest obiekt SH, np.:

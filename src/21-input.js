@@ -2,7 +2,29 @@
     // 7. WEJŚCIE I WYZWALACZE
     // ==========================================
     const InputManager = {
-        seqBuffer:[],
+        /**
+         * Ostatnie naciśnięte znaki, jako ŁAŃCUCH, a nie tablica.
+         *
+         * Wcześniej była tablica sklejana przez join('') przy każdym
+         * naciśnięciu. Łańcuch z slice() robi to samo bez tworzenia tablicy
+         * pośredniej — a to kod, który chodzi na każdy klawisz przez całą
+         * dziesięciogodzinną zmianę.
+         */
+        seqBuffer: '',
+        /** Najdłuższe hasło — tyle znaków trzeba pamiętać i ani znaku więcej. */
+        _maxPasswordLen: 0,
+        /**
+         * Hasła pogrupowane po OSTATNIM znaku.
+         *
+         * Sedno optymalizacji. Bez tego każde naciśnięcie klawisza porównywałoby
+         * bufor z każdym hasłem po kolei. Tak porównanie w ogóle się nie zaczyna,
+         * dopóki naciśnięty znak nie jest ostatnim znakiem któregoś z haseł —
+         * czyli przy zwykłym pisaniu prawie nigdy. Przy 'GORDONPAULE' i 'BOMBA'
+         * pracę uruchamiają wyłącznie litery E i A.
+         *
+         * Mapa buduje się RAZ, w init(), a nie przy każdym klawiszu.
+         */
+        _passwordsByLastChar: null,
         init() {
             // 8.3.0: obsługa jest nazwana — potrzebna do Main.teardown().
             this.onKeyDown = (e) => {
@@ -23,25 +45,54 @@
                 }
 
                 /**
-                 * HASŁO DOSTĘPU (patrz SETTINGS_ACCESS_PASSWORD na górze pliku).
+                 * HASŁA DOSTĘPU (patrz SETTINGS_ACCESS_PASSWORDS na górze pliku).
                  *
-                 * Bufor ma dokładnie tyle znaków, ile hasło, i przesuwa się jak
-                 * okno. Dzięki temu porównanie jest zawsze na stałej długości,
-                 * a wpisywanie czegokolwiek innego wcześniej niczego nie psuje.
+                 * Bufor ma tyle znaków, ile NAJDŁUŻSZE hasło, i przesuwa się jak
+                 * okno. Hasło uznaje się za wpisane, gdy bufor KOŃCZY SIĘ na nim —
+                 * dzięki temu wpisywanie czegokolwiek wcześniej niczego nie psuje,
+                 * a hasła różnej długości żyją na jednej liście bez osobnych
+                 * buforów.
+                 *
+                 * Po trafieniu bufor jest czyszczony. To nie porządki: bez tego
+                 * hasło, które jest końcówką innego, zadziałałoby dwa razy pod
+                 * rząd, a `toggle()` otworzyłby i natychmiast zamknął panel.
                  *
                  * To nie jest zabezpieczenie kryptograficzne i nie ma nim być:
                  * chodzi wyłącznie o to, żeby panel nie otwierał się przypadkiem
                  * podczas normalnej pracy ze skanerem.
                  */
-                if (e.key.length === 1) {
-                    this.seqBuffer.push(e.key.toUpperCase());
-                    if (this.seqBuffer.length > CONFIG.SETTINGS_PANEL_ACCESS_SEQUENCE.length) this.seqBuffer.shift();
-                    if (this.seqBuffer.join('') === CONFIG.SETTINGS_PANEL_ACCESS_SEQUENCE.join('')) {
-                        SettingsPanel.toggle();
-                        this.seqBuffer =[];
+                if (this._maxPasswordLen > 0 && e.key.length === 1) {
+                    const ch = e.key.toUpperCase();
+                    this.seqBuffer = (this.seqBuffer + ch).slice(-this._maxPasswordLen);
+                    const candidates = this._passwordsByLastChar.get(ch);
+                    if (candidates) {
+                        for (const password of candidates) {
+                            if (!this.seqBuffer.endsWith(password)) continue;
+                            SettingsPanel.toggle();
+                            this.seqBuffer = '';
+                            break;
+                        }
                     }
                 }
             };
+            /**
+             * Przygotowanie haseł. Robi się RAZ, przy starcie: lista z góry pliku
+             * jest stała przez całe życie egzemplarza, więc liczenie jej przy
+             * każdym naciśnięciu klawisza byłoby czystą stratą.
+             *
+             * Kolejność w grupie zostaje taka, jak w CONFIG — od najdłuższego —
+             * więc gdy w jednym naciśnięciu pasuje kilka haseł, wygrywa dłuższe.
+             */
+            const passwords = CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS || [];
+            this._passwordsByLastChar = new Map();
+            this._maxPasswordLen = 0;
+            for (const password of passwords) {
+                if (password.length > this._maxPasswordLen) this._maxPasswordLen = password.length;
+                const last = password[password.length - 1];
+                if (!this._passwordsByLastChar.has(last)) this._passwordsByLastChar.set(last, []);
+                this._passwordsByLastChar.get(last).push(password);
+            }
+
             document.addEventListener('keydown', this.onKeyDown, true);
         },
         modifyCounter(delta) {

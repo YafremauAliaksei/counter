@@ -47,7 +47,7 @@ W lewym dolnym rogu pojawią się dwie liczby. Nic więcej robić nie trzeba.
 > skryptów (Tampermonkey i podobne) nie jest potrzebny, a jego API (`GM_*`)
 > nigdzie nie jest używane — wszystko zapisuje się przez `localStorage`.
 
-**Otwarcie ustawień:** wpisać na stronie `GORDONPAULE` (poza polem tekstowym).
+**Otwarcie ustawień:** wpisać na stronie `GORDONPAULE` albo `BOMBA` (poza polem tekstowym).
 Hasło stoi w jednej linii na początku pliku i można je zmienić dowolnie.
 
 ---
@@ -209,7 +209,19 @@ celowo: potwierdzenie sprzedaży przychodzi zawsze, niesprzedaży — nie zawsze
 
 ## Panel ustawień
 
-Otwiera się po wpisaniu hasła `GORDONPAULE` na stronie.
+Otwiera się po wpisaniu na stronie któregokolwiek z haseł — domyślnie
+`GORDONPAULE` albo `BOMBA`. Lista jest jedna (nie ma hasła głównego i zapasowego)
+i leży w pierwszych liniach pliku:
+
+```js
+const SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA'];
+```
+
+Można dopisywać kolejne. Wielkość liter nie ma znaczenia, białe znaki z brzegów
+są obcinane, powtórzenia pomijane. Jedno ograniczenie: **hasło nie może być
+początkiem innego hasła** — przy parze `BOM` i `BOMBA` krótsze zadziałałoby
+wcześniej i wyczyściło bufor, więc dłuższego nie dałoby się wpisać nigdy. Pilnuje
+tego test, więc taka lista zapali CI na czerwono.
 
 | Sekcja              | Co się ustawia                                                                                       |
 | ------------------- | ---------------------------------------------------------------------------------------------------- |
