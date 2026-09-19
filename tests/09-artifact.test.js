@@ -98,12 +98,13 @@ test('wszystkie adresy zewnętrzne należą do znanej listy', () => {
         'graph.keepa.com', 'api.keepa.com', 'r.jina.ai',
         'cdn.jsdelivr.net', 'open.er-api.com', 'www.floatrates.com',
         'example.com',                  // wyłącznie w diagnostyce CSP
-        'raw.githubusercontent.com',    // wyłącznie jako nazwa w raporcie CSP
-        // Adres wydania: skrypt go NIE odpytuje, tylko wkleja do tekstu gotowej
-        // zakładki (CONFIG.RELEASE_URL). Pilnuje tego sprawdzenie niżej —
+        // Adres wydania (CONFIG.RELEASE_URL) i nazwa w raporcie CSP. Skrypt
+        // stąd NIE pobiera — wkleja adres do tekstu gotowej zakładki, a pobiera
+        // dopiero przeglądarka po kliknięciu. Pilnuje tego sprawdzenie niżej:
         // „każde wejście do sieci jest osłonięte sprawdzeniem modułu” liczy
         // wywołania fetch i new Image, a tu nie ma ani jednego.
-        'github.com',
+        'raw.githubusercontent.com',
+        'github.com',                   // wyłącznie w komentarzu przy RELEASE_URL
     ];
     const amazon = /^www\.amazon\.(de|co\.uk|com|it|fr|es|nl|ca|se|com\.be|pl)$/;
     const hosts = new Set();
@@ -114,6 +115,31 @@ test('wszystkie adresy zewnętrzne należą do znanej listy', () => {
     const unknown = [...hosts].filter(h =>
         !allowed.includes(h) && !amazon.test(h) && h !== 'trex-prod-eu.aka.amazon.com');
     eq(unknown, [], 'nieznane hosty w pliku');
+});
+
+/**
+ * ADRES WYDANIA MUSI STAĆ NA HOŚCIE, KTÓRY PRZEPUSZCZA ZAPYTANIA MIĘDZYDOMENOWE.
+ *
+ * Wydanie 1.2.0 wyszło z adresem `github.com/…/releases/latest/download/…`
+ * i zakładka nie działała u nikogo: pobranie pliku wydania kończy się
+ * przekierowaniem BEZ nagłówka `Access-Control-Allow-Origin`, więc przeglądarka
+ * zrywa zapytanie („blocked by CORS policy”). Kliknięcie takiego adresu działa,
+ * `fetch` z cudzej strony — nie, i to jest różnica, której nie widać z kodu.
+ *
+ * Sprawdzenie jest listą hostów, o których WIADOMO, że nagłówek wystawiają.
+ * Nowy host dopisuje się tutaj dopiero po sprawdzeniu nagłówków odpowiedzi,
+ * a nie z przekonania.
+ */
+test('adres wydania stoi na hoście z nagłówkiem CORS', () => {
+    const CORS_OK = ['raw.githubusercontent.com', 'cdn.jsdelivr.net'];
+    const found = /RELEASE_URL:\s*'([^']+)'/.exec(ARTIFACT);
+    ok(found, 'RELEASE_URL musi być w artefakcie');
+    const url = found[1];
+    const host = /^https:\/\/([A-Za-z0-9.-]+)\//.exec(url);
+    ok(host, 'adres wydania musi być pełnym adresem https, jest: ' + url);
+    ok(CORS_OK.includes(host[1]),
+       'host bez CORS w adresie zakładki: ' + host[1] + ' (znane: ' + CORS_OK.join(', ') + ')');
+    ok(url.endsWith('/counter.js'), 'adres ma wskazywać na sam plik');
 });
 
 test('każde wejście do sieci jest osłonięte sprawdzeniem modułu', () => {
