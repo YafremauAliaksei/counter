@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie robi nic poza
 tym: ani jednego zapytania do internetu, ani jednej linii w konsoli.
 
-**Wersja 1.0.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.2.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 17.4 28
@@ -32,6 +32,7 @@ towaru — istnieje, ale włącza się ręcznie.
 - [Budowa repozytorium](#budowa-repozytorium)
 - [Praca nad kodem](#praca-nad-kodem)
 - [Wersjonowanie](#wersjonowanie)
+- [Wydania](#wydania)
 - [Diagnostyka](#diagnostyka)
 
 ---
@@ -61,7 +62,7 @@ Trzy szczegóły w tym adresie nie są przypadkowe:
   potrafi zastąpić nim całą stronę.
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
-zamienić `latest/download` na `download/v1.1.0`.
+zamienić `latest/download` na `download/v1.2.0`.
 
 ### Wklejenie do konsoli
 
@@ -527,7 +528,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 246 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 254 sprawdzenia,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -544,7 +545,7 @@ production/
 │   └── README.md           ← mapa modułów i zasady zależności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 20 plików, 246 sprawdzeń
+├── tests/                  ← 20 plików, 254 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -564,7 +565,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 246 sprawdzeń
+npm test             # 254 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
@@ -592,6 +593,66 @@ oraz PR — w [CONTRIBUTING.md](CONTRIBUTING.md).
 Prefiks magazynu koduje **schemat danych**, a nie numer buildu: `1.1.0` i `1.2.0`
 zostaną przy `statsHelper_v1_0_0_`, dopóki nie zmieni się skład zapisywanych pól.
 Jedna zasada zapisana w dwóch miejscach, więc zapomnieć o niej nie sposób.
+
+---
+
+## Wydania
+
+Ludzie uruchamiają skrypt z **wydania**, a nie z gałęzi `main`, więc dopóki nie
+ma wydania, zakładka z `releases/latest/download/counter.js` nie ma czego pobrać.
+Wydanie powstaje z **tagu** — i tylko z tagu.
+
+Cały przebieg da się wyklikać w przeglądarce; konsola nie jest do niczego
+potrzebna.
+
+### 1. Commit wydania (w PR, jak każda inna zmiana)
+
+Podnosi `package.json`, przebudowuje artefakt i zamyka sekcję w CHANGELOG:
+`## Niewydane` → `## X.Y.Z — RRRR-MM-DD`. Trzy rzeczy muszą się zgadzać, bo
+sprawdza je workflow: wersja w `package.json`, `SCRIPT_VERSION` w artefakcie
+i nagłówek `@version` w bloku `==UserScript==`. Artefakt składa się poleceniem
+`npm run build`, które bierze numer prosto z `package.json` — ręcznie nie wpisuje
+się go nigdzie.
+
+### 2. Tag i wydanie — z interfejsu GitHuba
+
+**Releases** (prawa kolumna strony repozytorium) → **Draft a new release**:
+
+| Pole          | Co wpisać                                                         |
+| ------------- | ----------------------------------------------------------------- |
+| Choose a tag  | `vX.Y.Z` — dokładnie ta wersja, co w `package.json`, z literą `v` |
+|               | poniżej pojawi się **Create new tag: vX.Y.Z on publish** — wybrać |
+| Target        | `main`                                                            |
+| Release title | `vX.Y.Z` (i tak zostanie nadpisany przez workflow)                |
+| Opis          | zostawić pusty — wjedzie sekcja z CHANGELOG                       |
+
+**Publish release**. Tag powstaje w chwili publikacji i to on uruchamia resztę.
+
+### 3. Co robi się samo
+
+Workflow [`release.yml`](.github/workflows/release.yml) po pojawieniu się tagu
+`v*.*.*`:
+
+1. przepuszcza te same bramki, co przy PR (`build:check`, `npm test`) — wydanie
+   z czerwonych testów nie powstanie;
+2. sprawdza, że tag, `package.json` i artefakt mówią o tej samej wersji;
+3. liczy `SHA-256` artefaktu i dokłada go jako plik i jako fragment opisu;
+4. wyciąga z CHANGELOG sekcję tej wersji i robi z niej treść wydania;
+5. podpisuje **poświadczenie pochodzenia** (`attest-build-provenance`): sprawdzalne
+   stwierdzenie „ten plik powstał w tym przebiegu, z tego commita”;
+6. dołącza `counter.js` i `counter.js.sha256` do wydania.
+
+Po minucie–dwóch adres `releases/latest/download/counter.js` wskazuje nowy plik,
+a zakładki wszystkich ludzi (te bez przypięcia do wersji) pobierają go przy
+następnym kliknięciu. Przebieg widać w zakładce **Actions**.
+
+### Gdy przebieg padnie
+
+Wydanie zostaje, ale bez pliku. Poprawić przyczynę, a potem **Actions** →
+workflow **Release** → **Run workflow** → w polu `tag` wpisać `vX.Y.Z`. Przebieg
+powtórzy się dla istniejącego tagu i uzupełni wydanie. Tego samego tagu nie
+przestawia się na inny commit: kto zdążył pobrać plik, ma wtedy co innego niż
+ten, kto pobierze go za chwilę. Wersja jest tania — lepiej wydać `X.Y.Z+1`.
 
 ---
 
