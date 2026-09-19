@@ -40,14 +40,15 @@ Dla tego projektu SemVer czyta się tak:
   całą kartę ceny, język, sklep, skróty klawiszowe i udział działów w sumie.
   Danych — liczników, dziennika, stanu zmiany — nie obejmuje.
 
-  Format to zbiór samoopisujących się rekordów `[numer: 2 B][długość: 1 B]
-[wartość]` z sumą kontrolną na końcu, a nie stała mapa bitów. Dzięki długości
-  w rekordzie nieznany numer daje się przeskoczyć, więc **kody zachowują
-  ważność w obie strony przez wydania**: starszy skrypt wczyta kod z nowszego
-  (pomijając to, czego i tak nie umie ustawić), nowszy wczyta stary. Numer raz
-  wydany nie wraca do obiegu. Kod jest łatką, a nie zdjęciem konfiguracji —
-  wchodzi do niego tylko to, co różni się od domyślnych, więc zmiana wartości
-  domyślnej w kolejnym wydaniu dociera do ludzi, którzy danej rzeczy nie ruszali.
+  Format to zbiór samoopisujących się rekordów
+  `[numer: 2 B][długość: 1 B][wartość]` z sumą kontrolną na końcu, a nie stała
+  mapa bitów. Dzięki długości w rekordzie nieznany numer daje się przeskoczyć,
+  więc **kody zachowują ważność w obie strony przez wydania**: starszy skrypt
+  wczyta kod z nowszego (pomijając to, czego i tak nie umie ustawić), nowszy
+  wczyta stary. Numer raz wydany nie wraca do obiegu. Kod jest łatką, a nie
+  zdjęciem konfiguracji — wchodzi do niego tylko to, co różni się od domyślnych,
+  więc zmiana wartości domyślnej w kolejnym wydaniu dociera do ludzi, którzy
+  danej rzeczy nie ruszali.
 
   Kod przychodzi z zewnątrz, więc dekodowanie nie tworzy pól: zapis idzie
   wyłącznie pod ścieżki z rejestru, liczby są przycinane do granic z rejestru,
