@@ -102,10 +102,10 @@ test('prefiks magazynu jest spójny i poprzednie wersje trafiły na listę stary
     ok(!legacy.includes(env.prefix), 'bieżący prefiks nie może być na liście do usunięcia');
 });
 
-test('hasło dostępu to 11 znaków GORDONPAULE', () => {
-    const seq = env.SH.CONFIG.SETTINGS_PANEL_ACCESS_SEQUENCE;
-    eq(seq.length, 11);
-    eq(seq.join(''), 'GORDONPAULE');
+test('hasła dostępu to GORDONPAULE i BOMBA, dłuższe pierwsze', () => {
+    // Kolejność nie jest kosmetyką: gdy w jednym naciśnięciu pasuje kilka haseł,
+    // wygrywa pierwsze z listy, a lista jest posortowana od najdłuższego.
+    eq(env.SH.CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS, ['GORDONPAULE', 'BOMBA']);
 });
 
 test('język domyślny to polski, sklep domyślny to amazon.de', () => {

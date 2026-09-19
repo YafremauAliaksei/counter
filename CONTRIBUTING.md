@@ -93,6 +93,7 @@ w praktyce wystarczy nie wymyślać drugiego `Utils`.
 | README, CHANGELOG, ten plik, pozostała dokumentacja                | **polski**                                 |
 | Lokalizacja `LANG_STRINGS.ru` i `Русский` na liście języków        | rosyjski, nie ruszać                       |
 | Wyzwalacze z cyrylicą (`видите ниже`, `канирование номера LP`)     | nie ruszać — to tekst, który drukuje T-REX |
+| **Nazwy w kodzie**: zmienne, funkcje, pola, klucze                 | **angielski**                              |
 | Nazwy plików, commity, nazwy gałęzi                                | angielski                                  |
 | Rozmowa z autorem projektu                                         | rosyjski                                   |
 
@@ -100,8 +101,26 @@ Sprawdzane testami: cyrylica w komentarzach, w `Utils.log/error/fatal`
 i w `new Error(...)` wywraca budowanie. Osobny test pilnuje, żeby cyrylica
 nie wróciła do plików dokumentacji.
 
-Angielski może kiedyś dojść jako drugi język kodu — ale dopiero świadomą
+Angielski może kiedyś dojść jako drugi język dokumentacji — ale dopiero świadomą
 decyzją i razem ze zmianą testu, nie przypadkiem w pojedynczym PR.
+
+### Dlaczego nazwy w kodzie są angielskie, a komentarze polskie
+
+To nie jest niekonsekwencja, tylko podział ról.
+
+**Nazwa jest częścią mechanizmu.** Czyta ją każdy, kto kiedykolwiek otworzy ten
+plik — także ktoś, kto polskiego nie zna. `_passwordsByLastChar` mówi, co robi,
+w dowolnym kraju; `_hasłaPoOstatnim` wymaga tłumacza, a do tego wnosi znaki
+diakrytyczne do identyfikatorów, na których potrafią się wyłożyć narzędzia.
+
+**Komentarz jest wyjaśnieniem.** Czyta go zespół, a zespół jest polskojęzyczny.
+Tu polski jest szybszy i dokładniejszy — i to w komentarzach siedzi najcenniejsza
+część tego repozytorium: powody decyzji i rozebrane błędy.
+
+Praktycznie: jeśli to stoi po lewej stronie znaku `=`, po słowie `function` albo
+w kluczu obiektu — angielski. Jeśli to zdanie dla człowieka — polski. Dotyczy to
+także **testów**: `type()` i `closePanel()`, a nie `wpisz()` i `zamknijPanel()`.
+Nagłówki testów i teksty asercji zostają polskie, bo to są zdania dla człowieka.
 
 ---
 

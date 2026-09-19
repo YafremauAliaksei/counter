@@ -20,6 +20,30 @@ Dla tego projektu SemVer czyta się tak:
   statystyk: kod produktu, jego klikalność i czas zdobycia ceny w milisekundach.
   Do tego wybór kroju pisma z listy okna statystyk.
 
+- **Procent sprzedaży na końcu linii 1, 2 i 7.** Liczba od 0 do 100 ze znakiem
+  procentu: ile ze zrobionych przedmiotów pojechało na sprzedaż. Mianownikiem
+  jest licznik przedmiotów, więc przedmiot o nieustalonym kierunku obniża procent
+  zamiast wypadać z rachunku, a same niesprzedaże na początku zmiany dają uczciwe
+  `0%`. Część ułamkowa jest odrzucana, a nie zaokrąglana — 1 z 17 to `5%`, nie
+  `6%`. Linia 1 liczy bieżącą kartę, linie 2 i 7 wszystkie wliczane do sumy.
+  Kierunek bierze się z tekstu strony, więc procent działa przy **wyłączonym**
+  module cen i nie kosztuje ani jednego zapytania. Żyje jedną zmianę i zeruje się
+  razem z licznikami.
+
+- **Lista haseł dostępu zamiast jednego hasła.** Na górze pliku stoi teraz
+  `SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA']`; wszystkie pozycje
+  działają tak samo i można dopisywać kolejne. Wielkość liter bez znaczenia,
+  białe znaki z brzegów obcinane, powtórzenia i pozycje, które hasłem nie są,
+  pomijane. Jedno ograniczenie wynika z mechanizmu i jest pilnowane testem:
+  hasło nie może być początkiem innego hasła, bo krótsze zadziałałoby wcześniej
+  i wyczyściło bufor.
+
+- **Kolor tekstu karty ceny** — jedna para (kolor + przezroczystość) na
+  wszystkie wiersze karty, zmieniana pickerem w panelu, tak samo jak przy liniach
+  okna statystyk.
+- **Wyłącznik wiersza źródła** (`showSource`). Czas zdobycia ceny ma własny
+  wyłącznik i działa niezależnie od niego.
+
 ### Zmieniono
 
 - **Wyłączone linie nie są składane.** Widocznością linii steruje CSS, więc
@@ -37,13 +61,53 @@ Dla tego projektu SemVer czyta się tak:
   tłustych 30 px, bez ramki i cienia — ramka i cień wracają razem z tłem, gdy
   ktoś podniesie suwak. Dolna granica suwaka rozmiaru zeszła z 14 na 11 px,
   żeby kartę dało się zrównać z liniami.
+
 - **Kod produktu domyślnie nie jest linkiem** (`asinClickable: false`).
   `pointer-events:auto` na linku było jedynym wyjątkiem od przezroczystej dla
   myszy karty, czyli jedynym miejscem, w którym karta mogła przykryć przycisk
   T-REX. Link włącza się w panelu ustawień; przy wyłączonym kod produktu nie ma
   `href`, więc nie otworzy go ani tabulator, ani środkowy przycisk myszy.
+
 - **Czas zdobycia ceny nie jest już dopisywany zawsze** (`showLatency: false`).
   To liczba dla kogoś, kto dobiera źródło ceny, a nie dla kogoś, kto pracuje.
+
+- **Format linii 7: z dwóch członów na trzy** — `17.4 28` stało się
+  `17.4 28 14%`. Reszta formatu nienaruszona: bez jednostek, nawiasów
+  i przecinków.
+
+- `Routing.onCompleted()` wywołuje się teraz zawsze, a nie tylko wtedy, gdy
+  dziennik wartości wydał id wpisu. Dopóki jedynym odbiorcą kierunku był
+  dziennik, warunek był poprawny; procent sprzedaży jest drugim odbiorcą i przy
+  ustawieniach domyślnych jedynym.
+
+- **`SETTINGS_ACCESS_PASSWORD` (pojedyncze) zniknęło** — zastąpione tablicą
+  `SETTINGS_ACCESS_PASSWORDS`. Kto miał własne hasło w swojej kopii pliku,
+  przenosi je do tablicy.
+
+- Bufor klawiatury jest łańcuchem zamiast tablicy sklejanej przez `join('')`
+  przy każdym naciśnięciu, a porównanie z hasłami startuje dopiero wtedy, gdy
+  naciśnięty znak jest ostatnim znakiem któregoś z nich. Przy dwóch domyślnych
+  hasłach pracę uruchamiają wyłącznie litery `E` i `A` — każdy inny klawisz
+  kosztuje jedno nieudane zajrzenie do mapy.
+
+- **Karta ceny to domyślnie jedna szara linijka z kwotą.** Ten sam kolor
+  (`#808080`), ta sama przezroczystość (50%) i ten sam rozmiar (13 px), co
+  linia 7, na przezroczystym tle. Domyślnie wyłączone: kod produktu, cena
+  katalogowa, wiersz źródła, czas zdobycia ceny.
+
+- **Kolory przestały nieść stan.** Zielona cena i pomarańczowa kreska zniknęły:
+  kolor jest teraz ustawieniem wyglądu, a stan mówi TEKST — i ten tekst pokazuje
+  się zawsze, niezależnie od wyłączników. Dotyczy to powodu braku ceny (blokada
+  CSP, limit, brak wyniku) oraz adnotacji, że cenę zdjęto z innego sklepu niż
+  wybrany.
+
+Zachowanie po wklejeniu pliku się nie zmienia: karta pojawia się dopiero po
+ręcznym włączeniu modułu cen, więc na starcie nadal widać samą linię 7, bez
+zapytań sieciowych i bez linii w konsoli.
+
+Zachowanie po wklejeniu pliku się nie zmienia: karta pojawia się dopiero po
+ręcznym włączeniu modułu cen, więc na starcie nadal widać samą linię 7, bez
+zapytań sieciowych i bez linii w konsoli.
 
 ### Naprawiono
 
@@ -69,60 +133,6 @@ Dla tego projektu SemVer czyta się tak:
   rozbierane drzewo, cudzy skrypt — zostawiał kartę schowaną do końca zmiany.
   Z zewnątrz wygląda to jak zepsuty skrypt. Przywracanie przeniesione do
   `finally`.
-
----
-
-## Niewydane
-
-### Dodano
-
-- **Procent sprzedaży na końcu linii 1, 2 i 7.** Liczba od 0 do 100 ze znakiem
-  procentu: ile ze zrobionych przedmiotów pojechało na sprzedaż. Mianownikiem
-  jest licznik przedmiotów, więc przedmiot o nieustalonym kierunku obniża procent
-  zamiast wypadać z rachunku, a same niesprzedaże na początku zmiany dają uczciwe
-  `0%`. Część ułamkowa jest odrzucana, a nie zaokrąglana — 1 z 17 to `5%`, nie
-  `6%`. Linia 1 liczy bieżącą kartę, linie 2 i 7 wszystkie wliczane do sumy.
-  Kierunek bierze się z tekstu strony, więc procent działa przy **wyłączonym**
-  module cen i nie kosztuje ani jednego zapytania. Żyje jedną zmianę i zeruje się
-  razem z licznikami.
-
-### Zmieniono
-
-- **Format linii 7: z dwóch członów na trzy** — `17.4 28` stało się
-  `17.4 28 14%`. Reszta formatu nienaruszona: bez jednostek, nawiasów
-  i przecinków.
-- `Routing.onCompleted()` wywołuje się teraz zawsze, a nie tylko wtedy, gdy
-  dziennik wartości wydał id wpisu. Dopóki jedynym odbiorcą kierunku był
-  dziennik, warunek był poprawny; procent sprzedaży jest drugim odbiorcą i przy
-  ustawieniach domyślnych jedynym.
-
----
-
-## Niewydane
-
-### Dodano
-
-- **Kolor tekstu karty ceny** — jedna para (kolor + przezroczystość) na
-  wszystkie wiersze karty, zmieniana pickerem w panelu, tak samo jak przy liniach
-  okna statystyk.
-- **Wyłącznik wiersza źródła** (`showSource`). Czas zdobycia ceny ma własny
-  wyłącznik i działa niezależnie od niego.
-
-### Zmieniono
-
-- **Karta ceny to domyślnie jedna szara linijka z kwotą.** Ten sam kolor
-  (`#808080`), ta sama przezroczystość (50%) i ten sam rozmiar (13 px), co
-  linia 7, na przezroczystym tle. Domyślnie wyłączone: kod produktu, cena
-  katalogowa, wiersz źródła, czas zdobycia ceny.
-- **Kolory przestały nieść stan.** Zielona cena i pomarańczowa kreska zniknęły:
-  kolor jest teraz ustawieniem wyglądu, a stan mówi TEKST — i ten tekst pokazuje
-  się zawsze, niezależnie od wyłączników. Dotyczy to powodu braku ceny (blokada
-  CSP, limit, brak wyniku) oraz adnotacji, że cenę zdjęto z innego sklepu niż
-  wybrany.
-
-Zachowanie po wklejeniu pliku się nie zmienia: karta pojawia się dopiero po
-ręcznym włączeniu modułu cen, więc na starcie nadal widać samą linię 7, bez
-zapytań sieciowych i bez linii w konsoli.
 
 ---
 

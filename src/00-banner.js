@@ -9,14 +9,25 @@
 // ==/UserScript==
 
 // =====================================================================
-//  HASŁO DOSTĘPU DO PANELU USTAWIEŃ
+//  HASŁA DOSTĘPU DO PANELU USTAWIEŃ
 //  ---------------------------------------------------------------
-//  Wpisz te litery gdziekolwiek na stronie (poza polem tekstowym),
-//  a panel ustawień się otworzy. Zmiana hasła = zmiana tej jednej
-//  linii; długość jest dowolna, wielkość liter nie ma znaczenia
-//  (bufor klawiatury jest podnoszony do wielkich liter).
+//  Wpisz którekolwiek z nich gdziekolwiek na stronie (poza polem
+//  tekstowym), a panel ustawień się otworzy. Wszystkie działają tak
+//  samo — to jedna lista, a nie hasło główne i zapasowe.
+//
+//  Dodawanie i usuwanie: dopisać albo skreślić pozycję w tej tablicy.
+//  Długość dowolna, wielkość liter bez znaczenia (bufor klawiatury
+//  jest podnoszony do wielkich liter), białe znaki z brzegów są
+//  obcinane, powtórzenia pomijane.
+//
+//  JEDNO OGRANICZENIE, O KTÓRYM TRZEBA WIEDZIEĆ. Hasło nie może być
+//  początkiem innego hasła. Gdyby na liście stanęły 'BOM' i 'BOMBA',
+//  to po wpisaniu trzeciej litery zadziałałoby 'BOM' i wyczyściło
+//  bufor — 'BOMBA' nie dałoby się wpisać nigdy. Pilnuje tego test
+//  (tests/18-passwords.test.js), więc przy takiej liście bramka
+//  w CI zapali się na czerwono, zamiast zostawić martwe hasło.
 // =====================================================================
-const SETTINGS_ACCESS_PASSWORD = 'GORDONPAULE';
+const SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA'];
 
 // =====================================================================
 //  LOGI W KONSOLI — GŁÓWNY WYŁĄCZNIK
