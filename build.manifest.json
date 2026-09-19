@@ -56,6 +56,10 @@
     { "file": "src/20-price-card.js", "desc": "Karta ceny wraz z warstwą sieciową." },
     { "file": "src/21-input.js", "desc": "Klawiatura i obserwator zmian strony." },
     { "file": "src/22-bootstrap.js", "desc": "Main.init, rozbiórka i konsolowe API SH." },
-    { "file": "src/23-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
+    { "file": "src/23-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." },
+    {
+      "file": "src/24-config-code.js",
+      "desc": "Kod konfiguracji: przenoszenie ustawień jednym ciągiem szesnastkowym."
+    }
   ]
 }

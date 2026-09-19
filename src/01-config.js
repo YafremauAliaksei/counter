@@ -87,6 +87,16 @@
         SETTINGS_PANEL_ACCENT_COLOR: '#141414',
         SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
         /**
+         * Adres, spod którego ludzie uruchamiają skrypt zakładką w przeglądarce.
+         *
+         * Wskazuje na OSTATNIE WYDANIE, a nie na gałąź: to, co się uruchamia,
+         * zmienia się wtedy i tylko wtedy, gdy ktoś świadomie wyda nową wersję.
+         * Stąd bierze go ConfigCode.link(), składając gotową zakładkę z kodem
+         * ustawień — żeby adres stał w JEDNYM miejscu, a nie w dokumentacji
+         * i w kodzie osobno.
+         */
+        RELEASE_URL: 'https://github.com/YafremauAliaksei/counter/releases/latest/download/counter.js',
+        /**
          * Hasła z góry pliku, sprowadzone do jednej postaci (patrz
          * normalizeAccessPasswords). Porównanie z buforem klawiatury robi
          * InputManager.
@@ -456,6 +466,25 @@
      *             bez ceny, więc linia pokazywałaby same zera i „?N”.
      *   linia 7 — WŁĄCZONA. Jedyna widoczna domyślnie.
      */
+    /**
+     * Wartości domyślne ustawień WSPÓLNYCH dla wszystkich kart.
+     *
+     * Wydzielone z baseState (1.2.0), bo kod konfiguracji musi mieć z czym
+     * porównywać: do ciągu wchodzi tylko to, co różni się od domyślnego.
+     * Bez osobnego obiektu „domyślne” trzeba by je odgadywać z pustego stanu.
+     */
+    const DEFAULT_USER_CONFIG = {
+        language: CONFIG.DEFAULT_LANGUAGE,
+        // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
+        marketplace: CONFIG.DEFAULT_MARKETPLACE,
+        globalStatsContributionKnown: Object.keys(CONFIG.KNOWN_TAB_TYPES)
+            .reduce((acc, key) => ({ ...acc, [key]: true }), {}),
+        keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None' },
+        triggerMutationDebounceMs: CONFIG.DEFAULT_TRIGGER_MUTATION_DEBOUNCE_MS,
+        settingsPanelWidth: CONFIG.SETTINGS_PANEL_INITIAL_WIDTH_PX,
+        customTabSettings: {},
+    };
+
     const DEFAULT_LINE_CONFIG = {
         line1_currentTab: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },
         line2_globalSummary: {

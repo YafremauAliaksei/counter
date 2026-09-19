@@ -452,6 +452,61 @@
             secLunch.appendChild(UIBuilder.row('', UIBuilder.select(lOpts, store.sessionConfig.selectedLunchIndex, v => store.sessionConfig.selectedLunchIndex = parseInt(v))));
             this.el.appendChild(secLunch);
 
+            /**
+             * 9. KOD USTAWIEŃ
+             *
+             * Dwa pola do odczytu i jedno do wklejenia. Pola są `readOnly`,
+             * a nie `disabled`: wyłączonego pola nie da się zaznaczyć, a o to
+             * tu właśnie chodzi — o skopiowanie zawartości.
+             */
+            const secCode = UIBuilder.section(I18n.get('configCode_section'));
+            secCode.appendChild(UIBuilder.hint(I18n.get('configCode_hint')));
+
+            const boxStyle = {
+                width: '100%', boxSizing: 'border-box', marginTop: '4px', padding: '6px',
+                fontFamily: CONFIG.FONT_FAMILY_OPTIONS.monospace, fontSize: '11px',
+            };
+            const readOnlyBox = (value) => h('input', {
+                type: 'text', value, readOnly: true, spellcheck: false,
+                style: boxStyle,
+                onFocus: (e) => e.target.select(),
+            });
+
+            const codeBox = readOnlyBox(ConfigCode.encode());
+            const linkBox = readOnlyBox(ConfigCode.link());
+            secCode.appendChild(UIBuilder.row(I18n.get('configCode_yours'), codeBox));
+            secCode.appendChild(UIBuilder.row(I18n.get('configCode_link'), linkBox));
+
+            secCode.appendChild(UIBuilder.button(I18n.get('configCode_select'), () => {
+                codeBox.focus();
+                codeBox.select();
+                // Schowek bywa niedostępny (brak zgody, stara przeglądarka),
+                // więc jest dodatkiem do zaznaczenia, a nie zamiast niego.
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(codeBox.value).catch(() => {});
+                }
+            }, { width: '100%', marginTop: '6px' }));
+
+            const pasteBox = h('input', {
+                type: 'text', placeholder: I18n.get('configCode_paste'), spellcheck: false,
+                style: Object.assign({}, boxStyle, { marginTop: '10px' }),
+            });
+            secCode.appendChild(pasteBox);
+            secCode.appendChild(UIBuilder.button(I18n.get('configCode_apply'), () => {
+                const report = ConfigCode.apply(pasteBox.value);
+                // Sprawozdanie ma klucze po polsku (idzie też do konsoli), więc
+                // wynik czytamy po pierwszym polu, a nie po nazwie.
+                const okay = report['kod przyjęty'] === true;
+                if (okay) {
+                    Notifier.show(I18n.get('configCode_applied', { n: report['ustawień nałożonych'] }));
+                    pasteBox.value = '';
+                    this.rerender();
+                } else {
+                    Notifier.show(String(report['powód']));
+                }
+            }, { width: '100%', marginTop: '6px' }));
+            this.el.appendChild(secCode);
+
             // Zamknięcie
             this.el.appendChild(h('hr', { style: { margin: '20px 0' } }));
             this.el.appendChild(UIBuilder.button(I18n.get('settings_applyAndCloseButton'), () => this.toggle(), { width: '100%', padding: '10px', fontSize: '1.1em' }));

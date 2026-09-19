@@ -97,19 +97,11 @@
         // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
         // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
         tabSold: {},
-        userConfig: {
-            language: CONFIG.DEFAULT_LANGUAGE,
-            // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
-            marketplace: CONFIG.DEFAULT_MARKETPLACE,
-            globalStatsContributionKnown: Object.keys(CONFIG.KNOWN_TAB_TYPES).reduce((acc, key) => ({ ...acc, [key]: true }), {}),
-            keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None' },
-            triggerMutationDebounceMs: CONFIG.DEFAULT_TRIGGER_MUTATION_DEBOUNCE_MS,
-            settingsPanelWidth: CONFIG.SETTINGS_PANEL_INITIAL_WIDTH_PX,
-            customTabSettings: {},
-            // 8.3.0: usunięte pole defaultLocalTabConfig — nikt go nigdy nie
-            // czytał, a w całości dublowało się w localStorage przy każdym
-            // zapisie.
-        },
+        // 8.3.0: usunięte pole defaultLocalTabConfig — nikt go nigdy nie czytał,
+        // a w całości dublowało się w localStorage przy każdym zapisie.
+        // 1.2.0: wartości przeniesione do DEFAULT_USER_CONFIG, bo kod konfiguracji
+        // musi mieć z czym porównywać bieżący stan.
+        userConfig: Utils.deepMerge({}, DEFAULT_USER_CONFIG),
         localTabConfig: Utils.deepMerge({}, DEFAULT_LOCAL_CONFIG),
         sessionConfig: {
             // 8.3.0: usunięte sessionLastActivityTimestamp — zadeklarowane

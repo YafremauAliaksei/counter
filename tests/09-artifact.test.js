@@ -41,12 +41,39 @@ const IS_COMMENT = commentMap();
 
 describe('Zakazane konstrukcje');
 
-test('nie ma eval, new Function ani document.write', () => {
-    notOk(/\beval\s*\(/.test(ARTIFACT), 'eval');
+test('nie ma new Function, document.write ani insertAdjacentHTML', () => {
     notOk(/new\s+Function\s*\(/.test(ARTIFACT), 'new Function');
     notOk(/document\.write/.test(ARTIFACT), 'document.write');
     notOk(/insertAdjacentHTML/.test(ARTIFACT), 'insertAdjacentHTML');
     notOk(/\.outerHTML\s*=/.test(ARTIFACT), 'outerHTML =');
+});
+
+/**
+ * `eval` — JEDNO DOZWOLONE WYSTĄPIENIE I ANI JEDNEGO WIĘCEJ.
+ *
+ * Skrypt nie wykonuje kodu z łańcucha i nigdy nie ma tego robić. Ale od 1.2.0
+ * układa TEKST gotowej zakładki przeglądarki, a zakładka pobiera plik i podaje
+ * go do `eval` — bo tak uruchamia się ten skrypt tam, gdzie konsola jest
+ * zamknięta. To słowo trafia więc do artefaktu jako treść do skopiowania przez
+ * człowieka, a nie jako wywołanie.
+ *
+ * Dawne sprawdzenie „nie ma w pliku słowa eval” było wygodne właśnie dlatego, że
+ * nie wymagało myślenia. Rozluźnienie go do „ani jednego wywołania” byłoby
+ * ryzykowne: trzeba by odróżniać wywołanie od łańcucha regexpem, a takie
+ * rozróżnienie zawsze da się obejść. Dlatego zostaje sprawdzenie POLICZALNE
+ * i ustawione na jedno konkretne miejsce — drugie wystąpienie, skądkolwiek by
+ * przyszło, zapala bramkę i wymaga wyjaśnienia tutaj.
+ */
+test('eval występuje dokładnie raz i tylko w tekście zakładki', () => {
+    const hits = LINES
+        .map((l, i) => [i + 1, l])
+        .filter(([, l]) => /\beval\s*\(/.test(l));
+
+    eq(hits.length, 1, 'wystąpień eval: ' + hits.map(([n]) => n).join(', '));
+    ok(/javascript:|await r\.text\(\)/.test(hits[0][1]),
+       'jedyne eval ma być częścią składanego tekstu zakładki, jest: ' + hits[0][1].trim());
+    ok(/'|"|`/.test(hits[0][1].split('eval')[0].slice(-40)),
+       'i ma stać wewnątrz łańcucha, a nie w kodzie');
 });
 
 test('innerHTML używany wyłącznie do czyszczenia', () => {
@@ -72,6 +99,11 @@ test('wszystkie adresy zewnętrzne należą do znanej listy', () => {
         'cdn.jsdelivr.net', 'open.er-api.com', 'www.floatrates.com',
         'example.com',                  // wyłącznie w diagnostyce CSP
         'raw.githubusercontent.com',    // wyłącznie jako nazwa w raporcie CSP
+        // Adres wydania: skrypt go NIE odpytuje, tylko wkleja do tekstu gotowej
+        // zakładki (CONFIG.RELEASE_URL). Pilnuje tego sprawdzenie niżej —
+        // „każde wejście do sieci jest osłonięte sprawdzeniem modułu” liczy
+        // wywołania fetch i new Image, a tu nie ma ani jednego.
+        'github.com',
     ];
     const amazon = /^www\.amazon\.(de|co\.uk|com|it|fr|es|nl|ca|se|com\.be|pl)$/;
     const hosts = new Set();

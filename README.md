@@ -24,6 +24,7 @@ towaru — istnieje, ale włącza się ręcznie.
 - [Linie okna statystyk](#linie-okna-statystyk)
 - [Moduł cen](#moduł-cen)
 - [Panel ustawień](#panel-ustawień)
+- [Kod ustawień](#kod-ustawień)
 - [Konsolowe API](#konsolowe-api)
 - [Kilka kart naraz](#kilka-kart-naraz)
 - [Zmiany i przerwy](#zmiany-i-przerwy)
@@ -282,8 +283,116 @@ tego test, więc taka lista zapali CI na czerwono.
 | Karta ceny          | sklep, źródło ceny, co pokazać, klikalność kodu, kolor tekstu, krój, rozmiary, tło — _tylko przy włączonym module_ |
 | Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_                  |
 | Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
+| Kod ustawień        | kod bieżących ustawień, gotowa zakładka z nim i pole na cudzy kod — patrz niżej                                    |
 
 Język interfejsu domyślnie polski, są też angielski i rosyjski.
+
+---
+
+## Kod ustawień
+
+Ustawienia da się przenieść na inną maszynę jednym ciągiem: sekcja **Kod
+ustawień** na dole panelu pokazuje coś w rodzaju
+
+```
+0x0101000101010103ff8800020e0201a4030001014c
+```
+
+Ten ciąg wystarczy podać komuś na czacie albo przepisać sobie na drugi komputer.
+Wkleja się go w to samo miejsce w panelu („Wklej tu kod” → „Nałóż kod”) albo
+w konsoli:
+
+```js
+SH.config('0x0101000101010103ff8800...'); // wielkość liter bez znaczenia
+SH.configCode(); // kod bieżących ustawień
+SH.configLink(); // gotowa zakładka z tym kodem w środku
+```
+
+`SH.configLink()` daje adres do zakładki, który najpierw pobiera ostatnie wydanie,
+a zaraz po uruchomieniu nakłada kod — czyli nowy człowiek dostaje od razu gotowy
+wygląd, bez przeklikiwania panelu:
+
+```
+javascript:(async()=>{const r=await fetch('…/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());SH.config('0x0101…');})();void 0;
+```
+
+Kod obejmuje **wszystko, co daje się ustawić**: położenie okna, siedem linii
+(widoczność, kolor, przezroczystość, rozmiar pisma), kolory działów w linii 2,
+nakładkę na stronę, całą kartę ceny razem z jej wyłącznikami i położeniem, język,
+sklep, szerokość panelu, skróty klawiszowe i to, które działy wchodzą do sumy.
+Nie obejmuje **danych**: liczników, dziennika wartości ani stanu zmiany. Kod
+opisuje wygląd i zachowanie, a nie przepracowany dzień.
+
+### Jak to jest zbudowane
+
+Ciąg to zbiór **samoopisujących się rekordów**, jeden na ustawienie:
+
+```
+0x 01 | 0100 01 01 | 0101 03 ff8800 | 020e 02 01a4 | 0300 01 01 | 4c
+   │    │    │  │                                                 │
+   │    │    │  └ wartość: prawda (linia 1 widoczna)              │
+   │    │    └ długość wartości w bajtach                         │
+   │    └ numer ustawienia: widoczność linii 1                    │
+   └ wersja formatu                              suma kontrolna ──┘
+```
+
+Pozostałe trzy rekordy tego przykładu czyta się tak samo: `0101 03 ff8800` to
+kolor linii 1, `020e 02 01a4` — szerokość karty ceny (`0x01a4` = 420 pikseli),
+`0300 01 01` — język (pozycja 1 na liście `pl / en / ru`, czyli angielski).
+
+Trzy decyzje, na których to stoi:
+
+1. **Rekord niesie własną długość.** Dzięki temu skrypt, który danego numeru
+   jeszcze nie zna, potrafi go **przeskoczyć** i wczytać resztę. Stały układ
+   bitów („ustawienie X siedzi na bicie 37”) tego nie umie: żeby wiedzieć, gdzie
+   kończy się nieznane pole, trzeba by już je znać. To jest powód, dla którego
+   dopisanie ustawienia w następnym wydaniu **nie unieważnia kodów**, które
+   ludzie mają w kieszeniach — w obie strony: starszy skrypt zrozumie nowszy kod
+   (pomijając to, czego i tak nie umie ustawić), a nowszy skrypt zrozumie stary.
+2. **Numer jest przydzielany raz i nie wraca do obiegu.** Ustawienie usunięte ze
+   skryptu znika z rejestru, ale jego numer zostaje spalony na zawsze. Inaczej
+   kod sprzed roku ustawiłby dziś coś zupełnie innego — po cichu.
+3. **Kod jest łatką, a nie zdjęciem konfiguracji.** Wchodzi do niego wyłącznie
+   to, co różni się od wartości domyślnych, więc kto zmienił trzy rzeczy, ma trzy
+   rekordy. Ważniejszy od długości ciągu jest jednak skutek: gdy w następnym
+   wydaniu zmieni się domyślna wartość czegoś, czego ten człowiek nigdy nie
+   ruszał, on tę nową wartość **dostanie**. Przy zdjęciu całej konfiguracji
+   zostałby na zawsze przy starych domyślnych i nie miałby o tym pojęcia.
+
+Rejestr numerów leży w jednym miejscu — `src/24-config-code.js`, tablica
+`REGISTRY`. Dodanie ustawienia do kodu to jedna linia: numer, ścieżka w stanie
+i typ. Numery są rozdane blokami (`0x0001` okno, `0x0100+` linie po `0x10` na
+linię, `0x0200+` karta ceny, `0x0300+` ustawienia wspólne), żeby dopisywanie nie
+wymagało szukania wolnego miejsca.
+
+### Co robi kod przyjęty z zewnątrz
+
+Kod przychodzi z czatu albo z cudzej zakładki, więc jest traktowany jak dane
+z zewnątrz, a nie jak polecenie:
+
+- zapis idzie **wyłącznie pod ścieżki z rejestru** — kodem nie da się utworzyć
+  nowego pola ani nadpisać czegoś, czego w rejestrze nie ma;
+- liczby są przycinane do granic z rejestru, kolory muszą mieć formę `#rrggbb`,
+  pola wyboru przyjmują tylko indeks istniejący na liście, teksty tylko
+  drukowalne ASCII;
+- suma kontrolna na końcu łapie ciąg urwany przy kopiowaniu albo przekłamany;
+- nieznany numer, zła długość i śmieciowa wartość są pomijane **pojedynczo**,
+  z adnotacją w sprawozdaniu, zamiast wywracać cały kod.
+
+Sprawozdanie wraca z `SH.config(...)`:
+
+```js
+{
+  'kod przyjęty': true,
+  'ustawień nałożonych': 4,
+  'rekordów nieznanych (nowszy skrypt je zrozumie)': 0,
+  'rekordów odrzuconych': 0
+}
+```
+
+Nałożenie kodu od razu zapisuje stan, więc przeżywa `F5`. Kod **nie** jest
+wykonywany ani interpretowany jako kod JavaScriptu — to ciąg cyfr, który
+przechodzi przez ten sam rejestr, co panel ustawień.
 
 ---
 
@@ -313,6 +422,11 @@ SH.cspReport(); // co dopuszcza polityka strony (async)
 SH.forcePrice(asin); // odpytać o cenę ręcznie
 SH.readPrice(asin); // odczytać cenę z wykresu z pominięciem cache
 SH.setLimits({ images: 3000 }); // podnieść limity zapytań w locie
+
+// Kod ustawień
+SH.configCode(); // kod bieżących ustawień
+SH.configLink(); // gotowa zakładka z tym kodem
+SH.config('0x01…'); // nałożyć kod i zapisać
 
 // Wnętrzności
 SH.store; // cały stan
@@ -377,6 +491,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 | Żadnego parsowania HTML: cały tekst przez `createTextNode`            | generator DOM `h()`      |
 | `innerHTML` tylko do czyszczenia (`= ''`), nigdy z treścią            | sprawdzane testem        |
 | Ani `eval`, ani `new Function`, ani `document.write`                  | sprawdzane testem        |
+| Kod ustawień zapisuje tylko pod ścieżki z rejestru, z przycięciem     | `ConfigCode.decode`      |
 | Ochrona przed prototype pollution (`__proto__`, `constructor`)        | `Utils.deepMerge`        |
 | Liczby z konfiguracji są zaciskane do zakresu, zanim trafią do CSS    | `Utils.clampNum`         |
 | Kolory sprawdzane zakotwiczonym wyrażeniem, inaczej — szary           | `Utils.hexToRgb`         |
@@ -387,7 +502,12 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 | Skrypt rusza wyłącznie własne klucze `localStorage`                   | `StorageManager.ownKeys` |
 | Pięć niezależnych sprawdzeń przed każdym wyjściem do sieci            | `priceModuleOn()`        |
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 113 sprawdzeń,
+> Słowo `eval` pada w pliku dokładnie raz: wewnątrz **tekstu** gotowej zakładki,
+> którą zwraca `SH.configLink()`. Skrypt tego nie wykonuje — wypisuje adres do
+> skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
+> zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
+
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 246 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -404,7 +524,7 @@ production/
 │   └── README.md           ← mapa modułów i zasady zależności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 10 plików, 113 sprawdzeń
+├── tests/                  ← 20 plików, 246 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -424,7 +544,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 113 sprawdzeń
+npm test             # 246 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

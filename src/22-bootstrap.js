@@ -103,6 +103,12 @@
             // Dostęp z konsoli należał do zdjętego egzemplarza: zostawić go znaczy
             // trzymać w pamięci cały stan i wszystkie menedżery.
             try { delete window[CONFIG.SCRIPT_ID_PREFIX + 'API']; delete window.SH; } catch (e) { /* własność mogła być niekasowalna — rozbiórki to nie zatrzymuje */ }
+            // Skrót `config` zdejmujemy TYLKO wtedy, gdy to my go postawiliśmy:
+            // inaczej rozbiórka zabrałaby stronie jej własną funkcję.
+            if (this.ownsConfigAlias) {
+                try { delete window.config; } catch (e) { /* jak wyżej */ }
+                this.ownsConfigAlias = false;
+            }
             // Egzemplarza na stronie już nie ma — więc i zamek na powtórne
             // uruchomienie się zdejmuje, inaczej poprawionego pliku nie dałoby się
             // już wkleić.
@@ -228,6 +234,21 @@
                 onStorePaths(['userConfig', 'sessionConfig', 'localTabConfig'],
                              () => StorageManager.scheduleSave());
 
+                /**
+                 * Skrót `config("0x…")` bez przedrostka SH.
+                 *
+                 * Zakładka w przeglądarce wkleja się jednym ciągiem i krótsza
+                 * nazwa jest tam wygodniejsza. Nazwa jest jednak POSPOLITA,
+                 * a strona nie jest nasza — więc zajmujemy ją TYLKO wtedy, gdy
+                 * jest wolna. Gdy T-REX ma własne `window.config`, zostaje
+                 * `SH.config(...)`, które nie koliduje z niczym i dlatego to
+                 * ono stoi w kopiowanym z panelu odnośniku.
+                 */
+                if (typeof window.config === 'undefined') {
+                    window.config = (code) => ConfigCode.apply(code);
+                    this.ownsConfigAlias = true;
+                }
+
                 this.startShiftWatch();
                 StatsWindowRenderer.renderContent();
 
@@ -241,7 +262,7 @@
                     KeepaOCR, ValueLog, FxRates, Routing,
                     // 9.2.0 — potrzebne testom i diagnostyce
                     Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
-                    DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG,
+                    DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG, DEFAULT_USER_CONFIG,
                     priceModuleOn,
                     // 1.1.0 — hasła dostępu. InputManager trzyma bufor i mapę
                     // haseł, normalizeAccessPasswords pokazuje, co naprawdę
@@ -249,6 +270,25 @@
                     // sprawdzić SH.normalizeAccessPasswords(['moje', 'hasła'])
                     // zamiast zgadywać, czy literówka przeszła.
                     InputManager, normalizeAccessPasswords,
+                    /**
+                     * KOD KONFIGURACJI (1.2.0).
+                     *
+                     * Funkcje strzałkowe, a nie sam obiekt: ConfigCode jest
+                     * ostatnim modułem w sklejeniu, a Main.init() woła się
+                     * z przedostatniego. W chwili budowania tego obiektu
+                     * ConfigCode jeszcze nie istnieje — ale w chwili WYWOŁANIA
+                     * już tak, i to wystarczy.
+                     */
+                    config: (code) => ConfigCode.apply(code),
+                    configCode: () => ConfigCode.encode(),
+                    configLink: () => ConfigCode.link(),
+                    /**
+                     * Sam rejestr — dla testów zgodności wstecznej i dla
+                     * odpowiedzi na pytanie „pod jakim numerem siedzi to
+                     * ustawienie”. Getter z tego samego powodu, co wyżej:
+                     * w chwili budowania tego obiektu stała jeszcze nie żyje.
+                     */
+                    get ConfigCode() { return ConfigCode; },
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
                     // odtwarzają pełny gest myszy.
