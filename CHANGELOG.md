@@ -12,6 +12,21 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Naprawiono
+
+- **Układ opisu wydania na stronie GitHuba.** Dwie rzeczy, obie w szablonie
+  z `release.yml`, a nie w samym CHANGELOG-u. Po pierwsze wyciągnięta sekcja
+  niosła na końcu separator `---` sprzed poprzedniej wersji, a szablon dokładał
+  drugi — w wydaniu stały dwie kreski jedna pod drugą. Po drugie adres zakładki
+  ma ponad 200 znaków w jednej linii i w bloku kodu wychodził poza szerokość
+  strony, więc trzeba go było przewijać w bok. Adres został tam, gdzie i tak
+  jest jego miejsce — w README — a opis wydania wskazuje na ten rozdział
+  i na plik przypięty do tej konkretnej wersji.
+
+---
+
 ## 1.2.0 — 2026-09-19
 
 ### Dodano
@@ -68,7 +83,7 @@ Dla tego projektu SemVer czyta się tak:
   więc musi mieć go zadeklarowanego wyżej.
 
 - `README.md` opisuje mechanizm kodu wraz z rozbiorem przykładowego ciągu;
-  liczba sprawdzeń w dokumentacji doprowadzona do stanu faktycznego (246).
+  liczba sprawdzeń w dokumentacji doprowadzona do stanu faktycznego (254).
 
 ---
 

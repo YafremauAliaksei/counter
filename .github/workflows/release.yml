@@ -120,29 +120,45 @@ jobs:
             found && /^## / {exit}
             found {print}
           ' CHANGELOG.md > RELEASE_NOTES.md
+          # Sekcja kończy się separatorem `---` sprzed następnej wersji. Zostawiony,
+          # dawał w wydaniu DWIE kreski jedna pod drugą — swoją i tę, którą
+          # dokładamy w następnym kroku.
+          awk '
+            { line[NR] = $0 }
+            END {
+              last = NR
+              while (last > 0 && (line[last] ~ /^[ \t]*$/ || line[last] ~ /^[ \t]*-{3,}[ \t]*$/)) last--
+              for (i = 1; i <= last; i++) print line[i]
+            }
+          ' RELEASE_NOTES.md > RELEASE_NOTES.trimmed
+          mv RELEASE_NOTES.trimmed RELEASE_NOTES.md
           if [ ! -s RELEASE_NOTES.md ]; then
             echo "Wydanie $VERSION. Szczegóły w CHANGELOG.md." > RELEASE_NOTES.md
           fi
           cat RELEASE_NOTES.md
 
+      # Dopisek jest CELOWO krótki i bez długich ciągów. Adres zakładki ma ponad
+      # 200 znaków w jednej linii, więc w bloku kodu wychodził poza szerokość
+      # strony wydania i trzeba go było przewijać w bok. Miejsce na niego jest
+      # w README — tam stoi też wyjaśnienie, dlaczego wygląda tak, a nie inaczej.
       - name: Dopisz do opisu sposób uruchomienia i sumę kontrolną
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          REPO="${{ github.repository }}"
           cat >> RELEASE_NOTES.md <<NOTES
 
           ---
 
           ## Jak uruchomić
 
-          Zakładka w przeglądarce (bookmarklet) — adres zawsze wskazuje **ostatnie
-          wydanie**, więc po każdym wydaniu wystarczy kliknąć ją jeszcze raz:
+          Gotowy adres zakładki przeglądarki (bookmarklet) stoi w README, w rozdziale
+          [Szybki start](https://github.com/$REPO/blob/v$VERSION/README.md#szybki-start).
+          Ten adres wskazuje zawsze **ostatnie** wydanie, więc po każdym kolejnym
+          wystarczy kliknąć zakładkę jeszcze raz — nic się nie podmienia ręcznie.
 
-          \`\`\`
-          javascript:(async()=>{const r=await fetch('https://github.com/${{ github.repository }}/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
-          \`\`\`
-
-          Żeby przypiąć się do TEJ wersji i nie dostawać następnych automatycznie,
-          w adresie zamienia się \`latest/download\` na \`download/v$VERSION\`.
+          Kto woli wklejać plik do konsoli, bierze go z listy plików tego wydania
+          (niżej) albo z adresu, który przypina do **tej** wersji i nie zmieni się
+          nigdy: https://github.com/$REPO/releases/download/v$VERSION/counter.js
 
           ## Suma kontrolna
 
