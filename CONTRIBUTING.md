@@ -46,7 +46,8 @@ src/
   00-banner.js       nagłówek ==UserScript==, hasło, wyłącznik logów
   01-config.js       stałe i wartości domyślne
   ...
-  23-presets.js      blok ustawień osobistych i start
+  23-config-code.js  kod ustawień: ciąg szesnastkowy zamiast panelu
+  24-presets.js      blok ustawień osobistych i start
   99-footer.js       zakomentowana ściąga po ustawieniach
 ```
 

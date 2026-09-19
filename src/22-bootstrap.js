@@ -118,6 +118,28 @@
 
         init() {
             if (window[CONFIG.SCRIPT_ID_PREFIX + 'INIT']) {
+                /**
+                 * Kod ustawień z zakładki wchodzi MIMO TO — powtórne kliknięcie
+                 * zakładki z innym kodem jest jedynym sposobem zmiany wyglądu
+                 * bez przeładowania strony, a przeładowanie w środku zmiany
+                 * kosztuje tyle, co wklejenie skryptu od nowa.
+                 *
+                 * Ale nakłada się na egzemplarz, KTÓRY JUŻ STOI, przez jego
+                 * własne `SH.config`. Ten, który właśnie się nie uruchomi, ma
+                 * osobny stan w swoim domknięciu: zapis do niego poszedłby
+                 * w próżnię, a przy okazji nadpisałby w magazynie ustawienia
+                 * tamtego egzemplarza.
+                 *
+                 * Gdy na stronie stoi wydanie starsze niż 1.2.0, `config` tam
+                 * nie istnieje — wtedy kod po prostu przepada i trzeba odświeżyć
+                 * stronę. Zgadywanie po wnętrznościach cudzego egzemplarza
+                 * kosztowałoby więcej, niż jest warte.
+                 */
+                const bootCode = ConfigCode.takeBoot();
+                const running = window[CONFIG.SCRIPT_ID_PREFIX + 'API'];
+                if (bootCode && running && typeof running.config === 'function') {
+                    running.config(bootCode);
+                }
                 Utils.log('Skrypt już działa na tej stronie — powtórne wklejenie zignorowane. Aby zrestartować, przeładuj stronę (F5).');
                 return;
             }
@@ -134,6 +156,18 @@
                 // strony nigdy.
                 this.identifyTab();
                 StorageManager.loadAll();
+
+                /**
+                 * Kod ustawień z zakładki — PO wczytaniu magazynu, PRZED
+                 * postawieniem interfejsu.
+                 *
+                 * Po wczytaniu, bo inaczej `loadAll()` nadpisałby to, co przyszło
+                 * z kodu, zapisanym wcześniej stanem. Przed interfejsem, bo okno
+                 * ma się narysować od razu takie, jakiego człowiek chce — a nie
+                 * mrugnąć domyślnym wyglądem. Zapis do magazynu robi `saveState()`
+                 * kilka linii niżej, po podniesieniu `store.initialized`.
+                 */
+                ConfigCode.applyBoot();
 
                 // Dane poprzedniej zmiany na maszynach bez resetu sesji.
                 // Dziennik wartości podnosi się PRZED sprawdzeniem zmiany:
@@ -273,22 +307,16 @@
                     /**
                      * KOD KONFIGURACJI (1.2.0).
                      *
-                     * Funkcje strzałkowe, a nie sam obiekt: ConfigCode jest
-                     * ostatnim modułem w sklejeniu, a Main.init() woła się
-                     * z przedostatniego. W chwili budowania tego obiektu
-                     * ConfigCode jeszcze nie istnieje — ale w chwili WYWOŁANIA
-                     * już tak, i to wystarczy.
+                     * Funkcje, a nie sam obiekt: `SH.config('0x…')` ma być
+                     * krótkim poleceniem do wklejenia w konsoli, a nie ścieżką
+                     * przez wnętrzności. Sam rejestr stoi niżej, pod własną
+                     * nazwą, dla testów i dla pytania „pod jakim numerem siedzi
+                     * to ustawienie”.
                      */
                     config: (code) => ConfigCode.apply(code),
                     configCode: () => ConfigCode.encode(),
                     configLink: () => ConfigCode.link(),
-                    /**
-                     * Sam rejestr — dla testów zgodności wstecznej i dla
-                     * odpowiedzi na pytanie „pod jakim numerem siedzi to
-                     * ustawienie”. Getter z tego samego powodu, co wyżej:
-                     * w chwili budowania tego obiektu stała jeszcze nie żyje.
-                     */
-                    get ConfigCode() { return ConfigCode; },
+                    ConfigCode,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
                     // odtwarzają pełny gest myszy.

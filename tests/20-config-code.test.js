@@ -22,8 +22,9 @@
 
 'use strict';
 
+const vm = require('vm');
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot } = require('./dom-stub');
+const { boot, ARTIFACT } = require('./dom-stub');
 
 const env = boot();
 const SH = env.SH;
@@ -285,6 +286,101 @@ test('kod wydany dziś ma znaczyć to samo za rok', () => {
     eq(S.userConfig.globalStatsContributionKnown.WHD, false);
 });
 
+describe('Kod z zakładki wchodzi w trakcie uruchamiania');
+
+/**
+ * Zakładka podstawia kod do okna PRZED pobraniem pliku, a skrypt czyta go
+ * w `Main.init()`. Dwie rzeczy, które to załatwia, i obu nie dało się osiągnąć
+ * wywołaniem `SH.config(...)` doklejonym za wykonaniem pliku:
+ *   - na stronie, która jeszcze się wczytuje, `SH` w tym momencie nie istnieje
+ *     (start czeka na DOMContentLoaded) i ustawienia przepadały w całości;
+ *   - nawet na gotowej stronie okno zdążyło mrugnąć wyglądem domyślnym.
+ */
+const BOOT_NAME = CC.BOOT_GLOBAL;
+
+/** Uruchomienie z kodem podstawionym tak, jak robi to zakładka. */
+function bootWithCode(code) {
+    return boot({ beforeRun: (e) => { e.sandbox.window[BOOT_NAME] = code; } });
+}
+
+/** Kolejne kliknięcie zakładki na stronie, na której skrypt już stoi. */
+function clickBookmarklet(env) {
+    vm.runInContext('(function(){eval(' + JSON.stringify(ARTIFACT) + ');})();',
+                    env.sandbox, { filename: 'zakladka.js' });
+}
+
+test('nazwa zmiennej startowej niesie przedrostek skryptu', () => {
+    // Strona nie jest nasza: goła nazwa w rodzaju `CONFIG_CODE` to zderzenie
+    // z czymkolwiek, co T-REX trzyma w oknie pod tą samą nazwą.
+    ok(BOOT_NAME.startsWith(SH.CONFIG.SCRIPT_ID_PREFIX), 'jest: ' + BOOT_NAME);
+});
+
+test('okno jest narysowane ustawieniami z kodu, a nie domyślnymi', () => {
+    const src = freshEnv();
+    src.SH.store.localTabConfig.statsWindowPosition.left = '42px';
+    const code = src.SH.configCode();
+
+    const e = bootWithCode(code);
+    eq(e.SH.store.localTabConfig.statsWindowPosition.left, '42px', 'stan');
+    // To jest sedno: element ma współrzędną z kodu już przy pierwszym rysowaniu.
+    eq(e.el('statsWindow').style.left, '42px', 'okno od razu na swoim miejscu');
+});
+
+test('zmienna znika z okna po uruchomieniu', () => {
+    const e = bootWithCode(freshEnv().SH.configCode());
+    notOk(BOOT_NAME in e.sandbox.window, 'zostawiona własność to śmieć na cudzej stronie');
+});
+
+test('zmienna znika także wtedy, gdy kod był zepsuty', () => {
+    const e = bootWithCode('0xZZ');
+    notOk(BOOT_NAME in e.sandbox.window);
+});
+
+test('śmieć w zmiennej nie przeszkadza w uruchomieniu i nie łamie ciszy', () => {
+    // Wartości graniczne: nie-tekst, tekst pusty, tekst nieszesnastkowy.
+    for (const junk of [42, {}, null, '', '0x', 'GORDONPAULE']) {
+        const e = bootWithCode(junk);
+        ok(e.SH, 'skrypt ma wstać mimo wszystko, wartość: ' + String(junk));
+        eq(e.SH.store.localTabConfig.statsWindowPosition.left,
+           e.SH.DEFAULT_LOCAL_CONFIG.statsWindowPosition.left, 'stan bez zmian');
+        eq(e.net.consoleLog.length, 0, 'ani jednej linii w konsoli');
+        eq(e.net.consoleError.length, 0, 'ani jednej linii błędu');
+        eq(e.net.fetches.length, 0, 'ani jednego zapytania');
+    }
+});
+
+test('kod z zakładki trafia do magazynu, więc przeżywa F5', () => {
+    const src = freshEnv();
+    src.SH.store.localTabConfig.statsWindowPosition.left = '42px';
+    const e = bootWithCode(src.SH.configCode());
+    const key = e.SH.StorageManager.getKey(e.SH.CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
+    ok(String(e.sandbox.localStorage.getItem(key)).includes('"left":"42px"'),
+       'bez zapisu człowiek po odświeżeniu wróciłby do poprzednich ustawień');
+});
+
+test('powtórne kliknięcie zakładki nakłada nowy kod na działający egzemplarz', () => {
+    // Powtórne uruchomienie skryptu jest z założenia ignorowane (drugi
+    // egzemplarz liczyłby ten sam licznik dwa razy). Ale SAM KOD ma wejść:
+    // to jedyny sposób zmiany wyglądu bez przeładowania strony, a przeładowanie
+    // w środku zmiany kosztuje tyle samo, co wklejenie skryptu od nowa.
+    //
+    // Plik idzie przez `eval` wewnątrz funkcji — dokładnie tak, jak robi to
+    // zakładka. Ma to znaczenie: dwie stałe na samej górze pliku stoją POZA
+    // domknięciem skryptu, więc drugie wykonanie w tym samym zasięgu wywala się
+    // na „Identifier has already been declared”. Zakładka tego nie dotyka, bo
+    // każde kliknięcie dostaje własny zasięg.
+    const e = boot();
+    eq(e.SH.store.localTabConfig.statsWindowPosition.left, '20px', 'na starcie domyślne');
+
+    const src = freshEnv();
+    src.SH.store.localTabConfig.statsWindowPosition.left = '77px';
+    e.sandbox.window[BOOT_NAME] = src.SH.configCode();
+    clickBookmarklet(e);
+
+    eq(e.SH.store.localTabConfig.statsWindowPosition.left, '77px', 'nowe ustawienia weszły');
+    notOk(BOOT_NAME in e.sandbox.window, 'zmienna posprzątana także tą drogą');
+});
+
 describe('Gotowa zakładka');
 
 test('odnośnik zawiera adres wydania i kod bieżących ustawień', () => {
@@ -294,8 +390,17 @@ test('odnośnik zawiera adres wydania i kod bieżących ustawień', () => {
     ok(link.startsWith('javascript:'), 'ma być zakładką');
     ok(link.includes(e.SH.CONFIG.RELEASE_URL), 'adres wydania z jednego miejsca');
     ok(link.includes(e.SH.configCode()), 'kod bieżących ustawień');
-    ok(link.includes("SH.config('"), 'wywołanie przez SH, a nie przez skrót');
+    ok(link.includes(CC.BOOT_GLOBAL), 'kod idzie przez zmienną startową');
     ok(link.trim().endsWith('void 0;'), 'bez tego zakładka potrafi zastąpić stronę');
+});
+
+test('kod stoi w odnośniku PRZED pobraniem pliku', () => {
+    // Odwrotna kolejność to cały błąd, przed którym stoi ten mechanizm: skrypt
+    // czyta zmienną w trakcie uruchamiania, więc podstawiona po pobraniu pliku
+    // nie zdążyłaby na nic.
+    const link = freshEnv().SH.configLink();
+    ok(link.indexOf(CC.BOOT_GLOBAL) < link.indexOf('fetch('),
+       'zmienna startowa musi być ustawiona przed fetch');
 });
 
 describe('Cisza po starcie zostaje nienaruszona');

@@ -5772,6 +5772,28 @@ const SCRIPT_LOGS_ENABLED = false;
 
         init() {
             if (window[CONFIG.SCRIPT_ID_PREFIX + 'INIT']) {
+                /**
+                 * Kod ustawień z zakładki wchodzi MIMO TO — powtórne kliknięcie
+                 * zakładki z innym kodem jest jedynym sposobem zmiany wyglądu
+                 * bez przeładowania strony, a przeładowanie w środku zmiany
+                 * kosztuje tyle, co wklejenie skryptu od nowa.
+                 *
+                 * Ale nakłada się na egzemplarz, KTÓRY JUŻ STOI, przez jego
+                 * własne `SH.config`. Ten, który właśnie się nie uruchomi, ma
+                 * osobny stan w swoim domknięciu: zapis do niego poszedłby
+                 * w próżnię, a przy okazji nadpisałby w magazynie ustawienia
+                 * tamtego egzemplarza.
+                 *
+                 * Gdy na stronie stoi wydanie starsze niż 1.2.0, `config` tam
+                 * nie istnieje — wtedy kod po prostu przepada i trzeba odświeżyć
+                 * stronę. Zgadywanie po wnętrznościach cudzego egzemplarza
+                 * kosztowałoby więcej, niż jest warte.
+                 */
+                const bootCode = ConfigCode.takeBoot();
+                const running = window[CONFIG.SCRIPT_ID_PREFIX + 'API'];
+                if (bootCode && running && typeof running.config === 'function') {
+                    running.config(bootCode);
+                }
                 Utils.log('Skrypt już działa na tej stronie — powtórne wklejenie zignorowane. Aby zrestartować, przeładuj stronę (F5).');
                 return;
             }
@@ -5788,6 +5810,18 @@ const SCRIPT_LOGS_ENABLED = false;
                 // strony nigdy.
                 this.identifyTab();
                 StorageManager.loadAll();
+
+                /**
+                 * Kod ustawień z zakładki — PO wczytaniu magazynu, PRZED
+                 * postawieniem interfejsu.
+                 *
+                 * Po wczytaniu, bo inaczej `loadAll()` nadpisałby to, co przyszło
+                 * z kodu, zapisanym wcześniej stanem. Przed interfejsem, bo okno
+                 * ma się narysować od razu takie, jakiego człowiek chce — a nie
+                 * mrugnąć domyślnym wyglądem. Zapis do magazynu robi `saveState()`
+                 * kilka linii niżej, po podniesieniu `store.initialized`.
+                 */
+                ConfigCode.applyBoot();
 
                 // Dane poprzedniej zmiany na maszynach bez resetu sesji.
                 // Dziennik wartości podnosi się PRZED sprawdzeniem zmiany:
@@ -5927,22 +5961,16 @@ const SCRIPT_LOGS_ENABLED = false;
                     /**
                      * KOD KONFIGURACJI (1.2.0).
                      *
-                     * Funkcje strzałkowe, a nie sam obiekt: ConfigCode jest
-                     * ostatnim modułem w sklejeniu, a Main.init() woła się
-                     * z przedostatniego. W chwili budowania tego obiektu
-                     * ConfigCode jeszcze nie istnieje — ale w chwili WYWOŁANIA
-                     * już tak, i to wystarczy.
+                     * Funkcje, a nie sam obiekt: `SH.config('0x…')` ma być
+                     * krótkim poleceniem do wklejenia w konsoli, a nie ścieżką
+                     * przez wnętrzności. Sam rejestr stoi niżej, pod własną
+                     * nazwą, dla testów i dla pytania „pod jakim numerem siedzi
+                     * to ustawienie”.
                      */
                     config: (code) => ConfigCode.apply(code),
                     configCode: () => ConfigCode.encode(),
                     configLink: () => ConfigCode.link(),
-                    /**
-                     * Sam rejestr — dla testów zgodności wstecznej i dla
-                     * odpowiedzi na pytanie „pod jakim numerem siedzi to
-                     * ustawienie”. Getter z tego samego powodu, co wyżej:
-                     * w chwili budowania tego obiektu stała jeszcze nie żyje.
-                     */
-                    get ConfigCode() { return ConfigCode; },
+                    ConfigCode,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
                     // odtwarzają pełny gest myszy.
@@ -6078,87 +6106,7 @@ const SCRIPT_LOGS_ENABLED = false;
         }
     };
 
-    // ─── src/23-presets.js ───
-// ==========================================
-    // 9. USTAWIENIA PRACOWNIKA (KONFIGURACJA OSOBISTA)
-    // ==========================================
-
-
-///POCZĄTEK KONFIGURACJI UŻYTKOWNIKA
-/*
-        const originalInit = Main.init;
-
-        Main.init = function() {
-        // 1. Wołamy oryginalny rdzeń (wczytanie pamięci, rozpoznanie zmiany)
-        originalInit.call(Main);
-
-        // 2. WYMUSZONA PRZERWA NR 4
-
-        // Indeks 3 dla zmiany dziennej (12:50-13:20), indeks 7 dla nocnej (00:50-01:20)
-        // indeksy 0-3 dla dziennej, indeksy 4-7 dla nocnej
-        const isNight = store.sessionConfig.shiftType === 'night';
-        store.sessionConfig.selectedLunchIndex = isNight ? 7 : 3;
-
-        // 3. USTAWIENIA INDYWIDUALNE ZALEŻNE OD BIEŻĄCEGO DZIAŁU
-        const tab = store.currentTabType; // 'CRET', 'REFURB', 'WHD' albo 'UNKNOWN'
-
-        if (tab === 'CRET') {
-            // --- Przykład: ustawienia dla karty CRET ---
-
-            // Włączamy tylko linię 1 i linię 2
-            store.localTabConfig.linesConfig.line1_currentTab.visible = true;
-            store.localTabConfig.linesConfig.line2_globalSummary.visible = true;
-            store.localTabConfig.linesConfig.line3_shiftInfo.visible = false;
-            store.localTabConfig.linesConfig.line4_lunchInfo.visible = false;
-            store.localTabConfig.linesConfig.line5_realTimeClock.visible = false;
-            store.localTabConfig.linesConfig.line7_compact.visible = false;
-
-            // Linia 1: przezroczystość 53%, kolor czarny (#000000)
-            store.localTabConfig.linesConfig.line1_currentTab.alpha = 53;
-            store.localTabConfig.linesConfig.line1_currentTab.colorHex = '#000000';
-
-            // Linia 2: włączyć wielokolor i ustawić własne kolory
-            store.localTabConfig.linesConfig.line2_globalSummary.multicolor = true;
-            store.localTabConfig.linesConfig.line2_globalSummary.customColors.CRET = '#0078D7';
-            store.localTabConfig.linesConfig.line2_globalSummary.customColors.REFURB = '#FF0000';
-            store.localTabConfig.linesConfig.line2_globalSummary.customColors.WHD = '#FF0000';
-
-            // Pozycja okna na ekranie (lewy górny róg z niewielkim odstępem)
-            store.localTabConfig.statsWindowPosition.top = '15px';
-            store.localTabConfig.statsWindowPosition.left = '15%';
-
-            // Globalne zaznaczenia
-            store.userConfig.globalStatsContributionKnown.CRET = true;
-            store.userConfig.globalStatsContributionKnown.REFURB = true;
-            store.userConfig.globalStatsContributionKnown.WHD = true;
-
-        } else if (tab === 'REFURB') {
-            // --- Przykład: ustawienia dla karty REFURB ---
-            store.localTabConfig.linesConfig.line1_currentTab.visible = true;
-            store.localTabConfig.linesConfig.line1_currentTab.colorHex = '#FFA500'; // pomarańczowy
-            store.localTabConfig.linesConfig.line1_currentTab.alpha = 100; // pełna nieprzezroczystość
-
-            // Liczyć do sumy globalnej wszystko
-            store.userConfig.globalStatsContributionKnown.CRET = true;
-            store.userConfig.globalStatsContributionKnown.REFURB = true;
-            store.userConfig.globalStatsContributionKnown.WHD = true;
-        }
-
-        // 4. Utrwalenie stanu (gwarantuje zapis do localStorage i render)
-        StorageManager.saveState();
-    };
-
-*/
-// można zdjąć komentarz i dopisać własne ustawienia
-
-
-///KONIEC KONFIGURACJI UŻYTKOWNIKA
-
-
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => Main.init());
-    else Main.init();
-
-    // ─── src/24-config-code.js ───
+    // ─── src/23-config-code.js ───
     // ==========================================
     // 10. KOD KONFIGURACJI (1.2.0)
     // ==========================================
@@ -6226,6 +6174,26 @@ const SCRIPT_LOGS_ENABLED = false;
     const ConfigCode = {
         /** Wersja FORMATU (nie skryptu). Zmienia się tylko przy zmianie ramki. */
         FORMAT: 0x01,
+
+        /**
+         * KOD PODSTAWIONY PRZED URUCHOMIENIEM.
+         *
+         * Zakładka z ustawieniami (patrz `link`) najpierw wpisuje kod do okna
+         * pod tę nazwę, a dopiero potem ściąga i wykonuje plik. Dzięki temu
+         * ustawienia wchodzą WEWNĄTRZ `Main.init()`, zaraz po wczytaniu stanu
+         * z magazynu — czyli przed pierwszym rysowaniem okna.
+         *
+         * Wcześniejszy pomysł — wykonać plik, a zaraz za nim, w tej samej linii,
+         * `SH.config('0x…')` — miał dwie dziury. Po pierwsze `SH` powstaje
+         * dopiero w `Main.init()`, a ten czeka na `DOMContentLoaded`, gdy strona
+         * jeszcze się wczytuje: wywołanie tuż po wykonaniu pliku trafiało wtedy
+         * w niebyt. Po drugie nawet przy
+         * gotowej stronie okno zdążyło się narysować ustawieniami domyślnymi
+         * i dopiero potem przeskakiwało na swoje — widoczne mrugnięcie.
+         *
+         * Nazwa jest długa i z przedrostkiem skryptu, bo to cudza strona.
+         */
+        BOOT_GLOBAL: CONFIG.SCRIPT_ID_PREFIX + 'CONFIG_CODE',
 
         /**
          * Listy wartości dopuszczalnych dla pól wyboru.
@@ -6528,6 +6496,36 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         /**
+         * Kod podstawiony przed uruchomieniem — wołane z `Main.init()`.
+         *
+         * Zmienna znika z okna niezależnie od tego, czy kod był poprawny:
+         * zostawiona po sobie śmieciowa własność na cudzej stronie jest
+         * dokładnie tym, czego skrypt ma nie robić.
+         *
+         * @returns {object|null} sprawozdanie albo null, gdy nic nie podstawiono.
+         */
+        applyBoot() {
+            const code = this.takeBoot();
+            return code ? this.apply(code) : null;
+        },
+
+        /**
+         * Odczytuje i USUWA kod podstawiony przed uruchomieniem.
+         *
+         * Osobno od `applyBoot`, bo jest druga droga: gdy skrypt już stoi na
+         * stronie, kod ma trafić do TAMTEGO egzemplarza (przez jego `SH.config`),
+         * a nie do tego, który właśnie się nie uruchomi — patrz `Main.init`.
+         *
+         * @returns {string|null} kod albo null, gdy nic sensownego nie podstawiono.
+         */
+        takeBoot() {
+            const name = this.BOOT_GLOBAL;
+            const code = window[name];
+            try { delete window[name]; } catch (e) { window[name] = undefined; }
+            return typeof code === 'string' && code ? code : null;
+        },
+
+        /**
          * Gotowa zakładka: wywołanie skryptu z doklejonym kodem bieżących ustawień.
          *
          * To jest TEKST DO SKOPIOWANIA, a nie kod do wykonania: człowiek wkleja
@@ -6537,11 +6535,96 @@ const SCRIPT_LOGS_ENABLED = false;
          * jedyne miejsce w całym pliku ze słowem `eval`.
          */
         link() {
+            // Kolejność w tym ciągu jest całym mechanizmem: najpierw kod trafia
+            // do okna, potem rusza pobieranie pliku. Skrypt zastaje go gotowego
+            // i nakłada sam, w środku uruchomienia — bez mrugnięcia domyślnym
+            // wyglądem i bez zgadywania, czy `SH` zdążyło już powstać.
             // eslint-disable-next-line no-script-url -- tekst zakładki, patrz wyżej
-            return "javascript:(async()=>{const r=await fetch('" + CONFIG.RELEASE_URL
-                + "',{cache:'no-store'});eval(await r.text());SH.config('" + this.encode() + "');})();void 0;";
+            return "javascript:(async()=>{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
+                + "';const r=await fetch('" + CONFIG.RELEASE_URL
+                + "',{cache:'no-store'});eval(await r.text());})();void 0;";
         },
     };
+
+    // ─── src/24-presets.js ───
+// ==========================================
+    // 9. USTAWIENIA PRACOWNIKA (KONFIGURACJA OSOBISTA)
+    // ==========================================
+
+
+///POCZĄTEK KONFIGURACJI UŻYTKOWNIKA
+/*
+        const originalInit = Main.init;
+
+        Main.init = function() {
+        // 1. Wołamy oryginalny rdzeń (wczytanie pamięci, rozpoznanie zmiany)
+        originalInit.call(Main);
+
+        // 2. WYMUSZONA PRZERWA NR 4
+
+        // Indeks 3 dla zmiany dziennej (12:50-13:20), indeks 7 dla nocnej (00:50-01:20)
+        // indeksy 0-3 dla dziennej, indeksy 4-7 dla nocnej
+        const isNight = store.sessionConfig.shiftType === 'night';
+        store.sessionConfig.selectedLunchIndex = isNight ? 7 : 3;
+
+        // 3. USTAWIENIA INDYWIDUALNE ZALEŻNE OD BIEŻĄCEGO DZIAŁU
+        const tab = store.currentTabType; // 'CRET', 'REFURB', 'WHD' albo 'UNKNOWN'
+
+        if (tab === 'CRET') {
+            // --- Przykład: ustawienia dla karty CRET ---
+
+            // Włączamy tylko linię 1 i linię 2
+            store.localTabConfig.linesConfig.line1_currentTab.visible = true;
+            store.localTabConfig.linesConfig.line2_globalSummary.visible = true;
+            store.localTabConfig.linesConfig.line3_shiftInfo.visible = false;
+            store.localTabConfig.linesConfig.line4_lunchInfo.visible = false;
+            store.localTabConfig.linesConfig.line5_realTimeClock.visible = false;
+            store.localTabConfig.linesConfig.line7_compact.visible = false;
+
+            // Linia 1: przezroczystość 53%, kolor czarny (#000000)
+            store.localTabConfig.linesConfig.line1_currentTab.alpha = 53;
+            store.localTabConfig.linesConfig.line1_currentTab.colorHex = '#000000';
+
+            // Linia 2: włączyć wielokolor i ustawić własne kolory
+            store.localTabConfig.linesConfig.line2_globalSummary.multicolor = true;
+            store.localTabConfig.linesConfig.line2_globalSummary.customColors.CRET = '#0078D7';
+            store.localTabConfig.linesConfig.line2_globalSummary.customColors.REFURB = '#FF0000';
+            store.localTabConfig.linesConfig.line2_globalSummary.customColors.WHD = '#FF0000';
+
+            // Pozycja okna na ekranie (lewy górny róg z niewielkim odstępem)
+            store.localTabConfig.statsWindowPosition.top = '15px';
+            store.localTabConfig.statsWindowPosition.left = '15%';
+
+            // Globalne zaznaczenia
+            store.userConfig.globalStatsContributionKnown.CRET = true;
+            store.userConfig.globalStatsContributionKnown.REFURB = true;
+            store.userConfig.globalStatsContributionKnown.WHD = true;
+
+        } else if (tab === 'REFURB') {
+            // --- Przykład: ustawienia dla karty REFURB ---
+            store.localTabConfig.linesConfig.line1_currentTab.visible = true;
+            store.localTabConfig.linesConfig.line1_currentTab.colorHex = '#FFA500'; // pomarańczowy
+            store.localTabConfig.linesConfig.line1_currentTab.alpha = 100; // pełna nieprzezroczystość
+
+            // Liczyć do sumy globalnej wszystko
+            store.userConfig.globalStatsContributionKnown.CRET = true;
+            store.userConfig.globalStatsContributionKnown.REFURB = true;
+            store.userConfig.globalStatsContributionKnown.WHD = true;
+        }
+
+        // 4. Utrwalenie stanu (gwarantuje zapis do localStorage i render)
+        StorageManager.saveState();
+    };
+
+*/
+// można zdjąć komentarz i dopisać własne ustawienia
+
+
+///KONIEC KONFIGURACJI UŻYTKOWNIKA
+
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => Main.init());
+    else Main.init();
 
 })();
 

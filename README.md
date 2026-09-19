@@ -308,13 +308,33 @@ SH.configCode(); // kod bieżących ustawień
 SH.configLink(); // gotowa zakładka z tym kodem w środku
 ```
 
-`SH.configLink()` daje adres do zakładki, który najpierw pobiera ostatnie wydanie,
-a zaraz po uruchomieniu nakłada kod — czyli nowy człowiek dostaje od razu gotowy
-wygląd, bez przeklikiwania panelu:
+### Zakładka, która sama stawia ustawienia
+
+`SH.configLink()` (albo pole „Gotowa zakładka” w panelu) daje gotowy adres:
+nowy człowiek wkleja go raz do zakładek i od pierwszego kliknięcia ma cudzy
+wygląd, bez przeklikiwania panelu.
 
 ```
-javascript:(async()=>{const r=await fetch('…/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());SH.config('0x0101…');})();void 0;
+javascript:(async()=>{window['statsHelper_v1_0_0_CONFIG_CODE']='0x0101…';const r=await fetch('…/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
 ```
+
+Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
+przeglądarki, dopiero potem pobiera się plik.** Skrypt czyta tę zmienną
+w `Main.init()`, zaraz po wczytaniu magazynu i przed pierwszym rysowaniem okna,
+nakłada ustawienia i zmienną kasuje.
+
+Prostsze „pobierz plik, a zaraz za nim wywołaj `SH.config('0x…')`” wygląda na to
+samo i ma dwie dziury:
+
+- na stronie, która jeszcze się wczytuje, `SH` w tym momencie **nie istnieje** —
+  skrypt czeka na `DOMContentLoaded`, więc ustawienia przepadały w całości;
+- nawet na gotowej stronie okno zdążyło się narysować wyglądem domyślnym
+  i dopiero potem przeskakiwało na swój — widoczne mrugnięcie.
+
+Kliknięcie zakładki na stronie, na której skrypt **już stoi**, nie stawia drugiego
+egzemplarza (to byłby ten sam licznik liczony dwa razy), ale sam kod wchodzi —
+do tego działającego egzemplarza. Czyli zmiana wyglądu bez przeładowania strony
+i bez zerowania liczników.
 
 Kod obejmuje **wszystko, co daje się ustawić**: położenie okna, siedem linii
 (widoczność, kolor, przezroczystość, rozmiar pisma), kolory działów w linii 2,
@@ -359,7 +379,7 @@ Trzy decyzje, na których to stoi:
    ruszał, on tę nową wartość **dostanie**. Przy zdjęciu całej konfiguracji
    zostałby na zawsze przy starych domyślnych i nie miałby o tym pojęcia.
 
-Rejestr numerów leży w jednym miejscu — `src/24-config-code.js`, tablica
+Rejestr numerów leży w jednym miejscu — `src/23-config-code.js`, tablica
 `REGISTRY`. Dodanie ustawienia do kodu to jedna linia: numer, ścieżka w stanie
 i typ. Numery są rozdane blokami (`0x0001` okno, `0x0100+` linie po `0x10` na
 linię, `0x0200+` karta ceny, `0x0300+` ustawienia wspólne), żeby dopisywanie nie
@@ -519,7 +539,7 @@ production/
 ├── counter.js              ← ARTEFAKT: to, co wkleja się do konsoli
 ├── src/                    ← ŹRÓDŁO: 25 modułów, tu poprawia się kod
 │   ├── 00-banner.js
-│   ├── 01-config.js  …  23-presets.js
+│   ├── 01-config.js  …  24-presets.js
 │   ├── 99-footer.js
 │   └── README.md           ← mapa modułów i zasady zależności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
