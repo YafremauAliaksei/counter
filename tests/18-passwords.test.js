@@ -28,22 +28,22 @@ const SH = env.SH;
 const norm = SH.normalizeAccessPasswords;
 
 /** Wpisuje tekst znak po znaku tak, jak zrobiłby to człowiek. */
-function wpisz(tekst, opts = {}) {
-    for (const znak of tekst) {
+function type(text, opts = {}) {
+    for (const ch of text) {
         SH.InputManager.onKeyDown({
-            key: znak,
-            code: 'Key' + znak.toUpperCase(),
+            key: ch,
+            code: 'Key' + ch.toUpperCase(),
             repeat: !!opts.repeat,
-            target: { tagName: opts.wPolu ? 'INPUT' : 'BODY' },
+            target: { tagName: opts.inField ? 'INPUT' : 'BODY' },
             preventDefault() {},
         });
     }
 }
 
-const panelOtwarty = () => SH.store.uiFlags.isSettingsPanelVisible === true;
+const panelOpen = () => SH.store.uiFlags.isSettingsPanelVisible === true;
 
-function zamknijPanel() {
-    if (panelOtwarty()) SH.SettingsPanel.toggle();
+function closePanel() {
+    if (panelOpen()) SH.SettingsPanel.toggle();
     SH.InputManager.seqBuffer = '';
 }
 
@@ -98,103 +98,103 @@ test('lista w pliku nie zawiera takiej pary', () => {
     // Gdyby zawierała, dłuższego hasła nie dałoby się wpisać nigdy: krótsze
     // zadziała wcześniej i wyczyści bufor. To test na WŁASNĄ konfigurację,
     // więc pada dokładnie wtedy, gdy ktoś doda kolidujące hasło.
-    const hasla = SH.CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS;
-    const kolizje = [];
-    for (const a of hasla) {
-        for (const b of hasla) {
-            if (a !== b && b.startsWith(a)) kolizje.push(a + ' jest początkiem ' + b);
+    const passwords = SH.CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS;
+    const collisions = [];
+    for (const a of passwords) {
+        for (const b of passwords) {
+            if (a !== b && b.startsWith(a)) collisions.push(a + ' jest początkiem ' + b);
         }
     }
-    eq(kolizje, [], 'kolidujące hasła: ' + kolizje.join('; '));
+    eq(collisions, [], 'kolidujące hasła: ' + collisions.join('; '));
 });
 
 describe('Wpisywanie haseł');
 
 test('oba hasła otwierają panel', () => {
-    zamknijPanel();
-    wpisz('GORDONPAULE');
-    ok(panelOtwarty(), 'GORDONPAULE');
+    closePanel();
+    type('GORDONPAULE');
+    ok(panelOpen(), 'GORDONPAULE');
 
-    zamknijPanel();
-    wpisz('BOMBA');
-    ok(panelOtwarty(), 'BOMBA');
-    zamknijPanel();
+    closePanel();
+    type('BOMBA');
+    ok(panelOpen(), 'BOMBA');
+    closePanel();
 });
 
 test('wielkość liter przy wpisywaniu nie ma znaczenia', () => {
-    zamknijPanel();
-    wpisz('bomba');
-    ok(panelOtwarty());
-    zamknijPanel();
+    closePanel();
+    type('bomba');
+    ok(panelOpen());
+    closePanel();
 });
 
 test('śmieci wpisane wcześniej niczego nie psują', () => {
     // Bufor jest oknem przesuwnym: liczy się KOŃCÓWKA, a nie całość.
-    zamknijPanel();
-    wpisz('zxcvbnm1234567890BOMBA');
-    ok(panelOtwarty());
-    zamknijPanel();
+    closePanel();
+    type('zxcvbnm1234567890BOMBA');
+    ok(panelOpen());
+    closePanel();
 });
 
 test('hasło przerwane innym znakiem NIE otwiera panelu', () => {
-    zamknijPanel();
-    wpisz('BOMXBA');
-    notOk(panelOtwarty(), 'przerwana sekwencja nie może zadziałać');
-    zamknijPanel();
+    closePanel();
+    type('BOMXBA');
+    notOk(panelOpen(), 'przerwana sekwencja nie może zadziałać');
+    closePanel();
 });
 
 test('drugie wpisanie zamyka panel, a nie otwiera go po raz drugi', () => {
-    zamknijPanel();
-    wpisz('BOMBA');
-    ok(panelOtwarty(), 'pierwsze wpisanie otwiera');
-    wpisz('BOMBA');
-    notOk(panelOtwarty(), 'drugie zamyka');
-    zamknijPanel();
+    closePanel();
+    type('BOMBA');
+    ok(panelOpen(), 'pierwsze wpisanie otwiera');
+    type('BOMBA');
+    notOk(panelOpen(), 'drugie zamyka');
+    closePanel();
 });
 
 test('po trafieniu bufor jest czyszczony', () => {
-    zamknijPanel();
-    wpisz('BOMBA');
+    closePanel();
+    type('BOMBA');
     eq(SH.InputManager.seqBuffer, '', 'bufor po trafieniu');
-    zamknijPanel();
+    closePanel();
 });
 
 test('pisanie w polu tekstowym nie otwiera panelu', () => {
-    zamknijPanel();
-    wpisz('BOMBA', { wPolu: true });
-    notOk(panelOtwarty(), 'w polu INPUT hasło nie działa');
-    zamknijPanel();
+    closePanel();
+    type('BOMBA', { inField: true });
+    notOk(panelOpen(), 'w polu INPUT hasło nie działa');
+    closePanel();
 });
 
 test('autopowtarzanie klawisza nie buduje hasła', () => {
     // Przytrzymany klawisz daje dziesiątki zdarzeń na sekundę. Gdyby wchodziły
     // do bufora, przytrzymane „A” samo dopisywałoby się do wpisanego wcześniej
     // „BOMB”.
-    zamknijPanel();
-    wpisz('BOMB');
-    wpisz('A', { repeat: true });
-    notOk(panelOtwarty(), 'powtórzenie klawisza nie może dokończyć hasła');
-    zamknijPanel();
+    closePanel();
+    type('BOMB');
+    type('A', { repeat: true });
+    notOk(panelOpen(), 'powtórzenie klawisza nie może dokończyć hasła');
+    closePanel();
 });
 
 describe('Koszt sprawdzania przy każdym klawiszu');
 
 test('bufor nigdy nie rośnie ponad najdłuższe hasło', () => {
-    zamknijPanel();
-    wpisz('abcdefghijklmnopqrstuvwxyz0123456789');
+    closePanel();
+    type('abcdefghijklmnopqrstuvwxyz0123456789');
     eq(SH.InputManager.seqBuffer.length, SH.InputManager._maxPasswordLen);
     eq(SH.InputManager._maxPasswordLen, 11, 'tyle ma GORDONPAULE');
-    zamknijPanel();
+    closePanel();
 });
 
 test('porównanie startuje tylko na ostatnich znakach haseł', () => {
     // Mapa buduje się raz, w init(). Przy 'GORDONPAULE' i 'BOMBA' pracę
     // uruchamiają wyłącznie litery E i A — każdy inny klawisz kosztuje jedno
     // nieudane zajrzenie do mapy i ani jednego porównania łańcuchów.
-    const mapa = SH.InputManager._passwordsByLastChar;
-    eq([...mapa.keys()].sort(), ['A', 'E']);
-    eq(mapa.get('E'), ['GORDONPAULE']);
-    eq(mapa.get('A'), ['BOMBA']);
+    const byLastChar = SH.InputManager._passwordsByLastChar;
+    eq([...byLastChar.keys()].sort(), ['A', 'E']);
+    eq(byLastChar.get('E'), ['GORDONPAULE']);
+    eq(byLastChar.get('A'), ['BOMBA']);
 });
 
 describe('Cisza po starcie zostaje nienaruszona');
