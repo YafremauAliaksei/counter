@@ -328,6 +328,9 @@
                     secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_asinClickableHint')));
                 }
                 secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                    I18n.get('priceCard_showSource'), pc.showSource === true,
+                    v => store.localTabConfig.priceCard.showSource = v)));
+                secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                     I18n.get('priceCard_showLatency'), pc.showLatency === true,
                     v => store.localTabConfig.priceCard.showLatency = v)));
 
@@ -349,6 +352,14 @@
                     11, 48, pc.fontSize,
                     v => store.localTabConfig.priceCard.fontSize = v,
                     v => I18n.get('priceCard_fontSize', { value: v }))));
+
+                // Jeden kolor na wszystkie wiersze karty — tak samo, jak przy
+                // liniach okna statystyk.
+                secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_textColor'), UIBuilder.colorPickerWithAlpha(
+                    pc.colorHex, pc.alpha,
+                    hex => store.localTabConfig.priceCard.colorHex = hex,
+                    alpha => store.localTabConfig.priceCard.alpha = alpha)));
+                secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_textColorHint')));
 
                 secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_bg'), UIBuilder.colorPickerWithAlpha(
                     pc.bgColorHex, pc.bgAlpha,

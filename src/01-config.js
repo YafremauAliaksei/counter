@@ -500,17 +500,40 @@
             // Szukać ceny w innych sklepach, jeśli w wybranym jej nie ma (8.6.0).
             marketFallback: true,
             showPrice: true,
-            showRrp: true,
+            /**
+             * Cena katalogowa (RRP) albo druga seria wykresu — DRUGI wiersz ceny.
+             *
+             * 1.1.0: domyślnie wyłączona. Karta ma po włączeniu modułu pokazywać
+             * jedną linijkę z ceną i nic więcej; kto potrzebuje odniesienia,
+             * włącza to w panelu.
+             *
+             * Wyłącznik dotyczy WYŁĄCZNIE cen. Komunikat o tym, dlaczego ceny nie
+             * ma (blokada CSP, wyczerpany limit), idzie tym samym wierszem
+             * i wyłączyć się go nie da — cicha awaria wygląda jak zepsuty skrypt.
+             */
+            showRrp: false,
             showGraph: true,
+            /**
+             * Wiersz źródła: „keepa-ocr · 96ms”. Domyślnie wyłączony — to
+             * informacja dla kogoś, kto dobiera źródło ceny, a nie dla kogoś,
+             * kto pracuje.
+             *
+             * Jeden wyjątek zostaje widoczny zawsze: adnotacja, że cenę zdjęto
+             * z INNEGO sklepu niż wybrany. Bez niej suma zmiany niepostrzeżenie
+             * zmieszałaby waluty i witryny, a przy dwóch rynkach w euro nie
+             * widać tego nawet po samej kwocie.
+             */
+            showSource: false,
             /**
              * CO POKAZAĆ W SAMEJ KARCIE — te same klocki, co przy liniach okna
              * statystyk: wyłącznik na każdy element osobno.
              *
-             * showAsin       — wiersz z kodem produktu;
+             * showAsin       — wiersz z kodem produktu (od 1.1.0 domyślnie
+             *                  wyłączony: to identyfikator, a nie cena);
              * asinClickable  — czy ten kod jest linkiem do sklepu;
              * showLatency    — ile milisekund zajęło zdobycie ceny.
              */
-            showAsin: true,
+            showAsin: false,
             /**
              * DOMYŚLNIE WYŁĄCZONY, I TO JEST ŚWIADOMA ZMIANA WYGLĄDU (patrz
              * CHANGELOG).
@@ -546,14 +569,30 @@
             // z cenami.
             width: 280,
             /**
-             * ROZMIAR CENY (1.0.0: 30 -> 16).
+             * ROZMIAR CENY (1.0.0: 30 -> 16, 1.1.0: 16 -> 13).
              *
              * Trzydzieści pikseli tłustą czcionką na nieprzezroczystym tle robiło
              * z karty najbardziej krzykliwy element ekranu — a jest to element
-             * pomocniczy. Szesnaście to rozmiar bliski liniom okna statystyk
-             * (14 px), więc karta czyta się jak one, a nie jak baner.
+             * pomocniczy. Trzynaście to dokładnie tyle, ile ma linia 7, bo karta
+             * ma teraz wyglądać jak ona: jedna szara linijka, nic więcej.
              */
-            fontSize: 16,
+            fontSize: 13,
+            /**
+             * KOLOR I PRZEZROCZYSTOŚĆ WSZYSTKICH TEKSTÓW KARTY.
+             *
+             * Jedna para wartości na całą kartę — cenę, kod produktu, drugi wiersz
+             * i wiersz źródła. Domyślnie to samo, co w linii 7: szary, alfa 50%.
+             *
+             * Do 1.1.0 kolory były wpisane na sztywno i NIOSŁY STAN: zielona cena
+             * znaczyła „jest”, pomarańczowa kreska „tnie CSP”. Zostało to zdjęte
+             * świadomie i jest to wymiana, a nie strata: stan mówi teraz TEKST,
+             * który przy awarii pokazuje się zawsze, niezależnie od wyłączników.
+             * Zdanie czyta się jednoznacznie i nie wymaga od nikogo pamiętania,
+             * co znaczy pomarańczowy — a kolor stał się tym, czym jest w liniach
+             * okna statystyk: ustawieniem wyglądu.
+             */
+            colorHex: '#808080',
+            alpha: 50,
             // Tryb wyświetlania wykresu Keepa:
             //   'legend' — tylko blok z cenami (domyślnie)
             //   'right'  — prawa część wykresu w naturalnej wielkości

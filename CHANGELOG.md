@@ -98,6 +98,34 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **Kolor tekstu karty ceny** — jedna para (kolor + przezroczystość) na
+  wszystkie wiersze karty, zmieniana pickerem w panelu, tak samo jak przy liniach
+  okna statystyk.
+- **Wyłącznik wiersza źródła** (`showSource`). Czas zdobycia ceny ma własny
+  wyłącznik i działa niezależnie od niego.
+
+### Zmieniono
+
+- **Karta ceny to domyślnie jedna szara linijka z kwotą.** Ten sam kolor
+  (`#808080`), ta sama przezroczystość (50%) i ten sam rozmiar (13 px), co
+  linia 7, na przezroczystym tle. Domyślnie wyłączone: kod produktu, cena
+  katalogowa, wiersz źródła, czas zdobycia ceny.
+- **Kolory przestały nieść stan.** Zielona cena i pomarańczowa kreska zniknęły:
+  kolor jest teraz ustawieniem wyglądu, a stan mówi TEKST — i ten tekst pokazuje
+  się zawsze, niezależnie od wyłączników. Dotyczy to powodu braku ceny (blokada
+  CSP, limit, brak wyniku) oraz adnotacji, że cenę zdjęto z innego sklepu niż
+  wybrany.
+
+Zachowanie po wklejeniu pliku się nie zmienia: karta pojawia się dopiero po
+ręcznym włączeniu modułu cen, więc na starcie nadal widać samą linię 7, bez
+zapytań sieciowych i bez linii w konsoli.
+
+---
+
 ## 1.0.0 — 2026-09-16
 
 Pierwsze oficjalne wydanie. Kod ten sam, co w poprzedniej numeracji 9.2.0;

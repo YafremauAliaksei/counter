@@ -773,6 +773,20 @@
             this.check();
         },
 
+        /**
+         * Kolor WSZYSTKICH tekstów karty — jedna wartość na całą kartę, dokładnie
+         * jak przy liniach okna statystyk.
+         *
+         * Liczony przy każdym applyStyle(), a nie zapamiętywany: applyStyle
+         * wywołuje się po zmianie ustawień karty, więc nowy kolor ma być widoczny
+         * od razu, a nie po przeładowaniu strony.
+         */
+        textColor() {
+            const pc = store.localTabConfig.priceCard;
+            const alpha = Utils.clampNum(pc.alpha, 0, 100, 50) / 100;
+            return `rgba(${Utils.hexToRgb(pc.colorHex)}, ${alpha.toFixed(3)})`;
+        },
+
         applyStyle() {
             if (!this.el) return;
             const pc = store.localTabConfig.priceCard;
@@ -819,6 +833,7 @@
              * a nie rysować się sam.
              */
             const SHADOW = 'text-shadow:0 1px 3px rgba(0,0,0,.6)';
+            const COLOR = 'color:' + this.textColor();
 
             // pointer-events:auto — ten jedyny wyjątek od przezroczystej karty.
             // Przy włączonym przeciąganiu jest zdejmowany: wtedy ciągnie się całą
@@ -839,7 +854,7 @@
             const linkOn = pc.asinClickable === true && !dragging;
             this.asinEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
-                'color:rgba(190,215,255,.75)', 'letter-spacing:.5px', 'text-transform:uppercase',
+                COLOR, 'letter-spacing:.5px', 'text-transform:uppercase',
                 'display:' + (pc.showAsin === false ? 'none' : 'inline-block'),
                 'pointer-events:' + (linkOn ? 'auto' : 'none'),
                 'cursor:' + (linkOn ? 'pointer' : 'inherit'),
@@ -853,17 +868,17 @@
             this.priceEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(1), 'line-height:1.25',
                 'margin:' + (bgAlpha > 0 ? '4px 0 2px' : '1px 0 0'),
-                SHADOW, 'letter-spacing:.2px',
+                COLOR, SHADOW, 'letter-spacing:.2px',
             ].join(';');
 
             this.rrpEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
-                'color:rgba(255,214,130,.8)', SHADOW,
+                COLOR, SHADOW,
             ].join(';');
 
             this.srcEl.style.cssText = [
                 'font-size:' + px(0.7), 'line-height:1.35',
-                'color:rgba(205,220,245,.5)', 'margin-top:' + (bgAlpha > 0 ? '4px' : '1px'),
+                COLOR, 'margin-top:' + (bgAlpha > 0 ? '4px' : '1px'),
                 SHADOW,
             ].join(';');
 
@@ -921,6 +936,37 @@
             this.render();
         },
 
+        /**
+         * DWIE ROLE DRUGIEGO I TRZECIEGO WIERSZA — i zasada, która je rozdziela.
+         *
+         * Wiersz RRP i wiersz źródła noszą raz informację dodatkową (cena
+         * katalogowa, nazwa dostawcy, czas), a raz POWÓD, DLA KTÓREGO CENY NIE MA
+         * (blokada CSP, wyczerpany limit, źródła odpracowały bez wyniku).
+         *
+         * Wyłączniki `showRrp` i `showSource` dotyczą WYŁĄCZNIE pierwszej roli.
+         * Komunikat o awarii pokazuje się zawsze: karta, która przy zablokowanym
+         * CSP pokazuje samą kreskę bez słowa wyjaśnienia, jest nie do odróżnienia
+         * od zepsutego skryptu — a to dokładnie ten rodzaj cichej awarii, którego
+         * ten projekt nie toleruje nigdzie indziej.
+         *
+         * Stany PRZEJŚCIOWE (trwa zapytanie, trwa przegląd sklepów) idą pod
+         * wyłącznikami, bo awarią nie są, a przy karcie jednolinijkowej migałyby
+         * drugim wierszem przy każdym przedmiocie.
+         *
+         * Pomocnik poniżej NIE zna wyłączników i to jest celowe: decyzję
+         * podejmuje wywołujący, bo tylko on wie, czy wpisuje informację, czy
+         * powód awarii. Tutaj zostaje jedna reguła — pusty tekst znaczy „schowaj
+         * wiersz”, żeby po wyłączeniu nie zostawała pusta linijka odsuwająca
+         * resztę karty.
+         *
+         * @param {HTMLElement} el   wiersz do zapisania
+         * @param {string} text      treść; pusta chowa wiersz
+         */
+        setLine(el, text) {
+            el.textContent = text || '';
+            el.style.display = text ? 'block' : 'none';
+        },
+
         render() {
             if (!this.el) return;
             const pc = store.localTabConfig.priceCard;
@@ -931,7 +977,6 @@
                 this.asinEl.removeAttribute('href');   // nie ma czego otwierać
                 this.asinEl.title = '';
                 this.priceEl.textContent = '—';
-                this.priceEl.style.color = 'rgba(255,255,255,.5)';
                 this.rrpEl.textContent = ''; this.srcEl.textContent = '';
                 this.graphWrap.style.display = 'none';
                 return;
@@ -969,20 +1014,17 @@
                 // po tym samym ASIN jest — pokazujemy go przygaszony, a w linii
                 // źródła piszemy, że trwa odświeżanie.
                 const prev = this.cache.get(asin);
-                if (prev && prev.status === 'ok' && prev.current && pc.showPrice) {
-                    this.priceEl.style.display = 'block';
-                    this.priceEl.textContent = prev.current.text;
-                    this.priceEl.style.color = 'rgba(124,255,168,.45)';
-                } else {
-                    this.priceEl.style.display = 'block';
-                    this.priceEl.textContent = '…';
-                    this.priceEl.style.color = 'rgba(255,255,255,.65)';
-                }
-                this.rrpEl.style.display = 'block';
+                this.priceEl.style.display = 'block';
+                this.priceEl.textContent =
+                    (prev && prev.status === 'ok' && prev.current && pc.showPrice)
+                        ? prev.current.text : '…';
                 this.rrpEl.style.textDecoration = 'none';
+                // Stan przejściowy, nie awaria — idzie pod wyłącznikami.
                 const hunting = this.searchingOther === asin;
-                this.rrpEl.textContent = I18n.get(hunting ? 'priceCard_searchingOther' : 'priceCard_searching');
-                this.srcEl.textContent = hunting ? '' : I18n.get('priceCard_refreshing');
+                this.setLine(this.rrpEl, pc.showRrp
+                    ? I18n.get(hunting ? 'priceCard_searchingOther' : 'priceCard_searching') : '');
+                this.setLine(this.srcEl, pc.showSource && !hunting
+                    ? I18n.get('priceCard_refreshing') : '');
                 return;
             }
 
@@ -1005,7 +1047,6 @@
             if (r && r.status === 'ok') {
                 const price = r.current || r.rrp;
                 this.priceEl.textContent = pc.showPrice && price ? price.text : '';
-                this.priceEl.style.color = '#7CFFA8';
                 this.priceEl.style.display = pc.showPrice ? 'block' : 'none';
 
                 // Druga linia: albo prawdziwa RRP (daje ją tylko jina/keepa-api),
@@ -1026,16 +1067,24 @@
                     this.rrpEl.style.display = pc.showRrp ? 'block' : 'none';
                 }
 
-                const bits = [r.source];
-                // Cena z OBCEGO rynku musi być widoczna jako taka, inaczej suma
-                // za zmianę niepostrzeżenie zmiesza waluty i witryny.
-                if (r.fallback && r.market) {
-                    bits.push(I18n.get('priceCard_foundIn', { host: marketplace(r.market).host.replace(/^www\./, '') }));
-                }
+                /**
+                 * Cena z OBCEGO rynku musi być widoczna jako taka i dlatego ta
+                 * jedna adnotacja NIE podlega wyłącznikowi źródła: inaczej suma
+                 * zmiany niepostrzeżenie zmieszałaby waluty i witryny, a przy
+                 * dwóch rynkach w euro nie widać tego nawet po samej kwocie.
+                 */
+                const fromOther = (r.fallback && r.market)
+                    ? I18n.get('priceCard_foundIn', { host: marketplace(r.market).host.replace(/^www\./, '') })
+                    : '';
+                const bits = [];
+                if (pc.showSource) bits.push(r.source);
+                if (fromOther) bits.push(fromOther);
+                // Czas ma własny wyłącznik i działa niezależnie od nazwy źródła:
+                // przełącznik, który nic nie robi, dopóki nie włączy się innego,
+                // jest gorszy niż brak przełącznika.
                 if (pc.showLatency) bits.push(`${r.ms}ms`);
-                if (r.stale) bits.push(I18n.get('priceCard_cached'));
-                this.srcEl.textContent = bits.join(' · ');
-                this.srcEl.style.color = r.fallback ? 'rgba(255,214,130,.85)' : 'rgba(205,220,245,.6)';
+                if (pc.showSource && r.stale) bits.push(I18n.get('priceCard_cached'));
+                this.setLine(this.srcEl, bits.join(' · '));
                 return;
             }
 
@@ -1044,7 +1093,6 @@
                 const both = this.csp.img && this.csp.net;
                 this.priceEl.style.display = 'block';
                 this.priceEl.textContent = '—';
-                this.priceEl.style.color = '#FFC46B';
                 this.rrpEl.style.display = 'block';
                 this.rrpEl.style.textDecoration = 'none';
                 // W trybie 'ocr' blokada obrazka znaczy nie „nie ma wykresu”,
@@ -1072,7 +1120,6 @@
             if (!r) {
                 this.priceEl.style.display = 'block';
                 this.priceEl.textContent = '—';
-                this.priceEl.style.color = 'rgba(255,255,255,.5)';
                 this.rrpEl.style.display = 'block';
                 this.rrpEl.style.textDecoration = 'none';
                 this.rrpEl.textContent = '';
@@ -1083,7 +1130,6 @@
             // 5. Źródła odpracowały, ceny nie ma.
             this.priceEl.style.display = 'block';
             this.priceEl.textContent = '—';
-            this.priceEl.style.color = '#FF9A9A';
             this.rrpEl.style.display = 'block';
             this.rrpEl.textContent = r.reason || I18n.get('priceCard_noPrice');
             this.rrpEl.style.textDecoration = 'none';
