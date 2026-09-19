@@ -190,7 +190,7 @@ z dołączonym `counter.js`.
 Potem bezpośredni link do pliku wygląda tak:
 
 ```
-https://github.com/YafremauAliaksei/counter/releases/latest/download/counter.js
+https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js
 ```
 
 Warto dodać go do README, do rozdziału „Szybki start”.

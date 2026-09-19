@@ -88,14 +88,33 @@
         SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
         /**
          * Adres, spod którego ludzie uruchamiają skrypt zakładką w przeglądarce.
-         *
-         * Wskazuje na OSTATNIE WYDANIE, a nie na gałąź: to, co się uruchamia,
-         * zmienia się wtedy i tylko wtedy, gdy ktoś świadomie wyda nową wersję.
          * Stąd bierze go ConfigCode.link(), składając gotową zakładkę z kodem
          * ustawień — żeby adres stał w JEDNYM miejscu, a nie w dokumentacji
          * i w kodzie osobno.
+         *
+         * =============================================================
+         * DLACZEGO `raw.`, A NIE ADRES WYDANIA NA github.com
+         * =============================================================
+         * Bo zakładka pobiera plik przez `fetch` z CUDZEJ strony, czyli
+         * zapytaniem międzydomenowym — a takie przechodzi tylko wtedy, gdy
+         * serwer odpowie nagłówkiem `Access-Control-Allow-Origin`.
+         *
+         *   github.com/…/releases/latest/download/counter.js
+         *       -> 302 BEZ tego nagłówka, przeglądarka zrywa zapytanie:
+         *          „has been blocked by CORS policy”. Adres działa przy
+         *          KLIKNIĘCIU (zwykłe pobranie pliku), ale nie przez fetch —
+         *          i na tym się przejechaliśmy w 1.2.0.
+         *   raw.githubusercontent.com/…
+         *       -> 200 z `access-control-allow-origin: *`.
+         *
+         * Gałąź `release` to wskaźnik „ostatnie wydanie”: przesuwa ją workflow
+         * wydania po opublikowaniu tagu, więc uruchamia się wyłącznie kod,
+         * który ktoś świadomie wydał — a nie bieżący stan `main`.
+         *
+         * Przypięcie do konkretnej wersji: ta sama ścieżka z tagiem zamiast
+         * `release` (…/counter/v1.2.0/counter.js).
          */
-        RELEASE_URL: 'https://github.com/YafremauAliaksei/counter/releases/latest/download/counter.js',
+        RELEASE_URL: 'https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',
         /**
          * Hasła z góry pliku, sprowadzone do jednej postaci (patrz
          * normalizeAccessPasswords). Porównanie z buforem klawiatury robi

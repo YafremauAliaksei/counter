@@ -157,8 +157,10 @@ jobs:
           wystarczy kliknąć zakładkę jeszcze raz — nic się nie podmienia ręcznie.
 
           Kto woli wklejać plik do konsoli, bierze go z listy plików tego wydania
-          (niżej) albo z adresu, który przypina do **tej** wersji i nie zmieni się
-          nigdy: https://github.com/$REPO/releases/download/v$VERSION/counter.js
+          (niżej). Zakładka przypięta do **tej** wersji, bez dostawania kolejnych,
+          bierze plik spod tagu: https://raw.githubusercontent.com/$REPO/v$VERSION/counter.js
+          — zakładka musi pobierać właśnie spod \`raw.\`, bo adres pliku wydania
+          na github.com nie przepuszcza zapytań międzydomenowych (CORS).
 
           ## Suma kontrolna
 
@@ -174,6 +176,30 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: counter.js
+
+      # ==================================================================
+      # GAŁĄŹ `release` — WSKAŹNIK „OSTATNIE WYDANIE” DLA ZAKŁADKI
+      # ==================================================================
+      # Zakładka pobiera plik przez `fetch` z cudzej strony, więc host musi
+      # odpowiedzieć nagłówkiem Access-Control-Allow-Origin. github.com przy
+      # pobieraniu pliku wydania odpowiada przekierowaniem BEZ tego nagłówka
+      # (przeglądarka: „blocked by CORS policy”), raw.githubusercontent.com
+      # wystawia `*`. Ale raw serwuje refy, nie wydania — stąd ta gałąź:
+      # przesuwana tylko tutaj, czyli wskazuje wyłącznie na kod, który ktoś
+      # świadomie wydał.
+      #
+      # Przesuwamy ją tylko wtedy, gdy wydawany tag jest najnowszy. Inaczej
+      # ręczne powtórzenie przebiegu dla starego tagu cofnęłoby ludziom
+      # skrypt do poprzedniej wersji.
+      - name: Przesuń gałąź release na to wydanie
+        run: |
+          NEWEST=$(git tag --sort=-v:refname | head -n 1)
+          if [ "$NEWEST" != "$RELEASE_TAG" ]; then
+            echo "::notice::$RELEASE_TAG nie jest najnowszym tagiem ($NEWEST) — gałąź release zostaje bez zmian."
+            exit 0
+          fi
+          git push origin "HEAD:refs/heads/release"
+          echo "Gałąź release wskazuje teraz na $RELEASE_TAG."
 
       - name: Utwórz wydanie
         uses: softprops/action-gh-release@v3

@@ -45,24 +45,32 @@ Tam, gdzie konsola jest zamknięta, a i tak wygodniej. Nowa zakładka, dowolna
 nazwa, a jako adres:
 
 ```
-javascript:(async()=>{const r=await fetch('https://github.com/YafremauAliaksei/counter/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
+javascript:(async()=>{const r=await fetch('https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
 ```
 
 Kliknięcie na stronie T-REX pobiera i uruchamia **ostatnie wydanie**.
 
 Trzy szczegóły w tym adresie nie są przypadkowe:
 
-- **`releases/latest/download`, a nie `raw.githubusercontent`.** Wskazuje na
-  wydanie, a nie na bieżący stan gałęzi: to, co ludzie uruchamiają, zmienia się
-  wtedy i tylko wtedy, gdy ktoś świadomie wyda nową wersję. Do tego `raw.` bywa
-  podawany z pamięci podręcznej, przez co połowa zespołu pracuje na starym pliku
-  i nikt nie wie dlaczego;
-- **`cache:'no-store'`** — z tego samego powodu, tylko po stronie przeglądarki;
+- **`raw.githubusercontent.com`, a nie adres pliku wydania na `github.com`.**
+  Zakładka pobiera plik z **cudzej strony**, czyli zapytaniem międzydomenowym,
+  a takie przechodzi tylko wtedy, gdy serwer odpowie nagłówkiem
+  `Access-Control-Allow-Origin`. Adres `github.com/…/releases/latest/download/…`
+  odpowiada przekierowaniem **bez** tego nagłówka, więc przeglądarka zrywa
+  zapytanie („blocked by CORS policy”). Kliknięcie takiego adresu działa — plik
+  się pobiera — ale `fetch` z zakładki już nie, i tak wyszło wydanie 1.2.0;
+- **gałąź `release`, a nie `main`.** To wskaźnik „ostatnie wydanie”: przesuwa go
+  workflow wydania po opublikowaniu tagu. Uruchamia się więc tylko kod, który
+  ktoś świadomie wydał, a nie bieżący stan gałęzi roboczej;
+- **`cache:'no-store'`** — żeby przeglądarka nie podała starego pliku z pamięci
+  podręcznej. Sam `raw.` trzyma odpowiedź 5 minut po swojej stronie, więc świeże
+  wydanie dojeżdża do wszystkich najdalej po tylu;
 - **`void 0` na końcu** — bez tego zakładka, której wyrażenie zwraca tekst,
   potrafi zastąpić nim całą stronę.
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
-zamienić `latest/download` na `download/v1.2.0`.
+zamienić `release` na numer wersji z literą `v`:
+`…/counter/v1.2.0/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -316,7 +324,7 @@ nowy człowiek wkleja go raz do zakładek i od pierwszego kliknięcia ma cudzy
 wygląd, bez przeklikiwania panelu.
 
 ```
-javascript:(async()=>{window['statsHelper_v1_0_0_CONFIG_CODE']='0x0101…';const r=await fetch('…/releases/latest/download/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
+javascript:(async()=>{window['statsHelper_v1_0_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -599,8 +607,8 @@ Jedna zasada zapisana w dwóch miejscach, więc zapomnieć o niej nie sposób.
 ## Wydania
 
 Ludzie uruchamiają skrypt z **wydania**, a nie z gałęzi `main`, więc dopóki nie
-ma wydania, zakładka z `releases/latest/download/counter.js` nie ma czego pobrać.
-Wydanie powstaje z **tagu** — i tylko z tagu.
+ma wydania, zakładka nie ma czego pobrać. Wydanie powstaje z **tagu** — i tylko
+z tagu.
 
 Cały przebieg da się wyklikać w przeglądarce; konsola nie jest do niczego
 potrzebna.
@@ -640,11 +648,15 @@ Workflow [`release.yml`](.github/workflows/release.yml) po pojawieniu się tagu
 4. wyciąga z CHANGELOG sekcję tej wersji i robi z niej treść wydania;
 5. podpisuje **poświadczenie pochodzenia** (`attest-build-provenance`): sprawdzalne
    stwierdzenie „ten plik powstał w tym przebiegu, z tego commita”;
-6. dołącza `counter.js` i `counter.js.sha256` do wydania.
+6. dołącza `counter.js` i `counter.js.sha256` do wydania;
+7. przesuwa gałąź **`release`** na commit tego tagu — to spod niej pobiera
+   zakładka (patrz „Szybki start”). Gałąź przesuwa się tylko wtedy, gdy wydawany
+   tag jest najnowszy, więc powtórzenie przebiegu dla starego tagu nie cofnie
+   ludziom skryptu.
 
-Po minucie–dwóch adres `releases/latest/download/counter.js` wskazuje nowy plik,
-a zakładki wszystkich ludzi (te bez przypięcia do wersji) pobierają go przy
-następnym kliknięciu. Przebieg widać w zakładce **Actions**.
+Po minucie–dwóch zakładki wszystkich ludzi (te bez przypięcia do wersji) pobierają
+nowy plik przy następnym kliknięciu — `raw.` trzyma odpowiedź 5 minut, więc tyle
+wynosi opóźnienie w najgorszym razie. Przebieg widać w zakładce **Actions**.
 
 ### Gdy przebieg padnie
 

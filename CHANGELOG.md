@@ -27,6 +27,33 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Naprawiono
+
+- **Zakładka nie mogła pobrać skryptu.** Adres wydania na `github.com`
+  (`releases/latest/download/…`) odpowiada przekierowaniem **bez** nagłówka
+  `Access-Control-Allow-Origin`, więc przeglądarka zrywała zapytanie: „blocked
+  by CORS policy”, a w konsoli zostawało `net::ERR_FAILED 302`. Kliknięcie tego
+  adresu działa — plik się pobiera — ale `fetch` z zakładki, czyli z cudzej
+  strony, już nie. Różnicy nie widać z kodu i wyszła dopiero w pracy z wydaniem
+  1.2.0.
+
+  Zakładka pobiera teraz plik spod `raw.githubusercontent.com`, który wystawia
+  `access-control-allow-origin: *`, z gałęzi **`release`**. Gałąź jest
+  wskaźnikiem „ostatnie wydanie”: przesuwa ją workflow wydania po opublikowaniu
+  tagu i tylko wtedy, gdy wydawany tag jest najnowszy — więc uruchamia się
+  wyłącznie kod, który ktoś świadomie wydał, a powtórzenie przebiegu dla starego
+  tagu nie cofa ludziom skryptu. Przypięcie do wersji: ta sama ścieżka z tagiem
+  zamiast `release`.
+
+  Adres stoi w jednym miejscu (`CONFIG.RELEASE_URL`), więc zakładka z kodem
+  ustawień z `SH.configLink()` naprawia się razem z nim. Pilnuje tego nowe
+  sprawdzenie: host adresu wydania musi być na liście tych, o których wiadomo,
+  że nagłówek CORS wystawiają.
+
+---
+
 ## 1.2.0 — 2026-09-19
 
 ### Dodano
