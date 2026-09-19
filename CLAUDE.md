@@ -127,8 +127,8 @@ node tests/manual/serve.js
 
 ## Jak zbudowany jest kod
 
-25 modułów w `src/`, sklejanych w kolejności z `build.manifest.json`
-w **jeden wspólny scope** (jedna IIFE).
+24 moduły w `src/` (plus nagłówek `00` i stopka `99`), sklejane w kolejności
+z `build.manifest.json` w **jeden wspólny scope** (jedna IIFE).
 
 Konsekwencja: w momencie deklaracji moduł widzi tylko to, co zadeklarowano
 wyżej; w momencie wykonania — wszystko. Czyli `const x = ValueLog.totals()`

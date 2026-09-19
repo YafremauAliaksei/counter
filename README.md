@@ -538,7 +538,7 @@ z czego jedna trzecia dotyczy bezpieczeństwa.
 ```
 production/
 ├── counter.js              ← ARTEFAKT: to, co wkleja się do konsoli
-├── src/                    ← ŹRÓDŁO: 25 modułów, tu poprawia się kod
+├── src/                    ← ŹRÓDŁO: 24 moduły plus nagłówek i stopka
 │   ├── 00-banner.js
 │   ├── 01-config.js  …  24-presets.js
 │   ├── 99-footer.js
