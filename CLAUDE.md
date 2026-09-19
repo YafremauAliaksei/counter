@@ -43,12 +43,19 @@ i dokumentacja muszą być czytelne bez tłumacza.
 | README, CHANGELOG, CONTRIBUTING, HANDOFF, `src/README.md`, szablony `.github/**`             | **polski**                            |
 | `LANG_STRINGS.ru`, `Русский` na liście języków                                               | rosyjski — **nie ruszać**             |
 | `видите ниже`, `канирование номера LP:` w wyrażeniach wyzwalaczy                             | **nie ruszać**, to tekst samego T-REX |
+| **Nazwy w kodzie** (zmienne, funkcje, pola, klucze), także w testach                         | **angielski**                         |
 | Nazwy plików, commity, nazwy gałęzi                                                          | angielski                             |
 | Rozmowa z autorem projektu                                                                   | **rosyjski**                          |
 
 Cyrylica w komentarzach, w wywołaniach logów albo w dokumentacji wywraca testy:
 pilnują tego `tests/09-artifact.test.js` (artefakt) i `tests/10-language.test.js`
 (reszta repozytorium). Wyjątki są tam wymienione z nazwy.
+
+Podział ról: **nazwa jest częścią mechanizmu**, więc czyta ją każdy, kto otworzy
+plik, także ktoś bez polskiego — stąd angielski. **Komentarz jest wyjaśnieniem**
+dla zespołu, a zespół jest polskojęzyczny. Po lewej stronie `=`, po `function`
+albo w kluczu obiektu — angielski; zdanie dla człowieka — polski. Szerzej:
+`CONTRIBUTING.md`, rozdział 2, „Język”.
 
 **To jest bramka przed wysłaniem kodu, a nie sugestia.** Nowy komentarz, nowy
 log, nowy plik dokumentacji — po polsku. Angielski może kiedyś dojść jako drugi
