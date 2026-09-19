@@ -67,6 +67,26 @@
         FORMAT: 0x01,
 
         /**
+         * KOD PODSTAWIONY PRZED URUCHOMIENIEM.
+         *
+         * Zakładka z ustawieniami (patrz `link`) najpierw wpisuje kod do okna
+         * pod tę nazwę, a dopiero potem ściąga i wykonuje plik. Dzięki temu
+         * ustawienia wchodzą WEWNĄTRZ `Main.init()`, zaraz po wczytaniu stanu
+         * z magazynu — czyli przed pierwszym rysowaniem okna.
+         *
+         * Wcześniejszy pomysł — wykonać plik, a zaraz za nim, w tej samej linii,
+         * `SH.config('0x…')` — miał dwie dziury. Po pierwsze `SH` powstaje
+         * dopiero w `Main.init()`, a ten czeka na `DOMContentLoaded`, gdy strona
+         * jeszcze się wczytuje: wywołanie tuż po wykonaniu pliku trafiało wtedy
+         * w niebyt. Po drugie nawet przy
+         * gotowej stronie okno zdążyło się narysować ustawieniami domyślnymi
+         * i dopiero potem przeskakiwało na swoje — widoczne mrugnięcie.
+         *
+         * Nazwa jest długa i z przedrostkiem skryptu, bo to cudza strona.
+         */
+        BOOT_GLOBAL: CONFIG.SCRIPT_ID_PREFIX + 'CONFIG_CODE',
+
+        /**
          * Listy wartości dopuszczalnych dla pól wyboru.
          *
          * KOLEJNOŚĆ JEST CZĘŚCIĄ FORMATU: w kodzie leci indeks, nie tekst.
@@ -367,6 +387,36 @@
         },
 
         /**
+         * Kod podstawiony przed uruchomieniem — wołane z `Main.init()`.
+         *
+         * Zmienna znika z okna niezależnie od tego, czy kod był poprawny:
+         * zostawiona po sobie śmieciowa własność na cudzej stronie jest
+         * dokładnie tym, czego skrypt ma nie robić.
+         *
+         * @returns {object|null} sprawozdanie albo null, gdy nic nie podstawiono.
+         */
+        applyBoot() {
+            const code = this.takeBoot();
+            return code ? this.apply(code) : null;
+        },
+
+        /**
+         * Odczytuje i USUWA kod podstawiony przed uruchomieniem.
+         *
+         * Osobno od `applyBoot`, bo jest druga droga: gdy skrypt już stoi na
+         * stronie, kod ma trafić do TAMTEGO egzemplarza (przez jego `SH.config`),
+         * a nie do tego, który właśnie się nie uruchomi — patrz `Main.init`.
+         *
+         * @returns {string|null} kod albo null, gdy nic sensownego nie podstawiono.
+         */
+        takeBoot() {
+            const name = this.BOOT_GLOBAL;
+            const code = window[name];
+            try { delete window[name]; } catch (e) { window[name] = undefined; }
+            return typeof code === 'string' && code ? code : null;
+        },
+
+        /**
          * Gotowa zakładka: wywołanie skryptu z doklejonym kodem bieżących ustawień.
          *
          * To jest TEKST DO SKOPIOWANIA, a nie kod do wykonania: człowiek wkleja
@@ -376,8 +426,13 @@
          * jedyne miejsce w całym pliku ze słowem `eval`.
          */
         link() {
+            // Kolejność w tym ciągu jest całym mechanizmem: najpierw kod trafia
+            // do okna, potem rusza pobieranie pliku. Skrypt zastaje go gotowego
+            // i nakłada sam, w środku uruchomienia — bez mrugnięcia domyślnym
+            // wyglądem i bez zgadywania, czy `SH` zdążyło już powstać.
             // eslint-disable-next-line no-script-url -- tekst zakładki, patrz wyżej
-            return "javascript:(async()=>{const r=await fetch('" + CONFIG.RELEASE_URL
-                + "',{cache:'no-store'});eval(await r.text());SH.config('" + this.encode() + "');})();void 0;";
+            return "javascript:(async()=>{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
+                + "';const r=await fetch('" + CONFIG.RELEASE_URL
+                + "',{cache:'no-store'});eval(await r.text());})();void 0;";
         },
     };

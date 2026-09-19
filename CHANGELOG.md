@@ -40,7 +40,20 @@ Dla tego projektu SemVer czyta się tak:
   w drukowalnym ASCII. Nieznany numer, zła długość i śmieciowa wartość są
   pomijane pojedynczo, z adnotacją w sprawozdaniu.
 
+- **Zakładka niesie ustawienia i nakłada je w trakcie uruchamiania.** Adres
+  z `SH.configLink()` najpierw wpisuje kod do okna przeglądarki, a dopiero potem
+  pobiera plik; skrypt czyta go w `Main.init()` — po wczytaniu magazynu, przed
+  pierwszym rysowaniem okna. Wcześniejszy pomysł (wykonać plik, a zaraz za nim
+  `SH.config('0x…')`) nie działał na stronie, która jeszcze się wczytuje, bo `SH`
+  w tym momencie nie istnieje, a na gotowej stronie dawał mrugnięcie wyglądem
+  domyślnym. Kliknięcie zakładki na stronie z już działającym skryptem nie stawia
+  drugiego egzemplarza, ale ustawienia nakłada — na ten działający.
+
 ### Zmieniono
+
+- Kolejność modułów: `23-config-code.js` stoi teraz przed `24-presets.js`.
+  Presety wołają `Main.init()`, a init używa kodu ustawień w czasie działania,
+  więc musi mieć go zadeklarowanego wyżej.
 
 - `README.md` opisuje mechanizm kodu wraz z rozbiorem przykładowego ciągu;
   liczba sprawdzeń w dokumentacji doprowadzona do stanu faktycznego (246).

@@ -287,9 +287,17 @@ function makeEnv(opts = {}) {
     return { sandbox, net, window, document, El, Node, makeStorage };
 }
 
-/** Uruchamia artefakt w świeżej atrapie i zwraca środowisko wraz z `SH`. */
-function boot(opts) {
+/**
+ * Uruchamia artefakt w świeżej atrapie i zwraca środowisko wraz z `SH`.
+ *
+ * `opts.beforeRun(env)` wykonuje się, gdy okno już stoi, ale skryptu jeszcze
+ * w nim nie ma. Tak właśnie działa zakładka z kodem ustawień: podstawia
+ * zmienną do okna, a dopiero potem podaje plik do wykonania — i tylko w tej
+ * kolejności da się sprawdzić, że ustawienia wchodzą przed pierwszym rysowaniem.
+ */
+function boot(opts = {}) {
     const env = makeEnv(opts);
+    if (typeof opts.beforeRun === 'function') opts.beforeRun(env);
     vm.runInContext(ARTIFACT, env.sandbox, { filename: 'counter.js' });
     env.SH = env.sandbox.window.SH;
     if (!env.SH) throw new Error('counter.js nie wystawił window.SH — inicjalizacja padła');

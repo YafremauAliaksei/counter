@@ -34,7 +34,8 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 20 | `20-price-card.js` | karta ceny i warstwa sieciowa | ~1045 |
 | 21 | `21-input.js` | klawiatura i `MutationObserver` | ~140 |
 | 22 | `22-bootstrap.js` | `Main.init`, rozbiórka, konsolowe API `SH` | ~370 |
-| 23 | `23-presets.js` | blok ustawień osobistych i start | ~80 |
+| 23 | `23-config-code.js` | kod ustawień: jeden ciąg szesnastkowy zamiast panelu | ~300 |
+| 24 | `24-presets.js` | blok ustawień osobistych i start | ~80 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~185 |
 
 ---
@@ -93,7 +94,7 @@ odwoływać się tylko „w górę”, ciała funkcji — dokądkolwiek.
                   │
             19-price-module ── 20-price-card
                   │
-            21-input ── 22-bootstrap ── 23-presets
+      21-input ── 22-bootstrap ── 23-config-code ── 24-presets
 ```
 
 Strzałki znaczą „zadeklarowany wcześniej”, a nie „wywołuje”. Prawdziwe wywołania
