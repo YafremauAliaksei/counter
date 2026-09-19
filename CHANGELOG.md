@@ -12,7 +12,7 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.2.1 — 2026-09-19
 
 ### Naprawiono
 
@@ -24,12 +24,6 @@ Dla tego projektu SemVer czyta się tak:
   strony, więc trzeba go było przewijać w bok. Adres został tam, gdzie i tak
   jest jego miejsce — w README — a opis wydania wskazuje na ten rozdział
   i na plik przypięty do tej konkretnej wersji.
-
----
-
-## Niewydane
-
-### Naprawiono
 
 - **Zakładka nie mogła pobrać skryptu.** Adres wydania na `github.com`
   (`releases/latest/download/…`) odpowiada przekierowaniem **bez** nagłówka
