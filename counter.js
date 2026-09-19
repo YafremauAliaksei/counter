@@ -9,14 +9,25 @@
 // ==/UserScript==
 
 // =====================================================================
-//  HASŁO DOSTĘPU DO PANELU USTAWIEŃ
+//  HASŁA DOSTĘPU DO PANELU USTAWIEŃ
 //  ---------------------------------------------------------------
-//  Wpisz te litery gdziekolwiek na stronie (poza polem tekstowym),
-//  a panel ustawień się otworzy. Zmiana hasła = zmiana tej jednej
-//  linii; długość jest dowolna, wielkość liter nie ma znaczenia
-//  (bufor klawiatury jest podnoszony do wielkich liter).
+//  Wpisz którekolwiek z nich gdziekolwiek na stronie (poza polem
+//  tekstowym), a panel ustawień się otworzy. Wszystkie działają tak
+//  samo — to jedna lista, a nie hasło główne i zapasowe.
+//
+//  Dodawanie i usuwanie: dopisać albo skreślić pozycję w tej tablicy.
+//  Długość dowolna, wielkość liter bez znaczenia (bufor klawiatury
+//  jest podnoszony do wielkich liter), białe znaki z brzegów są
+//  obcinane, powtórzenia pomijane.
+//
+//  JEDNO OGRANICZENIE, O KTÓRYM TRZEBA WIEDZIEĆ. Hasło nie może być
+//  początkiem innego hasła. Gdyby na liście stanęły 'BOM' i 'BOMBA',
+//  to po wpisaniu trzeciej litery zadziałałoby 'BOM' i wyczyściło
+//  bufor — 'BOMBA' nie dałoby się wpisać nigdy. Pilnuje tego test
+//  (tests/18-passwords.test.js), więc przy takiej liście bramka
+//  w CI zapali się na czerwono, zamiast zostawić martwe hasło.
 // =====================================================================
-const SETTINGS_ACCESS_PASSWORD = 'GORDONPAULE';
+const SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA'];
 
 // =====================================================================
 //  LOGI W KONSOLI — GŁÓWNY WYŁĄCZNIK
@@ -107,6 +118,44 @@ const SCRIPT_LOGS_ENABLED = false;
     // ==========================================
     // 1. STAŁE PODSTAWOWE I KONFIGURACJA
     // ==========================================
+    /**
+     * Sprowadza listę haseł z góry pliku do postaci, na której da się pracować
+     * bez niespodzianek. Człowiek edytuje tam zwykłą tablicę i ma prawo wpisać
+     * do niej cokolwiek — a od tego, co stąd wyjdzie, zależy jedyne wejście do
+     * panelu ustawień.
+     *
+     * Co robimy i dlaczego:
+     *   - pojedynczy łańcuch zamiast tablicy jest przyjmowany (typowa pomyłka
+     *     przy edycji, a skutkiem byłby rozpad na pojedyncze litery);
+     *   - białe znaki z brzegów obcinamy, bo w klawiaturę i tak nie wejdą tak,
+     *     jak wyglądają w pliku;
+     *   - wielkość liter znika, bo bufor klawiatury jest podnoszony do wielkich;
+     *   - puste pozycje wylatują. W dzisiejszym InputManagerze same by nie
+     *     zadziałały (mapa po ostatnim znaku nie ma dla nich klucza), ale to
+     *     przypadek układu wyszukiwania, a nie decyzja. Napisane wprost tutaj
+     *     przeżyje uproszczenie tamtej mapy do zwykłej pętli po `endsWith`,
+     *     po którym `''` pasowałoby do KAŻDEGO bufora i otwierało panel na
+     *     pierwszym klawiszu;
+     *   - powtórzenia znikają, żeby nie porównywać dwa razy tego samego;
+     *   - kolejność: od najdłuższego. Gdy w jednym naciśnięciu pasuje kilka
+     *     haseł (jedno jest końcówką drugiego), wygrywa dłuższe — deterministycznie,
+     *     a nie zależnie od kolejności wpisanej w pliku.
+     *
+     * Funkcja stoi tutaj, a nie w Utils, bo moduł 01 jest pierwszy w sklejeniu
+     * i w chwili budowania CONFIG Utils jeszcze nie istnieje.
+     */
+    function normalizeAccessPasswords(raw) {
+        const lista = Array.isArray(raw) ? raw : [raw];
+        const out = [];
+        for (const poz of lista) {
+            if (typeof poz !== 'string' && typeof poz !== 'number') continue;
+            const h = String(poz).trim().toUpperCase();
+            if (!h) continue;
+            if (out.indexOf(h) === -1) out.push(h);
+        }
+        return out.sort((a, b) => b.length - a.length);
+    }
+
     const CONFIG = {
         SCRIPT_VERSION: '1.0.0',
         SCRIPT_NAME: 'Helper (Reactive)',
@@ -154,9 +203,15 @@ const SCRIPT_LOGS_ENABLED = false;
         SETTINGS_PANEL_TEXT_COLOR: '#141414',
         SETTINGS_PANEL_ACCENT_COLOR: '#141414',
         SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
-        // Hasło z góry pliku rozbite na znaki — porównanie idzie znak po znaku
-        // z buforem klawiatury (patrz InputManager).
-        SETTINGS_PANEL_ACCESS_SEQUENCE: String(SETTINGS_ACCESS_PASSWORD).toUpperCase().split(''),
+        /**
+         * Hasła z góry pliku, sprowadzone do jednej postaci (patrz
+         * normalizeAccessPasswords). Porównanie z buforem klawiatury robi
+         * InputManager.
+         *
+         * Pusta lista jest dozwolonym stanem i znaczy „panelu nie otwiera żadne
+         * hasło” — wtedy zostaje konsola (SH.SettingsPanel.toggle()).
+         */
+        SETTINGS_PANEL_ACCESS_PASSWORDS: normalizeAccessPasswords(SETTINGS_ACCESS_PASSWORDS),
         KNOWN_TAB_TYPES: {
             CRET: { key: 'CRET', displayNameKey: 'tabName_CRET', baseColorHex: '#0078D7', urlKeyword: 'CRETURN' },
             REFURB: { key: 'REFURB', displayNameKey: 'tabName_REFURB', baseColorHex: '#FFA500', urlKeyword: 'CRETURN_REFURB' },
@@ -5184,7 +5239,29 @@ const SCRIPT_LOGS_ENABLED = false;
     // 7. WEJŚCIE I WYZWALACZE
     // ==========================================
     const InputManager = {
-        seqBuffer:[],
+        /**
+         * Ostatnie naciśnięte znaki, jako ŁAŃCUCH, a nie tablica.
+         *
+         * Wcześniej była tablica sklejana przez join('') przy każdym
+         * naciśnięciu. Łańcuch z slice() robi to samo bez tworzenia tablicy
+         * pośredniej — a to kod, który chodzi na każdy klawisz przez całą
+         * dziesięciogodzinną zmianę.
+         */
+        seqBuffer: '',
+        /** Najdłuższe hasło — tyle znaków trzeba pamiętać i ani znaku więcej. */
+        _maxPasswordLen: 0,
+        /**
+         * Hasła pogrupowane po OSTATNIM znaku.
+         *
+         * Sedno optymalizacji. Bez tego każde naciśnięcie klawisza porównywałoby
+         * bufor z każdym hasłem po kolei. Tak porównanie w ogóle się nie zaczyna,
+         * dopóki naciśnięty znak nie jest ostatnim znakiem któregoś z haseł —
+         * czyli przy zwykłym pisaniu prawie nigdy. Przy 'GORDONPAULE' i 'BOMBA'
+         * pracę uruchamiają wyłącznie litery E i A.
+         *
+         * Mapa buduje się RAZ, w init(), a nie przy każdym klawiszu.
+         */
+        _passwordsByLastChar: null,
         init() {
             // 8.3.0: obsługa jest nazwana — potrzebna do Main.teardown().
             this.onKeyDown = (e) => {
@@ -5205,25 +5282,54 @@ const SCRIPT_LOGS_ENABLED = false;
                 }
 
                 /**
-                 * HASŁO DOSTĘPU (patrz SETTINGS_ACCESS_PASSWORD na górze pliku).
+                 * HASŁA DOSTĘPU (patrz SETTINGS_ACCESS_PASSWORDS na górze pliku).
                  *
-                 * Bufor ma dokładnie tyle znaków, ile hasło, i przesuwa się jak
-                 * okno. Dzięki temu porównanie jest zawsze na stałej długości,
-                 * a wpisywanie czegokolwiek innego wcześniej niczego nie psuje.
+                 * Bufor ma tyle znaków, ile NAJDŁUŻSZE hasło, i przesuwa się jak
+                 * okno. Hasło uznaje się za wpisane, gdy bufor KOŃCZY SIĘ na nim —
+                 * dzięki temu wpisywanie czegokolwiek wcześniej niczego nie psuje,
+                 * a hasła różnej długości żyją na jednej liście bez osobnych
+                 * buforów.
+                 *
+                 * Po trafieniu bufor jest czyszczony. To nie porządki: bez tego
+                 * hasło, które jest końcówką innego, zadziałałoby dwa razy pod
+                 * rząd, a `toggle()` otworzyłby i natychmiast zamknął panel.
                  *
                  * To nie jest zabezpieczenie kryptograficzne i nie ma nim być:
                  * chodzi wyłącznie o to, żeby panel nie otwierał się przypadkiem
                  * podczas normalnej pracy ze skanerem.
                  */
-                if (e.key.length === 1) {
-                    this.seqBuffer.push(e.key.toUpperCase());
-                    if (this.seqBuffer.length > CONFIG.SETTINGS_PANEL_ACCESS_SEQUENCE.length) this.seqBuffer.shift();
-                    if (this.seqBuffer.join('') === CONFIG.SETTINGS_PANEL_ACCESS_SEQUENCE.join('')) {
-                        SettingsPanel.toggle();
-                        this.seqBuffer =[];
+                if (this._maxPasswordLen > 0 && e.key.length === 1) {
+                    const ch = e.key.toUpperCase();
+                    this.seqBuffer = (this.seqBuffer + ch).slice(-this._maxPasswordLen);
+                    const candidates = this._passwordsByLastChar.get(ch);
+                    if (candidates) {
+                        for (const password of candidates) {
+                            if (!this.seqBuffer.endsWith(password)) continue;
+                            SettingsPanel.toggle();
+                            this.seqBuffer = '';
+                            break;
+                        }
                     }
                 }
             };
+            /**
+             * Przygotowanie haseł. Robi się RAZ, przy starcie: lista z góry pliku
+             * jest stała przez całe życie egzemplarza, więc liczenie jej przy
+             * każdym naciśnięciu klawisza byłoby czystą stratą.
+             *
+             * Kolejność w grupie zostaje taka, jak w CONFIG — od najdłuższego —
+             * więc gdy w jednym naciśnięciu pasuje kilka haseł, wygrywa dłuższe.
+             */
+            const passwords = CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS || [];
+            this._passwordsByLastChar = new Map();
+            this._maxPasswordLen = 0;
+            for (const password of passwords) {
+                if (password.length > this._maxPasswordLen) this._maxPasswordLen = password.length;
+                const last = password[password.length - 1];
+                if (!this._passwordsByLastChar.has(last)) this._passwordsByLastChar.set(last, []);
+                this._passwordsByLastChar.get(last).push(password);
+            }
+
             document.addEventListener('keydown', this.onKeyDown, true);
         },
         modifyCounter(delta) {
@@ -5565,6 +5671,12 @@ const SCRIPT_LOGS_ENABLED = false;
                     Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
                     DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG,
                     priceModuleOn,
+                    // 1.1.0 — hasła dostępu. InputManager trzyma bufor i mapę
+                    // haseł, normalizeAccessPasswords pokazuje, co naprawdę
+                    // wyjdzie z listy wpisanej na górze pliku: po edycji warto
+                    // sprawdzić SH.normalizeAccessPasswords(['moje', 'hasła'])
+                    // zamiast zgadywać, czy literówka przeszła.
+                    InputManager, normalizeAccessPasswords,
                     /**
                      * Włączenie/wyłączenie modułu cen z konsoli. Robi dokładnie
                      * to samo, co przełącznik w panelu ustawień.
@@ -5787,10 +5899,11 @@ const SCRIPT_LOGS_ENABLED = false;
    Są trzy sposoby i różnią się tym, jak długo zmiana żyje.
 
    1. PANEL USTAWIEŃ (najprostszy, nic nie trzeba edytować).
-      Wpisz na stronie hasło — domyślnie GORDONPAULE — a panel się otworzy.
-      Wszystko, co tam zmienisz, zapisze się w przeglądarce i przeżyje F5.
-      Hasło zmienia się w JEDNEJ linii na samej górze pliku:
-          const SETTINGS_ACCESS_PASSWORD = 'GORDONPAULE';
+      Wpisz na stronie hasło — domyślnie GORDONPAULE albo BOMBA — a panel
+      się otworzy. Wszystko, co tam zmienisz, zapisze się w przeglądarce
+      i przeżyje F5. Hasła zmienia się w JEDNEJ linii na samej górze pliku:
+          const SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA'];
+      Można dopisać kolejne; jedyne ograniczenie opisane jest tam w komentarzu.
 
    2. KONSOLA (na próbę, do najbliższego przeładowania strony).
       Po uruchomieniu skryptu dostępny jest obiekt SH, np.:

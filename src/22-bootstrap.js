@@ -243,6 +243,12 @@
                     Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
                     DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG,
                     priceModuleOn,
+                    // 1.1.0 — hasła dostępu. InputManager trzyma bufor i mapę
+                    // haseł, normalizeAccessPasswords pokazuje, co naprawdę
+                    // wyjdzie z listy wpisanej na górze pliku: po edycji warto
+                    // sprawdzić SH.normalizeAccessPasswords(['moje', 'hasła'])
+                    // zamiast zgadywać, czy literówka przeszła.
+                    InputManager, normalizeAccessPasswords,
                     /**
                      * Włączenie/wyłączenie modułu cen z konsoli. Robi dokładnie
                      * to samo, co przełącznik w panelu ustawień.

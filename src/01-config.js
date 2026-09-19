@@ -1,6 +1,44 @@
     // ==========================================
     // 1. STAŁE PODSTAWOWE I KONFIGURACJA
     // ==========================================
+    /**
+     * Sprowadza listę haseł z góry pliku do postaci, na której da się pracować
+     * bez niespodzianek. Człowiek edytuje tam zwykłą tablicę i ma prawo wpisać
+     * do niej cokolwiek — a od tego, co stąd wyjdzie, zależy jedyne wejście do
+     * panelu ustawień.
+     *
+     * Co robimy i dlaczego:
+     *   - pojedynczy łańcuch zamiast tablicy jest przyjmowany (typowa pomyłka
+     *     przy edycji, a skutkiem byłby rozpad na pojedyncze litery);
+     *   - białe znaki z brzegów obcinamy, bo w klawiaturę i tak nie wejdą tak,
+     *     jak wyglądają w pliku;
+     *   - wielkość liter znika, bo bufor klawiatury jest podnoszony do wielkich;
+     *   - puste pozycje wylatują. W dzisiejszym InputManagerze same by nie
+     *     zadziałały (mapa po ostatnim znaku nie ma dla nich klucza), ale to
+     *     przypadek układu wyszukiwania, a nie decyzja. Napisane wprost tutaj
+     *     przeżyje uproszczenie tamtej mapy do zwykłej pętli po `endsWith`,
+     *     po którym `''` pasowałoby do KAŻDEGO bufora i otwierało panel na
+     *     pierwszym klawiszu;
+     *   - powtórzenia znikają, żeby nie porównywać dwa razy tego samego;
+     *   - kolejność: od najdłuższego. Gdy w jednym naciśnięciu pasuje kilka
+     *     haseł (jedno jest końcówką drugiego), wygrywa dłuższe — deterministycznie,
+     *     a nie zależnie od kolejności wpisanej w pliku.
+     *
+     * Funkcja stoi tutaj, a nie w Utils, bo moduł 01 jest pierwszy w sklejeniu
+     * i w chwili budowania CONFIG Utils jeszcze nie istnieje.
+     */
+    function normalizeAccessPasswords(raw) {
+        const lista = Array.isArray(raw) ? raw : [raw];
+        const out = [];
+        for (const poz of lista) {
+            if (typeof poz !== 'string' && typeof poz !== 'number') continue;
+            const h = String(poz).trim().toUpperCase();
+            if (!h) continue;
+            if (out.indexOf(h) === -1) out.push(h);
+        }
+        return out.sort((a, b) => b.length - a.length);
+    }
+
     const CONFIG = {
         SCRIPT_VERSION: '__VERSION__',
         SCRIPT_NAME: 'Helper (Reactive)',
@@ -48,9 +86,15 @@
         SETTINGS_PANEL_TEXT_COLOR: '#141414',
         SETTINGS_PANEL_ACCENT_COLOR: '#141414',
         SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
-        // Hasło z góry pliku rozbite na znaki — porównanie idzie znak po znaku
-        // z buforem klawiatury (patrz InputManager).
-        SETTINGS_PANEL_ACCESS_SEQUENCE: String(SETTINGS_ACCESS_PASSWORD).toUpperCase().split(''),
+        /**
+         * Hasła z góry pliku, sprowadzone do jednej postaci (patrz
+         * normalizeAccessPasswords). Porównanie z buforem klawiatury robi
+         * InputManager.
+         *
+         * Pusta lista jest dozwolonym stanem i znaczy „panelu nie otwiera żadne
+         * hasło” — wtedy zostaje konsola (SH.SettingsPanel.toggle()).
+         */
+        SETTINGS_PANEL_ACCESS_PASSWORDS: normalizeAccessPasswords(SETTINGS_ACCESS_PASSWORDS),
         KNOWN_TAB_TYPES: {
             CRET: { key: 'CRET', displayNameKey: 'tabName_CRET', baseColorHex: '#0078D7', urlKeyword: 'CRETURN' },
             REFURB: { key: 'REFURB', displayNameKey: 'tabName_REFURB', baseColorHex: '#FFA500', urlKeyword: 'CRETURN_REFURB' },

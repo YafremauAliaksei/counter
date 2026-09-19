@@ -184,10 +184,15 @@ test('lokalizacja rosyjska została na miejscu', () => {
 
 describe('Układ pliku');
 
-test('hasło leży w pierwszych 30 liniach', () => {
-    const head = LINES.slice(0, 30).join('\n');
-    ok(/const\s+SETTINGS_ACCESS_PASSWORD\s*=\s*'GORDONPAULE'/.test(head),
-       'hasło musi być na górze pliku');
+test('hasła leżą w pierwszych 40 liniach', () => {
+    // Człowiek edytuje je wprost w pliku, więc muszą być widoczne od razu po
+    // otwarciu, bez przewijania. Blok urósł razem z opisem ograniczenia
+    // („hasło nie może być początkiem innego”), stąd 40 zamiast 30.
+    const head = LINES.slice(0, 40).join('\n');
+    ok(/const\s+SETTINGS_ACCESS_PASSWORDS\s*=\s*\[/.test(head),
+       'lista haseł musi być na górze pliku');
+    ok(/'GORDONPAULE'/.test(head) && /'BOMBA'/.test(head),
+       'oba hasła muszą być widoczne w tym bloku');
 });
 
 test('wyłącznik logów leży zaraz pod hasłem', () => {
