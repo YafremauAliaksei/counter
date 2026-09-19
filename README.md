@@ -144,20 +144,32 @@ Stan jest zapisywany i przeżywa przeładowanie strony.
 
 ### Co pojawia się po włączeniu
 
-**Karta ceny** — cena towaru, który jest właśnie obsługiwany. Domyślnie wygląda
-jak linie okna statystyk: przezroczyste tło, cienkie pismo 16 px, bez ramki
-i bez cienia. Ma być pomocą, a nie oknem cudzej aplikacji.
+**Karta ceny** — cena towaru, który jest właśnie obsługiwany. Domyślnie to
+**jedna szara, półprzezroczysta linijka z kwotą i nic więcej**: ten sam kolor,
+ta sama przezroczystość i ten sam rozmiar, co linia 7, na przezroczystym tle,
+bez ramki i bez cienia.
+
+Wyłączone są więc na start: kod produktu, cena katalogowa, wiersz źródła i czas
+zdobycia ceny. Każde z nich włącza się osobnym przełącznikiem w panelu.
 
 Karta jest **w całości przezroczysta dla myszy** — kliknięcia dochodzą do
 interfejsu T-REX. Kod produktu można zamienić w link do sklepu (prowadzi na ten
 rynek, z którego wzięto cenę), ale domyślnie jest wyłączony: link to jedyne
 miejsce karty, które łapie mysz i potrafi przykryć cudzy przycisk.
 
-Każdy element karty ma własny wyłącznik — kod produktu, jego klikalność, cena,
-cena katalogowa, wykres i czas zdobycia ceny w milisekundach (domyślnie
-wyłączony). Krój pisma bierze się z tej samej listy, co w oknie statystyk,
-a tło podnosi się suwakiem przezroczystości: przy wartości powyżej zera wracają
-razem z nim ramka i cień.
+**Kolor tekstu jest jeden na całą kartę** i zmienia się pickerem razem
+z przezroczystością, tak samo jak przy liniach okna statystyk. Krój pisma bierze
+się z tej samej listy, co w oknie, a tło podnosi się suwakiem: przy wartości
+powyżej zera wracają razem z nim ramka i cień.
+
+Dwie rzeczy pokazują się **zawsze**, niezależnie od przełączników, bo ich brak
+byłby cichym kłamstwem:
+
+- **powód, dla którego ceny nie ma** — blokada CSP, wyczerpany limit, źródła bez
+  wyniku. Karta z samą kreską jest nie do odróżnienia od zepsutego skryptu;
+- **adnotacja, że cenę zdjęto z innego sklepu** niż wybrany. Bez niej suma zmiany
+  niepostrzeżenie zmieszałaby waluty i witryny, a przy dwóch rynkach w euro nie
+  widać tego nawet po samej kwocie.
 
 **Dziennik wartości** — każdy zakończony przedmiot zapisuje się z ceną, walutą,
 działem i kierunkiem (sprzedaż/utylizacja). Dziennik jest wspólny dla wszystkich
@@ -223,18 +235,18 @@ początkiem innego hasła** — przy parze `BOM` i `BOMBA` krótsze zadziałało
 wcześniej i wyczyściło bufor, więc dłuższego nie dałoby się wpisać nigdy. Pilnuje
 tego test, więc taka lista zapali CI na czerwono.
 
-| Sekcja              | Co się ustawia                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------- |
-| Ogólne              | język (pl/en/ru), pełny reset danych, reset samych liczników                                         |
-| Pomoce wizualne     | kolorowa nakładka na stronę, duży napis z nazwą działu                                               |
-| Stylizacja okna     | tło okna, czcionka, **wszystkie siedem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji   |
-| Statystyki globalne | które działy wchodzą do sumy, ręczna poprawka liczników                                              |
-| Skróty klawiszowe   | klawisze `+1` i `−1`                                                                                 |
-| Auto-inkrementacja  | odstęp skanowania strony (50–200 ms)                                                                 |
-| **Moduł cen**       | **główny wyłącznik sieci**                                                                           |
-| Karta ceny          | sklep, źródło ceny, co pokazać, klikalność kodu, krój, rozmiary, tło — _tylko przy włączonym module_ |
-| Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_    |
-| Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                                 |
+| Sekcja              | Co się ustawia                                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Ogólne              | język (pl/en/ru), pełny reset danych, reset samych liczników                                                       |
+| Pomoce wizualne     | kolorowa nakładka na stronę, duży napis z nazwą działu                                                             |
+| Stylizacja okna     | tło okna, czcionka, **wszystkie siedem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji                 |
+| Statystyki globalne | które działy wchodzą do sumy, ręczna poprawka liczników                                                            |
+| Skróty klawiszowe   | klawisze `+1` i `−1`                                                                                               |
+| Auto-inkrementacja  | odstęp skanowania strony (50–200 ms)                                                                               |
+| **Moduł cen**       | **główny wyłącznik sieci**                                                                                         |
+| Karta ceny          | sklep, źródło ceny, co pokazać, klikalność kodu, kolor tekstu, krój, rozmiary, tło — _tylko przy włączonym module_ |
+| Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_                  |
+| Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
 
 Język interfejsu domyślnie polski, są też angielski i rosyjski.
 

@@ -661,17 +661,40 @@ const SCRIPT_LOGS_ENABLED = false;
             // Szukać ceny w innych sklepach, jeśli w wybranym jej nie ma (8.6.0).
             marketFallback: true,
             showPrice: true,
-            showRrp: true,
+            /**
+             * Cena katalogowa (RRP) albo druga seria wykresu — DRUGI wiersz ceny.
+             *
+             * 1.1.0: domyślnie wyłączona. Karta ma po włączeniu modułu pokazywać
+             * jedną linijkę z ceną i nic więcej; kto potrzebuje odniesienia,
+             * włącza to w panelu.
+             *
+             * Wyłącznik dotyczy WYŁĄCZNIE cen. Komunikat o tym, dlaczego ceny nie
+             * ma (blokada CSP, wyczerpany limit), idzie tym samym wierszem
+             * i wyłączyć się go nie da — cicha awaria wygląda jak zepsuty skrypt.
+             */
+            showRrp: false,
             showGraph: true,
+            /**
+             * Wiersz źródła: „keepa-ocr · 96ms”. Domyślnie wyłączony — to
+             * informacja dla kogoś, kto dobiera źródło ceny, a nie dla kogoś,
+             * kto pracuje.
+             *
+             * Jeden wyjątek zostaje widoczny zawsze: adnotacja, że cenę zdjęto
+             * z INNEGO sklepu niż wybrany. Bez niej suma zmiany niepostrzeżenie
+             * zmieszałaby waluty i witryny, a przy dwóch rynkach w euro nie
+             * widać tego nawet po samej kwocie.
+             */
+            showSource: false,
             /**
              * CO POKAZAĆ W SAMEJ KARCIE — te same klocki, co przy liniach okna
              * statystyk: wyłącznik na każdy element osobno.
              *
-             * showAsin       — wiersz z kodem produktu;
+             * showAsin       — wiersz z kodem produktu (od 1.1.0 domyślnie
+             *                  wyłączony: to identyfikator, a nie cena);
              * asinClickable  — czy ten kod jest linkiem do sklepu;
              * showLatency    — ile milisekund zajęło zdobycie ceny.
              */
-            showAsin: true,
+            showAsin: false,
             /**
              * DOMYŚLNIE WYŁĄCZONY, I TO JEST ŚWIADOMA ZMIANA WYGLĄDU (patrz
              * CHANGELOG).
@@ -707,14 +730,30 @@ const SCRIPT_LOGS_ENABLED = false;
             // z cenami.
             width: 280,
             /**
-             * ROZMIAR CENY (1.0.0: 30 -> 16).
+             * ROZMIAR CENY (1.0.0: 30 -> 16, 1.1.0: 16 -> 13).
              *
              * Trzydzieści pikseli tłustą czcionką na nieprzezroczystym tle robiło
              * z karty najbardziej krzykliwy element ekranu — a jest to element
-             * pomocniczy. Szesnaście to rozmiar bliski liniom okna statystyk
-             * (14 px), więc karta czyta się jak one, a nie jak baner.
+             * pomocniczy. Trzynaście to dokładnie tyle, ile ma linia 7, bo karta
+             * ma teraz wyglądać jak ona: jedna szara linijka, nic więcej.
              */
-            fontSize: 16,
+            fontSize: 13,
+            /**
+             * KOLOR I PRZEZROCZYSTOŚĆ WSZYSTKICH TEKSTÓW KARTY.
+             *
+             * Jedna para wartości na całą kartę — cenę, kod produktu, drugi wiersz
+             * i wiersz źródła. Domyślnie to samo, co w linii 7: szary, alfa 50%.
+             *
+             * Do 1.1.0 kolory były wpisane na sztywno i NIOSŁY STAN: zielona cena
+             * znaczyła „jest”, pomarańczowa kreska „tnie CSP”. Zostało to zdjęte
+             * świadomie i jest to wymiana, a nie strata: stan mówi teraz TEKST,
+             * który przy awarii pokazuje się zawsze, niezależnie od wyłączników.
+             * Zdanie czyta się jednoznacznie i nie wymaga od nikogo pamiętania,
+             * co znaczy pomarańczowy — a kolor stał się tym, czym jest w liniach
+             * okna statystyk: ustawieniem wyglądu.
+             */
+            colorHex: '#808080',
+            alpha: 50,
             // Tryb wyświetlania wykresu Keepa:
             //   'legend' — tylko blok z cenami (domyślnie)
             //   'right'  — prawa część wykresu w naturalnej wielkości
@@ -828,6 +867,9 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_showLatency: 'Show price lookup time (ms)',
             priceCard_width: 'Card width: ${value}px', priceCard_fontSize: 'Price size: ${value}px',
             priceCard_bg: 'Card background', priceCard_drag: 'Make Card Draggable',
+            priceCard_showSource: 'Show price source',
+            priceCard_textColor: 'Text colour',
+            priceCard_textColorHint: 'One colour for every line of the card. Failure messages are always shown, whatever the switches say.',
             priceCard_dragActive: 'Card is Draggable (Click to Pin)', priceCard_resetPosition: 'Reset Card Position',
             priceCard_searching: 'looking up price...', priceCard_noPrice: 'price not available',
             priceCard_noAsin: 'no ASIN on page', priceCard_item: 'item', priceCard_rrp: 'RRP',
@@ -918,6 +960,9 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_showLatency: 'Pokaż czas zdobycia ceny (ms)',
             priceCard_width: 'Szerokość karty: ${value}px', priceCard_fontSize: 'Rozmiar ceny: ${value}px',
             priceCard_bg: 'Tło karty', priceCard_drag: 'Uaktywnij przeciąganie karty',
+            priceCard_showSource: 'Pokaż źródło ceny',
+            priceCard_textColor: 'Kolor tekstu',
+            priceCard_textColorHint: 'Jeden kolor na wszystkie wiersze karty. Komunikat o tym, dlaczego ceny nie ma, pokazuje się zawsze, niezależnie od wyłączników.',
             priceCard_dragActive: 'Karta przeciągalna (kliknij by przypiąć)', priceCard_resetPosition: 'Zresetuj pozycję karty',
             priceCard_searching: 'szukam ceny...', priceCard_noPrice: 'brak ceny',
             priceCard_noAsin: 'nie znaleziono ASIN', priceCard_item: 'przedmiot', priceCard_rrp: 'katalogowa',
@@ -1008,6 +1053,9 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_showLatency: 'Показывать время получения цены (мс)',
             priceCard_width: 'Ширина карточки: ${value}px', priceCard_fontSize: 'Размер цены: ${value}px',
             priceCard_bg: 'Фон карточки', priceCard_drag: 'Включить перетаскивание карточки',
+            priceCard_showSource: 'Показывать источник цены',
+            priceCard_textColor: 'Цвет текста',
+            priceCard_textColorHint: 'Один цвет на все строки карточки. Сообщение о том, почему цены нет, показывается всегда, независимо от выключателей.',
             priceCard_dragActive: 'Карточка перемещается (клик чтобы зафиксировать)', priceCard_resetPosition: 'Сбросить позицию карточки',
             priceCard_searching: 'ищу цену...', priceCard_noPrice: 'цены нет',
             priceCard_noAsin: 'ASIN не найден', priceCard_item: 'предмет', priceCard_rrp: 'RRP',
@@ -2640,6 +2688,9 @@ const SCRIPT_LOGS_ENABLED = false;
                     secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_asinClickableHint')));
                 }
                 secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
+                    I18n.get('priceCard_showSource'), pc.showSource === true,
+                    v => store.localTabConfig.priceCard.showSource = v)));
+                secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                     I18n.get('priceCard_showLatency'), pc.showLatency === true,
                     v => store.localTabConfig.priceCard.showLatency = v)));
 
@@ -2661,6 +2712,14 @@ const SCRIPT_LOGS_ENABLED = false;
                     11, 48, pc.fontSize,
                     v => store.localTabConfig.priceCard.fontSize = v,
                     v => I18n.get('priceCard_fontSize', { value: v }))));
+
+                // Jeden kolor na wszystkie wiersze karty — tak samo, jak przy
+                // liniach okna statystyk.
+                secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_textColor'), UIBuilder.colorPickerWithAlpha(
+                    pc.colorHex, pc.alpha,
+                    hex => store.localTabConfig.priceCard.colorHex = hex,
+                    alpha => store.localTabConfig.priceCard.alpha = alpha)));
+                secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_textColorHint')));
 
                 secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_bg'), UIBuilder.colorPickerWithAlpha(
                     pc.bgColorHex, pc.bgAlpha,
@@ -4903,6 +4962,20 @@ const SCRIPT_LOGS_ENABLED = false;
             this.check();
         },
 
+        /**
+         * Kolor WSZYSTKICH tekstów karty — jedna wartość na całą kartę, dokładnie
+         * jak przy liniach okna statystyk.
+         *
+         * Liczony przy każdym applyStyle(), a nie zapamiętywany: applyStyle
+         * wywołuje się po zmianie ustawień karty, więc nowy kolor ma być widoczny
+         * od razu, a nie po przeładowaniu strony.
+         */
+        textColor() {
+            const pc = store.localTabConfig.priceCard;
+            const alpha = Utils.clampNum(pc.alpha, 0, 100, 50) / 100;
+            return `rgba(${Utils.hexToRgb(pc.colorHex)}, ${alpha.toFixed(3)})`;
+        },
+
         applyStyle() {
             if (!this.el) return;
             const pc = store.localTabConfig.priceCard;
@@ -4949,6 +5022,7 @@ const SCRIPT_LOGS_ENABLED = false;
              * a nie rysować się sam.
              */
             const SHADOW = 'text-shadow:0 1px 3px rgba(0,0,0,.6)';
+            const COLOR = 'color:' + this.textColor();
 
             // pointer-events:auto — ten jedyny wyjątek od przezroczystej karty.
             // Przy włączonym przeciąganiu jest zdejmowany: wtedy ciągnie się całą
@@ -4969,7 +5043,7 @@ const SCRIPT_LOGS_ENABLED = false;
             const linkOn = pc.asinClickable === true && !dragging;
             this.asinEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
-                'color:rgba(190,215,255,.75)', 'letter-spacing:.5px', 'text-transform:uppercase',
+                COLOR, 'letter-spacing:.5px', 'text-transform:uppercase',
                 'display:' + (pc.showAsin === false ? 'none' : 'inline-block'),
                 'pointer-events:' + (linkOn ? 'auto' : 'none'),
                 'cursor:' + (linkOn ? 'pointer' : 'inherit'),
@@ -4983,17 +5057,17 @@ const SCRIPT_LOGS_ENABLED = false;
             this.priceEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(1), 'line-height:1.25',
                 'margin:' + (bgAlpha > 0 ? '4px 0 2px' : '1px 0 0'),
-                SHADOW, 'letter-spacing:.2px',
+                COLOR, SHADOW, 'letter-spacing:.2px',
             ].join(';');
 
             this.rrpEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
-                'color:rgba(255,214,130,.8)', SHADOW,
+                COLOR, SHADOW,
             ].join(';');
 
             this.srcEl.style.cssText = [
                 'font-size:' + px(0.7), 'line-height:1.35',
-                'color:rgba(205,220,245,.5)', 'margin-top:' + (bgAlpha > 0 ? '4px' : '1px'),
+                COLOR, 'margin-top:' + (bgAlpha > 0 ? '4px' : '1px'),
                 SHADOW,
             ].join(';');
 
@@ -5051,6 +5125,37 @@ const SCRIPT_LOGS_ENABLED = false;
             this.render();
         },
 
+        /**
+         * DWIE ROLE DRUGIEGO I TRZECIEGO WIERSZA — i zasada, która je rozdziela.
+         *
+         * Wiersz RRP i wiersz źródła noszą raz informację dodatkową (cena
+         * katalogowa, nazwa dostawcy, czas), a raz POWÓD, DLA KTÓREGO CENY NIE MA
+         * (blokada CSP, wyczerpany limit, źródła odpracowały bez wyniku).
+         *
+         * Wyłączniki `showRrp` i `showSource` dotyczą WYŁĄCZNIE pierwszej roli.
+         * Komunikat o awarii pokazuje się zawsze: karta, która przy zablokowanym
+         * CSP pokazuje samą kreskę bez słowa wyjaśnienia, jest nie do odróżnienia
+         * od zepsutego skryptu — a to dokładnie ten rodzaj cichej awarii, którego
+         * ten projekt nie toleruje nigdzie indziej.
+         *
+         * Stany PRZEJŚCIOWE (trwa zapytanie, trwa przegląd sklepów) idą pod
+         * wyłącznikami, bo awarią nie są, a przy karcie jednolinijkowej migałyby
+         * drugim wierszem przy każdym przedmiocie.
+         *
+         * Pomocnik poniżej NIE zna wyłączników i to jest celowe: decyzję
+         * podejmuje wywołujący, bo tylko on wie, czy wpisuje informację, czy
+         * powód awarii. Tutaj zostaje jedna reguła — pusty tekst znaczy „schowaj
+         * wiersz”, żeby po wyłączeniu nie zostawała pusta linijka odsuwająca
+         * resztę karty.
+         *
+         * @param {HTMLElement} el   wiersz do zapisania
+         * @param {string} text      treść; pusta chowa wiersz
+         */
+        setLine(el, text) {
+            el.textContent = text || '';
+            el.style.display = text ? 'block' : 'none';
+        },
+
         render() {
             if (!this.el) return;
             const pc = store.localTabConfig.priceCard;
@@ -5061,7 +5166,6 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.asinEl.removeAttribute('href');   // nie ma czego otwierać
                 this.asinEl.title = '';
                 this.priceEl.textContent = '—';
-                this.priceEl.style.color = 'rgba(255,255,255,.5)';
                 this.rrpEl.textContent = ''; this.srcEl.textContent = '';
                 this.graphWrap.style.display = 'none';
                 return;
@@ -5099,20 +5203,17 @@ const SCRIPT_LOGS_ENABLED = false;
                 // po tym samym ASIN jest — pokazujemy go przygaszony, a w linii
                 // źródła piszemy, że trwa odświeżanie.
                 const prev = this.cache.get(asin);
-                if (prev && prev.status === 'ok' && prev.current && pc.showPrice) {
-                    this.priceEl.style.display = 'block';
-                    this.priceEl.textContent = prev.current.text;
-                    this.priceEl.style.color = 'rgba(124,255,168,.45)';
-                } else {
-                    this.priceEl.style.display = 'block';
-                    this.priceEl.textContent = '…';
-                    this.priceEl.style.color = 'rgba(255,255,255,.65)';
-                }
-                this.rrpEl.style.display = 'block';
+                this.priceEl.style.display = 'block';
+                this.priceEl.textContent =
+                    (prev && prev.status === 'ok' && prev.current && pc.showPrice)
+                        ? prev.current.text : '…';
                 this.rrpEl.style.textDecoration = 'none';
+                // Stan przejściowy, nie awaria — idzie pod wyłącznikami.
                 const hunting = this.searchingOther === asin;
-                this.rrpEl.textContent = I18n.get(hunting ? 'priceCard_searchingOther' : 'priceCard_searching');
-                this.srcEl.textContent = hunting ? '' : I18n.get('priceCard_refreshing');
+                this.setLine(this.rrpEl, pc.showRrp
+                    ? I18n.get(hunting ? 'priceCard_searchingOther' : 'priceCard_searching') : '');
+                this.setLine(this.srcEl, pc.showSource && !hunting
+                    ? I18n.get('priceCard_refreshing') : '');
                 return;
             }
 
@@ -5135,7 +5236,6 @@ const SCRIPT_LOGS_ENABLED = false;
             if (r && r.status === 'ok') {
                 const price = r.current || r.rrp;
                 this.priceEl.textContent = pc.showPrice && price ? price.text : '';
-                this.priceEl.style.color = '#7CFFA8';
                 this.priceEl.style.display = pc.showPrice ? 'block' : 'none';
 
                 // Druga linia: albo prawdziwa RRP (daje ją tylko jina/keepa-api),
@@ -5156,16 +5256,24 @@ const SCRIPT_LOGS_ENABLED = false;
                     this.rrpEl.style.display = pc.showRrp ? 'block' : 'none';
                 }
 
-                const bits = [r.source];
-                // Cena z OBCEGO rynku musi być widoczna jako taka, inaczej suma
-                // za zmianę niepostrzeżenie zmiesza waluty i witryny.
-                if (r.fallback && r.market) {
-                    bits.push(I18n.get('priceCard_foundIn', { host: marketplace(r.market).host.replace(/^www\./, '') }));
-                }
+                /**
+                 * Cena z OBCEGO rynku musi być widoczna jako taka i dlatego ta
+                 * jedna adnotacja NIE podlega wyłącznikowi źródła: inaczej suma
+                 * zmiany niepostrzeżenie zmieszałaby waluty i witryny, a przy
+                 * dwóch rynkach w euro nie widać tego nawet po samej kwocie.
+                 */
+                const fromOther = (r.fallback && r.market)
+                    ? I18n.get('priceCard_foundIn', { host: marketplace(r.market).host.replace(/^www\./, '') })
+                    : '';
+                const bits = [];
+                if (pc.showSource) bits.push(r.source);
+                if (fromOther) bits.push(fromOther);
+                // Czas ma własny wyłącznik i działa niezależnie od nazwy źródła:
+                // przełącznik, który nic nie robi, dopóki nie włączy się innego,
+                // jest gorszy niż brak przełącznika.
                 if (pc.showLatency) bits.push(`${r.ms}ms`);
-                if (r.stale) bits.push(I18n.get('priceCard_cached'));
-                this.srcEl.textContent = bits.join(' · ');
-                this.srcEl.style.color = r.fallback ? 'rgba(255,214,130,.85)' : 'rgba(205,220,245,.6)';
+                if (pc.showSource && r.stale) bits.push(I18n.get('priceCard_cached'));
+                this.setLine(this.srcEl, bits.join(' · '));
                 return;
             }
 
@@ -5174,7 +5282,6 @@ const SCRIPT_LOGS_ENABLED = false;
                 const both = this.csp.img && this.csp.net;
                 this.priceEl.style.display = 'block';
                 this.priceEl.textContent = '—';
-                this.priceEl.style.color = '#FFC46B';
                 this.rrpEl.style.display = 'block';
                 this.rrpEl.style.textDecoration = 'none';
                 // W trybie 'ocr' blokada obrazka znaczy nie „nie ma wykresu”,
@@ -5202,7 +5309,6 @@ const SCRIPT_LOGS_ENABLED = false;
             if (!r) {
                 this.priceEl.style.display = 'block';
                 this.priceEl.textContent = '—';
-                this.priceEl.style.color = 'rgba(255,255,255,.5)';
                 this.rrpEl.style.display = 'block';
                 this.rrpEl.style.textDecoration = 'none';
                 this.rrpEl.textContent = '';
@@ -5213,7 +5319,6 @@ const SCRIPT_LOGS_ENABLED = false;
             // 5. Źródła odpracowały, ceny nie ma.
             this.priceEl.style.display = 'block';
             this.priceEl.textContent = '—';
-            this.priceEl.style.color = '#FF9A9A';
             this.rrpEl.style.display = 'block';
             this.rrpEl.textContent = r.reason || I18n.get('priceCard_noPrice');
             this.rrpEl.style.textDecoration = 'none';
