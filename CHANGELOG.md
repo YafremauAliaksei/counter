@@ -12,6 +12,41 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **Kod ustawień — jeden ciąg szesnastkowy zamiast przeklikiwania panelu.**
+  Sekcja „Kod ustawień” na dole panelu pokazuje kod bieżących ustawień
+  (`0x0101000101010103ff8800…`) i gotową zakładkę z tym kodem w środku; obok
+  stoi pole na cudzy kod. To samo z konsoli: `SH.configCode()`, `SH.configLink()`
+  i `SH.config('0x…')` — wielkość liter bez znaczenia. Kod obejmuje wszystko,
+  co daje się ustawić: położenie okna, siedem linii, kolory działów, nakładkę,
+  całą kartę ceny, język, sklep, skróty klawiszowe i udział działów w sumie.
+  Danych — liczników, dziennika, stanu zmiany — nie obejmuje.
+
+  Format to zbiór samoopisujących się rekordów `[numer: 2 B][długość: 1 B]
+[wartość]` z sumą kontrolną na końcu, a nie stała mapa bitów. Dzięki długości
+  w rekordzie nieznany numer daje się przeskoczyć, więc **kody zachowują
+  ważność w obie strony przez wydania**: starszy skrypt wczyta kod z nowszego
+  (pomijając to, czego i tak nie umie ustawić), nowszy wczyta stary. Numer raz
+  wydany nie wraca do obiegu. Kod jest łatką, a nie zdjęciem konfiguracji —
+  wchodzi do niego tylko to, co różni się od domyślnych, więc zmiana wartości
+  domyślnej w kolejnym wydaniu dociera do ludzi, którzy danej rzeczy nie ruszali.
+
+  Kod przychodzi z zewnątrz, więc dekodowanie nie tworzy pól: zapis idzie
+  wyłącznie pod ścieżki z rejestru, liczby są przycinane do granic z rejestru,
+  kolory sprawdzane co do formy, pola wyboru po indeksie z listy, teksty tylko
+  w drukowalnym ASCII. Nieznany numer, zła długość i śmieciowa wartość są
+  pomijane pojedynczo, z adnotacją w sprawozdaniu.
+
+### Zmieniono
+
+- `README.md` opisuje mechanizm kodu wraz z rozbiorem przykładowego ciągu;
+  liczba sprawdzeń w dokumentacji doprowadzona do stanu faktycznego (246).
+
+---
+
 ## 1.1.0 — 2026-09-19
 
 ### Dodano
