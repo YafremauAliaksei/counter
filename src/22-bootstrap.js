@@ -249,6 +249,10 @@
                     // sprawdzić SH.normalizeAccessPasswords(['moje', 'hasła'])
                     // zamiast zgadywać, czy literówka przeszła.
                     InputManager, normalizeAccessPasswords,
+                    // Przeciąganie okna i karty — wystawione dla diagnostyki
+                    // („czemu nie da się przesunąć okna”) i dla testów, które
+                    // odtwarzają pełny gest myszy.
+                    DragDropManager, PriceCardDrag,
                     /**
                      * Włączenie/wyłączenie modułu cen z konsoli. Robi dokładnie
                      * to samo, co przełącznik w panelu ustawień.

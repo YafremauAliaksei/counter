@@ -2371,6 +2371,27 @@ const SCRIPT_LOGS_ENABLED = false;
                 }
             });
             document.body.appendChild(this.el);
+
+            /**
+             * PRZYCISK MA POKAZYWAĆ STAN, A NIE PAMIĘTAĆ WŁASNE KLIKNIĘCIE.
+             *
+             * Wygląd obu przycisków przeciągania wyliczany jest przy rysowaniu
+             * panelu z flag `uiFlags.*Dragging`. Przerysowanie wołała dotąd
+             * WYŁĄCZNIE obsługa kliknięcia — a flagę zdejmuje też ktoś inny:
+             * dragger po puszczeniu myszy (jedno przeciągnięcie = jedno
+             * ustawienie okna) i przycisk resetu pozycji.
+             *
+             * Skutek widoczny dla człowieka: przeciągnął okno, puścił — tryb już
+             * się wyłączył, ale przycisk dalej świeci pomarańczowym i twierdzi
+             * „kliknij, by przypiąć”. Kliknięcie w niego WŁĄCZA przeciąganie
+             * z powrotem, choć wygląda na wyłączające. Klasyczny rozjazd
+             * kontrolki ze stanem.
+             *
+             * Subskrypcja stoi w init(), a nie w render(): render() woła się przy
+             * każdej zmianie ustawienia, więc subskrypcje by się mnożyły.
+             */
+            bus.on('store:changed:uiFlags.isStatsWindowDragging', () => this.rerender());
+            bus.on('store:changed:uiFlags.isPriceCardDragging', () => this.rerender());
         },
         /**
          * Odroczone przerysowanie (8.3.0).
@@ -5782,6 +5803,10 @@ const SCRIPT_LOGS_ENABLED = false;
                     // sprawdzić SH.normalizeAccessPasswords(['moje', 'hasła'])
                     // zamiast zgadywać, czy literówka przeszła.
                     InputManager, normalizeAccessPasswords,
+                    // Przeciąganie okna i karty — wystawione dla diagnostyki
+                    // („czemu nie da się przesunąć okna”) i dla testów, które
+                    // odtwarzają pełny gest myszy.
+                    DragDropManager, PriceCardDrag,
                     /**
                      * Włączenie/wyłączenie modułu cen z konsoli. Robi dokładnie
                      * to samo, co przełącznik w panelu ustawień.

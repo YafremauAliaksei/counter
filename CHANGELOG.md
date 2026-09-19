@@ -111,6 +111,15 @@ zapytań sieciowych i bez linii w konsoli.
 
 ### Naprawiono
 
+- **Przycisk przeciągania okna nie nadążał za stanem.** Jego wygląd wyliczany
+  jest przy rysowaniu panelu z flagi `uiFlags.*Dragging`, ale przerysowanie
+  wołała wyłącznie obsługa kliknięcia w ten przycisk — a flagę zdejmuje też
+  dragger po puszczeniu myszy i przycisk resetu pozycji. Człowiek przeciągał
+  okno, puszczał, tryb się wyłączał, a przycisk dalej świecił pomarańczowym
+  i pisał „kliknij, by przypiąć”; kliknięcie w niego WŁĄCZAŁO przeciąganie
+  z powrotem. Panel nasłuchuje teraz obu flag, więc kontrolka pokazuje stan
+  niezależnie od tego, kto go zmienił.
+
 - **Pełny magazyn nie zabija skryptu.** `localStorage` tej domeny dzielimy
   z samym TREX, więc kwota potrafi się skończyć nie z naszej winy. Wyjątek
   z `setItem` szedł ze `StorageManager.write()` nieprzechwycony aż do `Main.init()`
