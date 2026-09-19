@@ -12,7 +12,7 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.2.0 — 2026-09-19
 
 ### Dodano
 
@@ -50,6 +50,18 @@ Dla tego projektu SemVer czyta się tak:
   drugiego egzemplarza, ale ustawienia nakłada — na ten działający.
 
 ### Zmieniono
+
+- **Wydanie da się zrobić bez konsoli.** README ma rozdział „Wydania”: commit
+  wydania w PR, a potem tag wyklikany w **Releases → Draft a new release**.
+  Workflow wydania przyjmuje teraz także ręczne uruchomienie z podanym tagiem
+  (**Actions → Release → Run workflow**), więc przebieg, który padł po utworzeniu
+  tagu, powtarza się bez wydawania nowej wersji. Wcześniej to pole istniało, ale
+  nie mogło zadziałać: bez tagu sprawdzenie wersji porównywało `main` z numerem
+  z `package.json`.
+
+- **Zasady numerowania wersji zapisane w `build.manifest.json`** — razem
+  z rozróżnieniem trzech numerów, które łatwo pomylić: wersji skryptu,
+  `SCRIPT_ID_PREFIX` (schemat danych) i `ConfigCode.FORMAT` (ramka kodu ustawień).
 
 - Kolejność modułów: `23-config-code.js` stoi teraz przed `24-presets.js`.
   Presety wołają `Main.init()`, a init używa kodu ustawień w czasie działania,

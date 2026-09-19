@@ -3,14 +3,27 @@ name: Release
 # Wydanie powstaje z TAGU, nie z ręcznego wgrania pliku. Dzięki temu to, co
 # ludzie pobierają, na pewno pochodzi z kodu oznaczonego tym tagiem.
 #
-# Jak wydać — JEDNO POLECENIE na main:
+# Jak wydać — DWIE DROGI, obie kończą się tak samo (tagiem):
 #
-#   npm version minor && git push --follow-tags
+#   1. Z przeglądarki, bez konsoli: Releases -> Draft a new release ->
+#      Choose a tag -> wpisać vX.Y.Z -> „Create new tag on publish” ->
+#      Target: main -> Publish release. Opis zostawić pusty, wjedzie sekcja
+#      z CHANGELOG. Rozdział „Wydania” w README opisuje to krok po kroku.
+#      Przed tym krokiem wersja musi już siedzieć w main: package.json
+#      podniesiony, artefakt przebudowany — czyli osobny commit wydania.
 #
-# `npm version` podnosi package.json, potem uruchamia skrypt `version`
-# (`npm run build && git add counter.js`), a dopiero POTEM robi commit i tag.
-# Dzięki temu przebudowany artefakt wchodzi do tego samego commita, na który
-# wskazuje tag.
+#   2. Z konsoli, jednym poleceniem na main:
+#
+#        npm version minor && git push --follow-tags
+#
+#      `npm version` podnosi package.json, potem uruchamia skrypt `version`
+#      (`npm run build && git add counter.js`), a dopiero POTEM robi commit
+#      i tag. Dzięki temu przebudowany artefakt wchodzi do tego samego
+#      commita, na który wskazuje tag.
+#
+# Gdy przebieg padnie już PO utworzeniu tagu, nie trzeba wydawać nowej wersji:
+# Actions -> Release -> Run workflow -> podać tag. Przebieg powtórzy się dla
+# istniejącego tagu i uzupełni wydanie.
 #
 # Poprzednia wersja tej instrukcji mówiła „npm version, potem build, potem
 # commit --amend”. To nie mogło zadziałać: amend tworzy NOWY commit, a tag
@@ -24,7 +37,14 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  # Ręczne powtórzenie dla tagu, który już istnieje. Bez tego pola przebieg
+  # ruszyłby z gałęzi, a wtedy GITHUB_REF_NAME to `main` i sprawdzenie wersji
+  # padłoby na porównaniu „main” z numerem z package.json.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag istniejącego wydania, np. v1.2.0'
+        required: true
 
 permissions:
   contents: write
@@ -37,9 +57,14 @@ jobs:
   release:
     name: Zbuduj i opublikuj
     runs-on: ubuntu-latest
+    # Jedno miejsce, z którego bierze się nazwa tagu: przy tagu to ref
+    # przebiegu, przy ręcznym uruchomieniu — to, co wpisał człowiek.
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
 
       - uses: actions/setup-node@v7
@@ -54,7 +79,7 @@ jobs:
 
       - name: Wersja z tagu zgadza się z package.json
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${RELEASE_TAG#v}"
           PKG=$(node -p "require('./package.json').version")
           if [ "$TAG" != "$PKG" ]; then
             echo "::error::Tag v$TAG nie zgadza się z wersją w package.json ($PKG)."
@@ -137,7 +162,8 @@ jobs:
       - name: Utwórz wydanie
         uses: softprops/action-gh-release@v3
         with:
-          name: ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
           body_path: RELEASE_NOTES.md
           files: |
             counter.js

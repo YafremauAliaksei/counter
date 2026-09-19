@@ -139,7 +139,9 @@ main ─────●────────────────●──
 4. `git push -u origin feat/short-name` → Pull Request.
 5. CI przepuszcza bramki; dopóki są czerwone, scalanie jest zablokowane.
 6. Squash merge do `main`.
-7. Wydanie: podnieść wersję, tag, GitHub Release.
+7. Wydanie: osobny commit `chore(release): X.Y.Z` (podniesiony `package.json`
+   i przebudowany artefakt), a potem tag `vX.Y.Z` — z konsoli albo wprost
+   z interfejsu GitHuba. Krok po kroku: rozdział **Wydania** w README.
 
 ### Nagłówki commitów
 
@@ -196,12 +198,12 @@ dokładnie.
 
 ## 4. Bramki, które muszą być zielone
 
-| Bramka    | Polecenie              | Co łapie                                                  |
-| --------- | ---------------------- | --------------------------------------------------------- |
-| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 246 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
-| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
-| Format    | `npm run format:check` | rozjazdy w stylu                                          |
+| Bramka    | Polecenie              | Co łapie                                                    |
+| --------- | ---------------------- | ----------------------------------------------------------- |
+| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                          |
+| Testy     | `npm test`             | 254 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
+| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                   |
+| Format    | `npm run format:check` | rozjazdy w stylu                                            |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 
