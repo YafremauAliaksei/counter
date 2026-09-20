@@ -36,6 +36,10 @@
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
+                // Zadania opisują JEDNĄ zmianę, tak samo jak liczniki: zostawione
+                // przez granicę zmiany dałyby tempo liczone od wczoraj.
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER),
+                StorageManager.getKey(CONFIG.STORAGE_KEY_TASKS),
             ];
             Object.keys(localStorage)
                 .filter(k => prefixes.some(p => k.startsWith(p)))
@@ -47,6 +51,12 @@
             Object.keys(store.tabCounters).forEach(k => { store.tabCounters[k] = 0; });
             Object.keys(store.tabSold).forEach(k => { store.tabSold[k] = 0; });
             Object.keys(store.tabNeutral).forEach(k => { store.tabNeutral[k] = 0; });
+            // Lista zadań wstaje od zera: TaskManager.init() postawi zadanie
+            // domyślne, zaczynające się razem z nową zmianą.
+            store.tasks = [];
+            store.activeTaskId = null;
+            store.taskCounters = {};
+            TaskManager.init();
 
             // 8.4.0: dziennik wartości żyje dokładnie tyle samo, co liczniki —
             // to ta sama ewidencja, tylko w pieniądzach. Podsumowania odchodzącej
@@ -183,27 +193,34 @@
 
             StorageManager.saveState();
         },
+        /**
+         * Ile z odcinka [from, to] zjadła przerwa obiadowa.
+         *
+         * Wydzielone z getWorkTime() w 1.3.0, bo ten sam rachunek jest potrzebny
+         * zadaniom: kto nie pamiętał o pauzie na obiad, miałby w zadaniu pół
+         * godziny pracy, której nie było. Jedno miejsce prawdy — obie strony
+         * odejmują dokładnie to samo.
+         */
+        lunchOverlapMs(from, to) {
+            const idx = store.sessionConfig.selectedLunchIndex;
+            const opt = idx !== null && CONFIG.LUNCH_OPTIONS_BASE[idx];
+            if (!opt || !(to > from)) return 0;
+
+            const shiftDate = new Date(store.sessionConfig.shiftCalculatedStartTime || from);
+            const lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+            const lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+            if (lEndObj < lStartObj) lEndObj.setDate(lEndObj.getDate() + 1);
+
+            const aStart = Math.max(from, lStartObj.getTime());
+            const aEnd = Math.min(to, lEndObj.getTime());
+            return aEnd > aStart ? aEnd - aStart : 0;
+        },
         getWorkTime() {
             if (!store.sessionConfig.shiftCalculatedStartTime) return { workedMs: 0, lunchMs: 0 };
             const now = Date.now();
             const start = store.sessionConfig.shiftCalculatedStartTime;
             const elapsed = Math.max(0, now - start);
-            let lunchMs = 0;
-
-            const idx = store.sessionConfig.selectedLunchIndex;
-            if (idx !== null && CONFIG.LUNCH_OPTIONS_BASE[idx]) {
-                const opt = CONFIG.LUNCH_OPTIONS_BASE[idx];
-                const shiftDate = new Date(start);
-
-                const lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
-                const lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
-
-                if (lEndObj < lStartObj) lEndObj.setDate(lEndObj.getDate() + 1);
-
-                const aStart = Math.max(start, lStartObj.getTime());
-                const aEnd = Math.min(now, lEndObj.getTime());
-                if (aEnd > aStart) lunchMs = aEnd - aStart;
-            }
+            const lunchMs = this.lunchOverlapMs(start, now);
             return { workedMs: Math.max(0, elapsed - lunchMs), lunchMs };
         }
     };

@@ -45,9 +45,14 @@ test('linia 7 jest jedyną włączoną i ma zadane parametry', () => {
     eq(on, ['line7_compact'], 'włączone linie');
 });
 
-test('linia 7 jest ostatnia w kolejności okna', () => {
-    eq(env.SH.LINE_KEYS[env.SH.LINE_KEYS.length - 1], 'line7_compact');
-    eq(env.SH.LINE_KEYS.length, 7);
+test('kolejność okna kończy się linią 8, a linia 7 stoi tuż przed nią', () => {
+    // Do 1.2.1 ostatnia była linia 7. Linia 8 (bieżące zadanie) dostawia się
+    // POD nią i to jest zamierzone: okno rośnie w górę od dolnej krawędzi, więc
+    // zadanie ląduje najbliżej rogu ekranu, tuż przy liczbach zmiany.
+    const keys = env.SH.LINE_KEYS;
+    eq(keys[keys.length - 1], 'line8_taskInfo');
+    eq(keys[keys.length - 2], 'line7_compact');
+    eq(keys.length, 8);
 });
 
 test('każda linia z LINE_KEYS ma swoją konfigurację i element w DOM', () => {

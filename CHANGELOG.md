@@ -26,6 +26,32 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **Zadania: własny zegar dla każdego procesu pracy.** Tempo liczyło się od początku zmiany — godziny wpisanej na stałe (6:30 albo 18:30). Kto przyszedł do procesu trzy godziny później i zrobił trzy paczki w sześć minut, widział `1.0/h` zamiast `30/h`: liczba policzona poprawnie, znaczenie fałszywe. Teraz zadanie ma własny zegar, a po uruchomieniu skryptu istnieje jedno zadanie `Default`, zaczynające się razem ze zmianą — dopóki nikt go nie przełączy, wszystko działa jak dotąd.
+
+  Zadanie ma **listę odcinków**, a nie jeden początek i koniec. Kto wrócił do procesu sprzed pięciu godzin, **wznawia** to samo zadanie zamiast zakładać drugie o tej samej nazwie — w podsumowaniu zmiany stoi wtedy jedno zadanie z sensownym tempem, a nie wpisy 30 / 100 / 30, z których nic nie widać. Odcinek jest też miejscem na pauzę: zamknięty zatrzymuje zegar, a pierwsza paczka po pauzie otwiera nowy, bo skoro paczki idą, to przerwa się skończyła. Przerwa obiadowa odejmuje się od czasu zadania tym samym rachunkiem, co od czasu zmiany.
+
+- **Linia 8 — bieżące zadanie.** Nazwa procesu i jego własne liczby: `fast_process 12 34.3/h 58% 0:21`. Linie 1, 2 i 7 opisują całą zmianę i tak zostaje; linia 8 mówi o procesie, przy którym człowiek siedzi teraz. Domyślnie wyłączona, jak każda nowa linia. Zatrzymany zegar dokleja `(pauza)`, inaczej stojące tempo wygląda jak zepsuty licznik.
+
+- **`SH.tasks()` i `SH.TaskManager`** — podsumowanie zadań i przełączanie z konsoli.
+
+### Zmieniono
+
+- **Ręcznie wpisane paczki nie wchodzą do mianownika procentu sprzedaży.** Komputer stoi na sesji tymczasowej, więc po awaryjnym restarcie pamięć przeglądarki znika w całości: człowiek pamięta swoje tempo albo liczbę paczek, ale nie pamięta, ile z nich poszło na sprzedaż. Liczba wpisana w pole licznika (albo skrótem klawiszowym) trafia więc do paczek **oraz** do licznika „poza mianownikiem” — tego samego, którym liczą się audyty. Skutek: procent liczy się od przedmiotu, przy którym człowiek wrócił do pracy. Gdyby wpisane paczki wchodziły do mianownika, procent po każdej awarii spadałby do kilku procent i przestałby cokolwiek znaczyć.
+
+- **Granica „tempo jeszcze nie istnieje” stoi w jednym miejscu** (`RATE_MIN_WORKED_MS`, dziesięć sekund) i obowiązuje linię 1, linię 8 oraz przeliczanie tempa na paczki. Wcześniej była wpisana liczbą w jednym miejscu, a przy zadaniach musiałaby powstać drugi raz — i dwie linie mówiłyby co innego o tej samej pierwszej minucie pracy.
+
+- Obliczenie przerwy obiadowej wydzielone z `ShiftManager.getWorkTime()` do `lunchOverlapMs(from, to)`: ten sam rachunek jest potrzebny zadaniom.
+
+### Uwaga o zgodności danych
+
+- **`SCRIPT_ID_PREFIX` zmienia się z `statsHelper_v1_0_0_` na `statsHelper_v1_3_0_`.** Zgodnie z zasadą 4 z CLAUDE.md jest to zmiana MAJOR: liczniki, dziennik wartości i ustawienia z poprzednich wersji nie przenoszą się. Numer wersji mimo to idzie na 1.3.1 — to świadoma, jednorazowa decyzja autora: wydanie stabilne żyje pod osobnym adresem, a tej gałęzi nie używa jeszcze nikt, więc nie ma czyich danych stracić. Dzięki temu menedżer zadań startuje na czystym schemacie, bez warstwy przenoszenia starych kluczy, która byłaby najniebezpieczniejszym fragmentem całej zmiany.
+
+---
+
 ## 1.2.1 — 2026-09-19
 
 ### Zmieniono

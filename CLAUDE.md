@@ -101,7 +101,7 @@ Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 275 sprawdzeń
+npm test             # 303 sprawdzenia
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run lint         # ESLint (potrzebny npm ci)
@@ -127,7 +127,7 @@ node tests/manual/serve.js
 
 ## Jak zbudowany jest kod
 
-24 moduły w `src/` (plus nagłówek `00` i stopka `99`), sklejane w kolejności
+25 modułów w `src/` (plus nagłówek `00` i stopka `99`), sklejanych w kolejności
 z `build.manifest.json` w **jeden wspólny scope** (jedna IIFE).
 
 Konsekwencja: w momencie deklaracji moduł widzi tylko to, co zadeklarowano

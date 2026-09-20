@@ -104,6 +104,10 @@
       "file": "src/23-config-code.js",
       "desc": "Kod konfiguracji: przenoszenie ustawień jednym ciągiem szesnastkowym."
     },
-    { "file": "src/24-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
+    {
+      "file": "src/24-tasks.js",
+      "desc": "Menedżer zadań: własny zegar i liczniki dla procesu pracy."
+    },
+    { "file": "src/25-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
   ]
 }

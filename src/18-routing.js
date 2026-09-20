@@ -258,14 +258,20 @@
             if (!st || st.counted || !st.completed || !st.direction) return;
             st.counted = true;
             const cid = store.currentTabInstanceId;
+            // Kierunek trafia do dwóch miejsc naraz: do liczników zmiany (linie
+            // 1, 2 i 7) i do bieżącego zadania (linia 8, podsumowanie w panelu).
+            // Jedno wywołanie, dwa zapisy — dzięki temu suma zadań nie ma jak
+            // rozjechać się z licznikiem karty.
             if (st.direction === 'sell') {
                 const next = (store.tabSold[cid] || 0) + 1;
                 store.tabSold[cid] = next;
                 StorageManager.saveSold(cid, next);
+                TaskManager.addSold(cid);
             } else if (st.direction === 'neutral') {
                 const next = (store.tabNeutral[cid] || 0) + 1;
                 store.tabNeutral[cid] = next;
                 StorageManager.saveNeutral(cid, next);
+                TaskManager.addNeutral(cid);
             }
         },
 

@@ -62,7 +62,7 @@
          * nowe wartości domyślne i moduł cen wstałby WŁĄCZONY u każdego, kto
          * już używał poprzedniej wersji — czyli dokładnie odwrotnie do zamiaru.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_0_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_3_0_',
         // Prefiksy poprzednich wersji: ich klucze są usuwane z localStorage przy
         // pierwszym uruchomieniu, żeby na maszynach ze stałą sesją nie zbierały
         // się śmieci.
@@ -178,6 +178,44 @@
          * sąsiednia nie miałaby skąd wziąć swojej liczby audytów.
          */
         STORAGE_PREFIX_TAB_NEUTRAL: 'neutral_',
+        /**
+         * ZADANIA (1.3.0).
+         *
+         * Lista zadań i identyfikator aktywnego leżą pod JEDNYM kluczem
+         * wspólnym dla wszystkich kart: zadanie jest własnością człowieka, a nie
+         * karty — kto przechodzi do innego procesu, przechodzi w nim z każdą
+         * otwartą kartą naraz.
+         *
+         * Liczniki są odwrotnie: klucz na parę zadanie+karta, dokładnie jak
+         * liczniki zmiany i z tego samego powodu — dwie karty piszące jeden
+         * klucz zamazywałyby sobie liczby nawzajem.
+         */
+        STORAGE_KEY_TASKS: 'tasks',
+        STORAGE_PREFIX_TASK_COUNTER: 'taskcnt_',
+        /** Nazwa pierwszego zadania: cała zmiana jest jednym procesem, dopóki człowiek nie powie inaczej. */
+        DEFAULT_TASK_NAME: 'Default',
+        /**
+         * Poniżej tylu milisekund pracy tempo NIE ISTNIEJE i pokazuje się zero.
+         *
+         * Dziesięć sekund to granica, poniżej której dzielenie daje liczby
+         * w rodzaju „3600 paczek na godzinę” — pierwsza paczka tuż po starcie
+         * zadania. Ta sama granica obowiązuje przy przeliczaniu tempa wpisanego
+         * ręcznie na paczki, bo tam pomyłka jest jeszcze droższa: wpisana liczba
+         * trafia do liczników na stałe.
+         */
+        RATE_MIN_WORKED_MS: 10000,
+        /** Granica nazwy — panel ma wąską kolumnę, a nazwa stoi też w linii 8. */
+        TASK_MAX_NAME_LEN: 24,
+        /**
+         * Skróty do ustawiania początku zadania, w minutach wstecz.
+         *
+         * Wartości wzięte z tego, jak to wygląda na hali: o nowym procesie
+         * człowiek dowiaduje się z wyprzedzeniem, zbiera narzędzia i dopiero
+         * potem siada do skryptu — od faktycznego startu mijają wtedy dwie,
+         * pięć, czasem kilkanaście minut. Stąd krótkie odstępy na początku
+         * listy, a nie równe ćwiartki godziny.
+         */
+        TASK_QUICK_OFFSETS_MIN: [0, 2, 5, 15, 30],
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 
@@ -588,7 +626,18 @@
          * Bez oznaczeń, bez jednostek, bez nazw działów. Odświeżanie raz na
          * sekundę, tak jak reszta okna.
          */
-        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 }
+        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        /**
+         * LINIA 8 — BIEŻĄCE ZADANIE (1.3.0).
+         *
+         * Nazwa procesu i JEGO własne liczby: paczki, tempo, procent sprzedaży,
+         * przepracowany czas. Linie 1, 2 i 7 pokazują całą zmianę i tak zostaje
+         * — tu stoi to, co dzieje się teraz, w procesie, przy którym człowiek
+         * siedzi w tej chwili.
+         *
+         * Domyślnie wyłączona, jak każda nowa linia (zasada 3 z CLAUDE.md).
+         */
+        line8_taskInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 13 }
     };
 
     const DEFAULT_LOCAL_CONFIG = {

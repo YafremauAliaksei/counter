@@ -52,4 +52,4 @@
     // tworzy elementy, a CSSManager i panel ustawień chodzą po linesConfig.
     const LINE_KEYS = ['line1_currentTab', 'line2_globalSummary', 'line3_shiftInfo',
                        'line4_lunchInfo', 'line5_realTimeClock', 'line6_valueSum',
-                       'line7_compact'];
+                       'line7_compact', 'line8_taskInfo'];

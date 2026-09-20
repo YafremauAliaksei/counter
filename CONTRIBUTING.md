@@ -47,7 +47,8 @@ src/
   01-config.js       stałe i wartości domyślne
   ...
   23-config-code.js  kod ustawień: ciąg szesnastkowy zamiast panelu
-  24-presets.js      blok ustawień osobistych i start
+  24-tasks.js        menedżer zadań: zegar i liczniki procesu pracy
+  25-presets.js      blok ustawień osobistych i start
   99-footer.js       zakomentowana ściąga po ustawieniach
 ```
 
@@ -198,12 +199,12 @@ dokładnie.
 
 ## 4. Bramki, które muszą być zielone
 
-| Bramka    | Polecenie              | Co łapie                                                  |
-| --------- | ---------------------- | --------------------------------------------------------- |
-| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 275 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
-| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
-| Format    | `npm run format:check` | rozjazdy w stylu                                          |
+| Bramka    | Polecenie              | Co łapie                                                    |
+| --------- | ---------------------- | ----------------------------------------------------------- |
+| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                          |
+| Testy     | `npm test`             | 303 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
+| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                   |
+| Format    | `npm run format:check` | rozjazdy w stylu                                            |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 

@@ -179,7 +179,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * nowe wartości domyślne i moduł cen wstałby WŁĄCZONY u każdego, kto
          * już używał poprzedniej wersji — czyli dokładnie odwrotnie do zamiaru.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_0_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_3_0_',
         // Prefiksy poprzednich wersji: ich klucze są usuwane z localStorage przy
         // pierwszym uruchomieniu, żeby na maszynach ze stałą sesją nie zbierały
         // się śmieci.
@@ -295,6 +295,44 @@ const SCRIPT_LOGS_ENABLED = false;
          * sąsiednia nie miałaby skąd wziąć swojej liczby audytów.
          */
         STORAGE_PREFIX_TAB_NEUTRAL: 'neutral_',
+        /**
+         * ZADANIA (1.3.0).
+         *
+         * Lista zadań i identyfikator aktywnego leżą pod JEDNYM kluczem
+         * wspólnym dla wszystkich kart: zadanie jest własnością człowieka, a nie
+         * karty — kto przechodzi do innego procesu, przechodzi w nim z każdą
+         * otwartą kartą naraz.
+         *
+         * Liczniki są odwrotnie: klucz na parę zadanie+karta, dokładnie jak
+         * liczniki zmiany i z tego samego powodu — dwie karty piszące jeden
+         * klucz zamazywałyby sobie liczby nawzajem.
+         */
+        STORAGE_KEY_TASKS: 'tasks',
+        STORAGE_PREFIX_TASK_COUNTER: 'taskcnt_',
+        /** Nazwa pierwszego zadania: cała zmiana jest jednym procesem, dopóki człowiek nie powie inaczej. */
+        DEFAULT_TASK_NAME: 'Default',
+        /**
+         * Poniżej tylu milisekund pracy tempo NIE ISTNIEJE i pokazuje się zero.
+         *
+         * Dziesięć sekund to granica, poniżej której dzielenie daje liczby
+         * w rodzaju „3600 paczek na godzinę” — pierwsza paczka tuż po starcie
+         * zadania. Ta sama granica obowiązuje przy przeliczaniu tempa wpisanego
+         * ręcznie na paczki, bo tam pomyłka jest jeszcze droższa: wpisana liczba
+         * trafia do liczników na stałe.
+         */
+        RATE_MIN_WORKED_MS: 10000,
+        /** Granica nazwy — panel ma wąską kolumnę, a nazwa stoi też w linii 8. */
+        TASK_MAX_NAME_LEN: 24,
+        /**
+         * Skróty do ustawiania początku zadania, w minutach wstecz.
+         *
+         * Wartości wzięte z tego, jak to wygląda na hali: o nowym procesie
+         * człowiek dowiaduje się z wyprzedzeniem, zbiera narzędzia i dopiero
+         * potem siada do skryptu — od faktycznego startu mijają wtedy dwie,
+         * pięć, czasem kilkanaście minut. Stąd krótkie odstępy na początku
+         * listy, a nie równe ćwiartki godziny.
+         */
+        TASK_QUICK_OFFSETS_MIN: [0, 2, 5, 15, 30],
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 
@@ -705,7 +743,18 @@ const SCRIPT_LOGS_ENABLED = false;
          * Bez oznaczeń, bez jednostek, bez nazw działów. Odświeżanie raz na
          * sekundę, tak jak reszta okna.
          */
-        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 }
+        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        /**
+         * LINIA 8 — BIEŻĄCE ZADANIE (1.3.0).
+         *
+         * Nazwa procesu i JEGO własne liczby: paczki, tempo, procent sprzedaży,
+         * przepracowany czas. Linie 1, 2 i 7 pokazują całą zmianę i tak zostaje
+         * — tu stoi to, co dzieje się teraz, w procesie, przy którym człowiek
+         * siedzi w tej chwili.
+         *
+         * Domyślnie wyłączona, jak każda nowa linia (zasada 3 z CLAUDE.md).
+         */
+        line8_taskInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 13 }
     };
 
     const DEFAULT_LOCAL_CONFIG = {
@@ -886,6 +935,8 @@ const SCRIPT_LOGS_ENABLED = false;
             scriptLoaded: '${scriptName} v${version} Loaded.', yes: 'Yes', no: 'No', notApplicable: 'NA',
             error_items_per_hour_unavailable: '~0.0/h (short work time)', fromUnit: 'from', inUnit: 'in',
             hoursShort: 'h', minutesShort: 'm', secondsShort: 's', statsPerHourUnit: '/h', completedUnit: 'done',
+            taskPausedMark: '(paused)',
+            lineSettings_taskInfoHint: 'Name of the current task and its own numbers: packages, rate, sales percentage, time worked. The lines above describe the whole shift; this one describes the process you are on right now.',
             tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_UNKNOWN: 'UNKNOWN',
             statsLine1_current: '${tabName} ${itemsPerHour}${statsPerHourUnit} (${count} ${completedUnit} ${inUnit} ${workTimeFormatted})',
             statsLine2_global_separator: ' ',
@@ -992,6 +1043,8 @@ const SCRIPT_LOGS_ENABLED = false;
             scriptLoaded: '${scriptName} v${version} Załadowany.', yes: 'Tak', no: 'Nie', notApplicable: 'BD',
             error_items_per_hour_unavailable: '~0.0/h (za krótki czas)', fromUnit: 'od', inUnit: 'w',
             hoursShort: 'g', minutesShort: 'm', secondsShort: 's', statsPerHourUnit: '/h', completedUnit: 'zrobione',
+            taskPausedMark: '(pauza)',
+            lineSettings_taskInfoHint: 'Nazwa bieżącego zadania i jego własne liczby: paczki, tempo, procent sprzedaży, przepracowany czas. Linie wyżej opisują całą zmianę, ta — proces, przy którym siedzisz teraz.',
             tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_UNKNOWN: 'NIEZNANA',
             statsLine1_current: '${tabName} ${itemsPerHour}${statsPerHourUnit} (${count} ${completedUnit} ${inUnit} ${workTimeFormatted})',
             statsLine2_global_separator: ' ', statsLine2_global_tab_format: '${tabName} ${itemsPerHour}${statsPerHourUnit}(${count})', statsLine2_global_total_format: '= ~${totalItemsPerHour}${statsPerHourUnit} (${totalCount})',
@@ -1093,6 +1146,8 @@ const SCRIPT_LOGS_ENABLED = false;
             scriptLoaded: '${scriptName} v${version} Загружен.', yes: 'Да', no: 'Нет', notApplicable: 'Н/Д',
             error_items_per_hour_unavailable: '~0.0/ч (мало времени)', fromUnit: 'от', inUnit: 'за',
             hoursShort: 'ч', minutesShort: 'м', secondsShort: 'с', statsPerHourUnit: '/ч', completedUnit: 'готово',
+            taskPausedMark: '(пауза)',
+            lineSettings_taskInfoHint: 'Название текущей задачи и её собственные числа: пачки, темп, процент продажи, отработанное время. Строки выше описывают всю смену, эта — процесс, которым вы заняты сейчас.',
             tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_UNKNOWN: 'НЕИЗВЕСТНО',
             statsLine1_current: '${tabName} ${itemsPerHour}${statsPerHourUnit} (${count} ${completedUnit} ${inUnit} ${workTimeFormatted})',
             statsLine2_global_separator: ' ', statsLine2_global_tab_format: '${tabName} ${itemsPerHour}${statsPerHourUnit}(${count})', statsLine2_global_total_format: '= ~${totalItemsPerHour}${statsPerHourUnit} (${totalCount})',
@@ -1480,8 +1535,17 @@ const SCRIPT_LOGS_ENABLED = false;
         // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
         // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
         tabSold: {},
-        // Przedmioty wyjęte z mianownika procentu (audyt) — patrz Routing.
+        // Przedmioty wyjęte z mianownika procentu (audyt, ręczne wpisy) — patrz
+        // Routing i TaskManager.
         tabNeutral: {},
+        /**
+         * ZADANIA (1.3.0). Lista jest zwykłą tablicą, więc NIE jest reaktywna
+         * po elementach — TaskManager podmienia ją w całości przy każdej
+         * zmianie i tylko dzięki temu linia 8 oraz panel dowiadują się o niej.
+         */
+        tasks: [],
+        activeTaskId: null,
+        taskCounters: {},
         // 8.3.0: usunięte pole defaultLocalTabConfig — nikt go nigdy nie czytał,
         // a w całości dublowało się w localStorage przy każdym zapisie.
         // 1.2.0: wartości przeniesione do DEFAULT_USER_CONFIG, bo kod konfiguracji
@@ -1627,9 +1691,45 @@ const SCRIPT_LOGS_ENABLED = false;
         saveSold(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD + tabKey), String(count));
         },
-        /** Licznik przedmiotów wyjętych z mianownika procentu (audyt). */
+        /** Licznik przedmiotów wyjętych z mianownika procentu (audyt, ręczne wpisy). */
         saveNeutral(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL + tabKey), String(count));
+        },
+        /**
+         * Lista zadań i identyfikator aktywnego — jeden klucz wspólny dla
+         * wszystkich kart. Zapis jest mały (kilka zadań na zmianę), więc idzie
+         * w całości, bez różnicowania.
+         */
+        saveTasks() {
+            this.write(this.getKey(CONFIG.STORAGE_KEY_TASKS),
+                       JSON.stringify({ activeId: store.activeTaskId, list: store.tasks }));
+        },
+        /** Liczniki jednego zadania na jednej karcie: „paczki,sprzedane,poza mianownikiem”. */
+        saveTaskCounter(taskId, tabKey, c) {
+            this.write(this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey),
+                       `${c.done},${c.sold},${c.neutral}`);
+        },
+        removeTaskCounter(taskId, tabKey) {
+            const key = this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey);
+            delete this._lastWritten[key];
+            localStorage.removeItem(key);
+        },
+        /**
+         * Rozbiór klucza licznika zadania. Identyfikator zadania sam zawiera
+         * podkreślenia (`task_abc_def`), więc dzieli się od PRAWEJ: ostatni
+         * człon to karta, wszystko przed nim to identyfikator.
+         */
+        parseTaskCounterKey(localKey) {
+            const rest = localKey.substring(CONFIG.STORAGE_PREFIX_TASK_COUNTER.length);
+            const cut = rest.lastIndexOf('_');
+            if (cut <= 0) return null;
+            return { taskId: rest.substring(0, cut), tabKey: rest.substring(cut + 1) };
+        },
+        /** Wartość licznika zadania z magazynu; śmieć czyta się jako zera. */
+        parseTaskCounterValue(raw) {
+            const parts = String(raw == null ? '' : raw).split(',');
+            const num = (i) => Math.max(0, parseInt(parts[i], 10) || 0);
+            return { done: num(0), sold: num(1), neutral: num(2) };
         },
         removeCounter(tabKey) {
             const key = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey);
@@ -1694,6 +1794,9 @@ const SCRIPT_LOGS_ENABLED = false;
                 const prefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
                 const soldPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD);
                 const neutralPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL);
+                const taskPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER);
+                this.loadTasks();
+                const taskCounters = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
@@ -1705,11 +1808,41 @@ const SCRIPT_LOGS_ENABLED = false;
                     } else if (key && key.startsWith(neutralPrefix)) {
                         const tabKey = key.substring(neutralPrefix.length);
                         store.tabNeutral[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                    } else if (key && key.startsWith(taskPrefix)) {
+                        const parsed = this.parseTaskCounterKey(key.substring(CONFIG.SCRIPT_ID_PREFIX.length));
+                        if (!parsed) continue;
+                        if (!taskCounters[parsed.taskId]) taskCounters[parsed.taskId] = {};
+                        taskCounters[parsed.taskId][parsed.tabKey] =
+                            this.parseTaskCounterValue(localStorage.getItem(key));
                     }
                 }
+                store.taskCounters = taskCounters;
             } catch (e) { Utils.error("Storage load failed", e); }
 
             if (fromRemote) this.suppressSaveUntil = Date.now() + CONFIG.REMOTE_APPLY_SUPPRESS_MS;
+        },
+        /**
+         * Wczytanie listy zadań. Śmieciowy zapis (cudza wersja, ręczna edycja
+         * magazynu) nie może zatrzymać startu — wtedy lista zostaje pusta,
+         * a TaskManager.init() postawi zadanie domyślne.
+         */
+        loadTasks() {
+            let parsed;
+            try { parsed = JSON.parse(localStorage.getItem(this.getKey(CONFIG.STORAGE_KEY_TASKS)) || 'null'); }
+            catch (e) { parsed = null; }
+            const list = (parsed && Array.isArray(parsed.list) ? parsed.list : [])
+                .filter(t => t && typeof t.id === 'string' && Array.isArray(t.segments) && t.segments.length)
+                .map(t => ({
+                    id: t.id,
+                    name: String(t.name || CONFIG.DEFAULT_TASK_NAME).slice(0, CONFIG.TASK_MAX_NAME_LEN),
+                    segments: t.segments
+                        .filter(seg => seg && typeof seg.from === 'number')
+                        .map(seg => ({ from: seg.from, to: typeof seg.to === 'number' ? seg.to : null })),
+                }))
+                .filter(t => t.segments.length);
+            store.tasks = list;
+            const activeId = parsed && typeof parsed.activeId === 'string' ? parsed.activeId : null;
+            store.activeTaskId = list.some(t => t.id === activeId) ? activeId : (list.length ? list[list.length - 1].id : null);
         },
         listen() {
             // 8.3.0: referencja do obsługi jest zapamiętana — potrzebna w Main.teardown().
@@ -1739,6 +1872,19 @@ const SCRIPT_LOGS_ENABLED = false;
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
                     const val = parseInt(e.newValue, 10) || 0;
                     if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
+                } else if (localKey === CONFIG.STORAGE_KEY_TASKS) {
+                    // Zadanie jest własnością człowieka, a nie karty: przejście
+                    // do innego procesu w jednej karcie obowiązuje we wszystkich.
+                    this.loadTasks();
+                } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TASK_COUNTER)) {
+                    // Liczniki zadania z sąsiedniej karty — potrzebne panelowi,
+                    // który pokazuje podsumowanie zadania po WSZYSTKICH kartach.
+                    const parsed = this.parseTaskCounterKey(localKey);
+                    if (parsed) {
+                        const byTab = { ...(store.taskCounters[parsed.taskId] || {}) };
+                        byTab[parsed.tabKey] = this.parseTaskCounterValue(e.newValue);
+                        store.taskCounters = { ...store.taskCounters, [parsed.taskId]: byTab };
+                    }
                 } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL)) {
                     // Audyty sąsiedniej karty — z tego samego powodu: bez nich
                     // linie 2 i 7 policzyłyby procent z za dużego mianownika.
@@ -1793,6 +1939,10 @@ const SCRIPT_LOGS_ENABLED = false;
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
+                // Zadania opisują JEDNĄ zmianę, tak samo jak liczniki: zostawione
+                // przez granicę zmiany dałyby tempo liczone od wczoraj.
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER),
+                StorageManager.getKey(CONFIG.STORAGE_KEY_TASKS),
             ];
             Object.keys(localStorage)
                 .filter(k => prefixes.some(p => k.startsWith(p)))
@@ -1804,6 +1954,12 @@ const SCRIPT_LOGS_ENABLED = false;
             Object.keys(store.tabCounters).forEach(k => { store.tabCounters[k] = 0; });
             Object.keys(store.tabSold).forEach(k => { store.tabSold[k] = 0; });
             Object.keys(store.tabNeutral).forEach(k => { store.tabNeutral[k] = 0; });
+            // Lista zadań wstaje od zera: TaskManager.init() postawi zadanie
+            // domyślne, zaczynające się razem z nową zmianą.
+            store.tasks = [];
+            store.activeTaskId = null;
+            store.taskCounters = {};
+            TaskManager.init();
 
             // 8.4.0: dziennik wartości żyje dokładnie tyle samo, co liczniki —
             // to ta sama ewidencja, tylko w pieniądzach. Podsumowania odchodzącej
@@ -1940,27 +2096,34 @@ const SCRIPT_LOGS_ENABLED = false;
 
             StorageManager.saveState();
         },
+        /**
+         * Ile z odcinka [from, to] zjadła przerwa obiadowa.
+         *
+         * Wydzielone z getWorkTime() w 1.3.0, bo ten sam rachunek jest potrzebny
+         * zadaniom: kto nie pamiętał o pauzie na obiad, miałby w zadaniu pół
+         * godziny pracy, której nie było. Jedno miejsce prawdy — obie strony
+         * odejmują dokładnie to samo.
+         */
+        lunchOverlapMs(from, to) {
+            const idx = store.sessionConfig.selectedLunchIndex;
+            const opt = idx !== null && CONFIG.LUNCH_OPTIONS_BASE[idx];
+            if (!opt || !(to > from)) return 0;
+
+            const shiftDate = new Date(store.sessionConfig.shiftCalculatedStartTime || from);
+            const lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+            const lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
+            if (lEndObj < lStartObj) lEndObj.setDate(lEndObj.getDate() + 1);
+
+            const aStart = Math.max(from, lStartObj.getTime());
+            const aEnd = Math.min(to, lEndObj.getTime());
+            return aEnd > aStart ? aEnd - aStart : 0;
+        },
         getWorkTime() {
             if (!store.sessionConfig.shiftCalculatedStartTime) return { workedMs: 0, lunchMs: 0 };
             const now = Date.now();
             const start = store.sessionConfig.shiftCalculatedStartTime;
             const elapsed = Math.max(0, now - start);
-            let lunchMs = 0;
-
-            const idx = store.sessionConfig.selectedLunchIndex;
-            if (idx !== null && CONFIG.LUNCH_OPTIONS_BASE[idx]) {
-                const opt = CONFIG.LUNCH_OPTIONS_BASE[idx];
-                const shiftDate = new Date(start);
-
-                const lStartObj = Utils.timeStringToDate(opt.start, shiftDate, opt.type==='night' && parseInt(opt.start.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
-                const lEndObj = Utils.timeStringToDate(opt.end, shiftDate, opt.type==='night' && parseInt(opt.end.substring(0,2)) < 12 && shiftDate.getHours() >= 12);
-
-                if (lEndObj < lStartObj) lEndObj.setDate(lEndObj.getDate() + 1);
-
-                const aStart = Math.max(start, lStartObj.getTime());
-                const aEnd = Math.min(now, lEndObj.getTime());
-                if (aEnd > aStart) lunchMs = aEnd - aStart;
-            }
+            const lunchMs = this.lunchOverlapMs(start, now);
             return { workedMs: Math.max(0, elapsed - lunchMs), lunchMs };
         }
     };
@@ -2100,7 +2263,7 @@ const SCRIPT_LOGS_ENABLED = false;
     // tworzy elementy, a CSSManager i panel ustawień chodzą po linesConfig.
     const LINE_KEYS = ['line1_currentTab', 'line2_globalSummary', 'line3_shiftInfo',
                        'line4_lunchInfo', 'line5_realTimeClock', 'line6_valueSum',
-                       'line7_compact'];
+                       'line7_compact', 'line8_taskInfo'];
 
     // ─── src/10-ui-window.js ───
     const StatsWindowRenderer = {
@@ -2139,7 +2302,8 @@ const SCRIPT_LOGS_ENABLED = false;
             // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
             // timera, czyli do sekundy — widać by to było jako liczbę, która
             // „nie nadąża” za ekranem.
-            onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'sessionConfig', 'userConfig', 'localTabConfig'],
+            onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'tasks', 'activeTaskId',
+                          'taskCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());
@@ -2262,7 +2426,10 @@ const SCRIPT_LOGS_ENABLED = false;
             // 8.1.0: wcześniej przy zbyt krótkim czasie podstawiało się tu całe
             // zdanie, zawierające już „/h”, i w linii wychodziło „~0.0/h (...)/h”.
             // Teraz funkcja zwraca zawsze samą liczbę.
-            const getIph = (c) => hWorked > 0.0027 ? (c / hWorked).toFixed(1) : '0.0';
+            // Granica „tempo jeszcze nie istnieje” stoi w jednym miejscu dla
+            // zmiany i dla zadania — inaczej linia 1 i linia 8 mówiłyby co
+            // innego o tej samej pierwszej minucie pracy.
+            const getIph = (c) => workedMs >= CONFIG.RATE_MIN_WORKED_MS ? (c / hWorked).toFixed(1) : '0.0';
 
             /**
              * PROCENT SPRZEDAŻY (koniec każdej z linii 1, 2 i 7).
@@ -2446,6 +2613,31 @@ const SCRIPT_LOGS_ENABLED = false;
              */
             this.lines.line7_compact.textContent =
                 `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gRated)}%`;
+
+            /**
+             * LINIA 8 — BIEŻĄCE ZADANIE (1.3.0).
+             *
+             * Nazwa procesu i JEGO własne liczby. Linie wyżej opisują całą
+             * zmianę i po to są; tutaj stoi proces, przy którym człowiek siedzi
+             * w tej chwili — z własnym zegarem, więc opóźniony start nie psuje
+             * tempa. Format jest ten sam, co w podsumowaniu zadania w panelu:
+             *
+             *     fast_process 12 34.3/h 58% 0:21
+             *
+             * Pauza (zamknięty odcinek) dokleja na końcu znak, bo inaczej
+             * stojące tempo wygląda jak zepsuty licznik.
+             */
+            const task = TaskManager.active();
+            if (!task) {
+                this.lines.line8_taskInfo.textContent = '';
+            } else {
+                const t = TaskManager.totals(task);
+                const rate = TaskManager.rate(task);
+                const paused = TaskManager.isRunning(task) ? '' : ' ' + I18n.get('taskPausedMark');
+                this.lines.line8_taskInfo.textContent =
+                    `${task.name} ${t.done} ${rate.toFixed(1)}${I18n.get('statsPerHourUnit')} `
+                    + `${TaskManager.percent(task)}% ${Utils.formatDuration(TaskManager.workedMs(task))}${paused}`;
+            }
         }
     };
 
@@ -2732,7 +2924,17 @@ const SCRIPT_LOGS_ENABLED = false;
                 const row = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '5px', gap: '10px' } });
                 row.appendChild(UIBuilder.checkbox(I18n.get('includeInGlobal_known', { tabName: I18n.get(t.displayNameKey) }), store.userConfig.globalStatsContributionKnown[t.key], v => store.userConfig.globalStatsContributionKnown[t.key] = v));
                 row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':' }));
-                row.appendChild(UIBuilder.numberInput(store.tabCounters[t.key] || 0, v => { store.tabCounters[t.key] = v; StorageManager.saveCounter(t.key, v); }));
+                // Wpisanie licznika wprost („zrobiłem dziś 180”) idzie przez
+                // menedżera zadań: różnicę bierze na siebie aktywne zadanie,
+                // razem z licznikiem „poza mianownikiem” — kierunku wpisanych
+                // paczek nikt nie zna, więc nie mają prawa ruszyć procentu.
+                row.appendChild(UIBuilder.numberInput(store.tabCounters[t.key] || 0, v => {
+                    TaskManager.applyManualTotal(t.key, v);
+                    store.tabCounters[t.key] = Math.max(0, v);
+                    store.tabNeutral[t.key] = TaskManager.shiftTotal(t.key, 'neutral');
+                    StorageManager.saveCounter(t.key, store.tabCounters[t.key]);
+                    StorageManager.saveNeutral(t.key, store.tabNeutral[t.key]);
+                }));
                 secGlob.appendChild(row);
             });
             this.el.appendChild(secGlob);
@@ -4385,14 +4587,20 @@ const SCRIPT_LOGS_ENABLED = false;
             if (!st || st.counted || !st.completed || !st.direction) return;
             st.counted = true;
             const cid = store.currentTabInstanceId;
+            // Kierunek trafia do dwóch miejsc naraz: do liczników zmiany (linie
+            // 1, 2 i 7) i do bieżącego zadania (linia 8, podsumowanie w panelu).
+            // Jedno wywołanie, dwa zapisy — dzięki temu suma zadań nie ma jak
+            // rozjechać się z licznikiem karty.
             if (st.direction === 'sell') {
                 const next = (store.tabSold[cid] || 0) + 1;
                 store.tabSold[cid] = next;
                 StorageManager.saveSold(cid, next);
+                TaskManager.addSold(cid);
             } else if (st.direction === 'neutral') {
                 const next = (store.tabNeutral[cid] || 0) + 1;
                 store.tabNeutral[cid] = next;
                 StorageManager.saveNeutral(cid, next);
+                TaskManager.addNeutral(cid);
             }
         },
 
@@ -5653,9 +5861,9 @@ const SCRIPT_LOGS_ENABLED = false;
                 if (e.repeat) return;
 
                 if (store.userConfig.keyboardShortcuts.INCREMENT !== 'None' && e.code === store.userConfig.keyboardShortcuts.INCREMENT) {
-                    this.modifyCounter(1); e.preventDefault();
+                    this.modifyCounter(1, { manual: true }); e.preventDefault();
                 } else if (store.userConfig.keyboardShortcuts.DECREMENT !== 'None' && e.code === store.userConfig.keyboardShortcuts.DECREMENT) {
-                    this.modifyCounter(-1); e.preventDefault();
+                    this.modifyCounter(-1, { manual: true }); e.preventDefault();
                 }
 
                 /**
@@ -5709,10 +5917,25 @@ const SCRIPT_LOGS_ENABLED = false;
 
             document.addEventListener('keydown', this.onKeyDown, true);
         },
-        modifyCounter(delta) {
+        /**
+         * @param {number} delta
+         * @param {{manual?: boolean}} [opts] — `manual` znaczy „człowiek poprawia
+         *   to, czego program nie zobaczył”. Taka paczka wchodzi do zadania
+         *   inaczej niż zaliczona automatycznie: razem z licznikiem „poza
+         *   mianownikiem”, bo jej kierunku nikt nie zna (patrz TaskManager).
+         */
+        modifyCounter(delta, opts = {}) {
             const cid = store.currentTabInstanceId;
             const cur = store.tabCounters[cid] || 0;
             const next = Math.max(0, cur + delta);
+            const applied = next - cur;
+            if (opts.manual) {
+                TaskManager.adjustManual(cid, applied);
+                store.tabNeutral[cid] = TaskManager.shiftTotal(cid, 'neutral');
+                StorageManager.saveNeutral(cid, store.tabNeutral[cid]);
+            } else {
+                TaskManager.addItem(cid);
+            }
             store.tabCounters[cid] = next;
             StorageManager.saveCounter(cid, next);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
@@ -6000,6 +6223,17 @@ const SCRIPT_LOGS_ENABLED = false;
                 ShiftManager.update();
                 SessionReset.pruneTabInstances(false);
 
+                /**
+                 * Zadania PO ustaleniu zmiany, a przed pierwszym przedmiotem.
+                 *
+                 * Po ustaleniu, bo zadanie domyślne zaczyna się razem ze zmianą,
+                 * a `shiftCalculatedStartTime` liczy dopiero ShiftManager.update()
+                 * linijkę wyżej. Przed przedmiotem, bo licznik nie ma prawa
+                 * zaliczyć paczki, dla której nie ma gdzie jej zapisać —
+                 * AutoTrigger rusza znacznie niżej.
+                 */
+                TaskManager.init();
+
                 store.initialized = true;
                 StorageManager.saveState();
 
@@ -6122,6 +6356,13 @@ const SCRIPT_LOGS_ENABLED = false;
                     configCode: () => ConfigCode.encode(),
                     configLink: () => ConfigCode.link(),
                     ConfigCode,
+                    /**
+                     * ZADANIA (1.3.0). `SH.tasks()` wypisuje podsumowanie
+                     * wszystkich zadań zmiany, reszta to sam menedżer — do
+                     * przełączania z konsoli, gdy panel jest akurat zamknięty.
+                     */
+                    TaskManager,
+                    tasks: () => TaskManager.info(),
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
                     // odtwarzają pełny gest myszy.
@@ -6394,7 +6635,9 @@ const SCRIPT_LOGS_ENABLED = false;
 
             // --- linie 1–7 ---
             ...['line1_currentTab', 'line2_globalSummary', 'line3_shiftInfo', 'line4_lunchInfo',
-                'line5_realTimeClock', 'line6_valueSum', 'line7_compact'].flatMap((key, i) => {
+                'line5_realTimeClock', 'line6_valueSum', 'line7_compact',
+                // 1.3.0 — linia 8 dostaje blok 0x0170, kolejny wolny po linii 7.
+                'line8_taskInfo'].flatMap((key, i) => {
                 const base = 0x0100 + i * 0x10;
                 return [
                     { id: base, root: 'local', path: `linesConfig.${key}.visible`, type: 'bool' },
@@ -6697,7 +6940,451 @@ const SCRIPT_LOGS_ENABLED = false;
         },
     };
 
-    // ─── src/24-presets.js ───
+    // ─── src/24-tasks.js ───
+    // ==========================================
+    // 11. MENEDŻER ZADAŃ (1.3.0)
+    // ==========================================
+    /**
+     * ZADANIA (TASKI): OSOBNY ZEGAR DLA KAŻDEGO PROCESU PRACY.
+     *
+     * =====================================================================
+     * PROBLEM, KTÓRY TO ROZWIĄZUJE
+     * =====================================================================
+     * Tempo liczyło się od POCZĄTKU ZMIANY — godziny wpisanej na stałe (6:30
+     * albo 18:30). Kto przyszedł do procesu trzy godziny później i zrobił trzy
+     * paczki w sześć minut, widział „1 paczka na godzinę” zamiast „30 na
+     * godzinę”. Liczba była policzona poprawnie, a jej znaczenie fałszywe —
+     * i to jest gorsze niż brak liczby, bo w liczbę się wierzy.
+     *
+     * Zadanie ma własny zegar. Tempo zadania to jego paczki przez jego czas,
+     * więc opóźniony start, przerwa na rozmowę z kierownikiem i przejście
+     * z procesu o normie 30/h do procesu o normie 100/h przestają się mieszać
+     * w jedną nieczytelną średnią.
+     *
+     * =====================================================================
+     * WZNOWIENIE ZAMIAST DRUGIEGO ZADANIA O TEJ SAMEJ NAZWIE
+     * =====================================================================
+     * Zadanie ma LISTĘ ODCINKÓW, a nie jeden początek i koniec. Kto pracował
+     * trzy godziny w procesie zwykłym, poszedł na pięć godzin do szybkiego
+     * i wrócił do zwykłego, WZNAWIA to pierwsze zadanie — z tym samym
+     * identyfikatorem. Dzięki temu w podsumowaniu zmiany stoi jedno zadanie
+     * z sensownym tempem, a nie trzy wpisy 30 / 100 / 30, z których nic nie
+     * widać. Odcinek jest też miejscem na pauzę: zamknięty odcinek zatrzymuje
+     * zegar, a pierwsza paczka po pauzie otwiera nowy — bo skoro paczki idą,
+     * to przerwa się skończyła, niezależnie od tego, czy ktoś o tym pamiętał.
+     *
+     * =====================================================================
+     * RĘCZNIE WPISANE PACZKI NIE WCHODZĄ DO MIANOWNIKA PROCENTU
+     * =====================================================================
+     * Po awarii maszyny (a komputer stoi na sesji tymczasowej, więc pamięć
+     * przeglądarki znika w całości) człowiek pamięta swoje tempo albo liczbę
+     * paczek, ale nie pamięta, ile z nich poszło na sprzedaż. Wpisana liczba
+     * trafia więc do paczek ORAZ do licznika „poza mianownikiem” — tego samego,
+     * którym od 1.3.0 liczą się audyty. Skutek: procent sprzedaży pokazuje
+     * wyłącznie to, co skrypt naprawdę zobaczył, czyli liczy się od przedmiotu,
+     * przy którym człowiek wrócił do pracy. Gdyby wpisane paczki wchodziły do
+     * mianownika, procent po każdej awarii spadałby do kilku procent i nie
+     * znaczyłby już nic.
+     *
+     * =====================================================================
+     * NIENARUSZALNA RÓWNOŚĆ
+     * =====================================================================
+     * Suma paczek wszystkich zadań danej karty ZAWSZE równa się licznikowi tej
+     * karty. Liczniki zmiany zostają jedynym źródłem prawdy dla linii 1, 2 i 7,
+     * a zadania są ich rozbiciem w czasie. Obie strony ruszają się w jednym
+     * miejscu — w metodach niżej — i pilnuje tego osobne sprawdzenie w testach.
+     *
+     * =====================================================================
+     * ZAPIS
+     * =====================================================================
+     *   `tasks`                      — wspólny dla wszystkich kart: lista zadań
+     *                                  i identyfikator aktywnego. Zadanie jest
+     *                                  własnością CZŁOWIEKA, nie karty: kto
+     *                                  przechodzi do innego procesu, przechodzi
+     *                                  w nim z wszystkimi otwartymi kartami.
+     *   `taskcnt_<id>_<karta>`       — liczniki, OSOBNY KLUCZ NA KARTĘ. Tak samo
+     *                                  jak liczniki zmiany i z tego samego
+     *                                  powodu: dwie karty piszące jeden klucz
+     *                                  zamazywałyby sobie liczby nawzajem.
+     */
+    const TaskManager = {
+        // ---------------- dostęp ----------------
+        list() { return store.tasks; },
+        byId(id) { return store.tasks.find(t => t.id === id) || null; },
+        /** Aktywne zadanie albo null, gdy trwa pauza. */
+        active() { return this.byId(store.activeTaskId); },
+        /** Czy zegar zadania chodzi (ostatni odcinek jest otwarty). */
+        isRunning(task) {
+            const last = task && task.segments[task.segments.length - 1];
+            return !!(last && last.to === null);
+        },
+
+        /**
+         * Zadanie domyślne powstaje przy pierwszym uruchomieniu i zaczyna się
+         * razem ze zmianą — bo dopóki człowiek nie powie inaczej, cała zmiana
+         * jest jednym procesem. To zachowanie sprzed 1.3.0 i po włączeniu
+         * skryptu nic się nie zmienia: jedno zadanie, tempo liczone od początku
+         * zmiany.
+         */
+        init() {
+            if (store.tasks.length) return this.active();
+            return this.create(CONFIG.DEFAULT_TASK_NAME,
+                               store.sessionConfig.shiftCalculatedStartTime || Date.now());
+        },
+
+        // ---------------- zmiany listy ----------------
+        /**
+         * Zadania siedzą w zwykłej tablicy, a tablice NIE są reaktywne (patrz
+         * createReactive: Utils.isObject odrzuca tablice). Dlatego każda zmiana
+         * podmienia całą tablicę — inaczej linia 8 i panel nie dowiedziałyby się
+         * o niczym, dopóki czegoś innego nie ruszy magistrali.
+         */
+        _commit(list) {
+            store.tasks = list.slice();
+            this.save();
+        },
+
+        /** Nazwa bez białych brzegów, przycięta do granicy z konfiguracji. */
+        cleanName(raw, fallback) {
+            const name = String(raw == null ? '' : raw).trim().slice(0, CONFIG.TASK_MAX_NAME_LEN);
+            return name || fallback || CONFIG.DEFAULT_TASK_NAME;
+        },
+
+        /**
+         * Początek odcinka: nie w przyszłości i nie wcześniej niż początek
+         * odcinka, który właśnie zamykamy.
+         *
+         * Drugie ograniczenie nie jest ozdobne: bez niego przestawienie startu
+         * „o dwie minuty wstecz” tuż po przełączeniu dałoby poprzedniemu
+         * zadaniu odcinek o ujemnej długości, a więc tempo z dzieleniem przez
+         * liczbę ujemną.
+         */
+        clampStart(ms) {
+            const now = Date.now();
+            const wanted = Number(ms);
+            let value = isFinite(wanted) ? wanted : now;
+            const current = this.active();
+            if (current && this.isRunning(current)) {
+                value = Math.max(value, current.segments[current.segments.length - 1].from);
+            }
+            return Math.min(value, now);
+        },
+
+        /** Zamyka otwarty odcinek aktywnego zadania na podanej chwili. */
+        closeActive(atMs) {
+            const task = this.active();
+            if (!task || !this.isRunning(task)) return;
+            const last = task.segments[task.segments.length - 1];
+            last.to = Math.max(last.from, atMs);
+        },
+
+        /** Nowe zadanie i od razu przejście do niego. */
+        create(name, startMs) {
+            const from = this.clampStart(startMs);
+            this.closeActive(from);
+            const task = {
+                id: Utils.generateId('task_'),
+                name: this.cleanName(name),
+                segments: [{ from, to: null }],
+            };
+            const list = store.tasks.slice();
+            list.push(task);
+            store.activeTaskId = task.id;
+            this._commit(list);
+            Utils.log(`[ZADANIE] nowe: ${task.name}`);
+            return task;
+        },
+
+        /**
+         * Wznowienie zadania, które już było: nowy odcinek na tym samym
+         * identyfikatorze. To jest cała różnica wobec `create` i cały powód,
+         * dla którego zadanie ma listę odcinków.
+         */
+        resume(id, startMs) {
+            const task = this.byId(id);
+            if (!task) return null;
+            if (task.id === store.activeTaskId && this.isRunning(task)) return task;
+            const from = this.clampStart(startMs);
+            this.closeActive(from);
+            task.segments.push({ from, to: null });
+            store.activeTaskId = task.id;
+            this._commit(store.tasks);
+            Utils.log(`[ZADANIE] wznowione: ${task.name}`);
+            return task;
+        },
+
+        /** Pauza: zegar staje, ale zadanie zostaje aktywne. */
+        pause(atMs) {
+            const task = this.active();
+            if (!task || !this.isRunning(task)) return;
+            this.closeActive(Math.min(Number(atMs) || Date.now(), Date.now()));
+            this._commit(store.tasks);
+            Utils.log(`[ZADANIE] pauza: ${task.name}`);
+        },
+
+        /**
+         * Paczka w trakcie pauzy znaczy, że pauza się skończyła. Zegar rusza od
+         * TEJ paczki, a nie wstecz — czas, którego nie było, nie wraca.
+         */
+        ensureRunning() {
+            let task = this.active();
+            if (!task) task = this.init() || this.active();
+            if (!task) return null;
+            if (!this.isRunning(task)) {
+                task.segments.push({ from: Date.now(), to: null });
+                this._commit(store.tasks);
+                Utils.log(`[ZADANIE] pauza przerwana paczką: ${task.name}`);
+            }
+            return task;
+        },
+
+        rename(id, name) {
+            const task = this.byId(id);
+            if (!task) return;
+            task.name = this.cleanName(name, task.name);
+            this._commit(store.tasks);
+        },
+
+        /** Przestawienie początku bieżącego odcinka — „zacząłem dwie minuty temu”. */
+        setSegmentStart(id, ms) {
+            const task = this.byId(id);
+            if (!task) return;
+            const seg = task.segments[task.segments.length - 1];
+            const limit = seg.to === null ? Date.now() : seg.to;
+            seg.from = Math.min(Math.max(0, Number(ms) || 0), limit);
+            this._commit(store.tasks);
+        },
+
+        remove(id) {
+            const task = this.byId(id);
+            if (!task || store.tasks.length <= 1) return false;
+            const list = store.tasks.filter(t => t.id !== id);
+            // Liczniki znikają razem z zadaniem, inaczej suma zadań przestałaby
+            // zgadzać się z licznikiem zmiany. Licznik zmiany schodzi o tyle samo.
+            const counters = store.taskCounters[id] || {};
+            for (const [tabKey, c] of Object.entries(counters)) {
+                store.tabCounters[tabKey] = Math.max(0, (store.tabCounters[tabKey] || 0) - (c.done || 0));
+                store.tabSold[tabKey] = Math.max(0, (store.tabSold[tabKey] || 0) - (c.sold || 0));
+                store.tabNeutral[tabKey] = Math.max(0, (store.tabNeutral[tabKey] || 0) - (c.neutral || 0));
+                StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
+                StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
+                StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
+                StorageManager.removeTaskCounter(id, tabKey);
+            }
+            delete store.taskCounters[id];
+            if (store.activeTaskId === id) store.activeTaskId = list[list.length - 1].id;
+            this._commit(list);
+            return true;
+        },
+
+        // ---------------- czas ----------------
+        /**
+         * Przepracowany czas zadania: suma odcinków minus obiad, który się z nimi
+         * pokrywa.
+         *
+         * Obiad odejmuje się tym samym rachunkiem, co w linii 1 — inaczej
+         * człowiek, który nie pamiętał o postawieniu pauzy na przerwę, miałby
+         * w zadaniu pół godziny pracy, której nie było.
+         */
+        workedMs(task, nowMs) {
+            if (!task) return 0;
+            const now = Number(nowMs) || Date.now();
+            let total = 0;
+            for (const seg of task.segments) {
+                const to = seg.to === null ? now : seg.to;
+                if (to <= seg.from) continue;
+                total += (to - seg.from) - ShiftManager.lunchOverlapMs(seg.from, to);
+            }
+            return Math.max(0, total);
+        },
+
+        /** Początek pierwszego odcinka i koniec ostatniego — do podsumowania. */
+        span(task) {
+            if (!task || !task.segments.length) return { from: null, to: null };
+            const first = task.segments[0];
+            const last = task.segments[task.segments.length - 1];
+            return { from: first.from, to: last.to };
+        },
+
+        // ---------------- liczniki ----------------
+        /** Liczniki zadania na danej karcie; zawsze zwraca komplet pól. */
+        counters(id, tabKey) {
+            const byTab = store.taskCounters[id] || {};
+            const c = byTab[tabKey] || {};
+            return { done: c.done || 0, sold: c.sold || 0, neutral: c.neutral || 0 };
+        },
+
+        /** Suma liczników zadania po wszystkich kartach. */
+        totals(task) {
+            const out = { done: 0, sold: 0, neutral: 0 };
+            const byTab = (task && store.taskCounters[task.id]) || {};
+            for (const c of Object.values(byTab)) {
+                out.done += c.done || 0;
+                out.sold += c.sold || 0;
+                out.neutral += c.neutral || 0;
+            }
+            return out;
+        },
+
+        /** Zapis liczników zadania dla jednej karty. Jedyne miejsce, które je rusza. */
+        _write(id, tabKey, next) {
+            const byTab = { ...(store.taskCounters[id] || {}) };
+            byTab[tabKey] = {
+                done: Math.max(0, next.done | 0),
+                sold: Math.max(0, next.sold | 0),
+                neutral: Math.max(0, next.neutral | 0),
+            };
+            store.taskCounters = { ...store.taskCounters, [id]: byTab };
+            StorageManager.saveTaskCounter(id, tabKey, byTab[tabKey]);
+        },
+
+        /**
+         * Przedmiot zaliczony automatycznie: paczka zadania rośnie, kierunek
+         * dopisze się osobno (Routing woła `addSold` albo `addNeutral`, gdy go
+         * pozna — może to być dopiero za kilka skanów).
+         */
+        addItem(tabKey) {
+            const task = this.ensureRunning();
+            if (!task) return;
+            const c = this.counters(task.id, tabKey);
+            this._write(task.id, tabKey, { ...c, done: c.done + 1 });
+        },
+
+        addSold(tabKey) {
+            const task = this.active();
+            if (!task) return;
+            const c = this.counters(task.id, tabKey);
+            this._write(task.id, tabKey, { ...c, sold: c.sold + 1 });
+        },
+
+        addNeutral(tabKey) {
+            const task = this.active();
+            if (!task) return;
+            const c = this.counters(task.id, tabKey);
+            this._write(task.id, tabKey, { ...c, neutral: c.neutral + 1 });
+        },
+
+        /**
+         * RĘCZNA POPRAWKA LICZNIKA — skrót klawiszowy, przycisk, pole w panelu.
+         *
+         * Idzie do paczek I do licznika „poza mianownikiem”, bo kierunku takiego
+         * przedmiotu nikt nie zna: poprawia się zwykle to, czego program nie
+         * zobaczył. Dzięki temu ręczna poprawka nie rozcieńcza procentu
+         * sprzedaży — ani w dół (gdyby liczyła się jak niesprzedaż), ani w górę.
+         */
+        adjustManual(tabKey, delta) {
+            // Przez ensureRunning, a nie przez active(): ręczna paczka też jest
+            // paczką, więc kończy pauzę tak samo, jak zaliczona automatycznie.
+            const task = this.ensureRunning();
+            if (!task) return;
+            const c = this.counters(task.id, tabKey);
+            const done = Math.max(0, c.done + delta);
+            const used = done - c.done;          // ile naprawdę weszło po przycięciu do zera
+            this._write(task.id, tabKey, {
+                done,
+                sold: Math.min(c.sold, done),
+                neutral: Math.max(0, Math.min(done, c.neutral + used)),
+            });
+        },
+
+        /**
+         * Wpisanie licznika karty wprost („zrobiłem dziś 180”) — tak wraca się
+         * do pracy po awarii maszyny.
+         *
+         * Różnicę bierze na siebie aktywne zadanie. Gdy liczba jest MNIEJSZA niż
+         * to, co zadania mają razem, nadmiar zdejmuje się od najnowszego wstecz:
+         * inaczej suma zadań rozjechałaby się z licznikiem karty, a to jedyna
+         * równość, na której stoi całe rozliczenie.
+         */
+        applyManualTotal(tabKey, target) {
+            const wanted = Math.max(0, Number(target) || 0);
+            let diff = wanted - this.shiftTotal(tabKey, 'done');
+            if (!diff) return;
+            if (diff > 0) {
+                this.adjustManual(tabKey, diff);
+                return;
+            }
+            for (let i = store.tasks.length - 1; i >= 0 && diff < 0; i--) {
+                const task = store.tasks[i];
+                const c = this.counters(task.id, tabKey);
+                if (!c.done) continue;
+                const take = Math.min(c.done, -diff);
+                const done = c.done - take;
+                this._write(task.id, tabKey, {
+                    done,
+                    sold: Math.min(c.sold, done),
+                    neutral: Math.min(c.neutral, done),
+                });
+                diff += take;
+            }
+        },
+
+        /** Suma pola po wszystkich zadaniach dla jednej karty. */
+        shiftTotal(tabKey, field) {
+            let sum = 0;
+            for (const task of store.tasks) sum += this.counters(task.id, tabKey)[field] || 0;
+            return sum;
+        },
+
+        // ---------------- liczby dla człowieka ----------------
+        /** Paczki na godzinę. Poniżej granicy z konfiguracji tempo nie istnieje. */
+        rate(task, nowMs) {
+            const worked = this.workedMs(task, nowMs);
+            if (worked < CONFIG.RATE_MIN_WORKED_MS) return 0;
+            return this.totals(task).done / (worked / 3600000);
+        },
+
+        /** Procent sprzedaży zadania: paczki bez tych, których kierunku nie da się znać. */
+        percent(task) {
+            const t = this.totals(task);
+            return Utils.percentFloor(t.sold, t.done - t.neutral);
+        },
+
+        /**
+         * Ile paczek odpowiada zadanemu tempu — dwukierunkowe pole w panelu.
+         *
+         * Zwraca liczbę CAŁKOWITĄ, bo paczek połówkowych nie ma. Panel po
+         * wpisaniu tempa pokazuje tempo przeliczone z tej liczby z powrotem
+         * (`rate`), więc człowiek widzi wartość OSIĄGALNĄ, a nie tę, którą
+         * wpisał: przy 1:17 pracy tempo 118 daje 151 paczek, czyli naprawdę
+         * 117,7 na godzinę.
+         */
+        doneForRate(task, rate, nowMs) {
+            const worked = this.workedMs(task, nowMs);
+            const wanted = Number(rate);
+            // Ta sama granica, co w `rate`: przeliczanie tempa na paczki przy
+            // trzech sekundach pracy dałoby liczbę wziętą z niczego, a wpisuje
+            // się ona do liczników na stałe.
+            if (!isFinite(wanted) || wanted < 0 || worked < CONFIG.RATE_MIN_WORKED_MS) return null;
+            return Math.max(0, Math.round(wanted * worked / 3600000));
+        },
+
+        // ---------------- zapis ----------------
+        save() {
+            StorageManager.saveTasks();
+        },
+
+        /** Sprawozdanie do konsoli: SH.tasks() */
+        info() {
+            const now = Date.now();
+            return store.tasks.map(t => {
+                const tot = this.totals(t);
+                const span = this.span(t);
+                return {
+                    nazwa: t.name + (t.id === store.activeTaskId ? ' (aktywne)' : ''),
+                    paczki: tot.done,
+                    'poza mianownikiem': tot.neutral,
+                    tempo: this.rate(t, now).toFixed(1),
+                    procent: this.percent(t) + '%',
+                    czas: Utils.formatDuration(this.workedMs(t, now)),
+                    odcinki: t.segments.length,
+                    od: span.from ? new Date(span.from).toTimeString().substring(0, 5) : '—',
+                };
+            });
+        },
+    };
+
+    // ─── src/25-presets.js ───
 // ==========================================
     // 9. USTAWIENIA PRACOWNIKA (KONFIGURACJA OSOBISTA)
     // ==========================================

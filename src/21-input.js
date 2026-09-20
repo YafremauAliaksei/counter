@@ -39,9 +39,9 @@
                 if (e.repeat) return;
 
                 if (store.userConfig.keyboardShortcuts.INCREMENT !== 'None' && e.code === store.userConfig.keyboardShortcuts.INCREMENT) {
-                    this.modifyCounter(1); e.preventDefault();
+                    this.modifyCounter(1, { manual: true }); e.preventDefault();
                 } else if (store.userConfig.keyboardShortcuts.DECREMENT !== 'None' && e.code === store.userConfig.keyboardShortcuts.DECREMENT) {
-                    this.modifyCounter(-1); e.preventDefault();
+                    this.modifyCounter(-1, { manual: true }); e.preventDefault();
                 }
 
                 /**
@@ -95,10 +95,25 @@
 
             document.addEventListener('keydown', this.onKeyDown, true);
         },
-        modifyCounter(delta) {
+        /**
+         * @param {number} delta
+         * @param {{manual?: boolean}} [opts] — `manual` znaczy „człowiek poprawia
+         *   to, czego program nie zobaczył”. Taka paczka wchodzi do zadania
+         *   inaczej niż zaliczona automatycznie: razem z licznikiem „poza
+         *   mianownikiem”, bo jej kierunku nikt nie zna (patrz TaskManager).
+         */
+        modifyCounter(delta, opts = {}) {
             const cid = store.currentTabInstanceId;
             const cur = store.tabCounters[cid] || 0;
             const next = Math.max(0, cur + delta);
+            const applied = next - cur;
+            if (opts.manual) {
+                TaskManager.adjustManual(cid, applied);
+                store.tabNeutral[cid] = TaskManager.shiftTotal(cid, 'neutral');
+                StorageManager.saveNeutral(cid, store.tabNeutral[cid]);
+            } else {
+                TaskManager.addItem(cid);
+            }
             store.tabCounters[cid] = next;
             StorageManager.saveCounter(cid, next);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
