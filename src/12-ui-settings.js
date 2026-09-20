@@ -62,6 +62,200 @@
                 setTimeout(() => this.el.style.display = 'none', 200);
             }
         },
+        /**
+         * SEKCJA ZADAŃ — jedyna część panelu otwierana W TRAKCIE pracy.
+         *
+         * Stąd wzięła się kolejność: zadania i liczniki na samej górze, reszta
+         * (wygląd, kolory, skróty) niżej, bo to ustawia się raz na zmianę.
+         *
+         * Trzy rzeczy, które trzeba zrobić szybko, stoją obok siebie:
+         * przełączyć proces, poprawić jego początek i wpisać liczby po awarii
+         * maszyny. Każda mieści się w dwóch–trzech kliknięciach, bez list
+         * wyboru godziny i minuty.
+         */
+        buildTasksSection() {
+            const sec = UIBuilder.section(I18n.get('section_tasks'));
+            const task = TaskManager.active();
+            const cid = store.currentTabInstanceId;
+            sec.appendChild(UIBuilder.hint(I18n.get('tasks_hint')));
+
+            if (task) {
+                // --- nazwa bieżącego zadania ---
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_name'), h('input', {
+                    type: 'text', value: task.name, maxLength: CONFIG.TASK_MAX_NAME_LEN,
+                    onChange: (e) => { TaskManager.rename(task.id, e.target.value); this.rerender(); },
+                    style: { flexGrow: '1', padding: '4px' },
+                })));
+
+                // --- początek bieżącego odcinka ---
+                // Skróty w minutach wstecz zamiast list godzin i minut: o nowym
+                // procesie człowiek dowiaduje się z wyprzedzeniem, zbiera
+                // narzędzia i siada do skryptu kilka minut po faktycznym starcie.
+                const seg = task.segments[task.segments.length - 1];
+                const quick = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } });
+                CONFIG.TASK_QUICK_OFFSETS_MIN.forEach(min => {
+                    quick.appendChild(UIBuilder.button(
+                        min === 0 ? I18n.get('tasks_now') : I18n.get('tasks_minutesBack', { value: min }),
+                        () => { TaskManager.setSegmentStart(task.id, Date.now() - min * 60000); this.rerender(); },
+                        { padding: '4px 8px', marginTop: '0' }));
+                });
+                if (store.sessionConfig.shiftCalculatedStartTime) {
+                    quick.appendChild(UIBuilder.button(I18n.get('tasks_shiftStart'), () => {
+                        TaskManager.setSegmentStart(task.id, store.sessionConfig.shiftCalculatedStartTime);
+                        this.rerender();
+                    }, { padding: '4px 8px', marginTop: '0' }));
+                }
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_startedAt'), quick));
+                sec.appendChild(UIBuilder.row('', h('input', {
+                    type: 'text', value: Utils.formatClock(seg.from), placeholder: 'HH:MM',
+                    onChange: (e) => {
+                        const ms = TaskManager.parseClock(e.target.value);
+                        if (ms !== null) TaskManager.setSegmentStart(task.id, ms);
+                        this.rerender();
+                    },
+                    style: { width: '70px', padding: '4px', textAlign: 'center' },
+                })));
+
+                // --- paczki i tempo: dwa pola opisujące TO SAMO ---
+                // Poprawiane jest zawsze to pole, w które człowiek wpisał
+                // liczbę; drugie przelicza się samo. Po wpisaniu tempa pokazuje
+                // się wartość OSIĄGALNA przy całych paczkach, a nie wpisana:
+                // przy 1:17 pracy „118” to 151 paczek, czyli 117,7 na godzinę.
+                const totals = TaskManager.totals(task);
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
+                    TaskManager.applyTaskTotal(task, cid, v);
+                    this.syncTabCounters(cid);
+                    this.rerender();
+                })));
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), h('input', {
+                    type: 'number', min: 0, step: '0.1', value: TaskManager.rate(task).toFixed(1),
+                    onChange: (e) => {
+                        const applied = TaskManager.setRate(task, parseFloat(e.target.value), cid);
+                        if (applied !== null) this.syncTabCounters(cid);
+                        this.rerender();
+                    },
+                    style: { width: '80px', padding: '4px', textAlign: 'right' },
+                })));
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_summary'), h('span', {
+                    textContent: `${TaskManager.percent(task)}% · ${Utils.formatDuration(TaskManager.workedMs(task))}`,
+                })));
+
+                // --- przyciski ---
+                const running = TaskManager.isRunning(task);
+                sec.appendChild(UIBuilder.button(
+                    running ? I18n.get('tasks_pause') : I18n.get('tasks_unpause'),
+                    () => {
+                        if (running) TaskManager.pause();
+                        else TaskManager.resume(task.id, Date.now());
+                        this.rerender();
+                    },
+                    { width: '100%', marginTop: '8px', ...(running ? {} : { background: '#e0a800', color: '#141414' }) }));
+            }
+
+            // --- nowe zadanie ---
+            const nameInput = h('input', {
+                type: 'text', placeholder: I18n.get('tasks_newPlaceholder'), maxLength: CONFIG.TASK_MAX_NAME_LEN,
+                style: { flexGrow: '1', padding: '4px' },
+            });
+            const newRow = h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } });
+            newRow.appendChild(nameInput);
+            newRow.appendChild(UIBuilder.button(I18n.get('tasks_new'), () => {
+                TaskManager.create(nameInput.value, Date.now());
+                this.rerender();
+            }, { marginTop: '0', whiteSpace: 'nowrap' }));
+            sec.appendChild(newRow);
+
+            // --- historia zmiany ---
+            // Dwie linie na zadanie i ani znaku więcej: kolumna panelu jest
+            // wąska, a linia ucięta przez przeglądarkę nie mówi nic. Gdy liczby
+            // przestaną się mieścić, poprawia się szerokość panelu, a nie treść.
+            if (store.tasks.length) {
+                sec.appendChild(h('div', {
+                    textContent: I18n.get('tasks_history'),
+                    style: { marginTop: '12px', fontWeight: 'bold', fontSize: '0.9em' },
+                }));
+            }
+            store.tasks.forEach(t => {
+                const isActive = t.id === store.activeTaskId;
+                const tot = TaskManager.totals(t);
+                const span = TaskManager.span(t);
+                const box = h('div', {
+                    style: {
+                        borderLeft: `3px solid ${isActive ? CONFIG.SETTINGS_PANEL_ACCENT_COLOR : '#ccc'}`,
+                        padding: '4px 0 4px 8px', marginTop: '6px', fontSize: '0.85em', lineHeight: '1.35',
+                    },
+                });
+                const period = `${Utils.formatClock(span.from)}–${span.to === null ? I18n.get('tasks_ongoing') : Utils.formatClock(span.to)}`;
+                box.appendChild(h('div', {
+                    textContent: `${t.name} · ${period} (${Utils.formatDuration(TaskManager.workedMs(t))})`,
+                    style: { fontWeight: isActive ? 'bold' : 'normal' },
+                }));
+                box.appendChild(h('div', {
+                    textContent: `${tot.done} · ${TaskManager.rate(t).toFixed(1)}${I18n.get('statsPerHourUnit')} · ${TaskManager.percent(t)}%`,
+                }));
+                const buttons = h('div', { style: { display: 'flex', gap: '6px', marginTop: '4px' } });
+                if (!isActive) {
+                    buttons.appendChild(UIBuilder.button(I18n.get('tasks_resume'), () => {
+                        TaskManager.resume(t.id, Date.now());
+                        this.rerender();
+                    }, { padding: '2px 8px', marginTop: '0', fontSize: '0.9em' }));
+                }
+                if (store.tasks.length > 1) {
+                    buttons.appendChild(UIBuilder.button(I18n.get('tasks_delete'), () => {
+                        if (!confirm(I18n.get('tasks_deleteConfirm', { name: t.name }))) return;
+                        TaskManager.remove(t.id);
+                        this.syncTabCounters(cid);
+                        this.rerender();
+                    }, { padding: '2px 8px', marginTop: '0', fontSize: '0.9em', background: '#d9534f' }));
+                }
+                if (buttons.childNodes.length) box.appendChild(buttons);
+                sec.appendChild(box);
+            });
+            return sec;
+        },
+
+        /**
+         * Liczniki karty po zmianie w zadaniach.
+         *
+         * Suma zadań jest źródłem prawdy w jedną stronę: to ona właśnie się
+         * zmieniła, a licznik karty ma za nią nadążyć. Gdyby zostało po staremu,
+         * linia 1 pokazywałaby inną liczbę niż linia 8 dla tej samej pracy.
+         */
+        syncTabCounters(tabKey) {
+            store.tabCounters[tabKey] = TaskManager.shiftTotal(tabKey, 'done');
+            store.tabSold[tabKey] = TaskManager.shiftTotal(tabKey, 'sold');
+            store.tabNeutral[tabKey] = TaskManager.shiftTotal(tabKey, 'neutral');
+            StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
+            StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
+            StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
+        },
+
+        /**
+         * LICZNIKI DZIAŁÓW — przeniesione pod zadania (1.3.0).
+         *
+         * Wpisanie liczby wprost („zrobiłem dziś 180”) to sposób na powrót do
+         * pracy po awarii maszyny, więc stoi tam, gdzie się go szuka: obok
+         * zadań, a nie na końcu panelu pod ustawieniami kolorów.
+         */
+        buildCountersSection() {
+            const sec = UIBuilder.section(I18n.get('section_globalStats'));
+            Object.values(CONFIG.KNOWN_TAB_TYPES).forEach(t => {
+                const row = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '5px', gap: '10px' } });
+                row.appendChild(UIBuilder.checkbox(I18n.get('includeInGlobal_known', { tabName: I18n.get(t.displayNameKey) }), store.userConfig.globalStatsContributionKnown[t.key], v => store.userConfig.globalStatsContributionKnown[t.key] = v));
+                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':' }));
+                // Różnicę bierze na siebie aktywne zadanie, razem z licznikiem
+                // „poza mianownikiem” — kierunku wpisanych paczek nikt nie zna,
+                // więc nie mają prawa ruszyć procentu sprzedaży.
+                row.appendChild(UIBuilder.numberInput(store.tabCounters[t.key] || 0, v => {
+                    TaskManager.applyManualTotal(t.key, v);
+                    this.syncTabCounters(t.key);
+                    this.rerender();
+                }));
+                sec.appendChild(row);
+            });
+            return sec;
+        },
+
         render() {
             // 8.3.0: panel nadal składa się w całości od nowa, ale przewijanie
             // nie skacze już na początek — wcześniej było to zapisane w „znanych
@@ -69,6 +263,12 @@
             const scrollTop = this.el.scrollTop;
             this.el.innerHTML = '';
             this.el.appendChild(h('h2', { textContent: I18n.get('settingsPanelTitle'), style: { textAlign: 'center', marginTop: '0' } }));
+
+            // 0. Zadania i liczniki — na samej górze, bo to jedyna sekcja
+            // otwierana W TRAKCIE pracy. Reszta panelu to ustawienia, które
+            // stawia się raz i nie wraca do nich przez całą zmianę.
+            this.el.appendChild(this.buildTasksSection());
+            this.el.appendChild(this.buildCountersSection());
 
             // 1. Ogólne
             const secGen = UIBuilder.section(I18n.get('section_general'));
@@ -215,27 +415,6 @@
                 this.rerender();
             }, { width: '100%', marginTop: '5px' }));
             this.el.appendChild(secWin);
-
-            // 5. Statystyki globalne i liczniki ręczne
-            const secGlob = UIBuilder.section(I18n.get('section_globalStats'));
-            Object.values(CONFIG.KNOWN_TAB_TYPES).forEach(t => {
-                const row = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '5px', gap: '10px' } });
-                row.appendChild(UIBuilder.checkbox(I18n.get('includeInGlobal_known', { tabName: I18n.get(t.displayNameKey) }), store.userConfig.globalStatsContributionKnown[t.key], v => store.userConfig.globalStatsContributionKnown[t.key] = v));
-                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':' }));
-                // Wpisanie licznika wprost („zrobiłem dziś 180”) idzie przez
-                // menedżera zadań: różnicę bierze na siebie aktywne zadanie,
-                // razem z licznikiem „poza mianownikiem” — kierunku wpisanych
-                // paczek nikt nie zna, więc nie mają prawa ruszyć procentu.
-                row.appendChild(UIBuilder.numberInput(store.tabCounters[t.key] || 0, v => {
-                    TaskManager.applyManualTotal(t.key, v);
-                    store.tabCounters[t.key] = Math.max(0, v);
-                    store.tabNeutral[t.key] = TaskManager.shiftTotal(t.key, 'neutral');
-                    StorageManager.saveCounter(t.key, store.tabCounters[t.key]);
-                    StorageManager.saveNeutral(t.key, store.tabNeutral[t.key]);
-                }));
-                secGlob.appendChild(row);
-            });
-            this.el.appendChild(secGlob);
 
             // 6. Skróty klawiszowe
             const secKeys = UIBuilder.section(I18n.get('section_keyboardShortcuts'));
