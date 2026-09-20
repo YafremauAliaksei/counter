@@ -203,7 +203,7 @@ i przerwa na rozmowę z kierownikiem przestają mieszać się w jedną średnią
 
 Po uruchomieniu skryptu istnieje jedno zadanie — `Default` — zaczynające się
 razem ze zmianą. Dopóki nikt go nie przełączy, wszystko działa dokładnie tak,
-jak przed 1.3.0.
+jak przed 1.3.1.
 
 ### Linia 8
 
