@@ -14,10 +14,15 @@
             Utils.log(`[DIAGNOSTICS] Full URL: ${fullUrl}`);
             Utils.log(`[DIAGNOSTICS] Extracted gradingMode: ${gradingMode}`);
 
+            // Działy ręczne (bez `urlKeyword`, np. OTHER) nie mają swojej karty
+            // i nie biorą udziału w rozpoznawaniu — inaczej pierwszy taki wpis
+            // wywaliłby całe uruchomienie na `undefined.toUpperCase()`.
+            const detectable = Object.values(CONFIG.KNOWN_TAB_TYPES).filter(t => !!t.urlKeyword);
+
             let known;
             if (gradingMode) {
                 // Dokładne dopasowanie
-                known = Object.values(CONFIG.KNOWN_TAB_TYPES).find(t => gradingMode === t.urlKeyword.toUpperCase());
+                known = detectable.find(t => gradingMode === t.urlKeyword.toUpperCase());
                 Utils.log(`[DIAGNOSTICS] Strict match attempt result:`, known ? known.key : 'NOT_FOUND');
             }
 
@@ -26,7 +31,7 @@
                 // KRYTYCZNIE WAŻNE: sortujemy klucze po długości malejąco.
                 // Gwarantuje to, że CRETURN_REFURB (14 znaków) sprawdzi się PRZED
                 // CRETURN (7 znaków).
-                const sortedTypes = Object.values(CONFIG.KNOWN_TAB_TYPES).sort((a, b) => b.urlKeyword.length - a.urlKeyword.length);
+                const sortedTypes = detectable.slice().sort((a, b) => b.urlKeyword.length - a.urlKeyword.length);
                 known = sortedTypes.find(t => fullUrl.includes(t.urlKeyword.toUpperCase()));
                 Utils.log(`[DIAGNOSTICS] Fallback substring match result:`, known ? known.key : 'NOT_FOUND');
             }

@@ -26,7 +26,7 @@ czerwone, znaczy że różni się środowisko, a nie kod.
 | `counter.js` w wersji 1.0.0                               | zbudowany ze `src/`, sprawdzony                                          |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                         |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                                |
-| 23 pliki testów, 319 sprawdzeń                            | **wszystkie zielone**                                                    |
+| 24 pliki testów, 335 sprawdzeń                            | **wszystkie zielone**                                                    |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                                  |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy                   |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |
@@ -39,7 +39,7 @@ Sprawdzenie, że podstawa jest w porządku:
 
 ```bash
 npm run verify
-# oczekiwane: "counter.js zgadza się ze źródłami" + "Zaliczone: 113, Niezaliczone: 0"
+# oczekiwane: "counter.js zgadza się ze źródłami" + "Niezaliczone: 0"
 ```
 
 ---
@@ -78,7 +78,7 @@ Narzędzia, które muszą być dostępne poza tym: `git` i `gh` (zalogowany:
 
 ```bash
 npm run build:check       # artefakt == przebudowa src/
-npm test                  # 113/113
+npm test                  # wszystkie sprawdzenia zielone
 ```
 
 Dodatkowo warto upewnić się, że cięcie na moduły niczego nie zgubiło.

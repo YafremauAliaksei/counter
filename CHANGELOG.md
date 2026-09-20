@@ -10,6 +10,26 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Naprawiono
+
+- **Przestawianie początku zadania dokładało godziny zamiast je przestawiać.** Kontrolka „Początek” ruszała początek OSTATNIEGO odcinka, a czas zadania jest sumą WSZYSTKICH. Wystarczyło raz zatrzymać zegar i kliknąć „początek zmiany”, żeby ostatni odcinek rozciągnął się na całą zmianę obok odcinków wcześniejszych — po niespełna pięciu godzinach pracy dało się naklikać czternaście. Teraz kontrolka opisuje początek CAŁEGO zadania: przesunięcie wstecz rozciąga pierwszy odcinek, przesunięcie w przód obcina wszystko, co przed nim, a przerwy zostają nietknięte. Pilnuje tego niezmiennik w testach: przepracowany czas nigdy nie przekracza odstępu od początku zadania do teraz.
+
+- **Wznowienie nie może zacząć się przed własną pauzą.** Dwa odcinki nachodzące na siebie liczyły ten sam czas dwa razy.
+
+### Dodano
+
+- **Czwarty dział: `Inne` — ręczny.** Nie ma swojej karty T-REX, więc licznik nie zwiększy go nigdy sam; liczby wpisuje się w panelu. Jest workiem na paczki robione poza trzema znanymi procesami: wcześniej nie było ich gdzie zapisać, więc wpisywano je do cudzego działu albo przepadały, a tempo zmiany kłamało w dół. W linii 2 pokazuje się dopiero wtedy, gdy ma paczki; w kodzie ustawień dostał własne, nowe numery (`0x0118`, `0x0309`).
+
+- **Dopisanie kolejnego działu to jedna linia** w `KNOWN_TAB_TYPES` plus nazwa w trzech słownikach — panel, linia 2 i menedżer zadań chodzą po tej mapie. Dział bez pola `urlKeyword` jest ręczny. Rozpoznawanie karty pomija takie działy, inaczej pierwszy z nich wywaliłby uruchomienie na `undefined.toUpperCase()`.
+
+### Zmieniono
+
+- **Dokumentacja doprowadzona do stanu faktycznego.** Nagłówek README mówił o „dwóch szarych liczbach”, choć trzecia — procent sprzedaży — stoi tam od 1.1.0. Do tego: osiem linii zamiast siedmiu (doszła linia 8), wiersz linii 8 w tabeli, sekcje „Zadania” i „Statystyki globalne” na górze listy sekcji panelu, aktualny prefiks magazynu w rozdziale o wersjonowaniu, nowy rozdział „Działy a zadania”, ręczna poprawka licznika opisana zgodnie z 1.3.1 (nie rusza procentu wcale, zamiast „zmienia tylko mianownik”), `SH.tasks()` i `SH.TaskManager` w konsolowym API oraz liczby sprawdzeń w czterech plikach.
+
+---
+
 ## 1.3.1 — 2026-09-20
 
 ### Dodano

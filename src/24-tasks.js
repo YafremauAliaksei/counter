@@ -121,8 +121,12 @@
             const wanted = Number(ms);
             let value = isFinite(wanted) ? wanted : now;
             const current = this.active();
-            if (current && this.isRunning(current)) {
-                value = Math.max(value, current.segments[current.segments.length - 1].from);
+            if (current) {
+                const last = current.segments[current.segments.length - 1];
+                // Nie wcześniej niż początek ostatniego odcinka i nie wcześniej
+                // niż jego koniec: wznowienie sprzed własnej pauzy dałoby dwa
+                // odcinki nachodzące na siebie, czyli czas policzony dwa razy.
+                value = Math.max(value, last.from, last.to === null ? last.from : last.to);
             }
             return Math.min(value, now);
         },
@@ -202,13 +206,46 @@
             this._commit(store.tasks);
         },
 
-        /** Przestawienie początku bieżącego odcinka — „zacząłem dwie minuty temu”. */
-        setSegmentStart(id, ms) {
+        /**
+         * POCZĄTEK CAŁEGO ZADANIA — „zacząłem dwie minuty temu”, „zacząłem razem
+         * ze zmianą”.
+         *
+         * ===================================================================
+         * DLACZEGO CAŁEGO, A NIE OSTATNIEGO ODCINKA (poprawka z 1.3.2)
+         * ===================================================================
+         * Pierwsza wersja przestawiała początek OSTATNIEGO odcinka, a czas
+         * zadania jest sumą WSZYSTKICH. Wystarczyło raz zatrzymać zegar
+         * i kliknąć „początek zmiany”, żeby ostatni odcinek rozciągnął się na
+         * całą zmianę OBOK odcinków wcześniejszych. Każde powtórzenie dokładało
+         * kolejne pięć godzin: po niespełna pięciu godzinach pracy dało się
+         * naklikać czternaście.
+         *
+         * Człowiek ma w głowie jedno zdanie — „to zadanie zaczęło się o X” —
+         * więc kontrolka musi robić dokładnie to:
+         *
+         *   - przesunięcie WSTECZ rozciąga pierwszy odcinek do nowego początku;
+         *   - przesunięcie W PRZÓD obcina wszystko, co leży przed nim: odcinki
+         *     zamknięte wcześniej znikają, a odcinek, w środku którego wypada
+         *     nowy początek, zaczyna się od niego.
+         *
+         * Przerwy zostają nietknięte, a przepracowany czas NIGDY nie przekracza
+         * odstępu od początku zadania do teraz. To jest niezmiennik, który
+         * pilnuje testów — gdyby istniał od początku, tamten błąd nie wyszedłby
+         * dopiero na hali.
+         */
+        setStart(id, ms) {
             const task = this.byId(id);
             if (!task) return;
-            const seg = task.segments[task.segments.length - 1];
-            const limit = seg.to === null ? Date.now() : seg.to;
-            seg.from = Math.min(Math.max(0, Number(ms) || 0), limit);
+            const wanted = Math.min(Math.max(0, Number(ms) || 0), Date.now());
+            const first = task.segments[0];
+            if (wanted <= first.from) {
+                first.from = wanted;
+            } else {
+                const kept = task.segments
+                    .filter(seg => seg.to === null || seg.to > wanted)
+                    .map(seg => ({ from: Math.max(seg.from, wanted), to: seg.to }));
+                task.segments = kept.length ? kept : [{ from: wanted, to: null }];
+            }
             this._commit(store.tasks);
         },
 

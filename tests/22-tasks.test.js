@@ -250,6 +250,103 @@ test('pauza zatrzymuje zegar, a paczka po pauzie otwiera nowy odcinek', () => {
     eq(drift(cid), { done: 0, sold: 0, neutral: 0 });
 });
 
+describe('Początek zadania — poprawka z 1.3.2');
+
+/**
+ * BŁĄD, KTÓRY WYSZEDŁ DOPIERO NA HALI.
+ *
+ * Kontrolka „Początek” przestawiała początek OSTATNIEGO odcinka, a czas zadania
+ * jest sumą WSZYSTKICH. Wystarczyło raz zatrzymać zegar i kliknąć „początek
+ * zmiany”, żeby ostatni odcinek rozciągnął się na całą zmianę OBOK odcinków
+ * wcześniejszych — każde powtórzenie dokładało kolejne godziny. Po niespełna
+ * pięciu godzinach pracy dało się naklikać czternaście.
+ *
+ * Sprawdzenie niżej odtwarza dokładnie tamtą sekwencję klikania. Zaraz po nim
+ * stoi NIEZMIENNIK, który by ten błąd złapał od razu: przepracowany czas nie ma
+ * prawa przekroczyć odstępu od początku zadania do teraz.
+ */
+test('klikanie „początek zmiany” przy zatrzymanym zegarze nie dokłada godzin', () => {
+    const now = Date.now();
+    const shiftStart = now - 3 * HOUR;
+    SH.store.sessionConfig.shiftCalculatedStartTime = shiftStart;
+    reset(shiftStart);
+    const task = TM.active();
+
+    for (let i = 0; i < 3; i++) {
+        TM.pause();
+        TM.setStart(task.id, shiftStart);
+        TM.resume(task.id, Date.now());
+        TM.setStart(task.id, shiftStart);
+    }
+
+    const worked = TM.workedMs(task);
+    ok(worked <= Date.now() - TM.span(task).from + 1000,
+       'czas zadania: ' + (worked / HOUR).toFixed(2) + 'h, a od początku minęły '
+       + ((Date.now() - TM.span(task).from) / HOUR).toFixed(2) + 'h');
+    ok(Math.abs(worked - 3 * HOUR) < MIN, 'trzy godziny, nie dziewięć');
+});
+
+test('przepracowany czas nigdy nie przekracza odstępu od początku zadania', () => {
+    // Niezmiennik ogólny, nie jeden scenariusz: cokolwiek zrobimy z zadaniem,
+    // suma odcinków mieści się między jego początkiem a teraz.
+    const now = Date.now();
+    reset(now - 2 * HOUR);
+    const task = TM.active();
+    TM.pause();
+    TM.resume(task.id, Date.now());
+    TM.setStart(task.id, now - 90 * MIN);
+    TM.pause();
+    TM.resume(task.id, Date.now());
+    TM.setStart(task.id, now - 30 * MIN);
+
+    ok(TM.workedMs(task) <= Date.now() - TM.span(task).from + 1000,
+       'suma odcinków większa niż cały odstęp');
+});
+
+test('przesunięcie WSTECZ rozciąga pierwszy odcinek', () => {
+    const now = Date.now();
+    reset(now - HOUR);
+    const task = TM.active();
+    TM.setStart(task.id, now - 3 * HOUR);
+    eq(task.segments.length, 1, 'nie przybyło odcinków');
+    ok(Math.abs(TM.workedMs(task) - 3 * HOUR) < MIN, 'trzy godziny');
+});
+
+test('przesunięcie W PRZÓD obcina to, co przed nim, i zostawia przerwy', () => {
+    const now = Date.now();
+    reset(now - 4 * HOUR);
+    const task = TM.active();
+    // Przerwa w środku: [-4h .. -3h] praca, [-3h .. -2h] przerwa, [-2h .. teraz] praca.
+    task.segments = [{ from: now - 4 * HOUR, to: now - 3 * HOUR }, { from: now - 2 * HOUR, to: null }];
+
+    TM.setStart(task.id, now - 150 * MIN);          // początek w środku przerwy
+    eq(task.segments.length, 1, 'odcinek sprzed nowego początku znika');
+    ok(Math.abs(TM.workedMs(task) - 2 * HOUR) < MIN, 'zostają dwie godziny pracy');
+
+    TM.setStart(task.id, now - 30 * MIN);           // początek w środku pracy
+    ok(Math.abs(TM.workedMs(task) - 30 * MIN) < MIN, 'zostaje pół godziny');
+});
+
+test('początek w przyszłości przycina się do teraz', () => {
+    const now = Date.now();
+    reset(now - HOUR);
+    TM.setStart(TM.active().id, now + 5 * HOUR);
+    ok(TM.span(TM.active()).from <= Date.now(), 'nie w przyszłości');
+    ok(TM.workedMs(TM.active()) < MIN, 'zadanie właśnie się zaczęło');
+});
+
+test('wznowienie nie może zacząć się przed własną pauzą', () => {
+    // Inaczej dwa odcinki nachodzą na siebie i ten sam czas liczy się dwa razy.
+    const now = Date.now();
+    reset(now - 2 * HOUR);
+    const task = TM.active();
+    TM.pause();
+    const pausedAt = task.segments[0].to;
+    TM.resume(task.id, now - 3 * HOUR);
+    eq(task.segments[1].from >= pausedAt, true, 'wznowienie nie cofa się przed pauzę');
+    ok(TM.workedMs(task) <= Date.now() - TM.span(task).from + 1000);
+});
+
 describe('Nazwa zadania');
 
 test('białe brzegi, pusta nazwa i nazwa za długa', () => {

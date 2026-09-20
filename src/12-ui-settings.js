@@ -91,26 +91,31 @@
                 // Skróty w minutach wstecz zamiast list godzin i minut: o nowym
                 // procesie człowiek dowiaduje się z wyprzedzeniem, zbiera
                 // narzędzia i siada do skryptu kilka minut po faktycznym starcie.
-                const seg = task.segments[task.segments.length - 1];
+                // Kontrolki opisują początek CAŁEGO zadania, a nie ostatniego
+                // odcinka: człowiek ma w głowie jedno zdanie „to zadanie zaczęło
+                // się o X”. Pierwsza wersja ruszała ostatni odcinek, przez co
+                // przy zatrzymanym zegarze każde kliknięcie dokładało czas
+                // zamiast go przestawiać (patrz TaskManager.setStart).
+                const startedAt = TaskManager.span(task).from;
                 const quick = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } });
                 CONFIG.TASK_QUICK_OFFSETS_MIN.forEach(min => {
                     quick.appendChild(UIBuilder.button(
                         min === 0 ? I18n.get('tasks_now') : I18n.get('tasks_minutesBack', { value: min }),
-                        () => { TaskManager.setSegmentStart(task.id, Date.now() - min * 60000); this.rerender(); },
+                        () => { TaskManager.setStart(task.id, Date.now() - min * 60000); this.rerender(); },
                         { padding: '4px 8px', marginTop: '0' }));
                 });
                 if (store.sessionConfig.shiftCalculatedStartTime) {
                     quick.appendChild(UIBuilder.button(I18n.get('tasks_shiftStart'), () => {
-                        TaskManager.setSegmentStart(task.id, store.sessionConfig.shiftCalculatedStartTime);
+                        TaskManager.setStart(task.id, store.sessionConfig.shiftCalculatedStartTime);
                         this.rerender();
                     }, { padding: '4px 8px', marginTop: '0' }));
                 }
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_startedAt'), quick));
                 sec.appendChild(UIBuilder.row('', h('input', {
-                    type: 'text', value: Utils.formatClock(seg.from), placeholder: 'HH:MM',
+                    type: 'text', value: Utils.formatClock(startedAt), placeholder: 'HH:MM',
                     onChange: (e) => {
                         const ms = TaskManager.parseClock(e.target.value);
-                        if (ms !== null) TaskManager.setSegmentStart(task.id, ms);
+                        if (ms !== null) TaskManager.setStart(task.id, ms);
                         this.rerender();
                     },
                     style: { width: '70px', padding: '4px', textAlign: 'center' },
