@@ -151,6 +151,9 @@
             { id: 0x0115, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.CRET', type: 'color' },
             { id: 0x0116, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.REFURB', type: 'color' },
             { id: 0x0117, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.WHD', type: 'color' },
+            // 1.3.2 — czwarty, ręczny dział. Numery kolejne i nigdy wcześniej
+            // nie wydane, więc stare kody nie zmieniają znaczenia.
+            { id: 0x0118, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.OTHER', type: 'color' },
 
             // --- karta ceny ---
             { id: 0x0200, root: 'local', path: 'priceCard.moduleEnabled', type: 'bool' },
@@ -184,6 +187,7 @@
             { id: 0x0304, root: 'user', path: 'globalStatsContributionKnown.CRET', type: 'bool' },
             { id: 0x0305, root: 'user', path: 'globalStatsContributionKnown.REFURB', type: 'bool' },
             { id: 0x0306, root: 'user', path: 'globalStatsContributionKnown.WHD', type: 'bool' },
+            { id: 0x0309, root: 'user', path: 'globalStatsContributionKnown.OTHER', type: 'bool' },
             { id: 0x0307, root: 'user', path: 'keyboardShortcuts.INCREMENT', type: 'text' },
             { id: 0x0308, root: 'user', path: 'keyboardShortcuts.DECREMENT', type: 'text' },
         ],

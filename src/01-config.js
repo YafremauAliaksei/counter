@@ -124,10 +124,29 @@
          * hasło” — wtedy zostaje konsola (SH.SettingsPanel.toggle()).
          */
         SETTINGS_PANEL_ACCESS_PASSWORDS: normalizeAccessPasswords(SETTINGS_ACCESS_PASSWORDS),
+        /**
+         * DZIAŁY.
+         *
+         * Dopisanie kolejnego to JEDNA linia tutaj plus nazwa w trzech
+         * słownikach: panel, linia 2 i menedżer zadań chodzą po tej mapie,
+         * a nie po wpisanej gdzieś liście trzech kluczy. Kolejność w mapie jest
+         * kolejnością na ekranie.
+         *
+         * `urlKeyword` to sposób, w jaki karta rozpoznaje SAMA SIEBIE po adresie
+         * T-REX. Dział bez tego pola nie zostanie nigdy rozpoznany jako karta —
+         * i o to chodzi przy OTHER.
+         *
+         * OTHER (1.3.2) — dział RĘCZNY, „pozostałe”. Nie ma swojej karty, więc
+         * licznik nie zwiększy go nigdy sam: liczby wpisuje się w panelu.
+         * Po co: paczki bywają robione poza trzema znanymi procesami, a do tej
+         * pory nie było ich gdzie zapisać — wpisywano je do cudzego działu albo
+         * przepadały, przez co tempo zmiany kłamało w dół.
+         */
         KNOWN_TAB_TYPES: {
             CRET: { key: 'CRET', displayNameKey: 'tabName_CRET', baseColorHex: '#0078D7', urlKeyword: 'CRETURN' },
             REFURB: { key: 'REFURB', displayNameKey: 'tabName_REFURB', baseColorHex: '#FFA500', urlKeyword: 'CRETURN_REFURB' },
             WHD: { key: 'WHD', displayNameKey: 'tabName_WHD', baseColorHex: '#1EB41E', urlKeyword: 'WAREHOUSE_DEALS' },
+            OTHER: { key: 'OTHER', displayNameKey: 'tabName_OTHER', baseColorHex: '#9E9E9E' },
         },
         UNKNOWN_TAB_TYPE_KEY: 'UNKNOWN',
         DEFAULT_UNKNOWN_TAB_DETAILS: { key: 'UNKNOWN', displayNameKey: 'tabName_UNKNOWN', baseColorHex: '#808080' },
@@ -603,7 +622,7 @@
         line2_globalSummary: {
             visible: false, colorHex: '#808080', alpha: 60, fontSize: 14,
             multicolor: true,
-            customColors: { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E' }
+            customColors: { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
         },
         line3_shiftInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },
         line4_lunchInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },

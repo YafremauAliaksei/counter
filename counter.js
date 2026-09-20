@@ -241,10 +241,29 @@ const SCRIPT_LOGS_ENABLED = false;
          * hasło” — wtedy zostaje konsola (SH.SettingsPanel.toggle()).
          */
         SETTINGS_PANEL_ACCESS_PASSWORDS: normalizeAccessPasswords(SETTINGS_ACCESS_PASSWORDS),
+        /**
+         * DZIAŁY.
+         *
+         * Dopisanie kolejnego to JEDNA linia tutaj plus nazwa w trzech
+         * słownikach: panel, linia 2 i menedżer zadań chodzą po tej mapie,
+         * a nie po wpisanej gdzieś liście trzech kluczy. Kolejność w mapie jest
+         * kolejnością na ekranie.
+         *
+         * `urlKeyword` to sposób, w jaki karta rozpoznaje SAMA SIEBIE po adresie
+         * T-REX. Dział bez tego pola nie zostanie nigdy rozpoznany jako karta —
+         * i o to chodzi przy OTHER.
+         *
+         * OTHER (1.3.2) — dział RĘCZNY, „pozostałe”. Nie ma swojej karty, więc
+         * licznik nie zwiększy go nigdy sam: liczby wpisuje się w panelu.
+         * Po co: paczki bywają robione poza trzema znanymi procesami, a do tej
+         * pory nie było ich gdzie zapisać — wpisywano je do cudzego działu albo
+         * przepadały, przez co tempo zmiany kłamało w dół.
+         */
         KNOWN_TAB_TYPES: {
             CRET: { key: 'CRET', displayNameKey: 'tabName_CRET', baseColorHex: '#0078D7', urlKeyword: 'CRETURN' },
             REFURB: { key: 'REFURB', displayNameKey: 'tabName_REFURB', baseColorHex: '#FFA500', urlKeyword: 'CRETURN_REFURB' },
             WHD: { key: 'WHD', displayNameKey: 'tabName_WHD', baseColorHex: '#1EB41E', urlKeyword: 'WAREHOUSE_DEALS' },
+            OTHER: { key: 'OTHER', displayNameKey: 'tabName_OTHER', baseColorHex: '#9E9E9E' },
         },
         UNKNOWN_TAB_TYPE_KEY: 'UNKNOWN',
         DEFAULT_UNKNOWN_TAB_DETAILS: { key: 'UNKNOWN', displayNameKey: 'tabName_UNKNOWN', baseColorHex: '#808080' },
@@ -720,7 +739,7 @@ const SCRIPT_LOGS_ENABLED = false;
         line2_globalSummary: {
             visible: false, colorHex: '#808080', alpha: 60, fontSize: 14,
             multicolor: true,
-            customColors: { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E' }
+            customColors: { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
         },
         line3_shiftInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },
         line4_lunchInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },
@@ -956,7 +975,7 @@ const SCRIPT_LOGS_ENABLED = false;
             tasks_deleteConfirm: 'Delete the task "${name}"? Its packages will be taken off the shift counter.',
             tasks_ongoing: 'now',
             lineSettings_taskInfoHint: 'Name of the current task and its own numbers: packages, rate, sales percentage, time worked. The lines above describe the whole shift; this one describes the process you are on right now.',
-            tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_UNKNOWN: 'UNKNOWN',
+            tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_OTHER: 'Other', tabName_UNKNOWN: 'UNKNOWN',
             statsLine1_current: '${tabName} ${itemsPerHour}${statsPerHourUnit} (${count} ${completedUnit} ${inUnit} ${workTimeFormatted})',
             statsLine2_global_separator: ' ',
             statsLine2_global_tab_format: '${tabName} ${itemsPerHour}${statsPerHourUnit}(${count})',
@@ -1083,7 +1102,7 @@ const SCRIPT_LOGS_ENABLED = false;
             tasks_deleteConfirm: 'Usunąć zadanie „${name}”? Jego paczki zejdą z licznika zmiany.',
             tasks_ongoing: 'teraz',
             lineSettings_taskInfoHint: 'Nazwa bieżącego zadania i jego własne liczby: paczki, tempo, procent sprzedaży, przepracowany czas. Linie wyżej opisują całą zmianę, ta — proces, przy którym siedzisz teraz.',
-            tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_UNKNOWN: 'NIEZNANA',
+            tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_OTHER: 'Inne', tabName_UNKNOWN: 'NIEZNANA',
             statsLine1_current: '${tabName} ${itemsPerHour}${statsPerHourUnit} (${count} ${completedUnit} ${inUnit} ${workTimeFormatted})',
             statsLine2_global_separator: ' ', statsLine2_global_tab_format: '${tabName} ${itemsPerHour}${statsPerHourUnit}(${count})', statsLine2_global_total_format: '= ~${totalItemsPerHour}${statsPerHourUnit} (${totalCount})',
             statsLine3_shift: '${shiftType} zmiana (${shiftStartTime})', statsLine4_lunch: 'Przerwa #${lunchNumber} (${lunchStartTime} - ${lunchEndTime})', statsLine5_clock: '[ ${currentTime} ]',
@@ -1205,7 +1224,7 @@ const SCRIPT_LOGS_ENABLED = false;
             tasks_deleteConfirm: 'Удалить задачу «${name}»? Её пачки уйдут со счётчика смены.',
             tasks_ongoing: 'сейчас',
             lineSettings_taskInfoHint: 'Название текущей задачи и её собственные числа: пачки, темп, процент продажи, отработанное время. Строки выше описывают всю смену, эта — процесс, которым вы заняты сейчас.',
-            tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_UNKNOWN: 'НЕИЗВЕСТНО',
+            tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_OTHER: 'Прочее', tabName_UNKNOWN: 'НЕИЗВЕСТНО',
             statsLine1_current: '${tabName} ${itemsPerHour}${statsPerHourUnit} (${count} ${completedUnit} ${inUnit} ${workTimeFormatted})',
             statsLine2_global_separator: ' ', statsLine2_global_tab_format: '${tabName} ${itemsPerHour}${statsPerHourUnit}(${count})', statsLine2_global_total_format: '= ~${totalItemsPerHour}${statsPerHourUnit} (${totalCount})',
             statsLine3_shift: '${shiftType} смена (${shiftStartTime})', statsLine4_lunch: 'Перерыв #${lunchNumber} (${lunchStartTime} - ${lunchEndTime})', statsLine5_clock: '[ ${currentTime} ]',
@@ -2862,26 +2881,31 @@ const SCRIPT_LOGS_ENABLED = false;
                 // Skróty w minutach wstecz zamiast list godzin i minut: o nowym
                 // procesie człowiek dowiaduje się z wyprzedzeniem, zbiera
                 // narzędzia i siada do skryptu kilka minut po faktycznym starcie.
-                const seg = task.segments[task.segments.length - 1];
+                // Kontrolki opisują początek CAŁEGO zadania, a nie ostatniego
+                // odcinka: człowiek ma w głowie jedno zdanie „to zadanie zaczęło
+                // się o X”. Pierwsza wersja ruszała ostatni odcinek, przez co
+                // przy zatrzymanym zegarze każde kliknięcie dokładało czas
+                // zamiast go przestawiać (patrz TaskManager.setStart).
+                const startedAt = TaskManager.span(task).from;
                 const quick = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } });
                 CONFIG.TASK_QUICK_OFFSETS_MIN.forEach(min => {
                     quick.appendChild(UIBuilder.button(
                         min === 0 ? I18n.get('tasks_now') : I18n.get('tasks_minutesBack', { value: min }),
-                        () => { TaskManager.setSegmentStart(task.id, Date.now() - min * 60000); this.rerender(); },
+                        () => { TaskManager.setStart(task.id, Date.now() - min * 60000); this.rerender(); },
                         { padding: '4px 8px', marginTop: '0' }));
                 });
                 if (store.sessionConfig.shiftCalculatedStartTime) {
                     quick.appendChild(UIBuilder.button(I18n.get('tasks_shiftStart'), () => {
-                        TaskManager.setSegmentStart(task.id, store.sessionConfig.shiftCalculatedStartTime);
+                        TaskManager.setStart(task.id, store.sessionConfig.shiftCalculatedStartTime);
                         this.rerender();
                     }, { padding: '4px 8px', marginTop: '0' }));
                 }
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_startedAt'), quick));
                 sec.appendChild(UIBuilder.row('', h('input', {
-                    type: 'text', value: Utils.formatClock(seg.from), placeholder: 'HH:MM',
+                    type: 'text', value: Utils.formatClock(startedAt), placeholder: 'HH:MM',
                     onChange: (e) => {
                         const ms = TaskManager.parseClock(e.target.value);
-                        if (ms !== null) TaskManager.setSegmentStart(task.id, ms);
+                        if (ms !== null) TaskManager.setStart(task.id, ms);
                         this.rerender();
                     },
                     style: { width: '70px', padding: '4px', textAlign: 'center' },
@@ -6290,10 +6314,15 @@ const SCRIPT_LOGS_ENABLED = false;
             Utils.log(`[DIAGNOSTICS] Full URL: ${fullUrl}`);
             Utils.log(`[DIAGNOSTICS] Extracted gradingMode: ${gradingMode}`);
 
+            // Działy ręczne (bez `urlKeyword`, np. OTHER) nie mają swojej karty
+            // i nie biorą udziału w rozpoznawaniu — inaczej pierwszy taki wpis
+            // wywaliłby całe uruchomienie na `undefined.toUpperCase()`.
+            const detectable = Object.values(CONFIG.KNOWN_TAB_TYPES).filter(t => !!t.urlKeyword);
+
             let known;
             if (gradingMode) {
                 // Dokładne dopasowanie
-                known = Object.values(CONFIG.KNOWN_TAB_TYPES).find(t => gradingMode === t.urlKeyword.toUpperCase());
+                known = detectable.find(t => gradingMode === t.urlKeyword.toUpperCase());
                 Utils.log(`[DIAGNOSTICS] Strict match attempt result:`, known ? known.key : 'NOT_FOUND');
             }
 
@@ -6302,7 +6331,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // KRYTYCZNIE WAŻNE: sortujemy klucze po długości malejąco.
                 // Gwarantuje to, że CRETURN_REFURB (14 znaków) sprawdzi się PRZED
                 // CRETURN (7 znaków).
-                const sortedTypes = Object.values(CONFIG.KNOWN_TAB_TYPES).sort((a, b) => b.urlKeyword.length - a.urlKeyword.length);
+                const sortedTypes = detectable.slice().sort((a, b) => b.urlKeyword.length - a.urlKeyword.length);
                 known = sortedTypes.find(t => fullUrl.includes(t.urlKeyword.toUpperCase()));
                 Utils.log(`[DIAGNOSTICS] Fallback substring match result:`, known ? known.key : 'NOT_FOUND');
             }
@@ -6900,6 +6929,9 @@ const SCRIPT_LOGS_ENABLED = false;
             { id: 0x0115, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.CRET', type: 'color' },
             { id: 0x0116, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.REFURB', type: 'color' },
             { id: 0x0117, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.WHD', type: 'color' },
+            // 1.3.2 — czwarty, ręczny dział. Numery kolejne i nigdy wcześniej
+            // nie wydane, więc stare kody nie zmieniają znaczenia.
+            { id: 0x0118, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.OTHER', type: 'color' },
 
             // --- karta ceny ---
             { id: 0x0200, root: 'local', path: 'priceCard.moduleEnabled', type: 'bool' },
@@ -6933,6 +6965,7 @@ const SCRIPT_LOGS_ENABLED = false;
             { id: 0x0304, root: 'user', path: 'globalStatsContributionKnown.CRET', type: 'bool' },
             { id: 0x0305, root: 'user', path: 'globalStatsContributionKnown.REFURB', type: 'bool' },
             { id: 0x0306, root: 'user', path: 'globalStatsContributionKnown.WHD', type: 'bool' },
+            { id: 0x0309, root: 'user', path: 'globalStatsContributionKnown.OTHER', type: 'bool' },
             { id: 0x0307, root: 'user', path: 'keyboardShortcuts.INCREMENT', type: 'text' },
             { id: 0x0308, root: 'user', path: 'keyboardShortcuts.DECREMENT', type: 'text' },
         ],
@@ -7312,8 +7345,12 @@ const SCRIPT_LOGS_ENABLED = false;
             const wanted = Number(ms);
             let value = isFinite(wanted) ? wanted : now;
             const current = this.active();
-            if (current && this.isRunning(current)) {
-                value = Math.max(value, current.segments[current.segments.length - 1].from);
+            if (current) {
+                const last = current.segments[current.segments.length - 1];
+                // Nie wcześniej niż początek ostatniego odcinka i nie wcześniej
+                // niż jego koniec: wznowienie sprzed własnej pauzy dałoby dwa
+                // odcinki nachodzące na siebie, czyli czas policzony dwa razy.
+                value = Math.max(value, last.from, last.to === null ? last.from : last.to);
             }
             return Math.min(value, now);
         },
@@ -7393,13 +7430,46 @@ const SCRIPT_LOGS_ENABLED = false;
             this._commit(store.tasks);
         },
 
-        /** Przestawienie początku bieżącego odcinka — „zacząłem dwie minuty temu”. */
-        setSegmentStart(id, ms) {
+        /**
+         * POCZĄTEK CAŁEGO ZADANIA — „zacząłem dwie minuty temu”, „zacząłem razem
+         * ze zmianą”.
+         *
+         * ===================================================================
+         * DLACZEGO CAŁEGO, A NIE OSTATNIEGO ODCINKA (poprawka z 1.3.2)
+         * ===================================================================
+         * Pierwsza wersja przestawiała początek OSTATNIEGO odcinka, a czas
+         * zadania jest sumą WSZYSTKICH. Wystarczyło raz zatrzymać zegar
+         * i kliknąć „początek zmiany”, żeby ostatni odcinek rozciągnął się na
+         * całą zmianę OBOK odcinków wcześniejszych. Każde powtórzenie dokładało
+         * kolejne pięć godzin: po niespełna pięciu godzinach pracy dało się
+         * naklikać czternaście.
+         *
+         * Człowiek ma w głowie jedno zdanie — „to zadanie zaczęło się o X” —
+         * więc kontrolka musi robić dokładnie to:
+         *
+         *   - przesunięcie WSTECZ rozciąga pierwszy odcinek do nowego początku;
+         *   - przesunięcie W PRZÓD obcina wszystko, co leży przed nim: odcinki
+         *     zamknięte wcześniej znikają, a odcinek, w środku którego wypada
+         *     nowy początek, zaczyna się od niego.
+         *
+         * Przerwy zostają nietknięte, a przepracowany czas NIGDY nie przekracza
+         * odstępu od początku zadania do teraz. To jest niezmiennik, który
+         * pilnuje testów — gdyby istniał od początku, tamten błąd nie wyszedłby
+         * dopiero na hali.
+         */
+        setStart(id, ms) {
             const task = this.byId(id);
             if (!task) return;
-            const seg = task.segments[task.segments.length - 1];
-            const limit = seg.to === null ? Date.now() : seg.to;
-            seg.from = Math.min(Math.max(0, Number(ms) || 0), limit);
+            const wanted = Math.min(Math.max(0, Number(ms) || 0), Date.now());
+            const first = task.segments[0];
+            if (wanted <= first.from) {
+                first.from = wanted;
+            } else {
+                const kept = task.segments
+                    .filter(seg => seg.to === null || seg.to > wanted)
+                    .map(seg => ({ from: Math.max(seg.from, wanted), to: seg.to }));
+                task.segments = kept.length ? kept : [{ from: wanted, to: null }];
+            }
             this._commit(store.tasks);
         },
 

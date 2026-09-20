@@ -7,13 +7,14 @@ tym: ani jednego zapytania do internetu, ani jednej linii w konsoli.
 **Wersja 1.3.1** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
-17.4 28
+17.4 28 14%
 ```
 
-To cały domyślny interfejs — dwie szare liczby w lewym dolnym rogu.
+To cały domyślny interfejs — trzy szare liczby w lewym dolnym rogu.
 Pierwsza: przedmiotów na godzinę, łącznie ze wszystkich kart. Druga: ile zrobiono.
-Cała reszta — linia z podsumowaniem działów, bilans pieniężny zmiany, karta ceny
-towaru — istnieje, ale włącza się ręcznie.
+Trzecia: ile z nich pojechało na sprzedaż. Cała reszta — linia z podsumowaniem
+działów, bieżące zadanie, bilans pieniężny zmiany, karta ceny towaru — istnieje,
+ale włącza się ręcznie.
 
 ---
 
@@ -80,8 +81,8 @@ zamienić `release` na numer wersji z literą `v`:
 3. Wkleić całą zawartość [ostatniego wydania](https://github.com/YafremauAliaksei/counter/releases/latest),
    nacisnąć Enter.
 
-W obu przypadkach w lewym dolnym rogu pojawią się dwie liczby i procent. Nic
-więcej robić nie trzeba.
+W obu przypadkach w lewym dolnym rogu pojawią się trzy liczby: tempo, sztuki
+i procent sprzedaży. Nic więcej robić nie trzeba.
 
 > **Skąd brać plik.** Z **wydania**, nie z `counter.js` w gałęzi `main`. Plik
 > w repozytorium jest artefaktem budowania i zmienia się przy każdym scaleniu;
@@ -121,7 +122,7 @@ samo, jak nie zalicza go sam system.
 
 ## Linie okna statystyk
 
-W oknie jest siedem niezależnych linii. Każda włącza się osobno, każda ma własny
+W oknie jest osiem niezależnych linii. Każda włącza się osobno, każda ma własny
 kolor, przezroczystość i rozmiar czcionki.
 
 | Linia | Co pokazuje                                                           | Domyślnie |
@@ -133,6 +134,7 @@ kolor, przezroczystość i rozmiar czcionki.
 | **5** | zegar: `[ 14:32:07 ]`                                                 | wył.      |
 | **6** | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`   | wył.      |
 | **7** | **kompaktowy licznik: `17.4 28 14%`**                                 | **wł.**   |
+| **8** | bieżące zadanie: `fast_process 12 34.3/h 58% 0:21`                    | wył.      |
 
 ### Linia 7 dokładniej
 
@@ -167,9 +169,11 @@ Mówi, ile ze zrobionych przedmiotów pojechało na sprzedaż.
   do sumy globalnej;
 - **działa przy wyłączonym module cen**: kierunek ustala się z tekstu strony,
   tak samo jak kod sortowania w linii 6, i nie wymaga ani jednego zapytania;
-- ręczna poprawka licznika (skróty klawiszowe, przyciski) zmienia tylko
-  mianownik — poprawia się zwykle to, czego program nie zobaczył, a kierunku
-  takiego przedmiotu nikt nie zna;
+- **ręczna poprawka licznika** (skróty klawiszowe, pola w panelu) od 1.3.1
+  **nie rusza procentu wcale**: wchodzi do liczby sztuk i równocześnie poza
+  mianownik, bo kierunku takiego przedmiotu nikt nie zna. Wcześniej trafiała do
+  mianownika i rozcieńczała procent po każdym powrocie do pracy z ręcznie
+  wpisaną liczbą paczek;
 - żyje jedną zmianę i zeruje się razem z licznikami.
 
 ### Linia 6 dokładniej
@@ -253,6 +257,38 @@ a zadania są ich rozbiciem w czasie. Rozjazd tych dwóch stron byłby cichy —
 liczby wyglądałyby sensownie, tylko nie opisywałyby tego samego — więc pilnuje
 go osobne sprawdzenie w testach.
 
+### Działy a zadania
+
+Dział to **karta T-REX**: skrypt rozpoznaje ją po adresie i pod jej kluczem
+trzyma wszystkie liczniki. Zadanie **nie jest przypisane do działu** — trzyma
+liczniki osobno dla każdego z nich, bo jeden proces pracy potrafi iść w dwóch
+kartach naraz. Paczka trafia więc zawsze do pary _zadanie + dział_.
+
+Działów jest cztery:
+
+| Dział                   | Skąd się biorą paczki                |
+| ----------------------- | ------------------------------------ |
+| `CRET`, `REFURB`, `WHD` | z własnej karty T-REX, automatycznie |
+| **`Inne`**              | **wyłącznie ręcznie, z panelu**      |
+
+**`Inne`** (od 1.3.2) nie ma swojej karty, więc licznik nie zwiększy go nigdy
+sam. Jest workiem na paczki robione poza trzema znanymi procesami: wcześniej nie
+było ich gdzie zapisać, więc wpisywano je do cudzego działu albo przepadały,
+a tempo zmiany kłamało w dół. W linii 2 pokazuje się dopiero wtedy, gdy ma
+paczki.
+
+**Dopisanie kolejnego działu** to jedna linia w `KNOWN_TAB_TYPES`
+(`src/01-config.js`) plus nazwa w trzech słownikach — panel, linia 2 i menedżer
+zadań chodzą po tej mapie, a nie po wpisanej gdzieś liście trzech kluczy.
+Dział bez pola `urlKeyword` jest ręczny; kolejność w mapie jest kolejnością na
+ekranie.
+
+**Zmniejszanie liczby paczek** działa w obie strony: gdy przedmioty zostaną
+wykluczone z dziennych wskaźników, wystarczy wpisać mniejszą liczbę w polu
+działu albo zadania. Nadmiar schodzi od najnowszego zadania wstecz, a tempo
+spada zgodnie z rachunkiem — pięć paczek przy dziesięciogodzinnej zmianie to
+pół paczki na godzinę.
+
 ### W panelu ustawień
 
 Sekcja **Zadania** stoi na samej górze panelu, razem z licznikami działów — to
@@ -293,6 +329,7 @@ nocny · 18:32–20:30 (1g 58m)
 SH.tasks(); // podsumowanie wszystkich zadań zmiany
 SH.TaskManager.create('fast_process', Date.now() - 2 * 60000); // nowe, zaczęte 2 minuty temu
 SH.TaskManager.resume(id); // wznowienie wcześniejszego
+SH.TaskManager.setStart(id, ms); // przestawienie początku CAŁEGO zadania
 SH.TaskManager.pause(); // zatrzymanie zegara
 ```
 
@@ -429,19 +466,20 @@ początkiem innego hasła** — przy parze `BOM` i `BOMBA` krótsze zadziałało
 wcześniej i wyczyściło bufor, więc dłuższego nie dałoby się wpisać nigdy. Pilnuje
 tego test, więc taka lista zapali CI na czerwono.
 
-| Sekcja              | Co się ustawia                                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Ogólne              | język (pl/en/ru), pełny reset danych, reset samych liczników                                                       |
-| Pomoce wizualne     | kolorowa nakładka na stronę, duży napis z nazwą działu                                                             |
-| Stylizacja okna     | tło okna, czcionka, **wszystkie siedem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji                 |
-| Statystyki globalne | które działy wchodzą do sumy, ręczna poprawka liczników                                                            |
-| Skróty klawiszowe   | klawisze `+1` i `−1`                                                                                               |
-| Auto-inkrementacja  | odstęp skanowania strony (50–200 ms)                                                                               |
-| **Moduł cen**       | **główny wyłącznik sieci**                                                                                         |
-| Karta ceny          | sklep, źródło ceny, co pokazać, klikalność kodu, kolor tekstu, krój, rozmiary, tło — _tylko przy włączonym module_ |
-| Dziennik wartości   | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_                  |
-| Wybór przerwy       | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
-| Kod ustawień        | kod bieżących ustawień, gotowa zakładka z nim i pole na cudzy kod — patrz niżej                                    |
+| Sekcja                  | Co się ustawia                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Zadania**             | **bieżący proces pracy: nazwa, początek, paczki, tempo, pauza, historia zmiany — patrz rozdział „Zadania”**        |
+| **Statystyki globalne** | **które działy wchodzą do sumy i ręczne wpisanie licznika każdego z nich**                                         |
+| Ogólne                  | język (pl/en/ru), pełny reset danych, reset samych liczników                                                       |
+| Pomoce wizualne         | kolorowa nakładka na stronę, duży napis z nazwą działu                                                             |
+| Stylizacja okna         | tło okna, czcionka, **wszystkie osiem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji                  |
+| Skróty klawiszowe       | klawisze `+1` i `−1`                                                                                               |
+| Auto-inkrementacja      | odstęp skanowania strony (50–200 ms)                                                                               |
+| **Moduł cen**           | **główny wyłącznik sieci**                                                                                         |
+| Karta ceny              | sklep, źródło ceny, co pokazać, klikalność kodu, kolor tekstu, krój, rozmiary, tło — _tylko przy włączonym module_ |
+| Dziennik wartości       | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_                  |
+| Wybór przerwy           | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
+| Kod ustawień            | kod bieżących ustawień, gotowa zakładka z nim i pole na cudzy kod — patrz niżej                                    |
 
 Język interfejsu domyślnie polski, są też angielski i rosyjski.
 
@@ -494,7 +532,7 @@ egzemplarza (to byłby ten sam licznik liczony dwa razy), ale sam kod wchodzi �
 do tego działającego egzemplarza. Czyli zmiana wyglądu bez przeładowania strony
 i bez zerowania liczników.
 
-Kod obejmuje **wszystko, co daje się ustawić**: położenie okna, siedem linii
+Kod obejmuje **wszystko, co daje się ustawić**: położenie okna, osiem linii
 (widoczność, kolor, przezroczystość, rozmiar pisma), kolory działów w linii 2,
 nakładkę na stronę, całą kartę ceny razem z jej wyłącznikami i położeniem, język,
 sklep, szerokość panelu, skróty klawiszowe i to, które działy wchodzą do sumy.
@@ -601,6 +639,13 @@ SH.forcePrice(asin); // odpytać o cenę ręcznie
 SH.readPrice(asin); // odczytać cenę z wykresu z pominięciem cache
 SH.setLimits({ images: 3000 }); // podnieść limity zapytań w locie
 
+// Zadania
+SH.tasks(); // podsumowanie wszystkich zadań zmiany
+SH.TaskManager.create('fast', Date.now() - 2 * 60000); // nowe, zaczęte 2 minuty temu
+SH.TaskManager.resume(id); // wznowienie wcześniejszego
+SH.TaskManager.setStart(id, ms); // przestawienie początku CAŁEGO zadania
+SH.TaskManager.pause(); // zatrzymanie zegara
+
 // Kod ustawień
 SH.configCode(); // kod bieżących ustawień
 SH.configLink(); // gotowa zakładka z tym kodem
@@ -685,7 +730,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 319 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 335 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -702,7 +747,7 @@ production/
 │   └── README.md           ← mapa modułów i zasady zależności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 23 pliki, 319 sprawdzeń
+├── tests/                  ← 24 pliki, 335 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -722,7 +767,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 319 sprawdzeń
+npm test             # 335 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
@@ -747,9 +792,12 @@ oraz PR — w [CONTRIBUTING.md](CONTRIBUTING.md).
 | **MINOR** | nowa możliwość, dane zgodne wstecz | można aktualizować w dowolnej chwili                                            |
 | **PATCH** | naprawa bez nowych pól             | można aktualizować w dowolnej chwili                                            |
 
-Prefiks magazynu koduje **schemat danych**, a nie numer buildu: `1.1.0` i `1.2.0`
-zostaną przy `statsHelper_v1_0_0_`, dopóki nie zmieni się skład zapisywanych pól.
-Jedna zasada zapisana w dwóch miejscach, więc zapomnieć o niej nie sposób.
+Prefiks magazynu koduje **schemat danych**, a nie numer buildu: kolejne wydania
+zostają przy tym samym prefiksie, dopóki nie zmieni się skład zapisywanych pól.
+Obecnie jest to `statsHelper_v1_3_0_` — podniesiony w 1.3.1 razem z menedżerem
+zadań, bo doszły nowe klucze, a starego schematu nie używał jeszcze nikt poza
+wydaniem stabilnym pod osobnym adresem. Była to świadoma, jednorazowa decyzja
+autora zamiast zmiany MAJOR: szczegóły w CHANGELOG, w sekcji 1.3.1.
 
 ---
 
