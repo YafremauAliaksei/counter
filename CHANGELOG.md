@@ -10,7 +10,7 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.3.1 — 2026-09-20
 
 ### Dodano
 
@@ -19,16 +19,6 @@ Dla tego projektu SemVer czyta się tak:
 - **Trzeci kierunek: nierozstrzygalny (`AUDIT`, `NS-AUDIT`).** Audyt to nie kierunek, tylko oddanie przedmiotu w cudze ręce: o tym, czy pojedzie na sprzedaż, zdecyduje audytor w ciągu swojej zmiany, godziny po tym, jak przedmiot zniknął z ekranu. Odpowiedź nie wróci na ten ekran nigdy, więc taki przedmiot **wypada z mianownika procentu sprzedaży** — zrobionych paczek bywa przez to więcej niż paczek, z których liczy się procent, i to jest poprawne, a nie błąd rachunku. Liczy je nowy klucz w magazynie (`neutral_`), osobny na kartę, bo linie 2 i 7 sumują po wszystkich kartach naraz. W dzienniku wartości taki wpis zostaje ze znakiem zerowym i kodem — do sumy pieniędzy nie wchodzi.
 
   Różnica wobec „kodu nie było wcale” jest celowa: przedmiot bez kodu **zostaje** w mianowniku, bo to zwykle przedmiot, który gdzieś pojechał — tylko skrypt tego nie zobaczył. Wyrzucanie go podnosiłoby procent za każde przeoczenie programu, czyli nagradzało własne błędy.
-
-### Zmieniono
-
-- Stanowisko ręczne (`tests/manual/test_page.html`) zna wszystkie nowe kody, razem z wariantami z ogonem (`External-Repair`, `Audit-Damage`) i grupą „poza procentem”.
-
----
-
-## Niewydane
-
-### Dodano
 
 - **Zadania: własny zegar dla każdego procesu pracy.** Tempo liczyło się od początku zmiany — godziny wpisanej na stałe (6:30 albo 18:30). Kto przyszedł do procesu trzy godziny później i zrobił trzy paczki w sześć minut, widział `1.0/h` zamiast `30/h`: liczba policzona poprawnie, znaczenie fałszywe. Teraz zadanie ma własny zegar, a po uruchomieniu skryptu istnieje jedno zadanie `Default`, zaczynające się razem ze zmianą — dopóki nikt go nie przełączy, wszystko działa jak dotąd.
 
@@ -43,6 +33,8 @@ Dla tego projektu SemVer czyta się tak:
 - **`SH.tasks()` i `SH.TaskManager`** — podsumowanie zadań i przełączanie z konsoli.
 
 ### Zmieniono
+
+- Stanowisko ręczne (`tests/manual/test_page.html`) zna wszystkie nowe kody, razem z wariantami z ogonem (`External-Repair`, `Audit-Damage`) i grupą „poza procentem”.
 
 - **Ręcznie wpisane paczki nie wchodzą do mianownika procentu sprzedaży.** Komputer stoi na sesji tymczasowej, więc po awaryjnym restarcie pamięć przeglądarki znika w całości: człowiek pamięta swoje tempo albo liczbę paczek, ale nie pamięta, ile z nich poszło na sprzedaż. Liczba wpisana w pole licznika (albo skrótem klawiszowym) trafia więc do paczek **oraz** do licznika „poza mianownikiem” — tego samego, którym liczą się audyty. Skutek: procent liczy się od przedmiotu, przy którym człowiek wrócił do pracy. Gdyby wpisane paczki wchodziły do mianownika, procent po każdej awarii spadałby do kilku procent i przestałby cokolwiek znaczyć.
 
