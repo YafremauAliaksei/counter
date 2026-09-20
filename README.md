@@ -253,6 +253,40 @@ a zadania są ich rozbiciem w czasie. Rozjazd tych dwóch stron byłby cichy —
 liczby wyglądałyby sensownie, tylko nie opisywałyby tego samego — więc pilnuje
 go osobne sprawdzenie w testach.
 
+### W panelu ustawień
+
+Sekcja **Zadania** stoi na samej górze panelu, razem z licznikami działów — to
+jedyne miejsce otwierane _w trakcie_ pracy, reszta panelu to ustawienia, do
+których przez całą zmianę się nie wraca.
+
+| Co                       | Jak                                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| przełączyć proces        | wpisać nazwę, „Nowe zadanie”                                                                          |
+| wrócić do wcześniejszego | „Wznów” przy nim w historii zmiany                                                                    |
+| poprawić początek        | `teraz` / `-2 min` / `-5 min` / `-15` / `-30` / `początek zmiany`, albo godzina wprost w polu `HH:MM` |
+| zatrzymać zegar          | „Zatrzymaj zegar” (pierwsza paczka i tak go uruchomi)                                                 |
+| wpisać liczby po awarii  | pole **Paczki** albo pole **Tempo**                                                                   |
+
+Skróty w minutach wstecz, a nie listy godzin i minut, biorą się z tego, jak to
+wygląda na hali: o nowym procesie człowiek wie z wyprzedzeniem, zbiera narzędzia
+i siada do skryptu kilka minut po faktycznym starcie. Godzina późniejsza niż
+bieżąca znaczy „wczoraj” — na nocnej zmianie o 00:40 wpisane `23:30` to pół
+godziny temu.
+
+**Paczki i tempo to dwa pola opisujące to samo.** Kto pamięta „zrobiłem 259
+paczek”, wpisuje paczki; kto pamięta „miałem jakieś 29,5”, wpisuje tempo —
+drugie pole przelicza się samo. Po wpisaniu tempa panel pokazuje wartość
+**osiągalną przy całych paczkach**, a nie wpisaną: przy 1:17 pracy „118” to 151
+paczek, czyli naprawdę `117.7/h`. Obiecywanie `118` byłoby kłamstwem o jedną
+paczkę.
+
+Historia zmiany to dwie linie na zadanie:
+
+```
+nocny · 18:32–20:30 (1g 58m)
+80 · 40.5/h · 62%
+```
+
 ### Z konsoli
 
 ```js
@@ -651,7 +685,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 303 sprawdzenia,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 319 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -668,7 +702,7 @@ production/
 │   └── README.md           ← mapa modułów i zasady zależności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 22 pliki, 303 sprawdzenia
+├── tests/                  ← 23 pliki, 319 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -688,7 +722,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 303 sprawdzenia
+npm test             # 319 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

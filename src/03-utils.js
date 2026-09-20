@@ -113,6 +113,18 @@
             return `${s}${sS}`;
         },
         /**
+         * Godzina i minuta ze znacznika czasu — `18:32`.
+         *
+         * Do podsumowań zadań, gdzie liczy się sama pora, a nie data: zadanie
+         * mieści się w jednej zmianie, więc dzień jest oczywisty, a doklejanie
+         * go zjadałoby szerokość wąskiej kolumny panelu.
+         */
+        formatClock(ms) {
+            const d = new Date(Number(ms));
+            if (isNaN(d.getTime())) return '—';
+            return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        },
+        /**
          * Liczba z konfiguracji sprowadzona do bezpiecznego zakresu (9.2.0).
          *
          * Konfiguracja przychodzi z localStorage, czyli z miejsca, którego nie

@@ -416,6 +416,80 @@
             return Math.max(0, Math.round(wanted * worked / 3600000));
         },
 
+        /**
+         * Wpisanie liczby paczek WPROST dla jednego zadania.
+         *
+         * Liczby zadania sumują się po wszystkich kartach, więc różnica idzie do
+         * tej karty, przy której człowiek siedzi. Paczki dopisane tą drogą są
+         * jak każde inne wpisane ręcznie: poza mianownikiem procentu.
+         */
+        applyTaskTotal(task, tabKey, target) {
+            if (!task) return;
+            const wanted = Math.max(0, Number(target) || 0);
+            const delta = wanted - this.totals(task).done;
+            if (!delta) return;
+            const c = this.counters(task.id, tabKey);
+            const done = Math.max(0, c.done + delta);
+            const used = done - c.done;
+            this._write(task.id, tabKey, {
+                done,
+                sold: Math.min(c.sold, done),
+                neutral: Math.max(0, Math.min(done, c.neutral + used)),
+            });
+        },
+
+        /**
+         * Godzina wpisana ręcznie („18:32”) na znacznik czasu.
+         *
+         * Godzina PÓŹNIEJSZA NIŻ TERAZ to wczoraj, a nie pomyłka: na nocnej
+         * zmianie o 00:40 wpisane „23:30” znaczy pół godziny temu. Bez tego
+         * clampStart przyciąłby wartość do „teraz” i człowiek dostałby zadanie
+         * o zerowej długości zamiast komunikatu, że czegoś nie rozumiemy.
+         *
+         * @returns {number|null} null, gdy tekst nie jest godziną.
+         */
+        parseClock(text) {
+            const m = /^\s*(\d{1,2})\s*[:.]\s*(\d{2})\s*$/.exec(String(text == null ? '' : text));
+            if (!m) return null;
+            const hours = parseInt(m[1], 10);
+            const minutes = parseInt(m[2], 10);
+            if (hours > 23 || minutes > 59) return null;
+            const d = new Date();
+            d.setHours(hours, minutes, 0, 0);
+            let ms = d.getTime();
+            if (ms > Date.now()) ms -= 24 * 3600000;
+            return ms;
+        },
+
+        /**
+         * „Chcę mieć mniej więcej takie tempo” — wpisane tempo zamienia się na
+         * paczki, a różnica idzie do bieżącej karty.
+         *
+         * Liczby zadania sumują się po WSZYSTKICH kartach, więc cel liczy się
+         * z sumy, a dopisuje do tej karty, przy której człowiek siedzi. Paczki
+         * dopisane tą drogą są jak każde inne wpisane ręcznie: idą poza
+         * mianownik procentu, bo ich kierunku nikt nie zna.
+         *
+         * @returns {number|null} liczba paczek zadania po zmianie albo null,
+         *   gdy tempa nie da się przeliczyć (za krótki czas pracy, zły tekst).
+         */
+        setRate(task, rate, tabKey, nowMs) {
+            if (!task) return null;
+            const target = this.doneForRate(task, rate, nowMs);
+            if (target === null) return null;
+            const current = this.totals(task).done;
+            const c = this.counters(task.id, tabKey);
+            const delta = target - current;
+            const done = Math.max(0, c.done + delta);
+            const used = done - c.done;
+            this._write(task.id, tabKey, {
+                done,
+                sold: Math.min(c.sold, done),
+                neutral: Math.max(0, Math.min(done, c.neutral + used)),
+            });
+            return this.totals(task).done;
+        },
+
         // ---------------- zapis ----------------
         save() {
             StorageManager.saveTasks();

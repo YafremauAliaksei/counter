@@ -36,6 +36,10 @@ Dla tego projektu SemVer czyta się tak:
 
 - **Linia 8 — bieżące zadanie.** Nazwa procesu i jego własne liczby: `fast_process 12 34.3/h 58% 0:21`. Linie 1, 2 i 7 opisują całą zmianę i tak zostaje; linia 8 mówi o procesie, przy którym człowiek siedzi teraz. Domyślnie wyłączona, jak każda nowa linia. Zatrzymany zegar dokleja `(pauza)`, inaczej stojące tempo wygląda jak zepsuty licznik.
 
+- **Sekcja „Zadania” w panelu — na samej górze, razem z licznikami działów.** To jedyne miejsce otwierane w trakcie pracy: przełączenie procesu, poprawka jego początku i wpisanie liczb po awarii maszyny mieszczą się w dwóch–trzech kliknięciach. Początek ustawia się skrótami (`teraz`, `-2 min`, `-5`, `-15`, `-30`, `początek zmiany`) albo godziną wprost w polu `HH:MM`; godzina późniejsza niż bieżąca znaczy „wczoraj”, bo na nocnej zmianie o 00:40 wpisane `23:30` to pół godziny temu. Historia zmiany pokazuje każde zadanie dwiema liniami — kiedy i ile — z przyciskiem wznowienia przy zadaniach nieaktywnych.
+
+- **Paczki i tempo jako dwa pola opisujące to samo.** Kto pamięta „zrobiłem 259 paczek”, wpisuje paczki; kto pamięta „miałem jakieś 29,5”, wpisuje tempo — drugie pole przelicza się samo. Po wpisaniu tempa panel pokazuje wartość osiągalną przy CAŁYCH paczkach, a nie wpisaną: przy 1:17 pracy „118” to 151 paczek, czyli 117,7 na godzinę. Obiecywanie 118 byłoby kłamstwem o jedną paczkę.
+
 - **`SH.tasks()` i `SH.TaskManager`** — podsumowanie zadań i przełączanie z konsoli.
 
 ### Zmieniono
@@ -45,6 +49,8 @@ Dla tego projektu SemVer czyta się tak:
 - **Granica „tempo jeszcze nie istnieje” stoi w jednym miejscu** (`RATE_MIN_WORKED_MS`, dziesięć sekund) i obowiązuje linię 1, linię 8 oraz przeliczanie tempa na paczki. Wcześniej była wpisana liczbą w jednym miejscu, a przy zadaniach musiałaby powstać drugi raz — i dwie linie mówiłyby co innego o tej samej pierwszej minucie pracy.
 
 - Obliczenie przerwy obiadowej wydzielone z `ShiftManager.getWorkTime()` do `lunchOverlapMs(from, to)`: ten sam rachunek jest potrzebny zadaniom.
+
+- **Liczniki działów przeniesione na górę panelu**, pod sekcję zadań. Wpisanie liczby wprost to sposób na powrót do pracy po awarii maszyny, więc stoi tam, gdzie się go szuka, a nie na końcu panelu pod ustawieniami kolorów.
 
 ### Uwaga o zgodności danych
 
