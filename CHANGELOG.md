@@ -10,6 +10,22 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **Nowe kierunki sortowania i przedrostek `NS-`.** Na listach kodów doszły: `External` (z dowolnym ogonem, np. `External-Repair`) jako niesprzedaż, `PL-Sellable` i `NS-PL-Sellable` jako sprzedaż, `NS-Secondary-Sorting` jako kod czekający na uściślenie. Do tego każda rodzina niesprzedażowa ma teraz wariant z przedrostkiem `NS-`: przedrostek opisuje gabaryt („nie-sort”), a nie kierunek, więc `NS-Stow-Unsellable` jedzie tam samo, co `Stow-Unsellable`. Wyjątkiem są kody magazynowe — zamiast czterech `NS-CRITS-*` jest jeden wspólny `NS-PL-Sellable`, i pilnuje tego osobne sprawdzenie. Linie uściślające zostają bez przedrostka: `Transfer - Sellable` i `FBATransfer` to status przedmiotu, a status jest ten sam dla sortu i dla nie-sortu.
+
+- **Trzeci kierunek: nierozstrzygalny (`AUDIT`, `NS-AUDIT`).** Audyt to nie kierunek, tylko oddanie przedmiotu w cudze ręce: o tym, czy pojedzie na sprzedaż, zdecyduje audytor w ciągu swojej zmiany, godziny po tym, jak przedmiot zniknął z ekranu. Odpowiedź nie wróci na ten ekran nigdy, więc taki przedmiot **wypada z mianownika procentu sprzedaży** — zrobionych paczek bywa przez to więcej niż paczek, z których liczy się procent, i to jest poprawne, a nie błąd rachunku. Liczy je nowy klucz w magazynie (`neutral_`), osobny na kartę, bo linie 2 i 7 sumują po wszystkich kartach naraz. W dzienniku wartości taki wpis zostaje ze znakiem zerowym i kodem — do sumy pieniędzy nie wchodzi.
+
+  Różnica wobec „kodu nie było wcale” jest celowa: przedmiot bez kodu **zostaje** w mianowniku, bo to zwykle przedmiot, który gdzieś pojechał — tylko skrypt tego nie zobaczył. Wyrzucanie go podnosiłoby procent za każde przeoczenie programu, czyli nagradzało własne błędy.
+
+### Zmieniono
+
+- Stanowisko ręczne (`tests/manual/test_page.html`) zna wszystkie nowe kody, razem z wariantami z ogonem (`External-Repair`, `Audit-Damage`) i grupą „poza procentem”.
+
+---
+
 ## 1.2.1 — 2026-09-19
 
 ### Zmieniono

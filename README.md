@@ -152,9 +152,13 @@ liczenia tego samego prędzej czy później się rozjadą.
 Stoi na końcu linii 1, 2 i 7, zawsze jako liczba od 0 do 100 ze znakiem procentu.
 Mówi, ile ze zrobionych przedmiotów pojechało na sprzedaż.
 
-- **mianownikiem jest licznik przedmiotów**, a nie suma sprzedanych
-  i niesprzedanych. Przedmiot, dla którego kod sortowania nie przyszedł, obniża
-  więc procent, zamiast po cichu wypaść z rachunku;
+- **mianownikiem jest licznik przedmiotów pomniejszony o audyty**, a nie suma
+  sprzedanych i niesprzedanych. Przedmiot, dla którego kod sortowania nie
+  przyszedł, obniża więc procent, zamiast po cichu wypaść z rachunku —
+  ale przedmiot oddany do audytu z rachunku **wypada** (patrz niżej);
+- **liczba zrobionych paczek bywa większa niż mianownik procentu** i to jest
+  poprawne, a nie błąd rachunku: audyty są w liczniku sztuk, ale nie
+  w mianowniku procentu;
 - **część ułamkowa jest odrzucana, a nie zaokrąglana**: 1 z 17 to `5%`
   (5,88…%), a nie `6%`. Procent ma nie obiecywać więcej, niż zrobiono;
 - trzy niesprzedaże na początku zmiany dają `0%` — i tak ma być;
@@ -257,10 +261,41 @@ CRITS-POZ1`, `Zeskanuj Liquidation` itd.). Kod może pojawić się przed finalny
 wyzwalaczem, razem z nim albo po nim — dlatego pilnuje go osobny automat,
 a wpis w dzienniku jest uzupełniany wstecz.
 
-Przypadek szczególny to `Secondary-Sorting`: sam z siebie niczego nie rozstrzyga
-i czeka na linię uściślającą. Jeśli uściślenie nie przyszło do początku następnego
-przedmiotu, przedmiot liczy się jako niesprzedaż. Zasada jest niesymetryczna
-celowo: potwierdzenie sprzedaży przychodzi zawsze, niesprzedaży — nie zawsze.
+Kody dzielą się na cztery rodziny:
+
+| Rodzina                 | Kody                                                                                                               | Co znaczy dla procentu     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| **sprzedaż**            | `CRITS-PRG2`, `CRITS-MXP6`, `CRITS-POZ1`, `CRITS-LEJ5`, `PL-Sellable`, `NS-PL-Sellable`                            | licznik ułamka i mianownik |
+| **niesprzedaż**         | `Liquidation`, `FBA-DE-Unsellable`, `Remove`, `WHD`, `Stow-Unsellable`, `Refurb`, `External` — każdy także z `NS-` | tylko mianownik            |
+| **nierozstrzygalne**    | `AUDIT`, `NS-AUDIT`                                                                                                | **poza procentem**         |
+| **czeka na uściślenie** | `Secondary-Sorting`, `NS-Secondary-Sorting`                                                                        | zależnie od uściślenia     |
+
+Trzy zasady wspólne dla wszystkich:
+
+- **ogon kodu jest dowolny.** Na liście stoi początek, więc `External` łapie
+  też `External-Repair`, a `AUDIT` — `Audit-cokolwiek`. Tak samo od dawna działa
+  `FBATransfer-...`;
+- **wielkość liter nie ma znaczenia** (`AUDIT`, `Audit-`, `audit` to jedno
+  i to samo);
+- **przedrostek `NS-` opisuje gabaryt („nie-sort”), a nie kierunek.**
+  `NS-Stow-Unsellable` jedzie tam samo, co `Stow-Unsellable`. Wyjątkiem są kody
+  magazynowe: zamiast czterech `NS-CRITS-*` jest jeden wspólny `NS-PL-Sellable`.
+
+**Audyt nie jest kierunkiem.** Przedmiot idzie do audytora, a ten zdecyduje
+w ciągu swojej zmiany — godziny po tym, jak przedmiot zniknął z ekranu.
+Odpowiedź nie wróci na ten ekran nigdy, więc taki przedmiot wypada z mianownika
+procentu: zrobionych paczek bywa przez to więcej niż paczek, z których liczy się
+procent. Przedmiot, przy którym kod **w ogóle się nie pojawił**, w mianowniku
+zostaje — bo to zwykle przedmiot, który gdzieś pojechał, tylko skrypt tego nie
+zobaczył, a wyrzucanie takich podnosiłoby procent za każde przeoczenie programu.
+
+`Secondary-Sorting` (i `NS-Secondary-Sorting`) sam z siebie niczego nie
+rozstrzyga i czeka na linię uściślającą. Jeśli uściślenie nie przyszło do
+początku następnego przedmiotu, przedmiot liczy się jako niesprzedaż. Zasada
+jest niesymetryczna celowo: potwierdzenie sprzedaży przychodzi zawsze,
+niesprzedaży — nie zawsze. Same linie uściślające są **bez** przedrostka `NS-`:
+`Transfer - Sellable` i `FBATransfer` to status przedmiotu, a status jest ten
+sam dla sortu i dla nie-sortu.
 
 ---
 
@@ -536,7 +571,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 254 sprawdzenia,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 275 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -553,7 +588,7 @@ production/
 │   └── README.md           ← mapa modułów i zasady zależności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 20 plików, 254 sprawdzenia
+├── tests/                  ← 21 plików, 275 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -573,7 +608,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 254 sprawdzenia
+npm test             # 275 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

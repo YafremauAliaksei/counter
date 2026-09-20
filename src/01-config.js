@@ -169,6 +169,15 @@
          * ustala się z samego tekstu strony (patrz Routing) i sieci nie wymaga.
          */
         STORAGE_PREFIX_TAB_SOLD: 'sold_',
+        /**
+         * Licznik przedmiotów, które WYPADAJĄ Z MIANOWNIKA procentu sprzedaży —
+         * osobny klucz na kartę, dokładnie jak dwa liczniki obok.
+         *
+         * Trzyma się go osobno, a nie odejmuje na oko przy rysowaniu, bo linie
+         * 2 i 7 sumują po wszystkich kartach naraz: bez własnego klucza karta
+         * sąsiednia nie miałaby skąd wziąć swojej liczby audytów.
+         */
+        STORAGE_PREFIX_TAB_NEUTRAL: 'neutral_',
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 
@@ -285,16 +294,63 @@
          * Dlatego kierunek śledzi osobny mały automat (moduł Routing), a nie
          * odczyt „w momencie zakończenia”.
          */
-        ROUTE_SELL_CODES: ['CRITS-PRG2', 'CRITS-MXP6', 'CRITS-POZ1', 'CRITS-LEJ5'],
-        ROUTE_UNSELL_CODES: ['Liquidation', 'FBA-DE-Unsellable', 'Remove', 'WHD',
-                             'Stow-Unsellable', 'Refurb'],
         /**
-         * Kod, który sam z siebie niczego nie rozstrzyga: przedmiot może
+         * TRZY LISTY KODÓW I JEDNA ZASADA WSPÓLNA DLA WSZYSTKICH (1.3.0).
+         *
+         * Dopasowanie NIE jest dokładne: wzorzec zaczepia się o słowo
+         * `Zeskanuj` i o początek kodu, a ogona nie domyka. Dzięki temu jedna
+         * pozycja na liście obsługuje całą rodzinę: `External` łapie też
+         * `External-Repair`, `AUDIT` łapie `Audit-cokolwiek`. Wielkość liter
+         * nie ma znaczenia (wzorzec ma flagę `i`, a Routing.canon sprowadza
+         * trafienie do zapisu z listy).
+         *
+         * PRZEDROSTEK `NS-` znaczy „nie-sort” i opisuje GABARYT, a nie kierunek:
+         * `NS-Stow-Unsellable` jedzie tam samo, co `Stow-Unsellable`. Dlatego
+         * każda rodzina niesprzedażowa ma na liście oba warianty. Wyjątkiem są
+         * kody sprzedażowe magazynów (`CRITS-*`) — tam odpowiednikiem dla
+         * nie-sortu jest jeden wspólny `NS-PL-Sellable`, a nie `NS-CRITS-*`.
+         */
+        ROUTE_SELL_CODES: ['CRITS-PRG2', 'CRITS-MXP6', 'CRITS-POZ1', 'CRITS-LEJ5',
+                           'PL-Sellable', 'NS-PL-Sellable'],
+        ROUTE_UNSELL_CODES: ['Liquidation', 'NS-Liquidation',
+                             'FBA-DE-Unsellable', 'NS-FBA-DE-Unsellable',
+                             'Remove', 'NS-Remove',
+                             'WHD', 'NS-WHD',
+                             'Stow-Unsellable', 'NS-Stow-Unsellable',
+                             'Refurb', 'NS-Refurb',
+                             'External', 'NS-External'],
+        /**
+         * KODY, KTÓRYCH NIE DA SIĘ ROZSTRZYGNĄĆ — NIGDY (1.3.0).
+         *
+         * Audyt to nie kierunek, tylko oddanie przedmiotu w cudze ręce:
+         * o tym, czy pojedzie na sprzedaż, zadecyduje audytor w ciągu swojej
+         * zmiany, czyli godziny po tym, jak przedmiot zniknął z ekranu. Czekanie
+         * na tę odpowiedź nie ma sensu, bo nie przyjdzie.
+         *
+         * Skutek dla procentu sprzedaży: taki przedmiot WYPADA Z MIANOWNIKA.
+         * Zrobionych paczek bywa więc więcej niż paczek, z których liczy się
+         * procent — i to jest poprawne, a nie błąd rachunku. Różnica między
+         * audytem a „kodu nie było wcale” jest celowa: brak kodu zostaje
+         * w mianowniku (patrz komentarz przy Routing.countDirection).
+         *
+         * `NS-AUDIT` na dzień dodania listy nie był widziany w pracy ani razu.
+         * Stoi tu, bo przedrostek `NS-` może wyjść przy każdym kodzie, a linia
+         * na liście kosztuje mniej niż zgadywanie po roku, czemu procent
+         * odskoczył.
+         */
+        ROUTE_NEUTRAL_CODES: ['AUDIT', 'NS-AUDIT'],
+        /**
+         * Kody, które same z siebie niczego nie rozstrzygają: przedmiot może
          * pojechać i na sprzedaż, i do utylizacji. Kierunek staje się znany
          * z następnej linii — ROUTE_CONFIRM_SELL albo ROUTE_CONFIRM_UNSELL.
          * Do tego czasu przedmiot wisi nieokreślony.
          */
-        ROUTE_AMBIGUOUS_CODE: 'Secondary-Sorting',
+        ROUTE_AMBIGUOUS_CODES: ['Secondary-Sorting', 'NS-Secondary-Sorting'],
+        // Linie uściślające zostają BEZ przedrostka `NS-` i to nie jest
+        // przeoczenie: `Transfer - Sellable` i `FBATransfer` to STATUS
+        // przedmiotu, a status jest ten sam dla sortu i dla nie-sortu.
+        // Przedrostek opisuje gabaryt, więc pojawia się przy kodzie kierunku
+        // (NS-Secondary-Sorting), a nie przy potwierdzeniu.
         ROUTE_CONFIRM_SELL: /Przedmiot\s+wys[łl]ano\s+do\s+Transfer\s*[-–—]\s*Sellable/gi,
         // Ogon nazwy bywa różny („FBATransfer-...”), więc czepiamy się początku
         // słowa, a nie dokładnego dopasowania.

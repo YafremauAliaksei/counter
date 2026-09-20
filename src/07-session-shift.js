@@ -35,6 +35,7 @@
             const prefixes = [
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
             ];
             Object.keys(localStorage)
                 .filter(k => prefixes.some(p => k.startsWith(p)))
@@ -45,6 +46,7 @@
 
             Object.keys(store.tabCounters).forEach(k => { store.tabCounters[k] = 0; });
             Object.keys(store.tabSold).forEach(k => { store.tabSold[k] = 0; });
+            Object.keys(store.tabNeutral).forEach(k => { store.tabNeutral[k] = 0; });
 
             // 8.4.0: dziennik wartości żyje dokładnie tyle samo, co liczniki —
             // to ta sama ewidencja, tylko w pieniądzach. Podsumowania odchodzącej

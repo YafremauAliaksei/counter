@@ -34,7 +34,7 @@
             // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
             // timera, czyli do sekundy — widać by to było jako liczbę, która
             // „nie nadąża” za ekranem.
-            onStorePaths(['tabCounters', 'tabSold', 'sessionConfig', 'userConfig', 'localTabConfig'],
+            onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());
@@ -163,22 +163,29 @@
              * PROCENT SPRZEDAŻY (koniec każdej z linii 1, 2 i 7).
              *
              * Liczba od 0 do 100 ze znakiem procentu, zawsze na samym końcu linii.
-             * Mianownikiem jest licznik przedmiotów, a nie suma sprzedanych
-             * i niesprzedanych — dzięki temu przedmiot o nieustalonym kierunku
-             * obniża procent zamiast znikać z rachunku, a trzy niesprzedaże na
-             * początku zmiany dają uczciwe 0%, a nie puste miejsce.
+             * Mianownikiem jest licznik przedmiotów MINUS przedmioty
+             * nierozstrzygalne (audyt) — a nie suma sprzedanych i niesprzedanych.
+             * Dzięki temu przedmiot, przy którym kod się nie pojawił, obniża
+             * procent zamiast znikać z rachunku (trzy niesprzedaże na początku
+             * zmiany dają uczciwe 0%, a nie puste miejsce), a przedmiot oddany
+             * do audytu z rachunku wypada, bo jego kierunek rozstrzygnie się
+             * godziny później i nie na tym ekranie.
+             *
+             * Stąd druga liczba w nawiasie w linii 1 i liczba sztuk w linii 7
+             * mogą być WIĘKSZE niż mianownik procentu. To jest poprawne.
              *
              * Tekstu nie ma w słownikach celowo: to liczba i znak, identyczne we
              * wszystkich trzech językach.
              */
             const cSold = store.tabSold[cid] || 0;
+            const cRated = cCount - (store.tabNeutral[cid] || 0);
 
             // Linia 1: bieżąca zakładka
             this.lines.line1_currentTab.textContent = I18n.get('statsLine1_current', {
                 tabName: I18n.getTabName(cid), itemsPerHour: getIph(cCount), statsPerHourUnit: I18n.get('statsPerHourUnit'),
                 count: cCount, completedUnit: I18n.get('completedUnit'), inUnit: I18n.get('inUnit'),
                 workTimeFormatted: Utils.formatDuration(workedMs)
-            }) + ` ${Utils.percentFloor(cSold, cCount)}%`;
+            }) + ` ${Utils.percentFloor(cSold, cRated)}%`;
 
             /**
              * Linia 2: podsumowanie globalne.
@@ -196,6 +203,10 @@
             this.lines.line2_globalSummary.innerHTML = '';
             let gTotal = 0;
             let gSold = 0;
+            // Mianownik procentu zbiera się w tej samej pętli, co suma sztuk:
+            // liczby muszą pochodzić z jednego przebiegu, inaczej rozjadą się
+            // przy karcie, która akurat doszła albo odpadła.
+            let gRated = 0;
             const allKeys =[...Object.keys(CONFIG.KNOWN_TAB_TYPES), ...Object.keys(store.userConfig.customTabSettings)];
             const fragments =[];
             const line2Cfg = store.localTabConfig.linesConfig.line2_globalSummary;
@@ -209,6 +220,7 @@
                 if (included && active) {
                     gTotal += count;
                     gSold += store.tabSold[k] || 0;
+                    gRated += count - (store.tabNeutral[k] || 0);
                     if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),
@@ -240,7 +252,7 @@
                 this.lines.line2_globalSummary.appendChild(document.createTextNode(
                     I18n.get('statsLine2_global_total_format', {
                         totalItemsPerHour: getIph(gTotal), statsPerHourUnit: I18n.get('statsPerHourUnit'), totalCount: gTotal
-                    }) + ` ${Utils.percentFloor(gSold, gTotal)}%`
+                    }) + ` ${Utils.percentFloor(gSold, gRated)}%`
                 ));
             }
 
@@ -328,6 +340,6 @@
              * --sh-line7_compact-*.
              */
             this.lines.line7_compact.textContent =
-                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gTotal)}%`;
+                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gRated)}%`;
         }
     };

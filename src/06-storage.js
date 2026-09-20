@@ -80,6 +80,10 @@
         saveSold(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD + tabKey), String(count));
         },
+        /** Licznik przedmiotów wyjętych z mianownika procentu (audyt). */
+        saveNeutral(tabKey, count) {
+            this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL + tabKey), String(count));
+        },
         removeCounter(tabKey) {
             const key = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey);
             delete this._lastWritten[key];
@@ -142,6 +146,7 @@
 
                 const prefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
                 const soldPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD);
+                const neutralPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL);
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
@@ -150,6 +155,9 @@
                     } else if (key && key.startsWith(soldPrefix)) {
                         const tabKey = key.substring(soldPrefix.length);
                         store.tabSold[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                    } else if (key && key.startsWith(neutralPrefix)) {
+                        const tabKey = key.substring(neutralPrefix.length);
+                        store.tabNeutral[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
                     }
                 }
             } catch (e) { Utils.error("Storage load failed", e); }
@@ -184,6 +192,12 @@
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
                     const val = parseInt(e.newValue, 10) || 0;
                     if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
+                } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL)) {
+                    // Audyty sąsiedniej karty — z tego samego powodu: bez nich
+                    // linie 2 i 7 policzyłyby procent z za dużego mianownika.
+                    const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL.length);
+                    const val = parseInt(e.newValue, 10) || 0;
+                    if (store.tabNeutral[tabKey] !== val) store.tabNeutral[tabKey] = val;
                 } else if (!store.uiFlags.isSettingsPanelVisible) {
                     this.debouncedLoad();
                 }

@@ -286,6 +286,15 @@ const SCRIPT_LOGS_ENABLED = false;
          * ustala się z samego tekstu strony (patrz Routing) i sieci nie wymaga.
          */
         STORAGE_PREFIX_TAB_SOLD: 'sold_',
+        /**
+         * Licznik przedmiotów, które WYPADAJĄ Z MIANOWNIKA procentu sprzedaży —
+         * osobny klucz na kartę, dokładnie jak dwa liczniki obok.
+         *
+         * Trzyma się go osobno, a nie odejmuje na oko przy rysowaniu, bo linie
+         * 2 i 7 sumują po wszystkich kartach naraz: bez własnego klucza karta
+         * sąsiednia nie miałaby skąd wziąć swojej liczby audytów.
+         */
+        STORAGE_PREFIX_TAB_NEUTRAL: 'neutral_',
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 
@@ -402,16 +411,63 @@ const SCRIPT_LOGS_ENABLED = false;
          * Dlatego kierunek śledzi osobny mały automat (moduł Routing), a nie
          * odczyt „w momencie zakończenia”.
          */
-        ROUTE_SELL_CODES: ['CRITS-PRG2', 'CRITS-MXP6', 'CRITS-POZ1', 'CRITS-LEJ5'],
-        ROUTE_UNSELL_CODES: ['Liquidation', 'FBA-DE-Unsellable', 'Remove', 'WHD',
-                             'Stow-Unsellable', 'Refurb'],
         /**
-         * Kod, który sam z siebie niczego nie rozstrzyga: przedmiot może
+         * TRZY LISTY KODÓW I JEDNA ZASADA WSPÓLNA DLA WSZYSTKICH (1.3.0).
+         *
+         * Dopasowanie NIE jest dokładne: wzorzec zaczepia się o słowo
+         * `Zeskanuj` i o początek kodu, a ogona nie domyka. Dzięki temu jedna
+         * pozycja na liście obsługuje całą rodzinę: `External` łapie też
+         * `External-Repair`, `AUDIT` łapie `Audit-cokolwiek`. Wielkość liter
+         * nie ma znaczenia (wzorzec ma flagę `i`, a Routing.canon sprowadza
+         * trafienie do zapisu z listy).
+         *
+         * PRZEDROSTEK `NS-` znaczy „nie-sort” i opisuje GABARYT, a nie kierunek:
+         * `NS-Stow-Unsellable` jedzie tam samo, co `Stow-Unsellable`. Dlatego
+         * każda rodzina niesprzedażowa ma na liście oba warianty. Wyjątkiem są
+         * kody sprzedażowe magazynów (`CRITS-*`) — tam odpowiednikiem dla
+         * nie-sortu jest jeden wspólny `NS-PL-Sellable`, a nie `NS-CRITS-*`.
+         */
+        ROUTE_SELL_CODES: ['CRITS-PRG2', 'CRITS-MXP6', 'CRITS-POZ1', 'CRITS-LEJ5',
+                           'PL-Sellable', 'NS-PL-Sellable'],
+        ROUTE_UNSELL_CODES: ['Liquidation', 'NS-Liquidation',
+                             'FBA-DE-Unsellable', 'NS-FBA-DE-Unsellable',
+                             'Remove', 'NS-Remove',
+                             'WHD', 'NS-WHD',
+                             'Stow-Unsellable', 'NS-Stow-Unsellable',
+                             'Refurb', 'NS-Refurb',
+                             'External', 'NS-External'],
+        /**
+         * KODY, KTÓRYCH NIE DA SIĘ ROZSTRZYGNĄĆ — NIGDY (1.3.0).
+         *
+         * Audyt to nie kierunek, tylko oddanie przedmiotu w cudze ręce:
+         * o tym, czy pojedzie na sprzedaż, zadecyduje audytor w ciągu swojej
+         * zmiany, czyli godziny po tym, jak przedmiot zniknął z ekranu. Czekanie
+         * na tę odpowiedź nie ma sensu, bo nie przyjdzie.
+         *
+         * Skutek dla procentu sprzedaży: taki przedmiot WYPADA Z MIANOWNIKA.
+         * Zrobionych paczek bywa więc więcej niż paczek, z których liczy się
+         * procent — i to jest poprawne, a nie błąd rachunku. Różnica między
+         * audytem a „kodu nie było wcale” jest celowa: brak kodu zostaje
+         * w mianowniku (patrz komentarz przy Routing.countDirection).
+         *
+         * `NS-AUDIT` na dzień dodania listy nie był widziany w pracy ani razu.
+         * Stoi tu, bo przedrostek `NS-` może wyjść przy każdym kodzie, a linia
+         * na liście kosztuje mniej niż zgadywanie po roku, czemu procent
+         * odskoczył.
+         */
+        ROUTE_NEUTRAL_CODES: ['AUDIT', 'NS-AUDIT'],
+        /**
+         * Kody, które same z siebie niczego nie rozstrzygają: przedmiot może
          * pojechać i na sprzedaż, i do utylizacji. Kierunek staje się znany
          * z następnej linii — ROUTE_CONFIRM_SELL albo ROUTE_CONFIRM_UNSELL.
          * Do tego czasu przedmiot wisi nieokreślony.
          */
-        ROUTE_AMBIGUOUS_CODE: 'Secondary-Sorting',
+        ROUTE_AMBIGUOUS_CODES: ['Secondary-Sorting', 'NS-Secondary-Sorting'],
+        // Linie uściślające zostają BEZ przedrostka `NS-` i to nie jest
+        // przeoczenie: `Transfer - Sellable` i `FBATransfer` to STATUS
+        // przedmiotu, a status jest ten sam dla sortu i dla nie-sortu.
+        // Przedrostek opisuje gabaryt, więc pojawia się przy kodzie kierunku
+        // (NS-Secondary-Sorting), a nie przy potwierdzeniu.
         ROUTE_CONFIRM_SELL: /Przedmiot\s+wys[łl]ano\s+do\s+Transfer\s*[-–—]\s*Sellable/gi,
         // Ogon nazwy bywa różny („FBATransfer-...”), więc czepiamy się początku
         // słowa, a nie dokładnego dopasowania.
@@ -1424,6 +1480,8 @@ const SCRIPT_LOGS_ENABLED = false;
         // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
         // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
         tabSold: {},
+        // Przedmioty wyjęte z mianownika procentu (audyt) — patrz Routing.
+        tabNeutral: {},
         // 8.3.0: usunięte pole defaultLocalTabConfig — nikt go nigdy nie czytał,
         // a w całości dublowało się w localStorage przy każdym zapisie.
         // 1.2.0: wartości przeniesione do DEFAULT_USER_CONFIG, bo kod konfiguracji
@@ -1569,6 +1627,10 @@ const SCRIPT_LOGS_ENABLED = false;
         saveSold(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD + tabKey), String(count));
         },
+        /** Licznik przedmiotów wyjętych z mianownika procentu (audyt). */
+        saveNeutral(tabKey, count) {
+            this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL + tabKey), String(count));
+        },
         removeCounter(tabKey) {
             const key = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey);
             delete this._lastWritten[key];
@@ -1631,6 +1693,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
                 const prefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
                 const soldPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD);
+                const neutralPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL);
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
@@ -1639,6 +1702,9 @@ const SCRIPT_LOGS_ENABLED = false;
                     } else if (key && key.startsWith(soldPrefix)) {
                         const tabKey = key.substring(soldPrefix.length);
                         store.tabSold[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                    } else if (key && key.startsWith(neutralPrefix)) {
+                        const tabKey = key.substring(neutralPrefix.length);
+                        store.tabNeutral[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
                     }
                 }
             } catch (e) { Utils.error("Storage load failed", e); }
@@ -1673,6 +1739,12 @@ const SCRIPT_LOGS_ENABLED = false;
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
                     const val = parseInt(e.newValue, 10) || 0;
                     if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
+                } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL)) {
+                    // Audyty sąsiedniej karty — z tego samego powodu: bez nich
+                    // linie 2 i 7 policzyłyby procent z za dużego mianownika.
+                    const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL.length);
+                    const val = parseInt(e.newValue, 10) || 0;
+                    if (store.tabNeutral[tabKey] !== val) store.tabNeutral[tabKey] = val;
                 } else if (!store.uiFlags.isSettingsPanelVisible) {
                     this.debouncedLoad();
                 }
@@ -1720,6 +1792,7 @@ const SCRIPT_LOGS_ENABLED = false;
             const prefixes = [
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
+                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
             ];
             Object.keys(localStorage)
                 .filter(k => prefixes.some(p => k.startsWith(p)))
@@ -1730,6 +1803,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
             Object.keys(store.tabCounters).forEach(k => { store.tabCounters[k] = 0; });
             Object.keys(store.tabSold).forEach(k => { store.tabSold[k] = 0; });
+            Object.keys(store.tabNeutral).forEach(k => { store.tabNeutral[k] = 0; });
 
             // 8.4.0: dziennik wartości żyje dokładnie tyle samo, co liczniki —
             // to ta sama ewidencja, tylko w pieniądzach. Podsumowania odchodzącej
@@ -2065,7 +2139,7 @@ const SCRIPT_LOGS_ENABLED = false;
             // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
             // timera, czyli do sekundy — widać by to było jako liczbę, która
             // „nie nadąża” za ekranem.
-            onStorePaths(['tabCounters', 'tabSold', 'sessionConfig', 'userConfig', 'localTabConfig'],
+            onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());
@@ -2194,22 +2268,29 @@ const SCRIPT_LOGS_ENABLED = false;
              * PROCENT SPRZEDAŻY (koniec każdej z linii 1, 2 i 7).
              *
              * Liczba od 0 do 100 ze znakiem procentu, zawsze na samym końcu linii.
-             * Mianownikiem jest licznik przedmiotów, a nie suma sprzedanych
-             * i niesprzedanych — dzięki temu przedmiot o nieustalonym kierunku
-             * obniża procent zamiast znikać z rachunku, a trzy niesprzedaże na
-             * początku zmiany dają uczciwe 0%, a nie puste miejsce.
+             * Mianownikiem jest licznik przedmiotów MINUS przedmioty
+             * nierozstrzygalne (audyt) — a nie suma sprzedanych i niesprzedanych.
+             * Dzięki temu przedmiot, przy którym kod się nie pojawił, obniża
+             * procent zamiast znikać z rachunku (trzy niesprzedaże na początku
+             * zmiany dają uczciwe 0%, a nie puste miejsce), a przedmiot oddany
+             * do audytu z rachunku wypada, bo jego kierunek rozstrzygnie się
+             * godziny później i nie na tym ekranie.
+             *
+             * Stąd druga liczba w nawiasie w linii 1 i liczba sztuk w linii 7
+             * mogą być WIĘKSZE niż mianownik procentu. To jest poprawne.
              *
              * Tekstu nie ma w słownikach celowo: to liczba i znak, identyczne we
              * wszystkich trzech językach.
              */
             const cSold = store.tabSold[cid] || 0;
+            const cRated = cCount - (store.tabNeutral[cid] || 0);
 
             // Linia 1: bieżąca zakładka
             this.lines.line1_currentTab.textContent = I18n.get('statsLine1_current', {
                 tabName: I18n.getTabName(cid), itemsPerHour: getIph(cCount), statsPerHourUnit: I18n.get('statsPerHourUnit'),
                 count: cCount, completedUnit: I18n.get('completedUnit'), inUnit: I18n.get('inUnit'),
                 workTimeFormatted: Utils.formatDuration(workedMs)
-            }) + ` ${Utils.percentFloor(cSold, cCount)}%`;
+            }) + ` ${Utils.percentFloor(cSold, cRated)}%`;
 
             /**
              * Linia 2: podsumowanie globalne.
@@ -2227,6 +2308,10 @@ const SCRIPT_LOGS_ENABLED = false;
             this.lines.line2_globalSummary.innerHTML = '';
             let gTotal = 0;
             let gSold = 0;
+            // Mianownik procentu zbiera się w tej samej pętli, co suma sztuk:
+            // liczby muszą pochodzić z jednego przebiegu, inaczej rozjadą się
+            // przy karcie, która akurat doszła albo odpadła.
+            let gRated = 0;
             const allKeys =[...Object.keys(CONFIG.KNOWN_TAB_TYPES), ...Object.keys(store.userConfig.customTabSettings)];
             const fragments =[];
             const line2Cfg = store.localTabConfig.linesConfig.line2_globalSummary;
@@ -2240,6 +2325,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 if (included && active) {
                     gTotal += count;
                     gSold += store.tabSold[k] || 0;
+                    gRated += count - (store.tabNeutral[k] || 0);
                     if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),
@@ -2271,7 +2357,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.lines.line2_globalSummary.appendChild(document.createTextNode(
                     I18n.get('statsLine2_global_total_format', {
                         totalItemsPerHour: getIph(gTotal), statsPerHourUnit: I18n.get('statsPerHourUnit'), totalCount: gTotal
-                    }) + ` ${Utils.percentFloor(gSold, gTotal)}%`
+                    }) + ` ${Utils.percentFloor(gSold, gRated)}%`
                 ));
             }
 
@@ -2359,7 +2445,7 @@ const SCRIPT_LOGS_ENABLED = false;
              * --sh-line7_compact-*.
              */
             this.lines.line7_compact.textContent =
-                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gTotal)}%`;
+                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gRated)}%`;
         }
     };
 
@@ -3741,8 +3827,11 @@ const SCRIPT_LOGS_ENABLED = false;
             e.route = code || null;
             e.updated = Date.now();
             this.save();
+            // Trzeci kierunek (audyt) niesie znak 0: wpis zostaje w dzienniku
+            // z kodem, ale do sumy pieniędzy nie wchodzi — tak samo, jak
+            // przedmiot, przy którym kod się nie pojawił.
             Utils.log(`[DZIENNIK] ${e.asin || 'bez ASIN'} (${e.dept}): `
-                    + `${direction === 'sell' ? 'SPRZEDAŻ +' : 'NIESPRZEDAŻ -'}`
+                    + `${direction === 'sell' ? 'SPRZEDAŻ +' : direction === 'unsell' ? 'NIESPRZEDAŻ -' : 'NIEROZSTRZYGALNY '}`
                     + (e.price != null ? `${e.price} ${e.currency}` : 'bez ceny')
                     + (code ? ` (${code})` : ''));
             return true;
@@ -4082,7 +4171,24 @@ const SCRIPT_LOGS_ENABLED = false;
 
         codes() {
             return [...CONFIG.ROUTE_SELL_CODES, ...CONFIG.ROUTE_UNSELL_CODES,
-                    CONFIG.ROUTE_AMBIGUOUS_CODE];
+                    ...CONFIG.ROUTE_NEUTRAL_CODES, ...CONFIG.ROUTE_AMBIGUOUS_CODES];
+        },
+
+        /**
+         * Kierunek dla kodu, który już trafił w listę.
+         *
+         * Kolejność sprawdzeń jest kolejnością pewności: sprzedaż i niesprzedaż
+         * rozstrzygają od razu, `neutral` nie rozstrzygnie się nigdy,
+         * `ambiguous` rozstrzygnie się następną linią.
+         *
+         * @returns {'sell'|'unsell'|'neutral'|'ambiguous'|null}
+         */
+        kindOf(code) {
+            if (CONFIG.ROUTE_SELL_CODES.includes(code)) return 'sell';
+            if (CONFIG.ROUTE_UNSELL_CODES.includes(code)) return 'unsell';
+            if (CONFIG.ROUTE_NEUTRAL_CODES.includes(code)) return 'neutral';
+            if (CONFIG.ROUTE_AMBIGUOUS_CODES.includes(code)) return 'ambiguous';
+            return null;
         },
 
         codeRegex() {
@@ -4158,7 +4264,7 @@ const SCRIPT_LOGS_ENABLED = false;
             if (!a || !a.pending) return;
             a.pending = false;
             a.direction = 'unsell';
-            Utils.log(`[KIERUNEK] ${CONFIG.ROUTE_AMBIGUOUS_CODE} bez uściślenia -> NIESPRZEDAŻ (${reason})`);
+            Utils.log(`[KIERUNEK] ${a.code || 'kod niejednoznaczny'} bez uściślenia -> NIESPRZEDAŻ (${reason})`);
             this.applyTo(a);
         },
 
@@ -4184,19 +4290,30 @@ const SCRIPT_LOGS_ENABLED = false;
         onCode(code) {
             if (!this.state) this.startItem('kod przyszedł przed początkiem');
             this.state.code = code;
-            if (code === CONFIG.ROUTE_AMBIGUOUS_CODE) {
+            const kind = this.kindOf(code);
+            if (kind === 'ambiguous') {
                 // Sam z siebie niczego nie rozstrzyga — czekamy na linię uściślającą.
                 this.state.pending = true;
                 this.state.direction = null;
                 this._ambiguous = this.state;
                 Utils.log(`[KIERUNEK] ${code} — czekam na uściślenie`);
-            } else {
-                this.state.pending = false;
-                if (this._ambiguous === this.state) this._ambiguous = null;
-                this.state.direction = CONFIG.ROUTE_SELL_CODES.includes(code) ? 'sell' : 'unsell';
-                Utils.log(`[KIERUNEK] ${code} -> ${this.state.direction === 'sell' ? 'SPRZEDAŻ' : 'NIESPRZEDAŻ'}`);
-                this.apply();
+                return;
             }
+            this.state.pending = false;
+            if (this._ambiguous === this.state) this._ambiguous = null;
+            // `neutral` jest pełnoprawnym kierunkiem, a nie brakiem kierunku:
+            // wiemy o przedmiocie wszystko, co da się wiedzieć, i właśnie
+            // dlatego wypada on z mianownika procentu.
+            this.state.direction = kind;
+            Utils.log(`[KIERUNEK] ${code} -> ${this.directionName(kind)}`);
+            this.apply();
+        },
+
+        /** Nazwa kierunku do dziennika w konsoli. */
+        directionName(dir) {
+            return dir === 'sell' ? 'SPRZEDAŻ'
+                 : dir === 'unsell' ? 'NIESPRZEDAŻ'
+                 : 'NIEROZSTRZYGALNY (poza procentem)';
         },
 
         onConfirm(dir) {
@@ -4214,8 +4331,8 @@ const SCRIPT_LOGS_ENABLED = false;
             target.pending = false;
             target.direction = dir;
             if (this._ambiguous === target) this._ambiguous = null;
-            Utils.log(`[KIERUNEK] uściślono: ${CONFIG.ROUTE_AMBIGUOUS_CODE} -> `
-                    + (dir === 'sell' ? 'SPRZEDAŻ' : 'NIESPRZEDAŻ'));
+            Utils.log(`[KIERUNEK] uściślono: ${target.code || 'kod niejednoznaczny'} -> `
+                    + this.directionName(dir));
             this.applyTo(target);
         },
 
@@ -4235,7 +4352,7 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         /**
-         * PROCENT SPRZEDAŻY — zliczenie przedmiotu, który pojechał na sprzedaż.
+         * PROCENT SPRZEDAŻY — dwa liczniki, licznik ułamka i odjęcie z mianownika.
          *
          * Liczy się DOKŁADNIE RAZ na przedmiot i dokładnie wtedy, gdy znane są oba
          * warunki: przedmiot zaliczony przez licznik i kierunek ustalony. Oba
@@ -4243,25 +4360,40 @@ const SCRIPT_LOGS_ENABLED = false;
          * każdym z nich — bez znacznika `counted` ten sam przedmiot policzyłby
          * się dwa razy.
          *
-         * Liczony jest WYŁĄCZNIE mianownik dodatni: mianownikiem procentu jest
-         * zwykły licznik przedmiotów, więc niesprzedaż i kierunek nieustalony nie
-         * wymagają własnego klucza — wchodzą do sumy przez sam licznik. Dzięki
-         * temu „trzy pierwsze przedmioty na niesprzedaż” daje 0%, a nie brak
-         * liczby, o co właśnie chodzi na początku zmiany.
+         * MIANOWNIK = zwykły licznik przedmiotów MINUS przedmioty nierozstrzygalne
+         * (1.3.0). Stąd drugi klucz: `tabNeutral`. Skutek widoczny gołym okiem —
+         * zrobionych paczek bywa więcej niż paczek, z których liczy się procent.
+         *
+         * RÓŻNICA MIĘDZY AUDYTEM A BRAKIEM KODU JEST CELOWA:
+         *   - audyt (`ROUTE_NEUTRAL_CODES`) wypada z mianownika, bo odpowiedź
+         *     „sprzedaż czy nie” zapadnie godziny później, u kogoś innego, i nie
+         *     wróci na ten ekran nigdy;
+         *   - kod, który się nie pojawił, ZOSTAJE w mianowniku, bo to zwykle
+         *     przedmiot, który jednak gdzieś pojechał — tylko my tego nie
+         *     zobaczyliśmy. Wyrzucenie go podnosiłoby procent za każdym razem,
+         *     gdy skrypt coś przeoczy, czyli nagradzałoby własne błędy.
+         *
+         * Dzięki temu „trzy pierwsze przedmioty na niesprzedaż” nadal daje
+         * uczciwe 0%, a nie brak liczby.
          *
          * Ręczna poprawka licznika (skróty klawiszowe, przyciski) tu nie wchodzi
          * — tak samo, jak nie wchodzi do dziennika wartości. Poprawia się zwykle
          * to, czego program nie zobaczył, a kierunku takiego przedmiotu nikt nie
          * zna.
          */
-        countSold(st) {
+        countDirection(st) {
             if (!st || st.counted || !st.completed || !st.direction) return;
             st.counted = true;
-            if (st.direction !== 'sell') return;
             const cid = store.currentTabInstanceId;
-            const next = (store.tabSold[cid] || 0) + 1;
-            store.tabSold[cid] = next;
-            StorageManager.saveSold(cid, next);
+            if (st.direction === 'sell') {
+                const next = (store.tabSold[cid] || 0) + 1;
+                store.tabSold[cid] = next;
+                StorageManager.saveSold(cid, next);
+            } else if (st.direction === 'neutral') {
+                const next = (store.tabNeutral[cid] || 0) + 1;
+                store.tabNeutral[cid] = next;
+                StorageManager.saveNeutral(cid, next);
+            }
         },
 
         /**
@@ -4273,7 +4405,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * ma działać i wtedy.
          */
         applyTo(st) {
-            this.countSold(st);
+            this.countDirection(st);
             if (!st || !st.completed || !st.entryId || !st.direction) return;
             ValueLog.setDirection(st.entryId, st.direction, st.code);
         },
@@ -4284,7 +4416,7 @@ const SCRIPT_LOGS_ENABLED = false;
             const amb = this._ambiguous;
             return { kod: st.code || '—', kierunek: st.direction || 'nieokreślony',
                      'czeka na uściślenie': !!st.pending, 'przedmiot zaliczony': !!st.completed,
-                     'wisi Secondary-Sorting': amb ? (amb === st ? 'bieżący przedmiot' : 'poprzedni przedmiot') : 'nie' };
+                     'wisi kod niejednoznaczny': amb ? (amb === st ? 'bieżący przedmiot' : 'poprzedni przedmiot') : 'nie' };
         },
     };
 
