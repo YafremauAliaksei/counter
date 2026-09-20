@@ -52,6 +52,11 @@ src/
   99-footer.js       zakomentowana ściąga po ustawieniach
 ```
 
+Zanim zaczniesz czytać moduły: [`docs/przeplyw.md`](docs/przeplyw.md) pokazuje
+cztery przepływy — życie przedmiotu, zmiany w licznikach, drogę do sieci
+i kolejność kroków przy uruchomieniu. Pod każdym diagramem stoi lista miejsc,
+w których to się psuje, i testów, które tego pilnują.
+
 Wszystko skleja się **w jeden wspólny scope** (jedna IIFE), w kolejności
 zadeklarowanej w [`build.manifest.json`](build.manifest.json). Manifest jest
 zarazem mapą projektu: każdy moduł ma tam opis w jednym zdaniu.
@@ -199,12 +204,12 @@ dokładnie.
 
 ## 4. Bramki, które muszą być zielone
 
-| Bramka    | Polecenie              | Co łapie                                                  |
-| --------- | ---------------------- | --------------------------------------------------------- |
-| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 335 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
-| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
-| Format    | `npm run format:check` | rozjazdy w stylu                                          |
+| Bramka    | Polecenie              | Co łapie                                                    |
+| --------- | ---------------------- | ----------------------------------------------------------- |
+| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                          |
+| Testy     | `npm test`             | 343 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
+| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                   |
+| Format    | `npm run format:check` | rozjazdy w stylu                                            |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 
