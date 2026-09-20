@@ -131,15 +131,31 @@
         <option value="CRITS-MXP6">CR&#8203;ITS-MXP6</option>
         <option value="CRITS-POZ1">CR&#8203;ITS-POZ1</option>
         <option value="CRITS-LEJ5">CR&#8203;ITS-LEJ5</option>
+        <option value="PL-Sellable">PL&#8203;-Sellable</option>
+        <option value="NS-PL-Sellable">NS&#8203;-PL-Sellable</option>
         </optgroup><optgroup label="niesprzedaż">
         <option value="Liquidation">Li&#8203;quidation</option>
+        <option value="NS-Liquidation">NS&#8203;-Liquidation</option>
         <option value="FBA-DE-Unsellable">FB&#8203;A-DE-Unsellable</option>
+        <option value="NS-FBA-DE-Unsellable">NS&#8203;-FBA-DE-Unsellable</option>
         <option value="Remove">Re&#8203;move</option>
+        <option value="NS-Remove">NS&#8203;-Remove</option>
         <option value="WHD">WH&#8203;D</option>
+        <option value="NS-WHD">NS&#8203;-WHD</option>
         <option value="Stow-Unsellable">St&#8203;ow-Unsellable</option>
+        <option value="NS-Stow-Unsellable">NS&#8203;-Stow-Unsellable</option>
         <option value="Refurb">Re&#8203;furb</option>
+        <option value="NS-Refurb">NS&#8203;-Refurb</option>
+        <option value="External">Ex&#8203;ternal</option>
+        <option value="External-Repair">Ex&#8203;ternal-Repair (z ogonem)</option>
+        <option value="NS-External">NS&#8203;-External</option>
+        </optgroup><optgroup label="poza procentem (audyt)">
+        <option value="AUDIT">AU&#8203;DIT</option>
+        <option value="Audit-Damage">Au&#8203;dit-Damage (z ogonem)</option>
+        <option value="NS-AUDIT">NS&#8203;-AUDIT</option>
         </optgroup><optgroup label="niejednoznaczny">
         <option value="Secondary-Sorting">Se&#8203;condary-Sorting</option>
+        <option value="NS-Secondary-Sorting">NS&#8203;-Secondary-Sorting</option>
         </optgroup>
         </select>
       </label>
@@ -261,7 +277,7 @@ function routeEmit(){
   // między przedmiotami, a cały kod skrypt czytałby w nim jako prawdziwe zadziałanie.
   logLine('KOD SORTOWANIA: ' + code.slice(0,2) + '​' + code.slice(2), 't-asin');
   const conf = $('routeConfirm').value;
-  if (code === 'Secondary-Sorting' && conf){
+  if (code.indexOf('Secondary-Sorting') >= 0 && conf){
     // Przy pojawieniu się „po finale” kolejnej klatki wewnątrz przedmiotu już nie
     // będzie, więc uściślenie pokazujemy od razu.
     if ($('routeWhen').value === 'after') routeConfirmEmit(conf);

@@ -323,8 +323,11 @@
             e.route = code || null;
             e.updated = Date.now();
             this.save();
+            // Trzeci kierunek (audyt) niesie znak 0: wpis zostaje w dzienniku
+            // z kodem, ale do sumy pieniędzy nie wchodzi — tak samo, jak
+            // przedmiot, przy którym kod się nie pojawił.
             Utils.log(`[DZIENNIK] ${e.asin || 'bez ASIN'} (${e.dept}): `
-                    + `${direction === 'sell' ? 'SPRZEDAŻ +' : 'NIESPRZEDAŻ -'}`
+                    + `${direction === 'sell' ? 'SPRZEDAŻ +' : direction === 'unsell' ? 'NIESPRZEDAŻ -' : 'NIEROZSTRZYGALNY '}`
                     + (e.price != null ? `${e.price} ${e.currency}` : 'bez ceny')
                     + (code ? ` (${code})` : ''));
             return true;

@@ -97,6 +97,8 @@
         // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
         // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
         tabSold: {},
+        // Przedmioty wyjęte z mianownika procentu (audyt) — patrz Routing.
+        tabNeutral: {},
         // 8.3.0: usunięte pole defaultLocalTabConfig — nikt go nigdy nie czytał,
         // a w całości dublowało się w localStorage przy każdym zapisie.
         // 1.2.0: wartości przeniesione do DEFAULT_USER_CONFIG, bo kod konfiguracji
