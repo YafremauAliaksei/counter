@@ -10,6 +10,16 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **`docs/przeplyw.md` — cztery diagramy przepływu.** Dla kogoś, kto ma w tym kodzie znaleźć błąd albo zaproponować zmianę: życie przedmiotu od mutacji DOM do wpisu w dzienniku, pięć źródeł zmian w licznikach z niezmiennikiem, który je spina, wszystkie bramki na drodze do sieci oraz kolejność kroków przy uruchomieniu wraz z tym, kto pisze do magazynu. Pod każdym diagramem stoją dwa rozdziały ważniejsze od obrazka: **gdzie to się psuje** (z nazwami usterek, które już się zdarzyły) i **co tego pilnuje** (pliki testów). Diagramy są w Mermaid, więc GitHub rysuje je bez żadnego zewnętrznego serwisu, a w diffie widać, co dokładnie się zmieniło.
+
+- **`tests/25-flow-docs.test.js` — strażnik diagramów.** Dokumentacja tego rodzaju psuje się w jeden sposób: ktoś zmienia nazwę metody albo stałej, a obrazek zostaje z poprzednią. Test wymusza, żeby każda nazwa `Obiekt.metoda`, każda stała konfiguracji i każdy wskazany plik testów naprawdę istniały, żeby etykiety w diagramach były cytowane (niecytowany nawias psuje rysowanie CAŁEGO diagramu) i żeby README prowadziło do pliku — dokument, do którego nic nie prowadzi, przestaje być czytany, a potem przestaje być prawdziwy.
+
+---
+
 ## 1.3.2 — 2026-09-20
 
 ### Naprawiono

@@ -203,7 +203,7 @@ i przerwa na rozmowę z kierownikiem przestają mieszać się w jedną średnią
 
 Po uruchomieniu skryptu istnieje jedno zadanie — `Default` — zaczynające się
 razem ze zmianą. Dopóki nikt go nie przełączy, wszystko działa dokładnie tak,
-jak przed 1.3.0.
+jak przed 1.3.1.
 
 ### Linia 8
 
@@ -730,7 +730,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 335 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 343 sprawdzenia,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -745,9 +745,10 @@ production/
 │   ├── 01-config.js  …  25-presets.js
 │   ├── 99-footer.js
 │   └── README.md           ← mapa modułów i zasady zależności
+├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 24 pliki, 335 sprawdzeń
+├── tests/                  ← 25 plików, 343 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -767,7 +768,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 335 sprawdzeń
+npm test             # 343 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
@@ -779,6 +780,12 @@ w repozytorium) oraz Node 20.19+, ale bez nich nic się nie psuje.
 
 Szczegółowo o tym, jak dodać moduł, jakie są zasady i jak wygląda przepływ gałęzi
 oraz PR — w [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Co się dzieje i w jakiej kolejności** — cztery diagramy w
+[docs/przeplyw.md](docs/przeplyw.md): życie przedmiotu od mutacji DOM do wpisu
+w dzienniku, pięć źródeł zmian w licznikach, wszystkie bramki na drodze do sieci
+oraz kolejność kroków przy uruchomieniu. Pod każdym diagramem stoi lista miejsc,
+w których to się psuje, i testów, które tego pilnują.
 
 ---
 
