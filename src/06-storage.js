@@ -80,9 +80,45 @@
         saveSold(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD + tabKey), String(count));
         },
-        /** Licznik przedmiotów wyjętych z mianownika procentu (audyt). */
+        /** Licznik przedmiotów wyjętych z mianownika procentu (audyt, ręczne wpisy). */
         saveNeutral(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL + tabKey), String(count));
+        },
+        /**
+         * Lista zadań i identyfikator aktywnego — jeden klucz wspólny dla
+         * wszystkich kart. Zapis jest mały (kilka zadań na zmianę), więc idzie
+         * w całości, bez różnicowania.
+         */
+        saveTasks() {
+            this.write(this.getKey(CONFIG.STORAGE_KEY_TASKS),
+                       JSON.stringify({ activeId: store.activeTaskId, list: store.tasks }));
+        },
+        /** Liczniki jednego zadania na jednej karcie: „paczki,sprzedane,poza mianownikiem”. */
+        saveTaskCounter(taskId, tabKey, c) {
+            this.write(this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey),
+                       `${c.done},${c.sold},${c.neutral}`);
+        },
+        removeTaskCounter(taskId, tabKey) {
+            const key = this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey);
+            delete this._lastWritten[key];
+            localStorage.removeItem(key);
+        },
+        /**
+         * Rozbiór klucza licznika zadania. Identyfikator zadania sam zawiera
+         * podkreślenia (`task_abc_def`), więc dzieli się od PRAWEJ: ostatni
+         * człon to karta, wszystko przed nim to identyfikator.
+         */
+        parseTaskCounterKey(localKey) {
+            const rest = localKey.substring(CONFIG.STORAGE_PREFIX_TASK_COUNTER.length);
+            const cut = rest.lastIndexOf('_');
+            if (cut <= 0) return null;
+            return { taskId: rest.substring(0, cut), tabKey: rest.substring(cut + 1) };
+        },
+        /** Wartość licznika zadania z magazynu; śmieć czyta się jako zera. */
+        parseTaskCounterValue(raw) {
+            const parts = String(raw == null ? '' : raw).split(',');
+            const num = (i) => Math.max(0, parseInt(parts[i], 10) || 0);
+            return { done: num(0), sold: num(1), neutral: num(2) };
         },
         removeCounter(tabKey) {
             const key = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey);
@@ -147,6 +183,9 @@
                 const prefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER);
                 const soldPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD);
                 const neutralPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL);
+                const taskPrefix = this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER);
+                this.loadTasks();
+                const taskCounters = {};
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
@@ -158,11 +197,41 @@
                     } else if (key && key.startsWith(neutralPrefix)) {
                         const tabKey = key.substring(neutralPrefix.length);
                         store.tabNeutral[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                    } else if (key && key.startsWith(taskPrefix)) {
+                        const parsed = this.parseTaskCounterKey(key.substring(CONFIG.SCRIPT_ID_PREFIX.length));
+                        if (!parsed) continue;
+                        if (!taskCounters[parsed.taskId]) taskCounters[parsed.taskId] = {};
+                        taskCounters[parsed.taskId][parsed.tabKey] =
+                            this.parseTaskCounterValue(localStorage.getItem(key));
                     }
                 }
+                store.taskCounters = taskCounters;
             } catch (e) { Utils.error("Storage load failed", e); }
 
             if (fromRemote) this.suppressSaveUntil = Date.now() + CONFIG.REMOTE_APPLY_SUPPRESS_MS;
+        },
+        /**
+         * Wczytanie listy zadań. Śmieciowy zapis (cudza wersja, ręczna edycja
+         * magazynu) nie może zatrzymać startu — wtedy lista zostaje pusta,
+         * a TaskManager.init() postawi zadanie domyślne.
+         */
+        loadTasks() {
+            let parsed;
+            try { parsed = JSON.parse(localStorage.getItem(this.getKey(CONFIG.STORAGE_KEY_TASKS)) || 'null'); }
+            catch (e) { parsed = null; }
+            const list = (parsed && Array.isArray(parsed.list) ? parsed.list : [])
+                .filter(t => t && typeof t.id === 'string' && Array.isArray(t.segments) && t.segments.length)
+                .map(t => ({
+                    id: t.id,
+                    name: String(t.name || CONFIG.DEFAULT_TASK_NAME).slice(0, CONFIG.TASK_MAX_NAME_LEN),
+                    segments: t.segments
+                        .filter(seg => seg && typeof seg.from === 'number')
+                        .map(seg => ({ from: seg.from, to: typeof seg.to === 'number' ? seg.to : null })),
+                }))
+                .filter(t => t.segments.length);
+            store.tasks = list;
+            const activeId = parsed && typeof parsed.activeId === 'string' ? parsed.activeId : null;
+            store.activeTaskId = list.some(t => t.id === activeId) ? activeId : (list.length ? list[list.length - 1].id : null);
         },
         listen() {
             // 8.3.0: referencja do obsługi jest zapamiętana — potrzebna w Main.teardown().
@@ -192,6 +261,19 @@
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
                     const val = parseInt(e.newValue, 10) || 0;
                     if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
+                } else if (localKey === CONFIG.STORAGE_KEY_TASKS) {
+                    // Zadanie jest własnością człowieka, a nie karty: przejście
+                    // do innego procesu w jednej karcie obowiązuje we wszystkich.
+                    this.loadTasks();
+                } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TASK_COUNTER)) {
+                    // Liczniki zadania z sąsiedniej karty — potrzebne panelowi,
+                    // który pokazuje podsumowanie zadania po WSZYSTKICH kartach.
+                    const parsed = this.parseTaskCounterKey(localKey);
+                    if (parsed) {
+                        const byTab = { ...(store.taskCounters[parsed.taskId] || {}) };
+                        byTab[parsed.tabKey] = this.parseTaskCounterValue(e.newValue);
+                        store.taskCounters = { ...store.taskCounters, [parsed.taskId]: byTab };
+                    }
                 } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL)) {
                     // Audyty sąsiedniej karty — z tego samego powodu: bez nich
                     // linie 2 i 7 policzyłyby procent z za dużego mianownika.

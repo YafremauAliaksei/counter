@@ -22,6 +22,7 @@ towaru — istnieje, ale włącza się ręcznie.
 - [Szybki start](#szybki-start)
 - [Co robi domyślnie](#co-robi-domyślnie)
 - [Linie okna statystyk](#linie-okna-statystyk)
+- [Zadania](#zadania)
 - [Moduł cen](#moduł-cen)
 - [Panel ustawień](#panel-ustawień)
 - [Kod ustawień](#kod-ustawień)
@@ -181,6 +182,85 @@ ani na plus, ani na minus.
 
 Wybierak koloru dla linii 6 steruje wyłącznie częścią neutralną (liczbą sztuk).
 Zieleń i czerwień nie są oddane do ustawień: po nich czyta się znak.
+
+---
+
+## Zadania
+
+**Problem.** Tempo liczyło się od początku zmiany — godziny wpisanej na stałe
+(6:30 albo 18:30). Kto przyszedł do procesu trzy godziny później i zrobił trzy
+paczki w sześć minut, widział `1.0/h` zamiast `30/h`. Liczba policzona
+poprawnie, znaczenie fałszywe — a to gorsze niż brak liczby, bo liczbie się
+wierzy.
+
+**Zadanie ma własny zegar.** Tempo zadania to jego paczki przez jego czas, więc
+opóźniony start, przejście z procesu o normie 30/h do procesu o normie 100/h
+i przerwa na rozmowę z kierownikiem przestają mieszać się w jedną średnią.
+
+Po uruchomieniu skryptu istnieje jedno zadanie — `Default` — zaczynające się
+razem ze zmianą. Dopóki nikt go nie przełączy, wszystko działa dokładnie tak,
+jak przed 1.3.0.
+
+### Linia 8
+
+Nazwa bieżącego zadania i **jego własne** liczby:
+
+```
+fast_process 12 34.3/h 58% 0:21
+```
+
+Nazwa, paczki, tempo, procent sprzedaży, przepracowany czas. Linie 1, 2 i 7
+opisują całą zmianę i tak zostaje; linia 8 mówi o procesie, przy którym
+człowiek siedzi w tej chwili. Domyślnie wyłączona, jak każda nowa linia.
+Zatrzymany zegar dokleja na końcu `(pauza)` — inaczej stojące tempo wygląda jak
+zepsuty licznik.
+
+### Wznowienie zamiast drugiego zadania o tej samej nazwie
+
+Zadanie ma **listę odcinków**, a nie jeden początek i koniec. Kto pracował trzy
+godziny w procesie zwykłym, poszedł na pięć godzin do szybkiego i wrócił do
+zwykłego — **wznawia** to pierwsze zadanie, z tym samym identyfikatorem.
+W podsumowaniu zmiany stoi wtedy jedno zadanie z sensownym tempem, a nie trzy
+wpisy 30 / 100 / 30, z których nic nie widać.
+
+Odcinek jest też miejscem na pauzę: zamknięty odcinek zatrzymuje zegar,
+a pierwsza paczka po pauzie otwiera nowy — skoro paczki idą, przerwa się
+skończyła, niezależnie od tego, czy ktoś o tym pamiętał. Czas, którego nie było,
+nie wraca: nowy odcinek zaczyna się od tej paczki, a nie wstecz.
+
+Przerwa obiadowa odejmuje się od czasu zadania tym samym rachunkiem, co od czasu
+zmiany — kto nie pamiętał o pauzie na obiad, nie dostaje pół godziny pracy,
+której nie było.
+
+### Powrót do pracy po awarii maszyny
+
+Komputer stoi na sesji tymczasowej, więc po awaryjnym restarcie pamięć
+przeglądarki znika w całości. Człowiek pamięta wtedy swoje tempo albo liczbę
+paczek, ale **nie pamięta, ile z nich poszło na sprzedaż**.
+
+Wpisana ręcznie liczba (pole licznika w panelu, skrót klawiszowy) trafia więc do
+paczek **oraz** do licznika „poza mianownikiem” — tego samego, którym liczą się
+audyty. Skutek: procent sprzedaży pokazuje wyłącznie to, co skrypt naprawdę
+zobaczył, czyli liczy się **od przedmiotu, przy którym człowiek wrócił do
+pracy**. Gdyby wpisane paczki wchodziły do mianownika, procent po każdej awarii
+spadałby do kilku procent i przestałby cokolwiek znaczyć.
+
+### Zasada, na której to stoi
+
+**Suma paczek wszystkich zadań danej karty zawsze równa się licznikowi tej
+karty.** Liczniki zmiany zostają jedynym źródłem prawdy dla linii 1, 2 i 7,
+a zadania są ich rozbiciem w czasie. Rozjazd tych dwóch stron byłby cichy — obie
+liczby wyglądałyby sensownie, tylko nie opisywałyby tego samego — więc pilnuje
+go osobne sprawdzenie w testach.
+
+### Z konsoli
+
+```js
+SH.tasks(); // podsumowanie wszystkich zadań zmiany
+SH.TaskManager.create('fast_process', Date.now() - 2 * 60000); // nowe, zaczęte 2 minuty temu
+SH.TaskManager.resume(id); // wznowienie wcześniejszego
+SH.TaskManager.pause(); // zatrzymanie zegara
+```
 
 ---
 
@@ -571,7 +651,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 275 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 303 sprawdzenia,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -581,14 +661,14 @@ z czego jedna trzecia dotyczy bezpieczeństwa.
 ```
 production/
 ├── counter.js              ← ARTEFAKT: to, co wkleja się do konsoli
-├── src/                    ← ŹRÓDŁO: 24 moduły plus nagłówek i stopka
+├── src/                    ← ŹRÓDŁO: 25 modułów plus nagłówek i stopka
 │   ├── 00-banner.js
-│   ├── 01-config.js  …  24-presets.js
+│   ├── 01-config.js  …  25-presets.js
 │   ├── 99-footer.js
 │   └── README.md           ← mapa modułów i zasady zależności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 21 plików, 275 sprawdzeń
+├── tests/                  ← 22 pliki, 303 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -608,7 +688,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 275 sprawdzeń
+npm test             # 303 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

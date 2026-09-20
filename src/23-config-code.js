@@ -134,7 +134,9 @@
 
             // --- linie 1–7 ---
             ...['line1_currentTab', 'line2_globalSummary', 'line3_shiftInfo', 'line4_lunchInfo',
-                'line5_realTimeClock', 'line6_valueSum', 'line7_compact'].flatMap((key, i) => {
+                'line5_realTimeClock', 'line6_valueSum', 'line7_compact',
+                // 1.3.0 — linia 8 dostaje blok 0x0170, kolejny wolny po linii 7.
+                'line8_taskInfo'].flatMap((key, i) => {
                 const base = 0x0100 + i * 0x10;
                 return [
                     { id: base, root: 'local', path: `linesConfig.${key}.visible`, type: 'bool' },

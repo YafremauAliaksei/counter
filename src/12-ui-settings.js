@@ -222,7 +222,17 @@
                 const row = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '5px', gap: '10px' } });
                 row.appendChild(UIBuilder.checkbox(I18n.get('includeInGlobal_known', { tabName: I18n.get(t.displayNameKey) }), store.userConfig.globalStatsContributionKnown[t.key], v => store.userConfig.globalStatsContributionKnown[t.key] = v));
                 row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':' }));
-                row.appendChild(UIBuilder.numberInput(store.tabCounters[t.key] || 0, v => { store.tabCounters[t.key] = v; StorageManager.saveCounter(t.key, v); }));
+                // Wpisanie licznika wprost („zrobiłem dziś 180”) idzie przez
+                // menedżera zadań: różnicę bierze na siebie aktywne zadanie,
+                // razem z licznikiem „poza mianownikiem” — kierunku wpisanych
+                // paczek nikt nie zna, więc nie mają prawa ruszyć procentu.
+                row.appendChild(UIBuilder.numberInput(store.tabCounters[t.key] || 0, v => {
+                    TaskManager.applyManualTotal(t.key, v);
+                    store.tabCounters[t.key] = Math.max(0, v);
+                    store.tabNeutral[t.key] = TaskManager.shiftTotal(t.key, 'neutral');
+                    StorageManager.saveCounter(t.key, store.tabCounters[t.key]);
+                    StorageManager.saveNeutral(t.key, store.tabNeutral[t.key]);
+                }));
                 secGlob.appendChild(row);
             });
             this.el.appendChild(secGlob);

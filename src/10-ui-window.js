@@ -34,7 +34,8 @@
             // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
             // timera, czyli do sekundy — widać by to było jako liczbę, która
             // „nie nadąża” za ekranem.
-            onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'sessionConfig', 'userConfig', 'localTabConfig'],
+            onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'tasks', 'activeTaskId',
+                          'taskCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());
@@ -157,7 +158,10 @@
             // 8.1.0: wcześniej przy zbyt krótkim czasie podstawiało się tu całe
             // zdanie, zawierające już „/h”, i w linii wychodziło „~0.0/h (...)/h”.
             // Teraz funkcja zwraca zawsze samą liczbę.
-            const getIph = (c) => hWorked > 0.0027 ? (c / hWorked).toFixed(1) : '0.0';
+            // Granica „tempo jeszcze nie istnieje” stoi w jednym miejscu dla
+            // zmiany i dla zadania — inaczej linia 1 i linia 8 mówiłyby co
+            // innego o tej samej pierwszej minucie pracy.
+            const getIph = (c) => workedMs >= CONFIG.RATE_MIN_WORKED_MS ? (c / hWorked).toFixed(1) : '0.0';
 
             /**
              * PROCENT SPRZEDAŻY (koniec każdej z linii 1, 2 i 7).
@@ -341,5 +345,30 @@
              */
             this.lines.line7_compact.textContent =
                 `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gRated)}%`;
+
+            /**
+             * LINIA 8 — BIEŻĄCE ZADANIE (1.3.0).
+             *
+             * Nazwa procesu i JEGO własne liczby. Linie wyżej opisują całą
+             * zmianę i po to są; tutaj stoi proces, przy którym człowiek siedzi
+             * w tej chwili — z własnym zegarem, więc opóźniony start nie psuje
+             * tempa. Format jest ten sam, co w podsumowaniu zadania w panelu:
+             *
+             *     fast_process 12 34.3/h 58% 0:21
+             *
+             * Pauza (zamknięty odcinek) dokleja na końcu znak, bo inaczej
+             * stojące tempo wygląda jak zepsuty licznik.
+             */
+            const task = TaskManager.active();
+            if (!task) {
+                this.lines.line8_taskInfo.textContent = '';
+            } else {
+                const t = TaskManager.totals(task);
+                const rate = TaskManager.rate(task);
+                const paused = TaskManager.isRunning(task) ? '' : ' ' + I18n.get('taskPausedMark');
+                this.lines.line8_taskInfo.textContent =
+                    `${task.name} ${t.done} ${rate.toFixed(1)}${I18n.get('statsPerHourUnit')} `
+                    + `${TaskManager.percent(task)}% ${Utils.formatDuration(TaskManager.workedMs(task))}${paused}`;
+            }
         }
     };

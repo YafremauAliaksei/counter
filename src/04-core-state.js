@@ -97,8 +97,17 @@
         // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
         // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
         tabSold: {},
-        // Przedmioty wyjęte z mianownika procentu (audyt) — patrz Routing.
+        // Przedmioty wyjęte z mianownika procentu (audyt, ręczne wpisy) — patrz
+        // Routing i TaskManager.
         tabNeutral: {},
+        /**
+         * ZADANIA (1.3.0). Lista jest zwykłą tablicą, więc NIE jest reaktywna
+         * po elementach — TaskManager podmienia ją w całości przy każdej
+         * zmianie i tylko dzięki temu linia 8 oraz panel dowiadują się o niej.
+         */
+        tasks: [],
+        activeTaskId: null,
+        taskCounters: {},
         // 8.3.0: usunięte pole defaultLocalTabConfig — nikt go nigdy nie czytał,
         // a w całości dublowało się w localStorage przy każdym zapisie.
         // 1.2.0: wartości przeniesione do DEFAULT_USER_CONFIG, bo kod konfiguracji

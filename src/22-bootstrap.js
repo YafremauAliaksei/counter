@@ -195,6 +195,17 @@
                 ShiftManager.update();
                 SessionReset.pruneTabInstances(false);
 
+                /**
+                 * Zadania PO ustaleniu zmiany, a przed pierwszym przedmiotem.
+                 *
+                 * Po ustaleniu, bo zadanie domyślne zaczyna się razem ze zmianą,
+                 * a `shiftCalculatedStartTime` liczy dopiero ShiftManager.update()
+                 * linijkę wyżej. Przed przedmiotem, bo licznik nie ma prawa
+                 * zaliczyć paczki, dla której nie ma gdzie jej zapisać —
+                 * AutoTrigger rusza znacznie niżej.
+                 */
+                TaskManager.init();
+
                 store.initialized = true;
                 StorageManager.saveState();
 
@@ -317,6 +328,13 @@
                     configCode: () => ConfigCode.encode(),
                     configLink: () => ConfigCode.link(),
                     ConfigCode,
+                    /**
+                     * ZADANIA (1.3.0). `SH.tasks()` wypisuje podsumowanie
+                     * wszystkich zadań zmiany, reszta to sam menedżer — do
+                     * przełączania z konsoli, gdy panel jest akurat zamknięty.
+                     */
+                    TaskManager,
+                    tasks: () => TaskManager.info(),
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
                     // odtwarzają pełny gest myszy.

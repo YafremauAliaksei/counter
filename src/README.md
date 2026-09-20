@@ -35,7 +35,8 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 21 | `21-input.js` | klawiatura i `MutationObserver` | ~140 |
 | 22 | `22-bootstrap.js` | `Main.init`, rozbiórka, konsolowe API `SH` | ~370 |
 | 23 | `23-config-code.js` | kod ustawień: jeden ciąg szesnastkowy zamiast panelu | ~300 |
-| 24 | `24-presets.js` | blok ustawień osobistych i start | ~80 |
+| 24 | `24-tasks.js` | menedżer zadań: własny zegar i liczniki procesu pracy | ~330 |
+| 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~185 |
 
 ---
@@ -94,7 +95,7 @@ odwoływać się tylko „w górę”, ciała funkcji — dokądkolwiek.
                   │
             19-price-module ── 20-price-card
                   │
-      21-input ── 22-bootstrap ── 23-config-code ── 24-presets
+  21-input ── 22-bootstrap ── 23-config-code ── 24-tasks ── 25-presets
 ```
 
 Strzałki znaczą „zadeklarowany wcześniej”, a nie „wywołuje”. Prawdziwe wywołania
