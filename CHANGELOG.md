@@ -18,6 +18,10 @@ Dla tego projektu SemVer czyta się tak:
 
 - **`tests/25-flow-docs.test.js` — strażnik diagramów.** Dokumentacja tego rodzaju psuje się w jeden sposób: ktoś zmienia nazwę metody albo stałej, a obrazek zostaje z poprzednią. Test wymusza, żeby każda nazwa `Obiekt.metoda`, każda stała konfiguracji i każdy wskazany plik testów naprawdę istniały, żeby etykiety w diagramach były cytowane (niecytowany nawias psuje rysowanie CAŁEGO diagramu) i żeby README prowadziło do pliku — dokument, do którego nic nie prowadzi, przestaje być czytany, a potem przestaje być prawdziwy.
 
+### Naprawiono
+
+- **Testy zadań były zielone tylko o niektórych porach dnia.** Pliki `22-tasks`, `23-task-panel` i `24-departments` budowały odcinki od prawdziwego „teraz”, a skrypt odejmuje od czasu pracy obiad leżący o stałej godzinie ściennej. Czy odcinek trafiał w obiad, zależało od godziny uruchomienia: zestaw był zielony mniej więcej 7 godzin na dobę, a CI zawsze trafiał w zielone okno, bo pushe szły wieczorem — o 09:40 ten sam commit był czerwony. Teraz te pliki chodzą na **zegarze stanowiska** (`makeClock`, `bootOnStand` w `tests/dom-stub.js`): środa 15:00, zmiana dzienna od 06:30, obiad wyłączony poza testami obiadu, które sprzątają po sobie w `finally`. Sprawdzone we wszystkich 24 strefach czasowych: 346 z 346. Nowy test pilnuje, żeby te pliki nie wróciły do zegara procesu testów, a CI puszcza cały zestaw dodatkowo w strefach UTC+14 i UTC−11 — każdy przebieg sprawdza więc trzy różne pory dnia naraz. Kod skryptu nietknięty.
+
 ---
 
 ## 1.3.2 — 2026-09-20

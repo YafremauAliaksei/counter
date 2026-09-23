@@ -20,9 +20,10 @@
 'use strict';
 
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot } = require('./dom-stub');
+const { bootOnStand } = require('./dom-stub');
 
-const env = boot();
+const env = bootOnStand();
+const clock = env.clock;
 const SH = env.SH;
 const S = SH.store;
 const C = SH.CONFIG;
@@ -75,7 +76,7 @@ test('wpisanie licznika działu ręcznego trafia do aktywnego zadania', () => {
     // że nic nie zwiększy go samo.
     S.tasks = []; S.activeTaskId = null; S.taskCounters = {};
     S.tabCounters.OTHER = 0; S.tabSold.OTHER = 0; S.tabNeutral.OTHER = 0;
-    TM.create('Default', Date.now() - 2 * HOUR);
+    TM.create('Default', clock.now() - 2 * HOUR);
 
     TM.applyManualTotal('OTHER', 50);
     eq(TM.counters(TM.active().id, 'OTHER').done, 50, 'paczki zadania w dziale ręcznym');
@@ -88,7 +89,7 @@ test('zmniejszenie liczby paczek obniża tempo', () => {
     // mniej przy dziesięciogodzinnej zmianie to pół paczki na godzinę mniej.
     S.tasks = []; S.activeTaskId = null; S.taskCounters = {};
     S.tabCounters.OTHER = 0; S.tabSold.OTHER = 0; S.tabNeutral.OTHER = 0;
-    const now = Date.now();
+    const now = clock.now();
     TM.create('Default', now - 10 * HOUR);
     const task = TM.active();
 
@@ -127,7 +128,7 @@ test('linia 2 pokazuje dział ręczny dopiero, gdy ma paczki', () => {
     S.tasks = []; S.activeTaskId = null; S.taskCounters = {};
     S.tabCounters.OTHER = 0;
     S.localTabConfig.linesConfig.line2_globalSummary.visible = true;
-    TM.create('Default', Date.now() - HOUR);
+    TM.create('Default', clock.now() - HOUR);
     SH.StatsWindowRenderer.renderContent();
     const empty = SH.StatsWindowRenderer.lines.line2_globalSummary.textContent;
     notOk(empty.includes(SH.I18n.get('tabName_OTHER')), 'pusty dział nie zajmuje miejsca: ' + empty);

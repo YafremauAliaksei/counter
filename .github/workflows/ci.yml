@@ -42,6 +42,16 @@ jobs:
       - name: Testy
         run: npm test
 
+      # Skrypt liczy czas od godzin ściennych (zmiana, obiad), więc test może
+      # zależeć od pory, o której go uruchomiono. Tak było do 1.3.2: zestaw był
+      # zielony ok. 7 godzin na dobę, a CI trafiał w zielone okno, bo pushe szły
+      # wieczorem. Dwie dodatkowe strefy (UTC+14 i UTC-11) sprawiają, że każdy
+      # przebieg sprawdza trzy różne pory dnia naraz, za cenę dwóch sekund.
+      - name: Testy o innych porach dnia
+        run: |
+          TZ=Pacific/Kiritimati npm test
+          TZ=Pacific/Pago_Pago npm test
+
       # Ostatnia linia obrony przed rozjazdem: przebuduj naprawdę i sprawdź,
       # czy git widzi jakąkolwiek zmianę. build:check porównuje w pamięci,
       # to porównuje na dysku.

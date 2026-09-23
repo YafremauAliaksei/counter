@@ -45,6 +45,45 @@ const ARTIFACT = fs.readFileSync(ARTIFACT_PATH, 'utf8');
  *   `storage` pozwala uruchomić DWIE karty na jednym localStorage, czyli
  *   odtworzyć normalny tryb pracy: otwarte naraz CRET i WHD.
  */
+/**
+ * Zegar z ustaloną porą dnia — dla testów, które liczą czas pracy.
+ *
+ * PO CO. Skrypt odejmuje od czasu pracy przerwę obiadową, która leży o stałej
+ * godzinie ściennej, a zmianę rozpoznaje po godzinie ściennej. Test, który
+ * buduje odcinki od prawdziwego „teraz”, trafia więc albo nie trafia w obiad
+ * zależnie od tego, o której go uruchomiono: przed tą poprawką zestaw był
+ * zielony 7 godzin na dobę, a CI zawsze trafiał w zielone okno, bo pushe szły
+ * wieczorem. Czerwień o 09:40 na tym samym commicie była nie do odróżnienia
+ * od własnej usterki.
+ *
+ * JAK. `makeClock(wallMs)` ustawia „teraz” na podany moment i od tej chwili
+ * płynie razem z prawdziwym czasem (debounce i timery działają dalej, tylko
+ * pora dnia przestaje zależeć od chwili uruchomienia). Ten sam zegar trzeba
+ * podać KAŻDEJ atrapie w pliku, bo dwie karty z osobnymi zegarami rozjechałyby
+ * się o milisekundy.
+ *
+ *   clock.Date     klasa Date dla piaskownicy: bez argumentów daje „teraz” zegara
+ *   clock.now()    to samo „teraz” po stronie testu
+ *   clock.set(ms)  przeskok zegara, np. na następny dzień
+ */
+function makeClock(wallMs) {
+    const RealDate = Date;
+    let offset = 0;
+    const clock = {
+        now: () => RealDate.now() + offset,
+        set(ms) { offset = ms - RealDate.now(); },
+    };
+    clock.Date = class extends RealDate {
+        constructor(...args) {
+            if (args.length) super(...args);
+            else super(clock.now());
+        }
+        static now() { return clock.now(); }
+    };
+    clock.set(wallMs);
+    return clock;
+}
+
 function makeEnv(opts = {}) {
     const net = { fetches: [], images: [], xhr: 0, consoleLog: [], consoleError: [] };
 
@@ -275,7 +314,7 @@ function makeEnv(opts = {}) {
             net.fetches.push(String(url));
             return Promise.reject(new Error('sieć wyłączona w teście'));
         },
-        JSON, Math, Date, Object, Array, String, Number, Boolean, RegExp, Map, Set,
+        JSON, Math, Date: opts.clock ? opts.clock.Date : Date, Object, Array, String, Number, Boolean, RegExp, Map, Set,
         Promise, Error, isNaN, isFinite, parseInt, parseFloat, encodeURIComponent,
         decodeURIComponent, Proxy, Reflect, Symbol, Uint8ClampedArray,
         XMLHttpRequest: function () { net.xhr++; },
@@ -308,6 +347,27 @@ function boot(opts = {}) {
     return env;
 }
 
+/**
+ * Stanowisko testów czasu pracy: środa 16.09.2026, 15:00, zmiana dzienna.
+ *
+ * Środa, bo do najbliższej zmiany czasu jest ponad miesiąc. 15:00, bo zmiana
+ * dzienna trwa od 06:30 i wszystkie okna obiadowe dnia już minęły — test może
+ * budować odcinki w przeszłości, nie trafiając w przycięcie do „teraz”.
+ *
+ * Obiad jest WYŁĄCZONY: testy, które nie dotyczą obiadu, nie mogą zależeć od
+ * tego, czy ich odcinek na niego zachodzi. Test obiadu włącza go sam i sam po
+ * sobie sprząta (w `finally`, żeby porażka nie ciągnęła się na kolejne testy).
+ */
+const STAND_TIME = new Date(2026, 8, 16, 15, 0, 0).getTime();
+
+function bootOnStand(opts = {}) {
+    const clock = opts.clock || makeClock(STAND_TIME);
+    const env = boot({ ...opts, clock });
+    env.SH.store.sessionConfig.selectedLunchIndex = null;
+    env.clock = clock;
+    return env;
+}
+
 /** Ustawia zmianę tak, żeby wyliczenia „na godzinę” były przewidywalne. */
 function setShift(env, hoursAgo, activeTabs) {
     const S = env.SH.store;
@@ -317,4 +377,4 @@ function setShift(env, hoursAgo, activeTabs) {
     S.sessionConfig.activeTabInstances = activeTabs || { CRET: Date.now(), WHD: Date.now() };
 }
 
-module.exports = { makeEnv, boot, setShift, ARTIFACT, ARTIFACT_PATH, ROOT };
+module.exports = { makeEnv, makeClock, boot, bootOnStand, setShift, STAND_TIME, ARTIFACT, ARTIFACT_PATH, ROOT };

@@ -22,9 +22,10 @@
 'use strict';
 
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot } = require('./dom-stub');
+const { bootOnStand } = require('./dom-stub');
 
-const env = boot();
+const env = bootOnStand();
+const clock = env.clock;
 const SH = env.SH;
 const S = SH.store;
 const TM = SH.TaskManager;
@@ -76,7 +77,7 @@ function reset(minutesAgo) {
     S.tabCounters[cid] = 0;
     S.tabSold[cid] = 0;
     S.tabNeutral[cid] = 0;
-    TM.create('Default', Date.now() - minutesAgo * MIN);
+    TM.create('Default', clock.now() - minutesAgo * MIN);
     SH.SettingsPanel.render();
     return cid;
 }
@@ -139,7 +140,7 @@ test('skrót „-5 min” cofa początek bieżącego odcinka', () => {
     // Tak to wygląda na hali: o nowym procesie człowiek wie z wyprzedzeniem,
     // zbiera narzędzia i siada do skryptu kilka minut po faktycznym starcie.
     reset(60);
-    const before = Date.now();
+    const before = clock.now();
     button(label('tasks_minutesBack', { value: 5 })).dispatch('click', {});
     const seg = TM.active().segments[0];
     const diff = Math.abs((before - 5 * MIN) - seg.from);
@@ -149,7 +150,7 @@ test('skrót „-5 min” cofa początek bieżącego odcinka', () => {
 test('skrót „teraz” i „początek zmiany”', () => {
     reset(60);
     button(label('tasks_now')).dispatch('click', {});
-    ok(Math.abs(Date.now() - TM.active().segments[0].from) < 2000, 'teraz');
+    ok(Math.abs(clock.now() - TM.active().segments[0].from) < 2000, 'teraz');
 
     button(label('tasks_shiftStart')).dispatch('click', {});
     eq(TM.active().segments[0].from, S.sessionConfig.shiftCalculatedStartTime, 'początek zmiany');
@@ -157,12 +158,12 @@ test('skrót „teraz” i „początek zmiany”', () => {
 
 test('godzina wpisana ręcznie i tekst, który godziną nie jest', () => {
     reset(180);
-    const clock = nodes().find(n => n.tagName === 'INPUT' && n.placeholder === 'HH:MM');
-    ok(clock, 'pole godziny');
+    const field = nodes().find(n => n.tagName === 'INPUT' && n.placeholder === 'HH:MM');
+    ok(field, 'pole godziny');
 
-    const target = new Date();
+    const target = new clock.Date();
     target.setHours(target.getHours() - 2, 30, 0, 0);
-    type(clock, SH.Utils.formatClock(target.getTime()));
+    type(field, SH.Utils.formatClock(target.getTime()));
     eq(SH.Utils.formatClock(TM.active().segments[0].from), SH.Utils.formatClock(target.getTime()));
 
     const before = TM.active().segments[0].from;
@@ -172,7 +173,7 @@ test('godzina wpisana ręcznie i tekst, który godziną nie jest', () => {
 
 test('godzina późniejsza niż teraz to wczoraj, a nie pomyłka', () => {
     // Nocna zmiana: o 00:40 wpisane „23:30” znaczy pół godziny temu.
-    const now = Date.now();
+    const now = clock.now();
     const ahead = new Date(now + 3 * HOUR);
     const parsed = TM.parseClock(SH.Utils.formatClock(ahead.getTime()));
     ok(parsed < now, 'znacznik z przeszłości');
