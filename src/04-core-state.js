@@ -89,6 +89,17 @@
     }
 
     // Definicja podstawowej struktury stanu
+    /**
+     * Stan zmiany — wspólny dla wszystkich kart. Wydzielony (1.3.3), bo
+     * scalanie ustawień między kartami uzupełnia nim pola, których brakuje
+     * w magazynie (StorageManager._adoptShared).
+     */
+    const DEFAULT_SESSION_CONFIG = {
+        // 8.3.0: usunięte sessionLastActivityTimestamp — zadeklarowane
+        // w 8.0.0, nigdzie nieczytane i niezapisywane.
+        shiftType: null, shiftCalculatedStartTime: null, selectedLunchIndex: null, activeTabInstances: {},
+    };
+
     const baseState = {
         initialized: false,
         currentTabType: CONFIG.UNKNOWN_TAB_TYPE_KEY,
@@ -114,11 +125,7 @@
         // musi mieć z czym porównywać bieżący stan.
         userConfig: Utils.deepMerge({}, DEFAULT_USER_CONFIG),
         localTabConfig: Utils.deepMerge({}, DEFAULT_LOCAL_CONFIG),
-        sessionConfig: {
-            // 8.3.0: usunięte sessionLastActivityTimestamp — zadeklarowane
-            // w 8.0.0, nigdzie nieczytane i niezapisywane.
-            shiftType: null, shiftCalculatedStartTime: null, selectedLunchIndex: null, activeTabInstances: {},
-        },
+        sessionConfig: Utils.deepMerge({}, DEFAULT_SESSION_CONFIG),
         // itemInProgress zadeklarowany jawnie (w 8.0.0 powstawał w locie z AutoTrigger.scan)
         uiFlags: { isSettingsPanelVisible: false, isStatsWindowDragging: false, isPriceCardDragging: false,
                    autoTriggerFound: false, itemInProgress: false }

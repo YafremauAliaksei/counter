@@ -50,6 +50,11 @@ function resetCounters() {
     SH.store.tabCounters[cid] = 0;
     SH.store.tabSold[cid] = 0;
     SH.store.tabNeutral[cid] = 0;
+    // Zera także w magazynie: licznik rośnie od wartości zapisanej, a nie od
+    // tej w pamięci (StorageManager.freshCount, audyt D7).
+    SH.StorageManager.saveCounter(cid, 0);
+    SH.StorageManager.saveSold(cid, 0);
+    SH.StorageManager.saveNeutral(cid, 0);
     return cid;
 }
 

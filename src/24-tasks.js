@@ -97,8 +97,79 @@
          * o niczym, dopóki czegoś innego nie ruszy magistrali.
          */
         _commit(list) {
+            this._stamp(list);
             store.tasks = list.slice();
             this.save();
+        },
+
+        /**
+         * ZADANIA W DWÓCH KARTACH NARAZ (1.3.3, audyt D1).
+         *
+         * Lista zadań leży w jednym kluczu na wszystkie karty. Do tej pory
+         * każda karta pisała ją w całości ze swojej pamięci: pauza w karcie B,
+         * zanim B dowiedziała się o zadaniu założonym właśnie w A, wymazywała
+         * je z magazynu — a jego paczki dalej siedziały w liczniku karty.
+         *
+         * Teraz każde zadanie niesie `updated` (kiedy ostatnio się zmieniło),
+         * usunięte zostawiają nagrobek w `_removed`, a przełączenie aktywnego
+         * zadania — `_activeAt`. Zapis scala listę z tym, co jest w magazynie:
+         * z dwóch wersji tego samego zadania wygrywa nowsza, nagrobek wygrywa
+         * z wersją sprzed usunięcia, aktywne zadanie — ostatnie przełączenie.
+         */
+        _sig: {},
+        _removed: {},
+        _activeAt: 0,
+        _lastActive: null,
+        _signature: (t) => JSON.stringify([t.name, t.segments]),
+        _stamp(list) {
+            const now = Date.now();
+            const alive = new Set();
+            for (const t of list) {
+                alive.add(t.id);
+                const sig = this._signature(t);
+                if (this._sig[t.id] !== sig) { t.updated = now; this._sig[t.id] = sig; }
+            }
+            for (const id of Object.keys(this._sig)) {
+                if (!alive.has(id)) { this._removed[id] = now; delete this._sig[id]; }
+            }
+            if (store.activeTaskId !== this._lastActive) { this._activeAt = now; this._lastActive = store.activeTaskId; }
+        },
+
+        /** Stan zadań tej karty scalony z tym, co leży w magazynie. */
+        merge(stored) {
+            const shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
+            const mine = { shiftStart, activeId: store.activeTaskId, activeAt: this._activeAt,
+                           list: store.tasks, removed: this._removed };
+            if (!stored || !Array.isArray(stored.list)) return mine;
+            // Inna zmiana w magazynie: nie scala się dwóch zmian — wygrywa nowsza.
+            if (stored.shiftStart && shiftStart && stored.shiftStart !== shiftStart) {
+                return stored.shiftStart > shiftStart ? stored : mine;
+            }
+            const removed = { ...(stored.removed || {}) };
+            for (const [id, ts] of Object.entries(mine.removed)) removed[id] = Math.max(removed[id] || 0, ts);
+            // Kolejność z magazynu, bo to kolejność zakładania we wszystkich
+            // kartach; nowe zadania tej karty na koniec.
+            const byId = new Map(stored.list.map(t => [t.id, t]));
+            for (const t of mine.list) {
+                const other = byId.get(t.id);
+                if (!other || (t.updated || 0) >= (other.updated || 0)) byId.set(t.id, t);
+            }
+            const list = [...byId.values()].filter(t => !(removed[t.id] >= (t.updated || 0)));
+            const ours = (mine.activeAt || 0) >= (stored.activeAt || 0);
+            let activeId = ours ? mine.activeId : stored.activeId;
+            if (!list.some(t => t.id === activeId)) activeId = list.length ? list[list.length - 1].id : null;
+            return { shiftStart, activeId, activeAt: Math.max(mine.activeAt || 0, stored.activeAt || 0), list, removed };
+        },
+
+        /** Przyjęcie scalonego stanu do pamięci — bez znakowania go jako „naszej zmiany”. */
+        adopt(state) {
+            store.tasks = state.list;
+            store.activeTaskId = state.activeId;
+            this._removed = { ...(state.removed || {}) };
+            this._activeAt = state.activeAt || 0;
+            this._lastActive = state.activeId;
+            this._sig = {};
+            for (const t of state.list) this._sig[t.id] = this._signature(t);
         },
 
         /** Nazwa bez białych brzegów, przycięta do granicy z konfiguracji. */
@@ -284,17 +355,28 @@
             const list = store.tasks.filter(t => t.id !== id);
             // Liczniki znikają razem z zadaniem, inaczej suma zadań przestałaby
             // zgadzać się z licznikiem zmiany. Licznik zmiany schodzi o tyle samo.
-            const counters = store.taskCounters[id] || {};
-            for (const [tabKey, c] of Object.entries(counters)) {
-                store.tabCounters[tabKey] = Math.max(0, (store.tabCounters[tabKey] || 0) - (c.done || 0));
-                store.tabSold[tabKey] = Math.max(0, (store.tabSold[tabKey] || 0) - (c.sold || 0));
-                store.tabNeutral[tabKey] = Math.max(0, (store.tabNeutral[tabKey] || 0) - (c.neutral || 0));
-                StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
-                StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
-                StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
+            //
+            // 1.3.3 (audyt D2): liczniki CUDZYCH kart czytają się z magazynu,
+            // a nie z pamięci. Sąsiednia karta mogła właśnie dopisać paczki,
+            // o których ta jeszcze nie wie: odejmowanie z pamięci zostawiało
+            // je w liczniku karty i osierocony klucz zadania.
+            const tabs = new Set([...Object.keys(store.taskCounters[id] || {}), ...StorageManager.storedTaskTabs(id)]);
+            for (const tabKey of tabs) {
+                const c = StorageManager.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
+                for (const [prefix, memory, value] of [
+                    [CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, c.done],
+                    [CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, c.sold],
+                    [CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, c.neutral],
+                ]) {
+                    const key = StorageManager.getKey(prefix + tabKey);
+                    memory[tabKey] = Math.max(0, StorageManager.freshCount(key, memory[tabKey] || 0) - value);
+                    StorageManager.write(key, String(memory[tabKey]));
+                }
                 StorageManager.removeTaskCounter(id, tabKey);
             }
-            delete store.taskCounters[id];
+            const counters = { ...store.taskCounters };
+            delete counters[id];
+            store.taskCounters = counters;
             if (store.activeTaskId === id) store.activeTaskId = list[list.length - 1].id;
             this._commit(list);
             return true;
@@ -396,23 +478,27 @@
          */
         addItem(tabKey) {
             const task = this.ensureRunning();
-            if (!task) return;
-            const c = this.counters(task.id, tabKey);
-            this._write(task.id, tabKey, { ...c, done: c.done + 1 });
+            if (task) this._bump(task, tabKey, 'done');
         },
 
         addSold(tabKey) {
             const task = this.active();
-            if (!task) return;
-            const c = this.counters(task.id, tabKey);
-            this._write(task.id, tabKey, { ...c, sold: c.sold + 1 });
+            if (task) this._bump(task, tabKey, 'sold');
         },
 
         addNeutral(tabKey) {
             const task = this.active();
-            if (!task) return;
-            const c = this.counters(task.id, tabKey);
-            this._write(task.id, tabKey, { ...c, neutral: c.neutral + 1 });
+            if (task) this._bump(task, tabKey, 'neutral');
+        },
+
+        /**
+         * +1 do jednego pola licznika zadania — od wartości w magazynie, a nie
+         * w pamięci (1.3.3, audyt D7): dwie karty tego samego działu dzielą
+         * ten klucz tak samo jak licznik karty.
+         */
+        _bump(task, tabKey, field) {
+            const c = StorageManager.freshTaskCounter(task.id, tabKey, this.counters(task.id, tabKey));
+            this._write(task.id, tabKey, { ...c, [field]: c[field] + 1 });
         },
 
         /**

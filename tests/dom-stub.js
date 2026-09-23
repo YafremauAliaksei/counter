@@ -348,6 +348,96 @@ function boot(opts = {}) {
 }
 
 /**
+ * Kilka kart na jednym localStorage — z semantyką zdarzenia `storage` taką,
+ * jak w przeglądarce (audyt D8).
+ *
+ * PO CO. Dotychczasowe testy wielu kart były ściśle po kolei: jedna karta
+ * zapisuje, test ręcznie doręcza zdarzenie, druga czyta. Między zapisami
+ * zawsze stało doręczenie, więc okno wyścigu nie istniało ani razu — a to
+ * w nim ginęły zadania, liczniki i ustawienia (audyt D1, D2, D4, D5, D7).
+ *
+ * JAK W PRZEGLĄDARCE:
+ *   - zapis jest widoczny w magazynie OD RAZU, dla wszystkich kart;
+ *   - zdarzenie `storage` dostają WSZYSTKIE karty OPRÓCZ tej, która pisała;
+ *   - zapis tej samej wartości nie wywołuje zdarzenia;
+ *   - zdarzenia czekają w kolejce, aż test wywoła `flush()` — to jest właśnie
+ *     okno wyścigu: między dwoma zapisami z różnych kart można teraz nie
+ *     doręczyć niczego.
+ *
+ *   const net = makeTabNetwork();
+ *   const a = net.open({ href: URL_CRET, clock });
+ *   const b = net.open({ href: URL_WHD, clock });
+ *   ... a coś zapisuje, b coś zapisuje ...
+ *   net.flush();                      // przeglądarka doręcza zdarzenia
+ */
+function makeTabNetwork() {
+    const backing = new Map();
+    const tabs = [];
+    const queue = [];
+
+    function storageFor(source) {
+        const api = {
+            getItem: (k) => (backing.has(String(k)) ? backing.get(String(k)) : null),
+            setItem: (k, v) => {
+                const key = String(k);
+                const value = String(v);
+                const old = backing.has(key) ? backing.get(key) : null;
+                backing.set(key, value);
+                if (old !== value) queue.push({ source, key, oldValue: old, newValue: value });
+            },
+            removeItem: (k) => {
+                const key = String(k);
+                if (!backing.has(key)) return;
+                const old = backing.get(key);
+                backing.delete(key);
+                queue.push({ source, key, oldValue: old, newValue: null });
+            },
+            clear: () => { for (const k of [...backing.keys()]) api.removeItem(k); },
+            key: (i) => [...backing.keys()][i],
+        };
+        // Klucze magazynu są w przeglądarce własnymi właściwościami obiektu
+        // (skrypt robi Object.keys(localStorage)) — Proxy odtwarza to na
+        // wspólnej mapie, więc każda karta widzi zapis sąsiadki od razu.
+        return new Proxy(api, {
+            get(target, prop) {
+                if (prop in target) return target[prop];
+                if (prop === 'length') return backing.size;
+                return typeof prop === 'string' && backing.has(prop) ? backing.get(prop) : undefined;
+            },
+            has: (target, prop) => prop in target || backing.has(prop),
+            ownKeys: () => [...backing.keys()],
+            getOwnPropertyDescriptor: (target, prop) => (backing.has(prop)
+                ? { value: backing.get(prop), enumerable: true, configurable: true, writable: true }
+                : undefined),
+        });
+    }
+
+    return {
+        /** Nowa karta na wspólnym magazynie — opcje jak w boot(). */
+        open(opts = {}) {
+            const tab = {};
+            tab.env = boot({ ...opts, storage: storageFor(tab) });
+            tabs.push(tab);
+            return tab.env;
+        },
+        /** Przeglądarka doręcza wszystkie czekające zdarzenia. */
+        flush() {
+            while (queue.length) {
+                const ev = queue.shift();
+                for (const tab of tabs) {
+                    if (tab === ev.source || !tab.env) continue;
+                    tab.env.window._emit('storage', { key: ev.key, oldValue: ev.oldValue, newValue: ev.newValue });
+                }
+            }
+        },
+        /** Liczba zdarzeń czekających na doręczenie. */
+        pending: () => queue.length,
+        /** Wartość w magazynie — do sprawdzeń. */
+        read: (key) => (backing.has(key) ? backing.get(key) : null),
+    };
+}
+
+/**
  * Stanowisko testów czasu pracy: środa 16.09.2026, 15:00, zmiana dzienna.
  *
  * Środa, bo do najbliższej zmiany czasu jest ponad miesiąc. 15:00, bo zmiana
@@ -377,4 +467,4 @@ function setShift(env, hoursAgo, activeTabs) {
     S.sessionConfig.activeTabInstances = activeTabs || { CRET: Date.now(), WHD: Date.now() };
 }
 
-module.exports = { makeEnv, makeClock, boot, bootOnStand, setShift, STAND_TIME, ARTIFACT, ARTIFACT_PATH, ROOT };
+module.exports = { makeEnv, makeClock, makeTabNetwork, boot, bootOnStand, setShift, STAND_TIME, ARTIFACT, ARTIFACT_PATH, ROOT };

@@ -14,6 +14,8 @@ Dla tego projektu SemVer czyta się tak:
 
 ### Dodano
 
+- **`makeTabNetwork` w `tests/dom-stub.js` — kilka kart na jednym magazynie z przeglądarkową semantyką zdarzenia `storage`**: zapis widać od razu, zdarzenie dostają wszystkie karty oprócz piszącej, a doręczenie czeka na `flush()`. Dotychczasowe testy wielu kart były ściśle po kolei i okna wyścigu nie było w nich ani razu (audyt D8). Na niej stoi `tests/30-multitab-races.test.js`.
+
 - **`docs/przeplyw.md` — cztery diagramy przepływu.** Dla kogoś, kto ma w tym kodzie znaleźć błąd albo zaproponować zmianę: życie przedmiotu od mutacji DOM do wpisu w dzienniku, pięć źródeł zmian w licznikach z niezmiennikiem, który je spina, wszystkie bramki na drodze do sieci oraz kolejność kroków przy uruchomieniu wraz z tym, kto pisze do magazynu. Pod każdym diagramem stoją dwa rozdziały ważniejsze od obrazka: **gdzie to się psuje** (z nazwami usterek, które już się zdarzyły) i **co tego pilnuje** (pliki testów). Diagramy są w Mermaid, więc GitHub rysuje je bez żadnego zewnętrznego serwisu, a w diffie widać, co dokładnie się zmieniło.
 
 - **`tests/25-flow-docs.test.js` — strażnik diagramów.** Dokumentacja tego rodzaju psuje się w jeden sposób: ktoś zmienia nazwę metody albo stałej, a obrazek zostaje z poprzednią. Test wymusza, żeby każda nazwa `Obiekt.metoda`, każda stała konfiguracji i każdy wskazany plik testów naprawdę istniały, żeby etykiety w diagramach były cytowane (niecytowany nawias psuje rysowanie CAŁEGO diagramu) i żeby README prowadziło do pliku — dokument, do którego nic nie prowadzi, przestaje być czytany, a potem przestaje być prawdziwy.
@@ -27,6 +29,8 @@ Dla tego projektu SemVer czyta się tak:
 - **Akcje CI i wydania przypięte do commitów (SHA), a nie do ruchomych tagów**, a checkout nie zostawia tokenu w `.git/config`. Jedyny krok, który go potrzebuje (przesunięcie gałęzi `release`), dostaje go jawnie i maskuje w logach. `attest-build-provenance` podniesiony z v2 na v4. Pilnuje tego nowy test `29-supply-chain`.
 
 ### Naprawiono
+
+- **Dwie karty zapisujące coś naraz gubiły dane** (audyt D1, D2, D4, D5, D7, D13). Przeglądarka doręcza zdarzenie `storage` z opóźnieniem, a karty pisały całe obiekty ze swojej pamięci. Pauza w jednej karcie wymazywała zadanie założone właśnie w drugiej (z paczkami w liczniku); zmiana skrótu w jednej karcie znikała przy zapisie drugiej; świeża zmiana cofała się po zapisie sąsiada; dwie karty CRET naraz gubiły paczkę; usunięcie zadania zostawiało paczki, które sąsiad dopisał przed chwilą; wpis usunięty w jednej karcie wracał z pamięci drugiej. Teraz: ustawienia wspólne scalają się trójstronnie (tylko własne zmiany na wierzch magazynu, z usunięciami), lista zadań scala się po zadaniach (znacznik zmiany, nagrobki usuniętych, ostatnie przełączenie aktywnego), liczniki rosną od wartości w magazynie, a zdarzenie `storage` czyta wartość z magazynu zamiast przestarzałego `newValue`. Zapis wyciszony po wczytaniu stanu sąsiada nie przepada, tylko czeka na koniec ciszy.
 
 - **Cena podana symbolem waluty wypadała z sumy zmiany.** „€ 12,50” szło dalej z walutą „€”, której w tablicy kursów nie ma, więc przeliczenie na euro dawało pustkę — ta sama klasa błędu co 2 991,39 € liczone jako 991,39 w 9.1.1. Symbole zamieniają się teraz na kody (`$` na rynku kanadyjskim to CAD), a wzorzec kwoty rozpoznaje wyłącznie waluty, które da się przeliczyć. Działa tylko przy włączonym module cen.
 

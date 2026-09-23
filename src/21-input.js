@@ -114,8 +114,7 @@
                 return;
             }
             TaskManager.addItem(cid);
-            store.tabCounters[cid] = next;
-            StorageManager.saveCounter(cid, next);
+            StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
             // 'tabCounters'), więc jawnego wywołania renderContent() już tu nie ma:
             // dawało dwa pełne rendery na każdy przedmiot.

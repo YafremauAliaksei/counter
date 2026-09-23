@@ -706,6 +706,21 @@ Normalny tryb pracy to dwie–trzy otwarte karty (CRET, WHD, REFURB). Dzielą je
 
 Karta otwarta w połowie zmiany od razu widzi cudze liczniki.
 
+**Dwie karty zmieniające coś naraz** (od 1.3.3). Przeglądarka doręcza zdarzenie
+`storage` z opóźnieniem, więc dwie karty potrafią zapisać coś, zanim dowiedzą
+się o sobie nawzajem. Dlatego:
+
+- **ustawienia wspólne** (język, rynek, skróty, stan zmiany) zapisują się jako
+  zmiany od ostatniej synchronizacji, na wierzchu tego, co leży w magazynie —
+  zmiany dwóch różnych ustawień w dwóch kartach obie zostają, a świeża zmiana
+  nie cofa się sama po zapisie sąsiedniej karty;
+- **lista zadań** scala się po zadaniach: nowsza wersja zadania wygrywa, zadanie
+  usunięte nie wraca, przełączenie aktywnego zadania — ostatnie wygrywa;
+- **liczniki** rosną od wartości w magazynie, a nie w pamięci karty — dwie karty
+  tego samego działu mogą pracować naraz i żadna paczka nie ginie;
+- **usunięcie zadania** zdejmuje z liczników kart także paczki, które sąsiednia
+  karta zapisała przed chwilą.
+
 ---
 
 ## Zmiany i przerwy
@@ -774,7 +789,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 400 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 407 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -792,7 +807,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 29 plików, 400 sprawdzeń
+├── tests/                  ← 30 plików, 407 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -812,7 +827,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 400 sprawdzeń
+npm test             # 407 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
