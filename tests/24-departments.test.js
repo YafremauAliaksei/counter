@@ -86,21 +86,24 @@ test('wpisanie licznika działu ręcznego trafia do aktywnego zadania', () => {
 
 test('zmniejszenie liczby paczek obniża tempo', () => {
     // Tak wygląda wykluczenie przedmiotów z dziennych wskaźników: pięć paczek
-    // mniej przy dziesięciogodzinnej zmianie to pół paczki na godzinę mniej.
+    // mniej przy pięciu godzinach pracy to paczka na godzinę mniej.
+    //
+    // Okno leży W ŚRODKU zmiany stanowiska (10:00–15:00, zmiana od 06:30):
+    // czas przed startem zmiany nie liczy się do tempa zadania.
     S.tasks = []; S.activeTaskId = null; S.taskCounters = {};
     S.tabCounters.OTHER = 0; S.tabSold.OTHER = 0; S.tabNeutral.OTHER = 0;
     const now = clock.now();
-    TM.create('Default', now - 10 * HOUR);
+    TM.create('Default', now - 5 * HOUR);
     const task = TM.active();
 
-    TM.applyManualTotal('OTHER', 300);
+    TM.applyManualTotal('OTHER', 150);
     const before = TM.rate(task, now);
     ok(Math.abs(before - 30) < 0.2, 'tempo przed poprawką: ' + before.toFixed(2));
 
-    TM.applyManualTotal('OTHER', 295);
+    TM.applyManualTotal('OTHER', 145);
     const after = TM.rate(task, now);
-    ok(Math.abs(before - after - 0.5) < 0.05,
-       'pięć paczek przez dziesięć godzin to pół paczki na godzinę: ' + (before - after).toFixed(2));
+    ok(Math.abs(before - after - 1) < 0.05,
+       'pięć paczek przez pięć godzin to paczka na godzinę: ' + (before - after).toFixed(2));
 });
 
 test('dział ręczny jest w panelu, na samym dole listy działów', () => {
