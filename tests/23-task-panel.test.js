@@ -77,6 +77,12 @@ function reset(minutesAgo) {
     S.tabCounters[cid] = 0;
     S.tabSold[cid] = 0;
     S.tabNeutral[cid] = 0;
+    // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
+    // zapis zadań scala się z magazynem (audyt D1), a ten opisywałby
+    // poprzedni test — często z innym początkiem zmiany.
+    env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
+    // Zera także w magazynie — licznik rośnie od wartości zapisanej (D7).
+    SH.TaskManager.syncShift(cid);
     TM.create('Default', clock.now() - minutesAgo * MIN);
     SH.SettingsPanel.render();
     return cid;

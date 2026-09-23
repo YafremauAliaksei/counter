@@ -48,6 +48,12 @@ function fresh(sold, unsold) {
     const cid = S.currentTabInstanceId;
     S.tasks = []; S.activeTaskId = null; S.taskCounters = {};
     S.tabCounters[cid] = 0; S.tabSold[cid] = 0; S.tabNeutral[cid] = 0;
+    // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
+    // zapis zadań scala się z magazynem (audyt D1), a ten opisywałby
+    // poprzedni test — często z innym początkiem zmiany.
+    env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
+    // Zera także w magazynie — licznik rośnie od wartości zapisanej (D7).
+    TM.syncShift(cid);
     TM.create('Default', clock.now() - 2 * HOUR);
     for (let i = 0; i < sold; i++) item(SELL);
     for (let i = 0; i < unsold; i++) item(UNSELL);

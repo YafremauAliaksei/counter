@@ -207,7 +207,7 @@ dokładnie.
 | Bramka    | Polecenie              | Co łapie                                                  |
 | --------- | ---------------------- | --------------------------------------------------------- |
 | Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 400 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
+| Testy     | `npm test`             | 407 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
 | Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
 | Format    | `npm run format:check` | rozjazdy w stylu                                          |
 

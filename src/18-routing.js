@@ -262,15 +262,13 @@
             // 1, 2 i 7) i do bieżącego zadania (linia 8, podsumowanie w panelu).
             // Jedno wywołanie, dwa zapisy — dzięki temu suma zadań nie ma jak
             // rozjechać się z licznikiem karty.
+            // +1 od wartości w magazynie, a nie w pamięci — dwie karty tego
+            // samego działu dzielą klucz (patrz StorageManager.freshCount).
             if (st.direction === 'sell') {
-                const next = (store.tabSold[cid] || 0) + 1;
-                store.tabSold[cid] = next;
-                StorageManager.saveSold(cid, next);
+                StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
                 TaskManager.addSold(cid);
             } else if (st.direction === 'neutral') {
-                const next = (store.tabNeutral[cid] || 0) + 1;
-                store.tabNeutral[cid] = next;
-                StorageManager.saveNeutral(cid, next);
+                StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
                 TaskManager.addNeutral(cid);
             }
         },

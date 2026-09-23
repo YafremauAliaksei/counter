@@ -59,6 +59,12 @@ function reset(startMs) {
     SH.store.tabCounters[cid] = 0;
     SH.store.tabSold[cid] = 0;
     SH.store.tabNeutral[cid] = 0;
+    // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
+    // zapis zadań scala się z magazynem (audyt D1), a ten opisywałby
+    // poprzedni test — często z innym początkiem zmiany.
+    env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
+    // Zera także w magazynie — licznik rośnie od wartości zapisanej (D7).
+    SH.TaskManager.syncShift(cid);
     TM.create('Default', startMs == null ? clock.now() - HOUR : startMs);
     return cid;
 }
@@ -455,13 +461,13 @@ test('ostatniego zadania usunąć się nie da', () => {
 
 test('usunięte zadanie zabiera swoje paczki z licznika karty', () => {
     const cid = reset(clock.now() - 2 * HOUR);
+    // Tak jak panel: wpisana liczba, potem liczniki zmiany z zadań — także
+    // w magazynie, bo usunięcie czyta liczniki kart stamtąd (audyt D2).
     TM.applyManualTotal(cid, 40);
-    SH.store.tabCounters[cid] = 40;
-    SH.store.tabNeutral[cid] = TM.shiftTotal(cid, 'neutral');
+    TM.syncShift(cid);
     const doomed = TM.create('do usunięcia', clock.now() - HOUR);
     TM.applyManualTotal(cid, 60);
-    SH.store.tabCounters[cid] = 60;
-    SH.store.tabNeutral[cid] = TM.shiftTotal(cid, 'neutral');
+    TM.syncShift(cid);
 
     ok(TM.remove(doomed.id));
     eq(SH.store.tabCounters[cid], 40, 'licznik karty schodzi o paczki usuniętego');

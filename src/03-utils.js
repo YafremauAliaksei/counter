@@ -64,6 +64,45 @@
             }
             return output;
         },
+        /**
+         * Różnice między dwoma stanami ustawień: lista [ścieżka, nowa wartość]
+         * dla każdego liścia, który się zmienił (undefined = klucz zniknął).
+         * Tablice i wartości proste są liśćmi.
+         *
+         * 1.3.3 (audyt D4, D5): podstawa scalania ustawień wspólnych dla kart.
+         * Karta zapisuje do magazynu tylko to, co SAMA zmieniła od ostatniej
+         * synchronizacji, na wierzchu tego, co leży w magazynie — zamiast
+         * całego obiektu z pamięci, który wymazywał zmiany sąsiedniej karty.
+         */
+        diffPaths(base, current, prefix = [], out = []) {
+            if (Utils.isObject(base) && Utils.isObject(current)) {
+                const keys = new Set([...Object.keys(base), ...Object.keys(current)]);
+                for (const key of keys) {
+                    if (Utils.UNSAFE_KEYS.includes(key)) continue;
+                    Utils.diffPaths(base[key], current[key], prefix.concat(key), out);
+                }
+            } else if (JSON.stringify(base) !== JSON.stringify(current)) {
+                out.push([prefix, current]);
+            }
+            return out;
+        },
+        /** Nałożenie różnic z diffPaths na obiekt — w miejscu; zwraca ten obiekt. */
+        applyPaths(target, changes) {
+            for (const [path, value] of changes) {
+                if (!path.length || path.some(k => Utils.UNSAFE_KEYS.includes(k))) continue;
+                let node = target;
+                for (const key of path.slice(0, -1)) {
+                    if (!Utils.isObject(node[key])) node[key] = {};
+                    node = node[key];
+                }
+                const last = path[path.length - 1];
+                if (value === undefined) delete node[last];
+                // Kopia, a nie referencja: stan w pamięci nie może dzielić
+                // obiektów z tym, co idzie do magazynu (klasa błędu z 8.3.0).
+                else node[last] = value !== null && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
+            }
+            return target;
+        },
         /** Głęboka kopia bloku ustawień. */
         clone(value) { return Utils.isObject(value) ? Utils.deepMerge({}, value) : value; },
         /**
