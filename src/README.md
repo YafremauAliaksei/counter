@@ -11,33 +11,33 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 
 | # | Moduł | Odpowiada za | Linii |
 |---|---|---|---|
-| — | `00-banner.js` | nagłówek `==UserScript==`, hasło, wyłącznik logów | ~105 |
-| 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~510 |
-| 02 | `02-i18n-strings.js` | trzy słowniki tłumaczeń (pl, en, ru) | ~270 |
-| 03 | `03-utils.js` | `deepMerge`, `clampNum`, `hexToRgb`, generator DOM `h()` | ~165 |
-| 04 | `04-core-state.js` | `EventBus`, reaktywny `store`, `priceModuleOn()` | ~135 |
+| — | `00-banner.js` | nagłówek `==UserScript==`, hasło, wyłącznik logów | ~115 |
+| 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~845 |
+| 02 | `02-i18n-strings.js` | trzy słowniki tłumaczeń (pl, en, ru) | ~380 |
+| 03 | `03-utils.js` | `deepMerge`, `clampNum`, `hexToRgb`, generator DOM `h()` | ~260 |
+| 04 | `04-core-state.js` | `EventBus`, reaktywny `store`, `priceModuleOn()` | ~150 |
 | 05 | `05-i18n-runtime.js` | odczyt tłumaczeń i nazw zakładek | ~30 |
-| 06 | `06-storage.js` | odczyt i zapis stanu w `localStorage` | ~145 |
-| 07 | `07-session-shift.js` | cykl życia zmiany, reset danych między zmianami | ~200 |
+| 06 | `06-storage.js` | odczyt i zapis stanu w `localStorage` | ~490 |
+| 07 | `07-session-shift.js` | cykl życia zmiany, reset danych między zmianami | ~250 |
 | 08 | `08-drag.js` | przeciąganie okna i karty | ~80 |
 | 09 | `09-ui-css.js` | generowanie zmiennych CSS z konfiguracji, `LINE_KEYS` | ~55 |
-| 10 | `10-ui-window.js` | okno statystyk: linie 1–7 | ~260 |
-| 11 | `11-ui-builder.js` | klocki panelu ustawień | ~55 |
-| 12 | `12-ui-settings.js` | panel ustawień | ~410 |
-| 13 | `13-ui-visuals.js` | przyciemnienie strony, wskaźnik działu, powiadomienia | ~75 |
+| 10 | `10-ui-window.js` | okno statystyk: linie 1–8 | ~380 |
+| 11 | `11-ui-builder.js` | klocki panelu ustawień | ~65 |
+| 12 | `12-ui-settings.js` | panel ustawień | ~710 |
+| 13 | `13-ui-visuals.js` | przyciemnienie strony, wskaźnik działu, powiadomienia | ~85 |
 | 14 | `14-marketplace.js` | wybrany sklep i budowa linku do towaru | ~30 |
 | 15 | `15-price-ocr.js` | odczyt ceny z pikseli wykresu Keepa | ~365 |
-| 16 | `16-value-log.js` | dziennik wartości, wspólny dla wszystkich zakładek | ~400 |
+| 16 | `16-value-log.js` | dziennik wartości, wspólny dla wszystkich zakładek | ~445 |
 | 17 | `17-fx-rates.js` | kursy walut i przeliczanie na euro | ~185 |
-| 18 | `18-routing.js` | ustalenie, dokąd pojechał przedmiot | ~215 |
+| 18 | `18-routing.js` | ustalenie, dokąd pojechał przedmiot | ~300 |
 | 19 | `19-price-module.js` | główny wyłącznik sieci: `enable` / `disable` | ~35 |
-| 20 | `20-price-card.js` | karta ceny i warstwa sieciowa | ~1045 |
-| 21 | `21-input.js` | klawiatura i `MutationObserver` | ~140 |
-| 22 | `22-bootstrap.js` | `Main.init`, rozbiórka, konsolowe API `SH` | ~370 |
-| 23 | `23-config-code.js` | kod ustawień: jeden ciąg szesnastkowy zamiast panelu | ~300 |
-| 24 | `24-tasks.js` | menedżer zadań: własny zegar i liczniki procesu pracy | ~330 |
+| 20 | `20-price-card.js` | karta ceny i warstwa sieciowa | ~1170 |
+| 21 | `21-input.js` | klawiatura i `MutationObserver` | ~205 |
+| 22 | `22-bootstrap.js` | `Main.init`, rozbiórka, konsolowe API `SH` | ~505 |
+| 23 | `23-config-code.js` | kod ustawień: jeden ciąg szesnastkowy zamiast panelu | ~470 |
+| 24 | `24-tasks.js` | menedżer zadań: własny zegar i liczniki procesu pracy | ~745 |
 | 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
-| — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~185 |
+| — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~190 |
 
 ---
 

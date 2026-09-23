@@ -204,12 +204,12 @@ dokładnie.
 
 ## 4. Bramki, które muszą być zielone
 
-| Bramka    | Polecenie              | Co łapie                                                  |
-| --------- | ---------------------- | --------------------------------------------------------- |
-| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 425 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
-| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
-| Format    | `npm run format:check` | rozjazdy w stylu                                          |
+| Bramka    | Polecenie              | Co łapie                                                    |
+| --------- | ---------------------- | ----------------------------------------------------------- |
+| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                          |
+| Testy     | `npm test`             | 432 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
+| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                   |
+| Format    | `npm run format:check` | rozjazdy w stylu                                            |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 
@@ -224,15 +224,21 @@ Prettierem i ma taka zostać.
 
 ### Ustawienie ochrony gałęzi na GitHubie
 
-Settings → Branches → Add branch protection rule dla `main`:
+Settings → Rules → Rulesets → New branch ruleset dla `main`:
 
 - [x] Require a pull request before merging
-- [x] Require status checks to pass before merging
-  - obowiązkowe: `verify` (budowanie + testy), `lint`
+- [x] Require status checks to pass
+  - obowiązkowe: `Testy i spójność artefaktu` (budowanie + testy) i `Lint i format`
+    — dokładnie tak, jak w polu `name:` w `ci.yml`, a nie `verify`/`lint`:
+    GitHub dopasowuje po nazwie wyświetlanej
 - [x] Require branches to be up to date before merging
-- [x] Do not allow bypassing the above settings
+- [x] Block force pushes, Restrict deletions
+- [x] pusta lista Bypass
 
-Ostatni punkt jest ważny: zasada, którą można ominąć samemu sobie, nie jest
+Drugi zestaw, dla gałęzi `release`: tylko Block force pushes i Restrict
+deletions. Szczegóły i stan — `HANDOFF.md`, rozdział 2.4.
+
+Pusta lista Bypass jest ważna: zasada, którą można ominąć samemu sobie, nie jest
 zasadą, tylko przypomnieniem.
 
 ---

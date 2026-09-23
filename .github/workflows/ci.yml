@@ -1,7 +1,9 @@
 name: CI
 
-# Bramki jakości. Wszystkie muszą być zielone, żeby dało się scalić PR
-# (patrz: Settings -> Branches -> branch protection rule dla main).
+# Bramki jakości. Zielone mają być wszystkie — ale WYMUSZA to dopiero reguła
+# ochrony gałęzi main (Settings -> Rules -> Rulesets), której plik nie ustawi.
+# Bez niej czerwony przebieg jest tylko ostrzeżeniem i PR da się scalić mimo
+# niego (audyt A1). Stan i instrukcja: HANDOFF.md, rozdział 2.4.
 #
 # Podział na trzy zadania jest celowy:
 #   verify  — zero zależności, musi działać zawsze i wszędzie; to jest
@@ -35,7 +37,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
 
       # Bez npm ci — projekt nie ma zależności potrzebnych do testów i budowania.
       - name: Artefakt zgadza się ze źródłami
@@ -74,11 +76,11 @@ jobs:
         with:
           persist-credentials: false
 
-      # Cache działa, bo package-lock.json leży w repozytorium. Node 20 jest
-      # tu wymogiem ESLinta 10 (^20.19 || ^22.13 || >=24), a nie przypadkiem.
+      # Cache działa, bo package-lock.json leży w repozytorium. ESLint 10
+      # wymaga ^20.19 || ^22.13 || >=24 — stąd dolna granica w `engines`.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       # npm ci, a nie npm install: instaluje dokładnie to, co w pliku blokady,
@@ -99,7 +101,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [18, 20, 22]
+        # Node 18 wypadł w 1.3.3 (audyt K7): od kwietnia 2025 bez poprawek
+        # bezpieczeństwa, a narzędzia repozytorium i tak go nie obsługują.
+        # 20 zostaje jako dolna granica z `engines`, choć też jest już po
+        # końcu wsparcia — pilnuje, żeby build i testy nie sięgnęły po nowsze API.
+        node: [20, 22, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

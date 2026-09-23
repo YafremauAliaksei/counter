@@ -70,6 +70,18 @@ Dla tego projektu SemVer czyta się tak:
 
 - **Testy zadań były zielone tylko o niektórych porach dnia.** Pliki `22-tasks`, `23-task-panel` i `24-departments` budowały odcinki od prawdziwego „teraz”, a skrypt odejmuje od czasu pracy obiad leżący o stałej godzinie ściennej. Czy odcinek trafiał w obiad, zależało od godziny uruchomienia: zestaw był zielony mniej więcej 7 godzin na dobę, a CI zawsze trafiał w zielone okno, bo pushe szły wieczorem — o 09:40 ten sam commit był czerwony. Teraz te pliki chodzą na **zegarze stanowiska** (`makeClock`, `bootOnStand` w `tests/dom-stub.js`): środa 15:00, zmiana dzienna od 06:30, obiad wyłączony poza testami obiadu, które sprzątają po sobie w `finally`. Sprawdzone we wszystkich 24 strefach czasowych: 346 z 346. Nowy test pilnuje, żeby te pliki nie wróciły do zegara procesu testów, a CI puszcza cały zestaw dodatkowo w strefach UTC+14 i UTC−11 — każdy przebieg sprawdza więc trzy różne pory dnia naraz. Kod skryptu nietknięty.
 
+- **Podpowiedź linii 7 mówiła „dwie liczby”**, choć od 1.1.0 linia pokazuje trzy (tempo, sztuki, procent), a podpowiedź linii 8 leżała w słownikach i nigdzie się nie wyświetlała (audyt H4). Ściąga na końcu pliku podawała wartości domyślne sprzed kilku wersji (`showRrp`, rozmiar i tło karty, prefiks magazynu) i nie znała linii 8 ani działu `OTHER`. Teraz test porównuje ściągę z prawdziwymi wartościami domyślnymi, a przykład linii 8 w README — z tym, co rysuje ekran.
+
+### Zmieniono
+
+- **`npm run build` odmawia, gdy w `src/` leży plik spoza manifestu** (audyt I3). Taki plik nie trafia do artefaktu, a build zgłaszał sukces — łapał to tylko `npm test`.
+
+- **Node w CI: 24 dla bramek i wydania, macierz 20/22/24** (audyt K7). Node 18 wypadł: od kwietnia 2025 nie dostaje poprawek bezpieczeństwa, a ESLint 10 i tak go nie obsługuje. `engines` w `package.json` mówi teraz `>=20.19`, czyli tyle, ile naprawdę trzeba do lintera.
+
+- **Dokumentacja dogoniła kod** (audyt J2–J26). Opis ochrony gałęzi podaje prawdziwe nazwy wymaganych sprawdzeń (`Testy i spójność artefaktu`, `Lint i format`) i mówi wprost, że ochrona nie jest jeszcze ustawiona — do tego czasu czerwone CI nie blokuje scalenia. README opisuje pełną listę wyzwalaczy liczenia, usuwanie zadania (zabiera jego paczki z licznika zmiany), skrót `config('0x…')` i podaje przykład kodu ustawień, który da się skopiować. Wypadły twierdzenia, których nic nie potwierdzało („jedna trzecia testów to bezpieczeństwo”, „pięć niezależnych sprawdzeń przed siecią”). Mapa modułów w `src/README.md` ma aktualne rozmiary i test, który pilnuje, żeby się nie rozjechały o więcej niż ćwierć.
+
+- **Wersje 1.0.0, 1.1.0 i 1.3.1 nie mają tagów** i tak zostanie — tag dodany po czasie udawałby wydanie, którego nikt nie pobierał. CHANGELOG mówi to przy każdej z nich (audyt J8).
+
 ---
 
 ## 1.3.2 — 2026-09-20
@@ -93,6 +105,8 @@ Dla tego projektu SemVer czyta się tak:
 ---
 
 ## 1.3.1 — 2026-09-20
+
+> **Bez tagu.** Tagu `v1.3.1` w repozytorium nie ma — ta wersja nie ma wydania na GitHubie ani pliku do pobrania spod `…/v1.3.1/counter.js`. Nie tworzy się go wstecz: tag dodany po czasie udawałby wydanie, którego nikt nie pobierał. Opis zostaje jako historia zmian.
 
 ### Dodano
 
@@ -176,6 +190,8 @@ Dla tego projektu SemVer czyta się tak:
 
 ## 1.1.0 — 2026-09-19
 
+> **Bez tagu.** Tagu `v1.1.0` w repozytorium nie ma — ta wersja nie ma wydania na GitHubie ani pliku do pobrania spod `…/v1.1.0/counter.js`. Nie tworzy się go wstecz: tag dodany po czasie udawałby wydanie, którego nikt nie pobierał. Opis zostaje jako historia zmian.
+
 ### Dodano
 
 - **Wyłączniki zawartości karty ceny** — te same klocki, co przy liniach okna statystyk: kod produktu, jego klikalność i czas zdobycia ceny w milisekundach. Do tego wybór kroju pisma z listy okna statystyk.
@@ -211,8 +227,6 @@ Dla tego projektu SemVer czyta się tak:
 
 Zachowanie po wklejeniu pliku się nie zmienia: karta pojawia się dopiero po ręcznym włączeniu modułu cen, więc na starcie nadal widać samą linię 7, bez zapytań sieciowych i bez linii w konsoli.
 
-Zachowanie po wklejeniu pliku się nie zmienia: karta pojawia się dopiero po ręcznym włączeniu modułu cen, więc na starcie nadal widać samą linię 7, bez zapytań sieciowych i bez linii w konsoli.
-
 ### Naprawiono
 
 - **Przycisk przeciągania okna nie nadążał za stanem.** Jego wygląd wyliczany jest przy rysowaniu panelu z flagi `uiFlags.*Dragging`, ale przerysowanie wołała wyłącznie obsługa kliknięcia w ten przycisk — a flagę zdejmuje też dragger po puszczeniu myszy i przycisk resetu pozycji. Człowiek przeciągał okno, puszczał, tryb się wyłączał, a przycisk dalej świecił pomarańczowym i pisał „kliknij, by przypiąć”; kliknięcie w niego WŁĄCZAŁO przeciąganie z powrotem. Panel nasłuchuje teraz obu flag, więc kontrolka pokazuje stan niezależnie od tego, kto go zmienił.
@@ -226,6 +240,8 @@ Zachowanie po wklejeniu pliku się nie zmienia: karta pojawia się dopiero po r�
 ---
 
 ## 1.0.0 — 2026-09-16
+
+> **Bez tagu.** Tagu `v1.0.0` w repozytorium nie ma — ta wersja nie ma wydania na GitHubie ani pliku do pobrania spod `…/v1.0.0/counter.js`. Nie tworzy się go wstecz: tag dodany po czasie udawałby wydanie, którego nikt nie pobierał. Opis zostaje jako historia zmian.
 
 Pierwsze oficjalne wydanie. Kod ten sam, co w poprzedniej numeracji 9.2.0; zmieniła się numeracja i sposób prowadzenia samego projektu.
 

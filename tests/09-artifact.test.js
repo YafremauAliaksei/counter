@@ -374,6 +374,47 @@ test('w src/ nie ma plików spoza manifestu', () => {
     eq(orphans, [], 'pliki w src/ nieujęte w manifeście (nie trafią do artefaktu!)');
 });
 
+test('mapa modułów w src/README.md zna każdy moduł i nie kłamie o jego rozmiarze', () => {
+    // Audyt J13–J16: kolumna „Linii” pokazywała rozmiary sprzed roku — 06-storage
+    // jako ~145 przy 490 wierszach. Mapa, która myli rząd wielkości, prowadzi
+    // w złe miejsce. Tolerancja 25%, żeby zwykła poprawka nie wymagała ruszania mapy.
+    const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'build.manifest.json'), 'utf8'));
+    const map = fs.readFileSync(path.join(ROOT, 'src', 'README.md'), 'utf8');
+    const bad = [];
+    for (const file of [manifest.banner, ...manifest.modules.map(m => m.file), manifest.footer]) {
+        const name = path.basename(file);
+        const m = new RegExp('`' + name.replace('.', '\\.') + '`[^\\n]*\\| ~(\\d+) \\|').exec(map);
+        if (!m) { bad.push(name + ' — brak w mapie'); continue; }
+        const real = fs.readFileSync(path.join(ROOT, file), 'utf8').split('\n').length;
+        if (Math.abs(Number(m[1]) - real) > real * 0.25) bad.push(`${name} — w mapie ~${m[1]}, naprawdę ${real}`);
+    }
+    eq(bad, []);
+});
+
+test('sam build odmawia, gdy w src/ leży moduł spoza manifestu', () => {
+    // Audyt I3: test wyżej łapał sierotę tylko w `npm test`, a `npm run build`
+    // zgłaszał sukces z artefaktem bez nowego kodu. Kopia repozytorium
+    // w katalogu tymczasowym, żeby nie dotykać prawdziwego src/.
+    const os = require('os');
+    const { spawnSync } = require('child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sh-build-'));
+    try {
+        for (const f of ['build.js', 'build.manifest.json', 'package.json', 'counter.js']) {
+            fs.copyFileSync(path.join(ROOT, f), path.join(tmp, f));
+        }
+        fs.cpSync(path.join(ROOT, 'src'), path.join(tmp, 'src'), { recursive: true });
+        const run = () => spawnSync(process.execPath, [path.join(tmp, 'build.js'), '--check'], { encoding: 'utf8' });
+
+        eq(run().status, 0, 'kopia bez sieroty przechodzi — inaczej test niczego nie dowodzi');
+        fs.writeFileSync(path.join(tmp, 'src', '26-forgotten.js'), '    const forgotten = 1;\n');
+        const r = run();
+        eq(r.status, 1, 'build z sierotą ma paść');
+        ok(/spoza manifestu.*26-forgotten\.js/.test(r.stderr), 'komunikat nazywa plik: ' + r.stderr);
+    } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+    }
+});
+
 test('artefakt jest zbudowany z bieżących źródeł', () => {
     // To samo, co robi CI: przebuduj w pamięci i porównaj.
     const { execFileSync } = require('child_process');

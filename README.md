@@ -124,10 +124,18 @@ To nie jest przypadkowy zestaw, tylko jawny cel tej wersji: skrypt ma przeżyć
 dziesięciogodzinną zmianę, niczego nie zużywając i nie przeszkadzając.
 
 **Jak liczony jest przedmiot.** Skrypt śledzi tekst strony. Pojawienie się
-`poniżej` (albo `Transparency`) podnosi flagę „zaczął się przedmiot”; pojawienie
-się `Przypisz nowy` przy podniesionej fladze daje `+1`. Przerwany przedmiot,
-przy którym nie doszło do finalnej linii, nie jest zaliczany — dokładnie tak
-samo, jak nie zalicza go sam system.
+`poniżej` (albo `Transparency`, albo rosyjskiej wersji tego napisu z interfejsu
+T-REX) podnosi flagę „zaczął się przedmiot”. Przy podniesionej fladze `+1` daje
+pierwsza finalna linia z listy:
+
+- `Przypisz nowy` albo `Przypisz ponownie`;
+- `Przedmiot wysłano do …` — z wyjątkiem `PROBLEM-SOLVE`, bo taki przedmiot
+  wraca do obsługi i zostałby policzony dwa razy;
+- rosyjski napis skanowania numeru LP z interfejsu T-REX.
+
+Pełne wyrażenia stoją w `CONFIG.PRE_TRIGGER_REGEX` i `CONFIG.AUTO_TRIGGER_REGEX`.
+Przerwany przedmiot, przy którym nie doszło do finalnej linii, nie jest
+zaliczany — dokładnie tak samo, jak nie zalicza go sam system.
 
 ---
 
@@ -145,7 +153,7 @@ kolor, przezroczystość i rozmiar czcionki.
 | **5** | zegar: `[ 14:32:07 ]`                                                 | wył.      |
 | **6** | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`   | wył.      |
 | **7** | **kompaktowy licznik: `17.4 28 14%`**                                 | **wł.**   |
-| **8** | bieżące zadanie: `fast_process 12 34.3/h 58% 0:21`                    | wył.      |
+| **8** | bieżące zadanie: `fast_process 12 34.3/h 58% 21m 00s`                 | wył.      |
 
 ### Linia 7 dokładniej
 
@@ -230,7 +238,7 @@ zrobiony w tym czasie liczy się normalnie jako paczka; nie liczy się tylko cza
 Nazwa bieżącego zadania i **jego własne** liczby:
 
 ```
-fast_process 12 34.3/h 58% 0:21
+fast_process 12 34.3/h 58% 21m 00s
 ```
 
 Nazwa, paczki, tempo, procent sprzedaży, przepracowany czas. Linie 1, 2 i 7
@@ -322,6 +330,7 @@ których przez całą zmianę się nie wraca.
 | poprawić początek        | `teraz` / `-2 min` / `-5 min` / `-15` / `-30` / `początek zmiany`, albo godzina wprost w polu `HH:MM` |
 | zatrzymać zegar          | „Zatrzymaj zegar” (pierwsza paczka i tak go uruchomi)                                                 |
 | wpisać liczby po awarii  | pole **Paczki** albo pole **Tempo**                                                                   |
+| usunąć zadanie           | „Usuń” przy nim w historii, po potwierdzeniu; ostatniego zadania usunąć się nie da                    |
 
 Skróty w minutach wstecz, a nie listy godzin i minut, biorą się z tego, jak to
 wygląda na hali: o nowym procesie człowiek wie z wyprzedzeniem, zbiera narzędzia
@@ -335,6 +344,11 @@ drugie pole przelicza się samo. Po wpisaniu tempa panel pokazuje wartość
 **osiągalną przy całych paczkach**, a nie wpisaną: przy 1:17 pracy „118” to 151
 paczek, czyli naprawdę `117.7/h`. Obiecywanie `118` byłoby kłamstwem o jedną
 paczkę.
+
+**Usunięcie zadania zabiera jego paczki z licznika zmiany** — na wszystkich
+kartach, także tych, które dopisały do niego coś przed chwilą. Tak musi być, bo
+suma zadań ma się zgadzać z licznikiem zmiany; kto chce tylko przestać liczyć
+proces, przełącza się na inne zadanie, a nie usuwa bieżące.
 
 Historia zmiany to dwie linie na zadanie:
 
@@ -351,6 +365,7 @@ SH.TaskManager.create('fast_process', Date.now() - 2 * 60000); // nowe, zaczęte
 SH.TaskManager.resume(id); // wznowienie wcześniejszego
 SH.TaskManager.setStart(id, ms); // przestawienie początku CAŁEGO zadania
 SH.TaskManager.pause(); // zatrzymanie zegara
+SH.TaskManager.remove(id); // usunięcie razem z paczkami (patrz wyżej)
 ```
 
 ---
@@ -523,10 +538,15 @@ Wkleja się go w to samo miejsce w panelu („Wklej tu kod” → „Nałóż ko
 w konsoli:
 
 ```js
-SH.config('0x0101000101010103ff8800...'); // wielkość liter bez znaczenia
+SH.config('0x0101000101010103ff8800020e0201a4030001014c'); // wielkość liter bez znaczenia
 SH.configCode(); // kod bieżących ustawień
 SH.configLink(); // gotowa zakładka z tym kodem w środku
 ```
+
+Dla wygody działa też krótkie `config('0x…')`, bez `SH.` — ale tylko wtedy, gdy
+strona nie ma własnego `window.config`: skrypt zajmuje tę nazwę wyłącznie, jeśli
+jest wolna, i zwalnia ją przy rozbiórce. To jedyna nazwa poza `SH`, którą skrypt
+kładzie na `window`; `SH.config(...)` działa zawsze.
 
 ### Zakładka, która sama stawia ustawienia
 
@@ -674,6 +694,7 @@ SH.TaskManager.create('fast', Date.now() - 2 * 60000); // nowe, zaczęte 2 minut
 SH.TaskManager.resume(id); // wznowienie wcześniejszego
 SH.TaskManager.setStart(id, ms); // przestawienie początku CAŁEGO zadania
 SH.TaskManager.pause(); // zatrzymanie zegara
+SH.TaskManager.remove(id); // usunięcie razem z paczkami (patrz wyżej)
 
 // Kod ustawień
 SH.configCode(); // kod bieżących ustawień
@@ -686,8 +707,11 @@ SH.CONFIG; // wszystkie stałe
 SH.Main.teardown(); // poprawnie zdjąć skrypt ze strony
 ```
 
-Zmiany w `SH.store` działają od razu, ale żeby przeżyły `F5`, trzeba wywołać
-`SH.StorageManager.saveState()`.
+Zmiany w `SH.store` działają od razu. Ustawienia (`userConfig`, `sessionConfig`,
+`localTabConfig`) zapisują się same po sekundzie — tak samo jak z panelu.
+Liczniki (`tabCounters`, `tabSold`, `tabNeutral`, `taskCounters`) wpisane
+z konsoli **nie** zapisują się same: do poprawiania liczb służą pola w panelu
+i skróty klawiszowe, które pilnują też zgodności z zadaniami.
 
 ---
 
@@ -767,37 +791,38 @@ Skrypt działa na cudzej stronie i czyta dane z trzech źródeł, których nie
 kontroluje: `localStorage` domeny (wspólny z samym T-REX), tekst i DOM strony,
 odpowiedzi zewnętrznych serwisów. Dlatego:
 
-| Zabezpieczenie                                                        | Gdzie                    |
-| --------------------------------------------------------------------- | ------------------------ |
-| Żadnego parsowania HTML: cały tekst przez `createTextNode`            | generator DOM `h()`      |
-| `innerHTML` tylko do czyszczenia (`= ''`), nigdy z treścią            | sprawdzane testem        |
-| Ani `eval`, ani `new Function`, ani `document.write`                  | sprawdzane testem        |
-| Kod ustawień zapisuje tylko pod ścieżki z rejestru, z przycięciem     | `ConfigCode.decode`      |
-| Kod ustawień nie włącza sieci — takie numery są wycofane              | `ConfigCode.RETIRED_IDS` |
-| Ochrona przed prototype pollution (`__proto__`, `constructor`)        | `Utils.deepMerge`        |
-| Liczby z konfiguracji są zaciskane do zakresu, zanim trafią do CSS    | `Utils.clampNum`         |
-| Kolory sprawdzane zakotwiczonym wyrażeniem, inaczej — szary           | `Utils.hexToRgb`         |
-| ASIN sprawdzany po `^[A-Z0-9]{10}$` przed wyjściem do sieci           | `KeepaOCR.url`           |
-| Host linku wyłącznie z białej listy, schemat wszyty na stałe          | `productUrl`             |
-| Kody sortowania są ekranowane przed złożeniem wyrażenia               | `Routing.codeRegex`      |
-| Kursy walut sprawdzane pod kątem sensu, także przy odczycie z pamięci | `FxRates.normalize`      |
-| Skrypt rusza wyłącznie własne klucze `localStorage`                   | `StorageManager.ownKeys` |
-| Pięć niezależnych sprawdzeń przed każdym wyjściem do sieci            | `priceModuleOn()`        |
+| Zabezpieczenie                                                               | Gdzie                    |
+| ---------------------------------------------------------------------------- | ------------------------ |
+| Żadnego parsowania HTML: cały tekst przez `createTextNode`                   | generator DOM `h()`      |
+| `innerHTML` tylko do czyszczenia (`= ''`), nigdy z treścią                   | sprawdzane testem        |
+| Ani `eval`, ani `new Function`, ani `document.write`                         | sprawdzane testem        |
+| Kod ustawień zapisuje tylko pod ścieżki z rejestru, z przycięciem            | `ConfigCode.decode`      |
+| Kod ustawień nie włącza sieci — takie numery są wycofane                     | `ConfigCode.RETIRED_IDS` |
+| Ochrona przed prototype pollution (`__proto__`, `constructor`)               | `Utils.deepMerge`        |
+| Liczby z konfiguracji są zaciskane do zakresu, zanim trafią do CSS           | `Utils.clampNum`         |
+| Kolory sprawdzane zakotwiczonym wyrażeniem, inaczej — szary                  | `Utils.hexToRgb`         |
+| ASIN sprawdzany po `^[A-Z0-9]{10}$` przed wyjściem do sieci                  | `KeepaOCR.url`           |
+| Host linku wyłącznie z białej listy, schemat wszyty na stałe                 | `productUrl`             |
+| Kody sortowania są ekranowane przed złożeniem wyrażenia                      | `Routing.codeRegex`      |
+| Kursy walut sprawdzane pod kątem sensu, także przy odczycie z pamięci        | `FxRates.normalize`      |
+| Skrypt rusza wyłącznie własne klucze `localStorage`                          | `StorageManager.ownKeys` |
+| Każde wyjście do sieci spisane w teście: za `priceModuleOn()` albo z powodem | `priceModuleOn()`        |
 
-> Słowo `eval` pada w pliku dokładnie raz: wewnątrz **tekstu** gotowej zakładki,
+> Poza komentarzami słowo `eval` pada w pliku dokładnie raz: wewnątrz **tekstu** gotowej zakładki,
 > którą zwraca `SH.configLink()`. Skrypt tego nie wykonuje — wypisuje adres do
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 425 sprawdzeń,
-z czego jedna trzecia dotyczy bezpieczeństwa.
+Wszystkie punkty są pokryte testami automatycznymi (`npm test`, pliki
+`01-silence`, `06-injection`, `07-pollution`, `09-artifact`,
+`18-passwords` i `29-supply-chain`).
 
 ---
 
 ## Budowa repozytorium
 
 ```
-production/
+counter/                    ← korzeń repozytorium
 ├── counter.js              ← ARTEFAKT: to, co wkleja się do konsoli
 ├── src/                    ← ŹRÓDŁO: 25 modułów plus nagłówek i stopka
 │   ├── 00-banner.js
@@ -807,7 +832,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 31 plików, 425 sprawdzeń
+├── tests/                  ← 31 plików, 432 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -827,7 +852,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 425 sprawdzeń
+npm test             # 432 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

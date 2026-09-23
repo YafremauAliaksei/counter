@@ -656,6 +656,9 @@
          * znaku „=”. Druga to łączna liczba zrobionych przedmiotów, czyli to,
          * co w linii 2 jest w nawiasie na samym końcu.
          *
+         * Od 1.1.0 dochodzi trzecia: procent sprzedaży (`17.4 28 14%`) — ten sam,
+         * który stoi na końcu linii 2.
+         *
          * Bez oznaczeń, bez jednostek, bez nazw działów. Odświeżanie raz na
          * sekundę, tak jak reszta okna.
          */

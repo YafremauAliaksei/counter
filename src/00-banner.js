@@ -82,7 +82,8 @@ const SCRIPT_LOGS_ENABLED = false;
 //      (20 px od lewej, 8 px od dołu).
 //      Pierwsza liczba to bieżąca wydajność (paczki na godzinę, suma ze
 //      WSZYSTKICH otwartych kart), druga to łączna liczba zrobionych
-//      przedmiotów — też ze wszystkich kart.
+//      przedmiotów — też ze wszystkich kart. (Od 1.1.0 dochodzi trzecia:
+//      procent sprzedaży — „17.4 28 14%”.)
 //   4. LOGI W KONSOLI DOMYŚLNIE WYŁĄCZONE (SCRIPT_LOGS_ENABLED poniżej).
 //      Cały tekst logów przełożony na polski.
 //   5. Zestaw ustawień do samodzielnej edycji znajduje się w zakomentowanym

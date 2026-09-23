@@ -14,8 +14,11 @@ jest **korzeniem repozytorium git**: wszystko, co potrzebne do pracy, leży tuta
 niczego z zewnątrz podłączać nie trzeba.
 
 Wszystkie bramki są przepuszczone lokalnie i zielone: budowanie, testy, ESLint
-i Prettier. Pierwszą rzeczą w nowej sesji jest `npm run ci` — jeśli coś jest
-czerwone, znaczy że różni się środowisko, a nie kod.
+i Prettier. Pierwszą rzeczą w nowej sesji jest `npm run ci`. Jeśli coś jest
+czerwone, najpierw wykluczyć środowisko (wersja Node, brak `npm ci`, końce
+linii — rozdział 5), a potem traktować to jak błąd w kodzie. „Czerwone, więc
+środowisko” to pułapka: do 1.3.2 zestaw był zielony tylko o części pór dnia
+i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 
 ---
 
@@ -23,10 +26,10 @@ czerwone, znaczy że różni się środowisko, a nie kod.
 
 |                                                           | Stan                                                                     |
 | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `counter.js` w wersji 1.0.0                               | zbudowany ze `src/`, sprawdzony                                          |
+| `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                          |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                         |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                                |
-| 31 plików testów, 425 sprawdzeń                           | **wszystkie zielone**                                                    |
+| 31 plików testów, 432 sprawdzenia                         | **wszystkie zielone**                                                    |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                                  |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy                   |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |
@@ -125,35 +128,39 @@ Po pierwszym pushu powinny wykonać się trzy zadania z `.github/workflows/ci.ym
 | -------- | ------------------------------------------------------------------ | ------------------------ |
 | `verify` | `build:check` + `test` + kontrola, że przebudowa nie zmienia pliku | brak                     |
 | `lint`   | ESLint + Prettier                                                  | `npm ci` z pliku blokady |
-| `matrix` | budowanie i testy na Node 18/20/22 × Linux/Windows/macOS           | brak                     |
+| `matrix` | budowanie i testy na Node 20/22/24 × Linux/Windows/macOS           | brak                     |
 
 Jeśli `matrix` pada na Windowsie z powodu końców linii — sprawdzić, czy
 `.gitattributes` się zastosował (`git add --renormalize .`).
 
 ### 2.4. Ustawić ochronę gałęzi
 
-Settings → Branches → Add branch protection rule dla `main`:
+> **Stan na 1.3.3: NIEUSTAWIONE** (audyt A1). Pliki w repozytorium tego nie
+> załatwią — to ustawienie w interfejsie GitHuba, które może zrobić tylko
+> właściciel. Do tego czasu czerwone CI jest ostrzeżeniem, a nie blokadą:
+> PR da się scalić mimo niego, a na `main` da się wypchnąć wprost.
+
+Settings → Rules → Rulesets → New branch ruleset, dwa zestawy:
+
+**`main`** (Target branches: Include default branch):
 
 - Require a pull request before merging
-- Require status checks to pass: wybrać `verify` i `lint`
+- Require status checks to pass: `Testy i spójność artefaktu` i `Lint i format`
 - Require branches to be up to date before merging
-- Do not allow bypassing the above settings
+- Block force pushes, Restrict deletions
+- lista Bypass pusta
 
-Przez API robi się to tak (potrzebny token z prawami do repozytorium):
+**`release`** (Target branches: Include by pattern → `release`):
 
-```bash
-gh api -X PUT repos/YafremauAliaksei/counter/branches/main/protection \
-  -H "Accept: application/vnd.github+json" \
-  -f 'required_status_checks[strict]=true' \
-  -f 'required_status_checks[contexts][]=Testy i spójność artefaktu' \
-  -f 'required_status_checks[contexts][]=Lint i format' \
-  -F 'enforce_admins=true' \
-  -f 'required_pull_request_reviews[required_approving_review_count]=0' \
-  -F 'restrictions=null'
-```
+- Block force pushes, Restrict deletions
+
+Gałąź `release` przesuwa tylko `release.yml` i zawsze do przodu (tagi stoją na
+`main`), więc blokada przepisywania historii mu nie przeszkadza, a chroni
+zakładkę ludzi przed podmianą pliku pod tym samym adresem.
 
 Nazwy sprawdzeń muszą zgadzać się z polem `name:` z `ci.yml` — są po polsku
-i to nie jest literówka.
+i to nie jest literówka. Zadania `matrix` nie warto wymagać: jego nazwa zawiera
+wersję Node i system, więc zmienia się przy każdej zmianie macierzy.
 
 ### 2.5. Przeprowadzić jeden prawdziwy cykl przez PR
 

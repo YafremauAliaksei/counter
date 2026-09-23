@@ -281,6 +281,36 @@ test('każde zadanie ma dwie linie: kiedy i ile', () => {
     eq(TM.shiftTotal(cid, 'done'), 80);
 });
 
+describe('Teksty panelu');
+
+test('panel w każdym języku bez surowych kluczy tłumaczeń', () => {
+    // Brakujący klucz nie wywala skryptu — pokazuje na ekranie „[klucz]”.
+    // Tak stało w panelu przy linii 8 („[lineSettings_taskInfo]”) od 1.3.1
+    // do 1.3.3 (audyt H3), bo żaden test nie czytał gotowego panelu.
+    const before = S.userConfig.language;
+    try {
+        for (const { code } of SH.CONFIG.AVAILABLE_LANGUAGES) {
+            S.userConfig.language = code;
+            SH.SettingsPanel.render();
+            const raw = String(SH.SettingsPanel.el.textContent).match(/\[[A-Za-z]+_[A-Za-z_]+\]/g);
+            eq(raw, null, `język ${code}: surowe klucze w panelu`);
+        }
+    } finally {
+        S.userConfig.language = before;
+        SH.SettingsPanel.render();
+    }
+});
+
+test('podpowiedź linii 7 mówi o trzech liczbach, a linia 8 ma swoją', () => {
+    // Linia 7 pokazuje trzy liczby od 1.1.0, a podpowiedź mówiła „dwie liczby,
+    // nic więcej” (audyt H4). Podpowiedź linii 8 była w słownikach, ale nigdzie
+    // się nie wyświetlała.
+    const text = String(SH.SettingsPanel.el.textContent);
+    ok(text.includes(label('lineSettings_compactHint')), 'podpowiedź linii 7 w panelu');
+    ok(/trzy|three/i.test(label('lineSettings_compactHint')), 'o trzech liczbach');
+    ok(text.includes(label('lineSettings_taskInfoHint')), 'podpowiedź linii 8 w panelu');
+});
+
 describe('Cisza');
 
 test('panel zadań nie wyszedł do sieci ani do konsoli', () => {

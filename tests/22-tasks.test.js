@@ -570,6 +570,23 @@ test('linia 8 pokazuje nazwę zadania i jego własne liczby', () => {
     eq(drift(cid), { done: 0, sold: 0, neutral: 0 });
 });
 
+test('przykład linii 8 w README ma ten sam kształt co ekran', () => {
+    // README pokazywało czas jako „0:21”, a ekran — „1h 00m” / „21m 00s”
+    // (audyt J4). Porównuje się kształt: nazwa, paczki, tempo, procent, czas.
+    const readme = require('fs').readFileSync(require('path').join(__dirname, '..', 'README.md'), 'utf8');
+    const example = readme.split('\n').find(l => l.startsWith('fast_process '));
+    ok(example, 'przykład linii 8 w README');
+    reset(clock.now() - HOUR);
+    TM.rename(TM.active().id, 'fast_process');
+    SH.StatsWindowRenderer.renderContent();
+    const screen = SH.StatsWindowRenderer.lines.line8_taskInfo.textContent;
+    const h = SH.I18n.get('hoursShort'), m = SH.I18n.get('minutesShort'), sec = SH.I18n.get('secondsShort');
+    const shape = new RegExp(`^\\S+ \\d+ \\d+\\.\\d/h \\d+% \\d+[${h}${m}] \\d{2}[${m}${sec}]$`);
+    ok(shape.test(screen), 'ekran: ' + screen);
+    // README jest po polsku albo z jednostkami angielskimi — kształt ten sam.
+    ok(/^\S+ \d+ \d+\.\d\/h \d+% \d+[a-z] \d{2}[a-z]$/.test(example), 'README: ' + example);
+});
+
 test('pauza jest widoczna w linii 8', () => {
     reset(clock.now() - HOUR);
     TM.pause();

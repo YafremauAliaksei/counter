@@ -73,6 +73,13 @@ Prefiks koduje schemat danych. Zmienia się prefiks — ludziom zerują się
 liczniki, więc aktualizować można tylko między zmianami. Jedno bez drugiego
 nie istnieje.
 
+Jeden świadomy wyjątek w historii: 1.3.1 podniosło prefiks do `v1_3_0_` bez
+MAJOR, bo nowego schematu nie używał jeszcze nikt poza wydaniem stabilnym
+(decyzja autora, opisana w CHANGELOG, sekcja 1.3.1). Wyjątek nie jest
+precedensem — każda następna zmiana prefiksu to MAJOR. Poprzedni prefiks
+trafia wtedy do `LEGACY_ID_PREFIXES`, a nowy na koniec `PREFIX_HISTORY`
+w `tests/02-defaults.test.js` — test nie przepuści jednego bez drugiego.
+
 ### 5. Zakazane konstrukcje
 
 `eval`, `new Function`, `document.write`, `insertAdjacentHTML`, przypisanie do
@@ -101,7 +108,7 @@ Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 425 sprawdzeń
+npm test             # 432 sprawdzenia
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run lint         # ESLint (potrzebny npm ci)
