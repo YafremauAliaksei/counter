@@ -352,9 +352,14 @@
                     lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_valueSumHint')));
                 }
                 // Linia 7 jest celowo uboga w treść — warto powiedzieć wprost,
-                // co znaczą te dwie liczby.
+                // co znaczą te trzy liczby.
                 if (lineKey === 'line7_compact') {
                     lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_compactHint')));
+                }
+                // Linia 8 opisuje zadanie, a nie zmianę — bez tego zdania wygląda
+                // jak powtórzenie linii 1 z innymi liczbami.
+                if (lineKey === 'line8_taskInfo') {
+                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_taskInfoHint')));
                 }
 
                 // Obsługa wielokoloru dla linii 2 (podsumowanie globalne)

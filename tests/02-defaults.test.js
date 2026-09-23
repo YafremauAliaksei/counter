@@ -152,3 +152,59 @@ test('język domyślny to polski, sklep domyślny to amazon.de', () => {
     eq(env.SH.store.userConfig.language, 'pl');
     eq(env.SH.CONFIG.DEFAULT_MARKETPLACE, 'de');
 });
+
+describe('Ściąga na końcu pliku mówi prawdę (audyt H5)');
+
+/**
+ * Ściąga konfiguracyjna w src/99-footer.js jedzie w artefakcie do każdego
+ * człowieka — i rozjechała się z kodem w pięciu miejscach naraz (rozmiar
+ * i przezroczystość karty ceny, cena katalogowa, prefiks magazynu, brak linii 8
+ * i działu OTHER), bo nic jej nie sprawdzało. Ten test czyta każde przypisanie
+ * `nazwa = wartość` ze ściągi i porównuje z prawdziwą wartością domyślną.
+ */
+const vmFooter = require('vm');
+const FOOTER = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', '99-footer.js'), 'utf8');
+
+/** Treść sekcji ściągi: między linią kresek pod nagłówkiem a następną linią kresek. */
+function footerSection(title) {
+    const lines = FOOTER.split('\n');
+    const head = lines.findIndex(l => l.includes(title));
+    ok(head >= 0, 'w ściądze brak sekcji ' + title);
+    const out = [];
+    for (let i = head + 2; i < lines.length && !/^\s+-{20,}\s*$/.test(lines[i]); i++) out.push(lines[i]);
+    return out;
+}
+
+/** Przypisania `nazwa = wartość` z sekcji: wartość kończą dwie spacje albo koniec linii. */
+function assignments(title) {
+    return footerSection(title)
+        .map(l => /^ {3}([A-Za-z_]+)\s+=\s+(.+?)(?: {2,}.*)?$/.exec(l))
+        .filter(Boolean)
+        .map(m => [m[1], vmFooter.runInNewContext('(' + m[2] + ')')]);
+}
+
+test('wartości w ściądze są prawdziwymi wartościami domyślnymi', () => {
+    const L = env.SH.DEFAULT_LOCAL_CONFIG;
+    const bad = [];
+    const check = (where, name, shown, real) => {
+        if (JSON.stringify(shown) !== JSON.stringify(real)) bad.push(`${where}.${name}: ściąga ${JSON.stringify(shown)}, kod ${JSON.stringify(real)}`);
+    };
+    for (const [name, v] of assignments('OKNO STATYSTYK')) check('okno', name, v, L[name]);
+    for (const [name, v] of assignments('KARTA CENY')) check('karta', name, v, L.priceCard[name]);
+    for (const [name, v] of assignments('USTAWIENIA WSPÓLNE')) check('wspólne', name, v, env.SH.DEFAULT_USER_CONFIG[name]);
+    for (const [name, v] of assignments('STAŁE W CONFIG')) check('CONFIG', name, v, env.SH.CONFIG[name]);
+    ok(assignments('KARTA CENY').length >= 10, 'parser ściągi coś czyta');
+    eq(bad, [], 'rozjazdy ściągi z kodem');
+});
+
+test('tabela linii w ściądze zna każdą linię i jej wartości domyślne', () => {
+    const lines = env.SH.DEFAULT_LOCAL_CONFIG.linesConfig;
+    const rows = FOOTER.split('\n')
+        .map(l => /^ {3}(line\d_\w+)\s.*domyślnie:\s*(ON|OFF),\s*(#[0-9A-Fa-f]{6}),\s*(\d+)%,\s*(\d+)px/.exec(l))
+        .filter(Boolean);
+    eq(rows.map(r => r[1]).sort(), Object.keys(lines).sort(), 'każda linia ma wiersz w ściądze');
+    for (const [, key, on, color, alpha, size] of rows) {
+        eq([on === 'ON', color.toUpperCase(), Number(alpha), Number(size)],
+           [lines[key].visible, lines[key].colorHex.toUpperCase(), lines[key].alpha, lines[key].fontSize], key);
+    }
+});

@@ -71,18 +71,23 @@
    line4_lunchInfo       wybrana przerwa                 domyślnie: OFF, #808080, 60%, 14px
    line5_realTimeClock   zegar                           domyślnie: OFF, #808080, 60%, 14px
    line6_valueSum        bilans pieniężny zmiany         domyślnie: OFF, #7CFFA8, 85%, 14px
-   line7_compact         dwie liczby: wydajność i sztuki domyślnie: ON,  #808080, 50%, 13px
+   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 13px
+   line8_taskInfo        bieżące zadanie                 domyślnie: OFF, #808080, 60%, 13px
 
    Linia 2 ma dodatkowo:
        multicolor    — true/false, kolorowanie działów osobnymi kolorami
-       customColors  — { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E' }
+       customColors  — { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
 
    Linia 6: picker koloru działa tylko na liczbę sztuk. Plus zawsze zielony,
    minus zawsze czerwony — po tym rozpoznaje się znak.
 
-   Linia 7: pokazuje dokładnie dwie liczby oddzielone spacją, np. „17.4 28”.
+   Linia 7: pokazuje dokładnie trzy liczby oddzielone spacją, np. „17.4 28 14%”.
    Pierwsza to paczki na godzinę (suma ze wszystkich wliczanych kart), druga to
-   liczba zrobionych sztuk. Nic więcej się tam nie da dodać bez zmiany kodu.
+   liczba zrobionych sztuk, trzecia — procent sprzedaży. Nic więcej się tam nie
+   da dodać bez zmiany kodu.
+
+   Linia 8: nazwa bieżącego zadania i jego własne liczby — paczki, tempo,
+   procent, przepracowany czas.
 
    -----------------------------------------------------------------------------
    OKNO STATYSTYK  (store.localTabConfig)
@@ -106,13 +111,13 @@
    logValues  = true          prowadzić dziennik wartości
    marketFallback = true      szukać ceny w innych sklepach, gdy w wybranym brak
    showPrice  = true          pokazywać aktualną cenę
-   showRrp    = true          pokazywać cenę katalogową / drugą serię
+   showRrp    = false         pokazywać cenę katalogową / drugą serię
    showGraph  = true          pokazywać obrazek wykresu (tylko przy source 'graph')
    graphMode  = 'legend'      'legend' (same ceny) | 'right' | 'full'
    width      = 280           170..900 px
-   fontSize   = 30            14..48 px
+   fontSize   = 13            11..48 px (suwak w panelu)
    bgColorHex = '#0a0e18'     tło karty
-   bgAlpha    = 88            0..100
+   bgAlpha    = 0             0..100
    position   = { left: '14px', top: '' }   puste top = przy dole ekranu
 
    -----------------------------------------------------------------------------
@@ -122,7 +127,7 @@
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)
-   globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true }
+   globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true, OTHER: true }
                               które działy wliczają się do sumy w liniach 2 i 7
    keyboardShortcuts = { INCREMENT: 'None', DECREMENT: 'None' }
                               'None' | 'ShiftRight' | 'ControlRight' | 'AltRight'
@@ -135,9 +140,9 @@
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_0_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_3_0_'
        Prefiks wszystkich kluczy w localStorage. Koduje SCHEMAT danych, a nie
-       numer wydania: 1.1.0 i 1.2.0 zostaną przy 'v1_0_0', dopóki układ
+       numer wydania: 1.3.1 i następne zostają przy 'v1_3_0', dopóki układ
        zapisywanych pól się nie zmieni. Zmiana prefiksu = start od zera
        (stare ustawienia i liczniki przestają być widoczne).
    DEBUG_MODE = false         bierze się z SCRIPT_LOGS_ENABLED z góry pliku;

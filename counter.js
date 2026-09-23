@@ -82,7 +82,8 @@ const SCRIPT_LOGS_ENABLED = false;
 //      (20 px od lewej, 8 px od dołu).
 //      Pierwsza liczba to bieżąca wydajność (paczki na godzinę, suma ze
 //      WSZYSTKICH otwartych kart), druga to łączna liczba zrobionych
-//      przedmiotów — też ze wszystkich kart.
+//      przedmiotów — też ze wszystkich kart. (Od 1.1.0 dochodzi trzecia:
+//      procent sprzedaży — „17.4 28 14%”.)
 //   4. LOGI W KONSOLI DOMYŚLNIE WYŁĄCZONE (SCRIPT_LOGS_ENABLED poniżej).
 //      Cały tekst logów przełożony na polski.
 //   5. Zestaw ustawień do samodzielnej edycji znajduje się w zakomentowanym
@@ -773,6 +774,9 @@ const SCRIPT_LOGS_ENABLED = false;
          * znaku „=”. Druga to łączna liczba zrobionych przedmiotów, czyli to,
          * co w linii 2 jest w nawiasie na samym końcu.
          *
+         * Od 1.1.0 dochodzi trzecia: procent sprzedaży (`17.4 28 14%`) — ten sam,
+         * który stoi na końcu linii 2.
+         *
          * Bez oznaczeń, bez jednostek, bez nazw działów. Odświeżanie raz na
          * sekundę, tak jak reszta okna.
          */
@@ -1003,7 +1007,8 @@ const SCRIPT_LOGS_ENABLED = false;
             valueLog_routeStats: 'sold ${sold}, unsold ${unsold}, undetermined ${undet}',
             lineSettings_valueSum: 'Line 6: Processed Value Sum',
             lineSettings_compact: 'Line 7: Compact counter',
-            lineSettings_compactHint: 'Two numbers: items per hour (all tabs) and items done. Nothing else.',
+            lineSettings_compactHint: 'Three numbers: items per hour (all tabs), items done and the sales percentage. Nothing else.',
+            lineSettings_taskInfo: 'Line 8: Current task',
             priceModule_section: 'Price Module (network)',
             priceModule_enabled: 'Enable the price module',
             priceModule_hint: 'OFF by default. While it is off the script makes NO requests to the internet: no currency rates, no Keepa chart, no r.jina.ai. The item counter, shift, breaks and line 7 work without the network.',
@@ -1128,7 +1133,8 @@ const SCRIPT_LOGS_ENABLED = false;
             valueLog_routeStats: 'sprzedane ${sold}, niesprzedane ${unsold}, nieokreślone ${undet}',
             lineSettings_valueSum: 'Linia 6: Suma wartości',
             lineSettings_compact: 'Linia 7: Licznik zwięzły',
-            lineSettings_compactHint: 'Dwie liczby: paczki na godzinę (wszystkie karty) i zrobione sztuki. Nic więcej.',
+            lineSettings_compactHint: 'Trzy liczby: paczki na godzinę (wszystkie karty), zrobione sztuki i procent sprzedaży. Nic więcej.',
+            lineSettings_taskInfo: 'Linia 8: Bieżące zadanie',
             priceModule_section: 'Moduł cen (sieć)',
             priceModule_enabled: 'Włącz moduł cen',
             priceModule_hint: 'Domyślnie WYŁĄCZONY. Póki jest wyłączony, skrypt nie wysyła ŻADNYCH zapytań do internetu: ani po kursy walut, ani po wykres Keepa, ani do r.jina.ai. Licznik przedmiotów, zmiana, przerwy i linia 7 działają bez sieci.',
@@ -1251,7 +1257,8 @@ const SCRIPT_LOGS_ENABLED = false;
             valueLog_routeStats: 'продано ${sold}, непродано ${unsold}, не определено ${undet}',
             lineSettings_valueSum: 'Строка 6: Сумма стоимости',
             lineSettings_compact: 'Строка 7: Компактный счётчик',
-            lineSettings_compactHint: 'Два числа: предметов в час (все вкладки) и сделано штук. Больше ничего.',
+            lineSettings_compactHint: 'Три числа: предметов в час (все вкладки), сделано штук и процент продажи. Больше ничего.',
+            lineSettings_taskInfo: 'Строка 8: Текущая задача',
             priceModule_section: 'Модуль цен (сеть)',
             priceModule_enabled: 'Включить модуль цен',
             priceModule_hint: 'По умолчанию ВЫКЛЮЧЕН. Пока он выключен, скрипт не делает НИКАКИХ запросов в интернет: ни за курсами валют, ни за графиком Keepa, ни к r.jina.ai. Счётчик предметов, смена, перерывы и строка 7 работают без сети.',
@@ -2999,7 +3006,9 @@ const SCRIPT_LOGS_ENABLED = false;
              *   pierwsza — paczki na godzinę, suma ze WSZYSTKICH wliczanych kart.
              *              To dokładnie ta liczba, która w linii 2 stoi po „=”;
              *   druga    — łączna liczba zrobionych sztuk, czyli to, co w linii 2
-             *              jest w nawiasie na samym końcu.
+             *              jest w nawiasie na samym końcu;
+             *   trzecia  — od 1.1.0 procent sprzedaży (`17.4 28 14%`), ten sam,
+             *              który stoi na końcu linii 2.
              *
              * `gTotal` liczy się wyżej, przy składaniu linii 2, i to jest
              * świadome: obie linie MUSZĄ pokazywać tę samą liczbę, a dwa
@@ -3462,9 +3471,14 @@ const SCRIPT_LOGS_ENABLED = false;
                     lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_valueSumHint')));
                 }
                 // Linia 7 jest celowo uboga w treść — warto powiedzieć wprost,
-                // co znaczą te dwie liczby.
+                // co znaczą te trzy liczby.
                 if (lineKey === 'line7_compact') {
                     lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_compactHint')));
+                }
+                // Linia 8 opisuje zadanie, a nie zmianę — bez tego zdania wygląda
+                // jak powtórzenie linii 1 z innymi liczbami.
+                if (lineKey === 'line8_taskInfo') {
+                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_taskInfoHint')));
                 }
 
                 // Obsługa wielokoloru dla linii 2 (podsumowanie globalne)
@@ -8531,18 +8545,23 @@ const SCRIPT_LOGS_ENABLED = false;
    line4_lunchInfo       wybrana przerwa                 domyślnie: OFF, #808080, 60%, 14px
    line5_realTimeClock   zegar                           domyślnie: OFF, #808080, 60%, 14px
    line6_valueSum        bilans pieniężny zmiany         domyślnie: OFF, #7CFFA8, 85%, 14px
-   line7_compact         dwie liczby: wydajność i sztuki domyślnie: ON,  #808080, 50%, 13px
+   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 13px
+   line8_taskInfo        bieżące zadanie                 domyślnie: OFF, #808080, 60%, 13px
 
    Linia 2 ma dodatkowo:
        multicolor    — true/false, kolorowanie działów osobnymi kolorami
-       customColors  — { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E' }
+       customColors  — { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
 
    Linia 6: picker koloru działa tylko na liczbę sztuk. Plus zawsze zielony,
    minus zawsze czerwony — po tym rozpoznaje się znak.
 
-   Linia 7: pokazuje dokładnie dwie liczby oddzielone spacją, np. „17.4 28”.
+   Linia 7: pokazuje dokładnie trzy liczby oddzielone spacją, np. „17.4 28 14%”.
    Pierwsza to paczki na godzinę (suma ze wszystkich wliczanych kart), druga to
-   liczba zrobionych sztuk. Nic więcej się tam nie da dodać bez zmiany kodu.
+   liczba zrobionych sztuk, trzecia — procent sprzedaży. Nic więcej się tam nie
+   da dodać bez zmiany kodu.
+
+   Linia 8: nazwa bieżącego zadania i jego własne liczby — paczki, tempo,
+   procent, przepracowany czas.
 
    -----------------------------------------------------------------------------
    OKNO STATYSTYK  (store.localTabConfig)
@@ -8566,13 +8585,13 @@ const SCRIPT_LOGS_ENABLED = false;
    logValues  = true          prowadzić dziennik wartości
    marketFallback = true      szukać ceny w innych sklepach, gdy w wybranym brak
    showPrice  = true          pokazywać aktualną cenę
-   showRrp    = true          pokazywać cenę katalogową / drugą serię
+   showRrp    = false         pokazywać cenę katalogową / drugą serię
    showGraph  = true          pokazywać obrazek wykresu (tylko przy source 'graph')
    graphMode  = 'legend'      'legend' (same ceny) | 'right' | 'full'
    width      = 280           170..900 px
-   fontSize   = 30            14..48 px
+   fontSize   = 13            11..48 px (suwak w panelu)
    bgColorHex = '#0a0e18'     tło karty
-   bgAlpha    = 88            0..100
+   bgAlpha    = 0             0..100
    position   = { left: '14px', top: '' }   puste top = przy dole ekranu
 
    -----------------------------------------------------------------------------
@@ -8582,7 +8601,7 @@ const SCRIPT_LOGS_ENABLED = false;
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)
-   globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true }
+   globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true, OTHER: true }
                               które działy wliczają się do sumy w liniach 2 i 7
    keyboardShortcuts = { INCREMENT: 'None', DECREMENT: 'None' }
                               'None' | 'ShiftRight' | 'ControlRight' | 'AltRight'
@@ -8595,9 +8614,9 @@ const SCRIPT_LOGS_ENABLED = false;
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_0_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_3_0_'
        Prefiks wszystkich kluczy w localStorage. Koduje SCHEMAT danych, a nie
-       numer wydania: 1.1.0 i 1.2.0 zostaną przy 'v1_0_0', dopóki układ
+       numer wydania: 1.3.1 i następne zostają przy 'v1_3_0', dopóki układ
        zapisywanych pól się nie zmieni. Zmiana prefiksu = start od zera
        (stare ustawienia i liczniki przestają być widoczne).
    DEBUG_MODE = false         bierze się z SCRIPT_LOGS_ENABLED z góry pliku;

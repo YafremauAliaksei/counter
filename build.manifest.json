@@ -11,7 +11,7 @@
     "ValueLog z 16-value-log — w momencie renderu wszystko jest już zadeklarowane.",
     "Zakazane jest tylko UŻYCIE W CZASIE DEKLARACJI czegoś z niższego modułu.",
     "",
-    "Ostatni na liście jest 24-presets.js i to nie jest kwestia numeracji: to",
+    "Ostatni na liście jest 25-presets.js i to nie jest kwestia numeracji: to",
     "on woła Main.init(). Wszystko, czego init UŻYWA W CZASIE DZIAŁANIA, musi",
     "więc stać wyżej — dlatego 23-config-code.js przeniesiono przed presety,",
     "gdy init zaczął nakładać kod ustawień podstawiony przez zakładkę.",

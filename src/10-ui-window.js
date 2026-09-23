@@ -334,7 +334,9 @@
              *   pierwsza — paczki na godzinę, suma ze WSZYSTKICH wliczanych kart.
              *              To dokładnie ta liczba, która w linii 2 stoi po „=”;
              *   druga    — łączna liczba zrobionych sztuk, czyli to, co w linii 2
-             *              jest w nawiasie na samym końcu.
+             *              jest w nawiasie na samym końcu;
+             *   trzecia  — od 1.1.0 procent sprzedaży (`17.4 28 14%`), ten sam,
+             *              który stoi na końcu linii 2.
              *
              * `gTotal` liczy się wyżej, przy składaniu linii 2, i to jest
              * świadome: obie linie MUSZĄ pokazywać tę samą liczbę, a dwa
