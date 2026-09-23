@@ -163,7 +163,9 @@
             return d;
         },
         formatDuration(ms) {
-            if (isNaN(ms) || ms <= 0) return I18n.get('notApplicable');
+            // Number.isFinite, a nie isNaN (1.3.3, audyt F11): nieskończoność
+            // przechodziła przez isNaN i na ekranie stało „Infinityg NaNm”.
+            if (!Number.isFinite(ms) || ms <= 0) return I18n.get('notApplicable');
             let s = Math.floor(ms / 1000); let m = Math.floor(s / 60); const h = Math.floor(m / 60);
             s %= 60; m %= 60;
             const hS = I18n.get('hoursShort'), mS = I18n.get('minutesShort'), sS = I18n.get('secondsShort');

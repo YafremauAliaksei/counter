@@ -76,18 +76,35 @@ test('praca licznika przy wyłączonych logach nic nie wypisuje', () => {
 });
 
 test('SH.logsOn() włącza wypisywanie, SH.logsOff() wycisza z powrotem', () => {
-    env.SH.logsOn();
-    eq(env.SH.logs(), true);
-    env.SH.Routing.startItem('sprawdzenie logów');
-    ok(env.net.consoleLog.length > 0, 'po włączeniu musi coś polecieć do konsoli');
-    const afterOn = env.net.consoleLog.length;
-    env.SH.logsOff();
-    eq(env.SH.logs(), false);
-    env.SH.Routing.startItem('znowu cisza');
-    // logsOff() sam wypisuje jedną linię potwierdzenia — i to wszystko.
-    eq(env.net.consoleLog.length, afterOn + 1, 'po wyłączeniu nic więcej nie leci');
-    env.net.consoleLog.length = 0;
-    env.net.consoleError.length = 0;
+    // Sprawdza się linię, którą wypisał Utils.log — a nie potwierdzenie
+    // samego logsOn(). Do 1.3.3 wystarczała dowolna linia, a logsOn() pisze
+    // swoją prostym console.log, więc test przechodził nawet wtedy, gdy
+    // Utils.log nie wypisywał NIGDY (audyt G1.3: mutant M88 przeżył). Dla
+    // stanowiska, na którym SH.logsOn() to jedyne narzędzie diagnostyki,
+    // to jest dokładnie ta własność, która ma działać.
+    //
+    // Wyłącznik wraca w `finally`: porażka w środku nie może zostawić logów
+    // włączonych następnym testom tego pliku.
+    try {
+        env.SH.logsOn();
+        eq(env.SH.logs(), true);
+        env.net.consoleLog.length = 0;
+        env.SH.Utils.log('znacznik-diagnostyki');
+        ok(env.net.consoleLog.some(l => l.includes('znacznik-diagnostyki')), 'Utils.log wypisuje po włączeniu');
+        env.SH.Routing.startItem('sprawdzenie logów');
+        ok(env.net.consoleLog.some(l => l.includes('sprawdzenie logów')), 'i logi samego skryptu też');
+        const afterOn = env.net.consoleLog.length;
+        env.SH.logsOff();
+        eq(env.SH.logs(), false);
+        env.SH.Routing.startItem('znowu cisza');
+        env.SH.Utils.log('po-wyłączeniu');
+        // logsOff() sam wypisuje jedną linię potwierdzenia — i to wszystko.
+        eq(env.net.consoleLog.length, afterOn + 1, 'po wyłączeniu nic więcej nie leci');
+    } finally {
+        env.SH.logsOff();
+        env.net.consoleLog.length = 0;
+        env.net.consoleError.length = 0;
+    }
 });
 
 test('Utils.fatal wypisuje ZAWSZE, niezależnie od wyłącznika', () => {

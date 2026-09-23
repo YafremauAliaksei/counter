@@ -112,18 +112,44 @@ test('każda etykieta w diagramach jest w cudzysłowie', () => {
 
 describe('Diagramy opisują kod, który naprawdę istnieje');
 
-test('każda nazwa „Obiekt.metoda” jest w artefakcie', () => {
-    const missing = [];
-    for (const name of referencedNames()) {
-        if (KNOWN_ABSENT[name]) continue;
+/**
+ * Czy `obj.member` naprawdę istnieje RAZEM — a nie oba człony osobno gdzieś
+ * w pliku (1.3.3, audyt J6: 7 z 7 wymyślonych par typu `ValueLog.scan`
+ * przechodziło, bo `ValueLog` i `scan` istnieją, tylko nie razem).
+ *
+ * Wystarcza jedno z dwojga: para stoi w kodzie dosłownie (`Obj.member`),
+ * albo `member` jest zdefiniowane wewnątrz bloku `const Obj = { … };`.
+ */
+const ART_LINES = ARTIFACT.split('\n');
+function pairExists(obj, member) {
+    if (new RegExp(`\\b${obj}\\.${member}\\b`).test(ARTIFACT)) return true;
+    const start = ART_LINES.findIndex(l => new RegExp(`^\\s*const ${obj}\\s*=\\s*\\{`).test(l));
+    if (start < 0) return false;
+    const indent = ART_LINES[start].search(/\S/);
+    const close = new RegExp(`^\\s{${indent}}\\};?\\s*$`);
+    const end = ART_LINES.findIndex((l, i) => i > start && close.test(l));
+    const block = ART_LINES.slice(start, end < 0 ? undefined : end);
+    return block.some(l => new RegExp(`^\\s*(?:async\\s+)?${member}\\s*[(:]`).test(l));
+}
+
+test('każda nazwa „Obiekt.metoda” jest w artefakcie — jako para', () => {
+    const missing = referencedNames().filter(name => {
+        if (KNOWN_ABSENT[name]) return false;
         const [obj, member] = name.split('.');
-        // Szukamy obu członów osobno: metoda bywa zapisana skrótowo
-        // (`addItem(tabKey)`), a obiekt stoi w deklaracji `const Obiekt = {`.
-        const hasObj = new RegExp(`\\b${obj}\\b`).test(ARTIFACT);
-        const hasMember = new RegExp(`\\b${member}\\b`).test(ARTIFACT);
-        if (!hasObj || !hasMember) missing.push(name);
+        return !pairExists(obj, member);
+    });
+    eq(missing, [], 'pary z diagramów, których nie ma w artefakcie');
+});
+
+test('strażnik par odrzuca pary wymyślone z istniejących członów', () => {
+    // Metatest: te człony istnieją osobno, ale nie razem. Gdyby sprawdzanie
+    // wróciło do „każdy człon gdziekolwiek”, ten test zapali się pierwszy.
+    for (const fake of ['ValueLog.scan', 'TaskManager.parseJina', 'Routing.flushArchive', 'ShiftManager.addItem']) {
+        const [obj, member] = fake.split('.');
+        ok(!pairExists(obj, member), 'para wymyślona przeszła: ' + fake);
     }
-    eq(missing, [], 'nazwy z diagramów, których nie ma w artefakcie');
+    ok(pairExists('ValueLog', 'flushArchive'), 'para prawdziwa musi przejść');
+    ok(pairExists('TaskManager', 'workedMs'), 'para prawdziwa musi przejść');
 });
 
 test('każda stała z podkreśleniem jest w artefakcie', () => {

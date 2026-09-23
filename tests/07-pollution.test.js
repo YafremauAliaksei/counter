@@ -6,8 +6,15 @@
  * obcego serwera z kursami walut. Oba idą przez scalanie z obiektami
  * konfiguracji, a scalanie to klasyczne miejsce na `__proto__`.
  *
- * Wszystkie te testy patrzą na `{}.coś` — czyli sprawdzają, czy globalny
- * Object.prototype pozostał czysty po przetworzeniu spreparowanych danych.
+ * Dwie rzeczy do sprawdzenia, i obie trzeba sprawdzać W PIASKOWNICY skryptu
+ * (osobny realm `vm`), a nie w procesie testów:
+ *   1. globalny Object.prototype zostaje czysty;
+ *   2. WYNIK scalania nie dostaje cudzego prototypu. Przypisanie
+ *      `out['__proto__'] = v` nie zatruwa Object.prototype — podmienia
+ *      prototyp jednego obiektu, a wtedy każde pole, którego w nim nie ma,
+ *      czyta się z danych napastnika. Do 1.3.3 testy sprawdzały tylko punkt 1
+ *      i przechodziły także przy zdjętym strażniku (audyt G1.1: mutanty M05
+ *      i M06 przeżyły). Punkt 2 pada bez strażnika — to jest cały sens.
  */
 
 'use strict';
@@ -22,17 +29,46 @@ const U = env.SH.Utils;
 
 describe('deepMerge');
 
-test('nie przepuszcza __proto__', () => {
+/**
+ * Object.prototype piaskownicy skryptu — ten, który skrypt mógłby zatruć.
+ * Przez literał, a nie przez `Object`: atrapa podstawia do piaskownicy
+ * `Object` procesu testów, a literały `{}` mają prototyp własnego realmu.
+ */
+const sandboxProto = () => vm.runInContext('Object.getPrototypeOf({})', env.sandbox);
+
+test('nie przepuszcza __proto__ — ani do Object.prototype, ani do wyniku', () => {
     const evil = JSON.parse('{"__proto__": {"pwned": "yes"}}');
-    U.deepMerge({}, evil);
-    eq({}.pwned, undefined, 'Object.prototype musi zostać czysty');
-    eq(Object.prototype.pwned, undefined);
+    const out = U.deepMerge({}, evil);
+    eq(sandboxProto().pwned, undefined, 'Object.prototype piaskownicy czysty');
+    ok(Object.getPrototypeOf(out) === sandboxProto(), 'wynik ma zwykły prototyp');
+    eq(out.pwned, undefined, 'pole napastnika nie czyta się z wyniku');
 });
 
-test('nie przepuszcza constructor.prototype', () => {
-    const evil = JSON.parse('{"constructor": {"prototype": {"pwned2": 1}}}');
-    U.deepMerge({}, evil);
-    eq({}.pwned2, undefined);
+test('nie przepuszcza __proto__ głębiej niż na pierwszym poziomie', () => {
+    const out = U.deepMerge({ a: { x: 1 } }, JSON.parse('{"a": {"__proto__": {"pwned": 1}}}'));
+    ok(Object.getPrototypeOf(out.a) === sandboxProto(), 'zagnieżdżony obiekt ma zwykły prototyp');
+    eq(out.a.pwned, undefined);
+    eq(out.a.x, 1, 'reszta scala się normalnie');
+});
+
+test('nie przepuszcza constructor ani prototype', () => {
+    const out = U.deepMerge({}, JSON.parse('{"constructor": {"prototype": {"pwned2": 1}}, "prototype": {"pwned3": 1}}'));
+    eq(sandboxProto().pwned2, undefined);
+    ok(!Object.prototype.hasOwnProperty.call(out, 'constructor'), 'constructor nie trafia do wyniku');
+    ok(!Object.prototype.hasOwnProperty.call(out, 'prototype'), 'prototype nie trafia do wyniku');
+});
+
+test('diffPaths i applyPaths też pomijają te klucze', () => {
+    // Scalanie ustawień między kartami (1.3.3) chodzi po ścieżkach — to druga
+    // droga, którą dane z magazynu trafiają do obiektów konfiguracji.
+    const evil = JSON.parse('{"__proto__": {"pwned4": 1}, "a": {"constructor": {"x": 1}}}');
+    const changes = U.diffPaths({}, evil);
+    ok(changes.every(([path]) => !path.some(k => U.UNSAFE_KEYS.includes(k))), 'żadnej ścieżki przez niebezpieczny klucz');
+    // Cel tworzony w piaskownicy — tak jak stan skryptu.
+    const target = U.applyPaths(vm.runInContext('({})', env.sandbox), [[['__proto__', 'pwned5'], 1], [['a', 'constructor'], 1]]);
+    ok(Object.getPrototypeOf(target) === sandboxProto(), 'prototyp nietknięty');
+    eq(sandboxProto().pwned5, undefined);
+    ok(!Object.prototype.hasOwnProperty.call(target, 'a'), 'ścieżka z niebezpiecznym kluczem pominięta w całości');
 });
 
 test('zwykłe zagnieżdżone obiekty nadal scalają się poprawnie', () => {
@@ -50,25 +86,29 @@ test('scalanie kopiuje w głąb, nie zostawia wspólnych referencji', () => {
 describe('Dane z localStorage');
 
 test('zatruta konfiguracja nie psuje obiektów', () => {
+    // Klucze pod BIEŻĄCYM prefiksem. Do 1.3.3 test pisał pod v1_0_0_, którego
+    // skrypt 1.3.x w ogóle nie czyta — zatruty zapis nigdy do niego nie trafiał.
+    const P = env.prefix;
     const e = makeEnv();
-    e.sandbox.localStorage.setItem(
-        'statsHelper_v1_0_0_userConfig',
-        '{"__proto__":{"pwnedCfg":1},"language":"pl"}');
-    e.sandbox.localStorage.setItem(
-        'statsHelper_v1_0_0_allLocalTabConfigs',
-        '{"CRET":{"__proto__":{"pwnedLocal":1},"priceCard":{"moduleEnabled":false}}}');
+    e.sandbox.localStorage.setItem(P + 'userConfig', '{"__proto__":{"pwnedCfg":1},"language":"en"}');
+    e.sandbox.localStorage.setItem(P + 'allLocalTabConfigs',
+        '{"CRET":{"__proto__":{"pwnedLocal":1},"statsWindowBgAlpha":7}}');
     vm.runInContext(ARTIFACT, e.sandbox, { filename: 'counter.js' });
+    const S = e.sandbox.window.SH.store;
 
-    eq({}.pwnedCfg, undefined);
-    eq({}.pwnedLocal, undefined);
-    ok(e.sandbox.window.SH, 'skrypt musi wstać mimo zatrutej konfiguracji');
+    eq(S.userConfig.language, 'en', 'zapis naprawdę został wczytany');
+    eq(S.localTabConfig.statsWindowBgAlpha, 7, 'ustawienia karty też');
+    eq(S.userConfig.pwnedCfg, undefined, 'pole napastnika nie czyta się z konfiguracji');
+    eq(S.localTabConfig.pwnedLocal, undefined);
+    eq(vm.runInContext('({}).pwnedCfg', e.sandbox), undefined);
     eq(e.net.fetches, [], 'i nadal bez sieci');
 });
 
 test('uszkodzony JSON w magazynie nie wywala startu', () => {
+    const P = env.prefix;
     const e = makeEnv();
-    e.sandbox.localStorage.setItem('statsHelper_v1_0_0_userConfig', '{ to nie jest json');
-    e.sandbox.localStorage.setItem('statsHelper_v1_0_0_valueLog', 'null');
+    e.sandbox.localStorage.setItem(P + 'userConfig', '{ to nie jest json');
+    e.sandbox.localStorage.setItem(P + 'valueLog', 'null');
     e.sandbox.localStorage.setItem('statsHelper_shared_fxRates', '???');
     vm.runInContext(ARTIFACT, e.sandbox, { filename: 'counter.js' });
 
