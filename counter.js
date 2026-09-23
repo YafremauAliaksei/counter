@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    bomba.stats.helper
-// @version      1.3.2
+// @version      1.3.3
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -158,7 +158,7 @@ const SCRIPT_LOGS_ENABLED = false;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.3.2',
+        SCRIPT_VERSION: '1.3.3',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks koduje SCHEMAT MAGAZYNU, a nie numer buildu: wydania
