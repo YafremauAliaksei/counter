@@ -272,7 +272,7 @@ function makeEnv(opts = {}) {
         _listeners: listeners,
         _emit: (type, ev) => (listeners[type] || []).forEach(f => f(ev)),
         localStorage: opts.storage || makeStorage(),
-        sessionStorage: makeStorage(),
+        sessionStorage: opts.sessionStorage || makeStorage(),
     };
 
     class MutationObserver {

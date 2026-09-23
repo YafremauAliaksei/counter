@@ -204,12 +204,12 @@ dokładnie.
 
 ## 4. Bramki, które muszą być zielone
 
-| Bramka    | Polecenie              | Co łapie                                                  |
-| --------- | ---------------------- | --------------------------------------------------------- |
-| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 360 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
-| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
-| Format    | `npm run format:check` | rozjazdy w stylu                                          |
+| Bramka    | Polecenie              | Co łapie                                                    |
+| --------- | ---------------------- | ----------------------------------------------------------- |
+| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                          |
+| Testy     | `npm test`             | 373 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
+| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                   |
+| Format    | `npm run format:check` | rozjazdy w stylu                                            |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 

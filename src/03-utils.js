@@ -66,12 +66,32 @@
         },
         /** Głęboka kopia bloku ustawień. */
         clone(value) { return Utils.isObject(value) ? Utils.deepMerge({}, value) : value; },
+        /**
+         * Odłożenie wywołania do chwili, gdy przez `delay` ms nic się nie działo.
+         *
+         * 1.3.3: zwrócona funkcja ma `.cancel()` i `.flush()`. Czekające
+         * wywołanie żyło dotąd w domknięciu, niedostępne z zewnątrz, więc:
+         *   - rozbiórka (Main.teardown) nie mogła go zgasić i zdjęty egzemplarz
+         *     po sekundzie nadpisywał magazyn swoim starym stanem — `cancel`;
+         *   - zamknięcie karty nie mogło go dokończyć i ostatnia zmiana
+         *     ustawień ginęła — `flush` wykonuje czekające wywołanie od razu.
+         */
         debounce(func, delay) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), delay);
+            let timeout = null;
+            let pending = null;
+            const run = () => {
+                const call = pending;
+                timeout = pending = null;
+                if (call) func.apply(call.self, call.args);
             };
+            const debounced = function(...args) {
+                clearTimeout(timeout);
+                pending = { self: this, args };
+                timeout = setTimeout(run, delay);
+            };
+            debounced.cancel = () => { clearTimeout(timeout); timeout = pending = null; };
+            debounced.flush = () => { clearTimeout(timeout); run(); };
+            return debounced;
         },
         /**
          * Kolor HEX na trójkę „R, G, B” gotową do wstawienia w rgba().

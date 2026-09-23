@@ -749,7 +749,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 360 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 373 sprawdzenia,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -767,7 +767,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 26 plików, 360 sprawdzeń
+├── tests/                  ← 27 plików, 373 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -787,7 +787,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 360 sprawdzeń
+npm test             # 373 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
@@ -910,6 +910,13 @@ CSP to imienna lista hostów i obejść jej z kodu strony się nie da.
 **Skrypt już działa, ponowne wklejenie jest ignorowane.**
 Tak ma być: dwa egzemplarze na jednej stronie psują liczniki.
 `SH.Main.teardown()` zdejmuje bieżący, po czym można wkleić od nowa.
+
+**Na górze ekranu: „Pamięć przeglądarki jest pełna”.**
+`localStorage` tej domeny dzielimy z samym T-REX i jego kwota potrafi się
+skończyć. Licznik liczy dalej w pamięci i liczby na ekranie są poprawne, ale
+przeładowanie strony (F5) cofnie je do ostatniego udanego zapisu. Powiadomienie
+pokazuje się raz na stronę, przy pierwszej odmowie zapisu. To jedyny przypadek,
+w którym skrypt odzywa się sam: cicha utrata liczników byłaby gorsza.
 
 **Trzeba wrócić do ustawień fabrycznych.**
 Panel ustawień → „Zresetuj Wszystkie Dane”. Usuwane są wyłącznie klucze skryptu,

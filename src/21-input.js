@@ -125,6 +125,7 @@
     const AutoTrigger = {
         observer: null,
         debouncedScan: null,
+        debouncedAttach: null,
 
         /**
          * Czy węzeł należy do własnego interfejsu skryptu.
@@ -165,8 +166,9 @@
             // 8.1.0: odtwarzanie observera opakowane w debounce. Wcześniej wisiało
             // na „surowej” zmianie stanu i przeciąganie suwaka interwału skanowania
             // wywoływało dziesiątki disconnect/observe pod rząd.
-            bus.on('store:changed:userConfig.triggerMutationDebounceMs',
-                Utils.debounce(() => this.attach(), 500));
+            // Uchwyt trzymany na obiekcie, żeby rozbiórka mogła go zgasić.
+            this.debouncedAttach = Utils.debounce(() => this.attach(), 500);
+            bus.on('store:changed:userConfig.triggerMutationDebounceMs', this.debouncedAttach);
         },
 
         scan() {
