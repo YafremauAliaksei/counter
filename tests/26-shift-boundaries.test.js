@@ -20,6 +20,8 @@
 
 'use strict';
 
+const path = require('path');
+const { execFileSync } = require('child_process');
 const { describe, test, eq, ok } = require('./harness');
 const { boot, makeClock, makeEnv } = require('./dom-stub');
 
@@ -163,6 +165,123 @@ for (const [label, h] of [['dzienna', 6], ['nocna', 18]]) {
         friday.SH.Main.teardown();
     });
 }
+
+describe('Karta otwarta przez noc sama zauważa nową zmianę');
+
+/**
+ * Stanowisko bez resetu sesji, karta T-REX zostawiona otwarta na noc. Do tej
+ * poprawki skrypt sprawdzał zmianę tylko do pierwszego rozpoznania, a ponowne
+ * kliknięcie zakładki na działającej stronie jest ignorowane (ochrona przed
+ * podwójnym uruchomieniem). W piątek o 06:25 okno pokazywało więc czwartkowe
+ * 120 paczek, a piątkowe dopisywały się do nich.
+ */
+function openOvernight(h) {
+    const { makeStorage } = makeEnv();
+    const shared = makeStorage();
+    const clock = makeClock(at(17, h, 20));
+    const env = boot({ storage: shared, clock });
+    const cid = env.SH.store.currentTabInstanceId;
+    clock.set(at(17, h + 3, 0));
+    for (let i = 0; i < 12; i++) item(env);
+    return { env, clock, cid };
+}
+
+test('sprawdzanie zmiany nie gaśnie po jej rozpoznaniu', () => {
+    // Bez tego nic w działającej karcie nie zapyta o zmianę drugi raz.
+    const { env } = openOvernight(6);
+    ok(env.SH.store.sessionConfig.shiftType, 'zmiana rozpoznana');
+    ok(env.SH.Main.shiftWatchTimer !== null, 'timer sprawdzania nadal chodzi');
+    env.SH.Main.teardown();
+    eq(env.SH.Main.shiftWatchTimer, null, 'rozbiórka go gasi');
+});
+
+for (const [label, h] of [['dzienna', 6], ['nocna', 18]]) {
+    test(`zmiana ${label}: następnego dnia o ${hh(h)}:19 liczniki od zera, bez przeładowania`, () => {
+        const { env, clock, cid } = openOvernight(h);
+        const S = env.SH.store;
+        eq(S.tabCounters[cid], 12, 'czwartek: 12 paczek');
+
+        clock.set(at(18, h, 19) + 10000);
+        env.SH.ShiftManager.update();            // to robi timer co 30 s
+        eq(S.tabCounters[cid] || 0, 0, 'piątek: licznik od zera');
+        eq(S.tasks.length, 1, 'jedno zadanie domyślne');
+        eq(new Date(S.sessionConfig.shiftCalculatedStartTime).getDate(), 18, 'zmiana z piątku');
+        eq(hhmm(env.SH.TaskManager.span(env.SH.TaskManager.active()).from), `${hh(h)}:30`);
+        env.SH.Main.teardown();
+    });
+}
+
+test('w trakcie tej samej zmiany sprawdzanie niczego nie zeruje', () => {
+    // Timer chodzi teraz przez całą zmianę, więc musi być nieszkodliwy
+    // o każdej jej porze: po północy na nocnej, w martwej strefie po końcu.
+    const { env, clock, cid } = openOvernight(18);
+    const S = env.SH.store;
+    for (const [day, hour, minute] of [[17, 23, 59], [18, 0, 1], [18, 3, 0], [18, 5, 54], [18, 5, 56], [18, 6, 18]]) {
+        clock.set(at(day, hour, minute));
+        env.SH.ShiftManager.update();
+        eq(S.tabCounters[cid], 12, `o ${hh(hour)}:${hh(minute)} licznik nietknięty`);
+    }
+    env.SH.Main.teardown();
+});
+
+describe('Zmiana czasu — w strefie Europe/Warsaw');
+
+/**
+ * Ten sam skrypt w osobnym procesie z TZ=Europe/Warsaw (patrz tz-probe.js):
+ * noce zmiany czasu istnieją tylko w strefie, która je ma.
+ */
+function probe(name) {
+    const out = execFileSync(process.execPath, [path.join(__dirname, 'tz-probe.js'), name], {
+        env: { ...process.env, TZ: 'Europe/Warsaw' },
+        encoding: 'utf8',
+    });
+    return JSON.parse(out);
+}
+
+test('październikowa noc: F5 o 05:35 nie kasuje zmiany, o 06:20 zaczyna się nowa', () => {
+    // 18:30 CEST → 05:35 CET to 12 h 05 min zegara. Próg przeterminowania
+    // (12 h) brał to za dane z innego dnia i zerował zmianę 20 minut przed końcem.
+    const r = probe('octoberNight');
+    eq(r.reloadAt0535.counter, 150, 'o 05:35 to wciąż ta sama nocna zmiana');
+    ok(r.reloadAt0535.shiftStart.startsWith('Sat Oct 24 2026 18:30'), r.reloadAt0535.shiftStart);
+    eq(r.reloadAt0620.counter, 0, 'o 06:20 nowa zmiana dzienna od zera');
+    ok(r.reloadAt0620.shiftStart.startsWith('Sun Oct 25 2026 06:30'), r.reloadAt0620.shiftStart);
+});
+
+test('„23:30” w noc zmiany czasu to wczoraj 23:30, a nie godzinę obok', () => {
+    // Odjęcie 24 h to nie „wczoraj” w dobie, która ma 23 albo 25 godzin.
+    const r = probe('parseClockDst');
+    ok(r.march.startsWith('Sat Mar 28 2026 23:30'), 'marzec: ' + r.march);
+    ok(r.october.startsWith('Sat Oct 24 2026 23:30'), 'październik: ' + r.october);
+});
+
+describe('Godzina wpisana ręcznie');
+
+test('godzina wpisana ręcznie to najbliższa taka godzina: dziś albo wczoraj', () => {
+    // Nocna zmiana: o 00:40 wpisane „23:30” znaczy pięćdziesiąt minut temu.
+    // Ale „06:36” wpisane o 06:35:30 to TERAZ, a nie prawie doba wstecz —
+    // wcześniej każda godzina choćby minutę późniejsza szła na wczoraj.
+    const clock = makeClock(at(17, 0, 40));
+    const env = boot({ clock });
+    const TM = env.SH.TaskManager;
+
+    eq(TM.parseClock('23:30'), at(16, 23, 30), '00:40 → wczoraj 23:30');
+    eq(TM.parseClock('00:10'), at(17, 0, 10), '00:40 → dziś 00:10');
+
+    clock.set(at(17, 6, 35) + 30000);
+    eq(TM.parseClock('06:36'), at(17, 6, 36), 'pół minuty do przodu to dziś');
+    eq(TM.parseClock('06:35'), at(17, 6, 35), 'bieżąca minuta to dziś');
+
+    clock.set(at(17, 14, 0));
+    eq(TM.parseClock('03:00'), at(17, 3, 0), 'rano tego samego dnia');
+    eq(TM.parseClock('00:00'), at(17, 0, 0), 'północ to dziś 00:00');
+    // Dzisiejsza 23:59 jest bliżej niż wczorajsza — a przyszłość setStart przytnie do teraz.
+    eq(TM.parseClock('23:59'), at(17, 23, 59), '23:59 o 14:00 to dziś, bo bliżej');
+    for (const bad of ['24:00', '23:60', '99:99', '-1:00', '', 'abc', null, '12:30 x']) {
+        eq(TM.parseClock(bad), null, 'nie godzina: ' + JSON.stringify(bad));
+    }
+    env.SH.Main.teardown();
+});
 
 describe('Cisza');
 

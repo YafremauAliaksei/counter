@@ -697,11 +697,25 @@ Między zmianami jest „martwa strefa” (17:55–18:19 i 05:55–06:19) — w 
 zapisana zmiana **nie jest resetowana**, żeby komuś, kto został dłużej,
 statystyka się nie wyzerowała.
 
-**Dane żyją jedną zmianę.** Na maszynach, gdzie sesja przeglądarki nie jest
-resetowana między zmianami, skrypt rozpoznaje to na dwa sposoby: po wieku
-zapisanego startu (starszy niż 12 h — dane są cudze) i po niezgodności czasu
-startu (dzienna zaczęła się o 06:30, a o 18:21 do tego samego komputera usiadła
-nocna — różnica 11 h 51 min, próg 12 h jej nie złapie, a porównanie startów tak).
+**Dane żyją jedną zmianę.** Na zdecydowanej większości stanowisk to działa
+samo: sesja wirtualna znika razem z `localStorage`. Na maszynach, gdzie sesja
+przeglądarki nie jest resetowana między zmianami, skrypt rozpoznaje to na dwa
+sposoby: po wieku zapisanego startu (starszy niż 12 h — dane są cudze) i po
+niezgodności czasu startu (dzienna zaczęła się o 06:30, a o 18:21 do tego samego
+komputera usiadła nocna — różnica 11 h 51 min, próg 12 h jej nie złapie,
+a porównanie startów tak).
+
+Następna zmiana zaczyna się od zera tak, jakby skrypt uruchamiano pierwszy raz:
+liczniki, zadania i początek zmiany znikają, **własne ustawienia zostają**
+(położenie okna, kolory, włączone linie).
+
+- **Karta otwarta przez noc** zauważa nową zmianę sama: skrypt sprawdza zmianę
+  co 30 sekund przez cały czas działania, a nie tylko do pierwszego
+  rozpoznania. W trakcie tej samej zmiany (także po północy) i w martwej strefie
+  to sprawdzenie niczego nie zeruje.
+- **Październikowa noc zmiany czasu** trwa 12,42 h zegara (18:30 CEST → 05:55
+  CET). Dane nie są uznawane za przeterminowane, dopóki zegar ścienny wskazuje
+  tę samą zmianę — F5 o 05:35 nie kasuje nocy.
 
 Przy resecie pokazuje się powiadomienie: człowiek musi widzieć, że wyzerowanie
 nastąpiło celowo.
@@ -735,7 +749,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 353 sprawdzenia,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 360 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -753,7 +767,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 26 plików, 353 sprawdzenia
+├── tests/                  ← 26 plików, 360 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -773,7 +787,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 353 sprawdzenia
+npm test             # 360 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

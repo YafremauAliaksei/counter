@@ -101,7 +101,7 @@ Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 353 sprawdzenia
+npm test             # 360 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run lint         # ESLint (potrzebny npm ci)
