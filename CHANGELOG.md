@@ -20,6 +20,16 @@ Dla tego projektu SemVer czyta się tak:
 
 ### Naprawiono
 
+- **Ręczne odjęcie przesuwało procent sprzedaży.** Zdjęta paczka ma nieznany kierunek, a zdejmowała się z mianownika przy nietkniętej sprzedaży: `−1` przy 10 paczkach i 5 sprzedażach dawało 55%, a `50` wpisane w pole działu przy 100 i 60 — 100%. Teraz odjęcie zdejmuje najpierw paczki spoza mianownika (wpisane ręcznie, audyty), a potem z mianownika, proporcjonalnie zmniejszając sprzedane. Dotyczy skrótu `−1`, pola działu, pola paczek i pola tempa zadania.
+
+- **Skrót `−1` łamał równość „suma zadań = licznik karty”**, gdy paczki leżały w poprzednim zadaniu, a aktywne było puste. Odjęcie idzie teraz od najnowszego zadania wstecz, a liczniki zmiany (także sprzedane) przepisują się z zadań — wcześniej skrót przepisywał tylko licznik spoza mianownika.
+
+- **Początek zadania.** „Początek zmiany” na drugim zadaniu cofał je przed koniec pierwszego: dwa zadania liczyły te same godziny, a obiad odejmował się dwa razy. Tekst, który liczbą nie jest, ustawiał początek na 1970 rok. Przestawienie początku zatrzymanego zadania po cichu puszczało zegar.
+
+- **Śmieci w magazynie.** Liczniki czytają się teraz jako liczba całkowita od 0 do 1 000 000 (`'9'.repeat(21)` dawało 1e21); odcinki zadań bez nieskończoności, bez 1970 i bez przyszłości (na ekranie wychodziło „Infinityg NaNm”). Zadanie z samymi złymi odcinkami zostaje — z odcinkiem zerowej długości — żeby jego paczki nie wypadły z sumy.
+
+- **Wyczyszczone pole licznika działu zerowało zmianę bez pytania** — pusty tekst czytał się jako 0. Zero trzeba teraz wpisać świadomie. Karta z licznikiem spoza mianownika większym od paczek nie może już zawyżyć procentu całości.
+
 - **Karta nierozpoznana gubiła paczki zadań po F5.** Jej identyfikator (`unknownTabInstance_abc_def`) sam ma podkreślenia, a klucz licznika zadania dzielił się po ostatnim. Po przeładowaniu paczki trafiały do nieistniejącego zadania, a pierwsza poprawka w panelu zerowała licznik karty. Format klucza się nie zmienia, stare zapisy czytają się poprawnie.
 
 - **Skrypt nie wstawał na karcie nierozpoznanej, gdy `sessionStorage` odmawiał zapisu** — bez okna, bez `SH`, z linią FATAL w konsoli. To samo dla sprzątania kluczy poprzednich wersji przy magazynie, który odmawia usuwania: to sprzątanie nie jest potrzebne do liczenia i teraz nie może zatrzymać startu.

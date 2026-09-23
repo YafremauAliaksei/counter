@@ -106,14 +106,14 @@
             const cid = store.currentTabInstanceId;
             const cur = store.tabCounters[cid] || 0;
             const next = Math.max(0, cur + delta);
-            const applied = next - cur;
             if (opts.manual) {
-                TaskManager.adjustManual(cid, applied);
-                store.tabNeutral[cid] = TaskManager.shiftTotal(cid, 'neutral');
-                StorageManager.saveNeutral(cid, store.tabNeutral[cid]);
-            } else {
-                TaskManager.addItem(cid);
+                // Liczniki zmiany (paczki, sprzedane, poza mianownikiem) idą
+                // z zadań — odjęcie zmienia też sprzedane (patrz _shrink).
+                TaskManager.adjustManual(cid, next - cur);
+                TaskManager.syncShift(cid);
+                return;
             }
+            TaskManager.addItem(cid);
             store.tabCounters[cid] = next;
             StorageManager.saveCounter(cid, next);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po

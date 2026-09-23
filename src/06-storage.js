@@ -140,10 +140,19 @@
             if (cut <= 0 || cut === rest.length - 1) return null;
             return { taskId: rest.substring(0, cut), tabKey: rest.substring(cut + 1) };
         },
+        /**
+         * Licznik z magazynu: liczba całkowita od zera do CONFIG.COUNTER_MAX.
+         * Magazyn jest wspólny z T-REX i można go edytować ręcznie — ujemne,
+         * ułamki i liczby na dwadzieścia cyfr nie mają prawa dojść do ekranu.
+         */
+        parseCount(raw) {
+            const n = parseInt(raw, 10);
+            return Number.isFinite(n) && n > 0 ? Math.min(n, CONFIG.COUNTER_MAX) : 0;
+        },
         /** Wartość licznika zadania z magazynu; śmieć czyta się jako zera. */
         parseTaskCounterValue(raw) {
             const parts = String(raw == null ? '' : raw).split(',');
-            const num = (i) => Math.max(0, parseInt(parts[i], 10) || 0);
+            const num = (i) => this.parseCount(parts[i]);
             return { done: num(0), sold: num(1), neutral: num(2) };
         },
         removeCounter(tabKey) {
@@ -226,13 +235,13 @@
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
                         const tabKey = key.substring(prefix.length);
-                        store.tabCounters[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                        store.tabCounters[tabKey] = this.parseCount(localStorage.getItem(key));
                     } else if (key && key.startsWith(soldPrefix)) {
                         const tabKey = key.substring(soldPrefix.length);
-                        store.tabSold[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                        store.tabSold[tabKey] = this.parseCount(localStorage.getItem(key));
                     } else if (key && key.startsWith(neutralPrefix)) {
                         const tabKey = key.substring(neutralPrefix.length);
-                        store.tabNeutral[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                        store.tabNeutral[tabKey] = this.parseCount(localStorage.getItem(key));
                     } else if (key && key.startsWith(taskPrefix)) {
                         const parsed = this.parseTaskCounterKey(key.substring(CONFIG.SCRIPT_ID_PREFIX.length));
                         if (!parsed) continue;
@@ -260,14 +269,30 @@
                 .map(t => ({
                     id: t.id,
                     name: String(t.name || CONFIG.DEFAULT_TASK_NAME).slice(0, CONFIG.TASK_MAX_NAME_LEN),
-                    segments: t.segments
-                        .filter(seg => seg && typeof seg.from === 'number')
-                        .map(seg => ({ from: seg.from, to: typeof seg.to === 'number' ? seg.to : null })),
-                }))
-                .filter(t => t.segments.length);
+                    segments: this.cleanSegments(t.segments),
+                }));
             store.tasks = list;
             const activeId = parsed && typeof parsed.activeId === 'string' ? parsed.activeId : null;
             store.activeTaskId = list.some(t => t.id === activeId) ? activeId : (list.length ? list[list.length - 1].id : null);
+        },
+        /**
+         * Odcinki zadania z magazynu (1.3.3, audyt E6, F11). JSON przepuszcza
+         * `1e999`, czyli nieskończoność, a ręczna edycja — zero, liczby ujemne
+         * i daty z przyszłości: na ekranie wychodziło „Infinityg NaNm”.
+         *
+         * Odcinek poprawny: początek skończony, dodatni, nie w przyszłości;
+         * koniec pusty albo nie wcześniej niż początek. Resztę się pomija.
+         * Zadanie, któremu nie zostało nic, NIE znika — dostaje zamknięty
+         * odcinek zerowej długości. Jego paczki leżą pod osobnymi kluczami
+         * i bez zadania wypadłyby z sumy, a panel wyzerowałby licznik karty.
+         */
+        cleanSegments(raw) {
+            const now = Date.now();
+            const ok = (Array.isArray(raw) ? raw : [])
+                .filter(seg => seg && Number.isFinite(seg.from) && seg.from > 0 && seg.from <= now)
+                .map(seg => ({ from: seg.from, to: Number.isFinite(seg.to) ? seg.to : null }))
+                .filter(seg => seg.to === null || seg.to >= seg.from);
+            return ok.length ? ok : [{ from: now, to: now }];
         },
         listen() {
             // 8.3.0: referencja do obsługi jest zapamiętana — potrzebna w Main.teardown().
@@ -289,13 +314,13 @@
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_COUNTER.length);
                     // e.newValue === null znaczy, że klucz został usunięty — to
                     // reset liczników przez sąsiednią kartę przy zmianie zmiany.
-                    const val = parseInt(e.newValue, 10) || 0;
+                    const val = this.parseCount(e.newValue);
                     if (store.tabCounters[tabKey] !== val) store.tabCounters[tabKey] = val;
                 } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_SOLD)) {
                     // Licznik sprzedanych sąsiedniej karty — potrzebny liniom 2 i 7,
                     // które liczą procent po WSZYSTKICH kartach naraz.
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
-                    const val = parseInt(e.newValue, 10) || 0;
+                    const val = this.parseCount(e.newValue);
                     if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
                 } else if (localKey === CONFIG.STORAGE_KEY_TASKS) {
                     // Zadanie jest własnością człowieka, a nie karty: przejście
@@ -314,7 +339,7 @@
                     // Audyty sąsiedniej karty — z tego samego powodu: bez nich
                     // linie 2 i 7 policzyłyby procent z za dużego mianownika.
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL.length);
-                    const val = parseInt(e.newValue, 10) || 0;
+                    const val = this.parseCount(e.newValue);
                     if (store.tabNeutral[tabKey] !== val) store.tabNeutral[tabKey] = val;
                 } else if (!store.uiFlags.isSettingsPanelVisible) {
                     this.debouncedLoad();

@@ -226,14 +226,7 @@
          * zmieniła, a licznik karty ma za nią nadążyć. Gdyby zostało po staremu,
          * linia 1 pokazywałaby inną liczbę niż linia 8 dla tej samej pracy.
          */
-        syncTabCounters(tabKey) {
-            store.tabCounters[tabKey] = TaskManager.shiftTotal(tabKey, 'done');
-            store.tabSold[tabKey] = TaskManager.shiftTotal(tabKey, 'sold');
-            store.tabNeutral[tabKey] = TaskManager.shiftTotal(tabKey, 'neutral');
-            StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
-            StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
-            StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
-        },
+        syncTabCounters(tabKey) { TaskManager.syncShift(tabKey); },
 
         /**
          * LICZNIKI DZIAŁÓW — przeniesione pod zadania (1.3.0).
