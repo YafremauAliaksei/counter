@@ -24,7 +24,9 @@
 
 const vm = require('vm');
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot, ARTIFACT } = require('./dom-stub');
+const fs = require('fs');
+const path = require('path');
+const { boot, makeEnv, ARTIFACT, ROOT } = require('./dom-stub');
 
 const env = boot();
 const SH = env.SH;
@@ -89,7 +91,7 @@ test('wszystkie typy wartości wracają takie same', () => {
     S.localTabConfig.linesConfig.line1_currentTab.alpha = 75;            // u8
     S.localTabConfig.linesConfig.line1_currentTab.colorHex = '#ff8800';  // color
     S.localTabConfig.priceCard.width = 420;                              // u16
-    S.localTabConfig.priceCard.source = 'jina';                          // enum
+    S.localTabConfig.statsWindowFontFamily = 'sans_serif_thin';          // enum
     S.localTabConfig.statsWindowPosition.left = '15%';                   // text
     S.userConfig.language = 'ru';
     S.userConfig.globalStatsContributionKnown.WHD = false;
@@ -104,7 +106,7 @@ test('wszystkie typy wartości wracają takie same', () => {
     eq(T.localTabConfig.linesConfig.line1_currentTab.alpha, 75);
     eq(T.localTabConfig.linesConfig.line1_currentTab.colorHex, '#ff8800');
     eq(T.localTabConfig.priceCard.width, 420);
-    eq(T.localTabConfig.priceCard.source, 'jina');
+    eq(T.localTabConfig.statsWindowFontFamily, 'sans_serif_thin');
     eq(T.localTabConfig.statsWindowPosition.left, '15%');
     eq(T.userConfig.language, 'ru');
     eq(T.userConfig.globalStatsContributionKnown.WHD, false);
@@ -204,11 +206,11 @@ test('liczba spoza zakresu jest przycinana, a nie przyjmowana', () => {
 
 test('indeks poza listą wyboru jest odrzucany', () => {
     const e = freshEnv();
-    const before = e.SH.store.localTabConfig.priceCard.source;
-    // 0x0202 = źródło ceny; lista ma trzy pozycje, podajemy dziewiątą.
-    const report = e.SH.config(buildCode([0x02, 0x02, 0x01, 9]));
+    const before = e.SH.store.localTabConfig.statsWindowFontFamily;
+    // 0x0001 = krój pisma okna; lista ma trzy pozycje, podajemy dziewiątą.
+    const report = e.SH.config(buildCode([0x00, 0x01, 0x01, 9]));
     eq(report['rekordów odrzuconych'], 1);
-    eq(e.SH.store.localTabConfig.priceCard.source, before, 'wartość bez zmian');
+    eq(e.SH.store.localTabConfig.statsWindowFontFamily, before, 'wartość bez zmian');
 });
 
 test('tekst ze znakami sterującymi jest odrzucany', () => {
@@ -280,7 +282,10 @@ test('kod wydany dziś ma znaczyć to samo za rok', () => {
     eq(S.localTabConfig.linesConfig.line1_currentTab.visible, true);
     eq(S.localTabConfig.linesConfig.line1_currentTab.colorHex, '#ff8800');
     eq(S.localTabConfig.linesConfig.line1_currentTab.alpha, 75);
-    eq(S.localTabConfig.priceCard.source, 'jina');
+    // Próbka ma też rekord 0x0202 (źródło ceny = jina). Od 1.3.3 ten numer
+    // jest wycofany: format się nie zmienił, rekord czyta się i POMIJA.
+    eq(S.localTabConfig.priceCard.source, e.SH.DEFAULT_LOCAL_CONFIG.priceCard.source, 'źródło nie z kodu');
+    eq(report['rekordów wycofanych (sieć włącza się tylko w panelu)'], 1);
     eq(S.localTabConfig.priceCard.width, 420);
     eq(S.userConfig.language, 'ru');
     eq(S.userConfig.globalStatsContributionKnown.WHD, false);
@@ -403,6 +408,66 @@ test('kod stoi w odnośniku PRZED pobraniem pliku', () => {
        'zmienna startowa musi być ustawiona przed fetch');
 });
 
+/**
+ * Wykonanie samego tekstu zakładki w piaskownicy z podstawionym `fetch` —
+ * tak, jak zrobi to przeglądarka po kliknięciu. Zwraca to, co zobaczył człowiek.
+ */
+function runBookmarklet(link, fetchImpl) {
+    const e = makeEnv();
+    const seen = { alerts: [], ran: false };
+    e.sandbox.alert = (m) => seen.alerts.push(String(m));
+    e.sandbox.fetch = fetchImpl;
+    e.sandbox.markRan = () => { seen.ran = true; };
+    vm.runInContext(link.replace(/^javascript:/, ''), e.sandbox);
+    return new Promise(resolve => setTimeout(resolve, 20)).then(() => seen);
+}
+
+test('odpowiedź 404 nie idzie do wykonania, a człowiek dostaje komunikat', () => {
+    // raw.githubusercontent przy 404 odpowiada tekstem „404: Not Found”:
+    // wykonany dawał SyntaxError w odrzuconej obietnicy — i ciszę.
+    const link = freshEnv().SH.configLink();
+    return runBookmarklet(link, () => Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('markRan()') }))
+        .then(seen => {
+            eq(seen.ran, false, 'treść odpowiedzi błędu nie została wykonana');
+            eq(seen.alerts.length, 1);
+            ok(seen.alerts[0].includes('HTTP 404'), seen.alerts[0]);
+        });
+});
+
+test('brak sieci też kończy się komunikatem, a nie ciszą', () => {
+    const link = freshEnv().SH.configLink();
+    return runBookmarklet(link, () => Promise.reject(new Error('Failed to fetch')))
+        .then(seen => {
+            eq(seen.alerts.length, 1);
+            ok(seen.alerts[0].includes('Failed to fetch'), seen.alerts[0]);
+        });
+});
+
+test('poprawna odpowiedź wykonuje się bez żadnego komunikatu', () => {
+    const link = freshEnv().SH.configLink();
+    return runBookmarklet(link, () => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('markRan()') }))
+        .then(seen => {
+            eq(seen.ran, true, 'plik wykonany');
+            eq(seen.alerts, [], 'bez komunikatów');
+        });
+});
+
+test('zakładki w README mają te same bezpieczniki co generowana, i bieżący prefiks', () => {
+    // README to miejsce, z którego ludzie kopiują zakładkę. Rozjazd z kodem
+    // już raz się zdarzył: przykład z kodem ustawień niósł prefiks v1_0_0_,
+    // pod którym skrypt 1.3.x niczego nie czyta.
+    const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+    const links = readme.split('\n').filter(l => l.startsWith('javascript:'));
+    ok(links.length >= 2, 'w README są dwie zakładki');
+    for (const l of links) {
+        ok(l.includes('if(!r.ok)') && l.includes('catch(e)'), 'bezpieczniki: ' + l.slice(0, 60));
+        ok(l.trim().endsWith('void 0;'), 'void 0 na końcu');
+    }
+    const withCode = links.find(l => l.includes('_CONFIG_CODE'));
+    ok(withCode && withCode.includes(CC.BOOT_GLOBAL), 'przykład z kodem ustawień niesie bieżącą nazwę zmiennej');
+    ok(links.some(l => l.includes(freshEnv().SH.CONFIG.RELEASE_URL)), 'zakładka główna prowadzi pod RELEASE_URL');
+});
+
 describe('Cisza po starcie zostaje nienaruszona');
 
 test('kod ustawień nie kosztował ani zapytania, ani linii w konsoli', () => {
@@ -410,4 +475,46 @@ test('kod ustawień nie kosztował ani zapytania, ani linii w konsoli', () => {
     eq(env.net.images, [], 'obrazki');
     eq(env.net.consoleLog, [], 'console.log');
     eq(env.net.consoleError, [], 'console.error');
+});
+
+describe('Kod z czatu nie włącza sieci (audyt B3)');
+
+/**
+ * Kod złożony ręcznie, dokładnie ten z audytu: moduł cen włączony, karta
+ * widoczna, dziennik włączony, źródło = r.jina.ai. Suma kontrolna to zwykła
+ * suma bajtów — niczego nie uwierzytelnia, więc taki kod może przyjść od
+ * każdego jako „moje ustawienia okna”.
+ */
+const HOSTILE = buildCode([0x02, 0x00, 0x01, 1, 0x02, 0x01, 0x01, 1, 0x02, 0x03, 0x01, 1, 0x02, 0x02, 0x01, 2]);
+
+test('kod wklejony w panel albo w SH.config nie włącza modułu cen', () => {
+    const e = freshEnv();
+    const report = e.SH.config(HOSTILE);
+    eq(report['kod przyjęty'], true, 'kod jest poprawny — to nie jest odrzucenie');
+    eq(report['rekordów wycofanych (sieć włącza się tylko w panelu)'], 2);
+    eq(e.SH.store.localTabConfig.priceCard.moduleEnabled, false, 'wyłącznik sieci nietknięty');
+    eq(e.SH.store.localTabConfig.priceCard.source, e.SH.DEFAULT_LOCAL_CONFIG.priceCard.source, 'źródło nietknięte');
+    eq(e.SH.store.localTabConfig.priceCard.visible, true, 'reszta kodu działa normalnie');
+    e.SH.AutoTrigger.scan();
+    eq(e.net.fetches, [], 'fetch');
+    eq(e.net.images, [], 'obrazki');
+});
+
+test('ten sam kod w zakładce, przed pierwszym rysowaniem okna — też nie', () => {
+    const e = bootWithCode(HOSTILE);
+    eq(e.SH.store.localTabConfig.priceCard.moduleEnabled, false);
+    eq(e.net.fetches, [], 'fetch');
+    eq(e.net.images, [], 'obrazki');
+});
+
+test('wycofane numery nie wracają do rejestru, a kod ich nie wydaje', () => {
+    // Numer raz wydany jest spalony: w czyjejś kieszeni leży kod, w którym on
+    // coś znaczy. Gdyby wrócił pod innym ustawieniem, stary kod zacząłby
+    // ustawiać co innego.
+    const reg = CC.REGISTRY.map(r => r.id);
+    eq(CC.RETIRED_IDS.filter(id => reg.includes(id)), [], 'numery wycofane w rejestrze');
+    const e = freshEnv();
+    e.SH.store.localTabConfig.priceCard.moduleEnabled = true;
+    e.SH.store.localTabConfig.priceCard.source = 'jina';
+    eq(e.SH.configCode(), '0x0101', 'włączony moduł i źródło nie trafiają do kodu');
 });
