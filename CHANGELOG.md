@@ -20,6 +20,18 @@ Dla tego projektu SemVer czyta się tak:
 
 ### Naprawiono
 
+- **Karta nierozpoznana gubiła paczki zadań po F5.** Jej identyfikator (`unknownTabInstance_abc_def`) sam ma podkreślenia, a klucz licznika zadania dzielił się po ostatnim. Po przeładowaniu paczki trafiały do nieistniejącego zadania, a pierwsza poprawka w panelu zerowała licznik karty. Format klucza się nie zmienia, stare zapisy czytają się poprawnie.
+
+- **Skrypt nie wstawał na karcie nierozpoznanej, gdy `sessionStorage` odmawiał zapisu** — bez okna, bez `SH`, z linią FATAL w konsoli. To samo dla sprzątania kluczy poprzednich wersji przy magazynie, który odmawia usuwania: to sprzątanie nie jest potrzebne do liczenia i teraz nie może zatrzymać startu.
+
+- **Pełny magazyn był niewidoczny.** Odmowa zapisu szła tylko do wyciszonego logu: ekran pokazywał poprawne liczby, a rozjazd wychodził dopiero po F5. Teraz przy pierwszej odmowie pokazuje się raz powiadomienie „Pamięć przeglądarki jest pełna”. To świadomy wyjątek od reguły „skrypt milczy” — cicha utrata liczników jest gorsza.
+
+- **Ostatnia zmiana ustawień ginęła przy F5**, bo autozapis czeka sekundę, a przy wyjściu ze strony dopisywało się tylko archiwum. Teraz `pagehide` dopisuje też czekający autozapis i czekające dopisanie do wspólnego dziennika.
+
+- **Zdjęty egzemplarz pisał jeszcze sekundę po rozbiórce.** `SH.Main.teardown()` nie mógł zgasić odłożonych wywołań `debounce`: autozapis nadpisywał magazyn starym stanem, a skan dopisywał paczkę do licznika prowadzonego już przez nowy egzemplarz. `Utils.debounce` ma teraz `cancel()` i `flush()`, rozbiórka gasi wszystkie cztery.
+
+- **Klucze schematu 1.0–1.2 (`statsHelper_v1_0_0_`) nie były sprzątane** — przy przejściu na `v1_3_0_` nikt nie dopisał starego prefiksu do listy. Test w `02-defaults` trzyma teraz pełną historię prefiksów i nie przepuści następnego takiego przeoczenia.
+
 - **Karta otwarta przez noc liczyła piątkowe paczki do czwartkowego licznika.** Na stanowisku bez resetu sesji skrypt sprawdzał zmianę tylko do pierwszego rozpoznania, a ponowne kliknięcie zakładki na działającej stronie jest ignorowane (ochrona przed podwójnym uruchomieniem). Teraz sprawdza ją co 30 sekund przez cały czas działania: o 06:19 następnego dnia liczniki i zadania wracają do zera, ustawienia zostają. W trakcie tej samej zmiany — także po północy i w martwej strefie — sprawdzenie niczego nie zeruje.
 
 - **Październikowa noc zmiany czasu kasowała zmianę 20 minut przed końcem.** 18:30 CEST → 05:55 CET to 12,42 h zegara, a próg przeterminowania to 12 h, więc F5 po 05:30 zerował całą noc. Teraz dane nie są przeterminowane, dopóki zegar ścienny wskazuje tę samą zmianę.

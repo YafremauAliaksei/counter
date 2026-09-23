@@ -487,6 +487,44 @@ test('zadania i ich liczniki przeżywają F5', () => {
        'liczniki zadania wczytane');
 });
 
+test('karta nierozpoznana: liczniki zadań przeżywają F5', () => {
+    // Identyfikator karty nierozpoznanej sam ma podkreślenia
+    // („unknownTabInstance_abc_def”), a klucz licznika zadania dzielił się po
+    // OSTATNIM podkreśleniu. Po F5 paczki trafiały do nieistniejącego zadania,
+    // suma zadań spadała do zera, a pierwsza poprawka w panelu zerowała licznik
+    // karty — cicha utrata zmiany po zwykłym przeładowaniu.
+    const shared = makeStorage();
+    const href = 'https://trex-prod-eu.aka.amazon.com/some/other/page';
+    const sessionStore = makeStorage();
+    const first = boot({ storage: shared, sessionStorage: sessionStore, href, clock });
+    const cid = first.SH.store.currentTabInstanceId;
+    ok(cid.startsWith(first.SH.CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX), 'karta nierozpoznana: ' + cid);
+    first.SH.TaskManager.applyManualTotal(cid, 7);
+    const taskId = first.SH.TaskManager.active().id;
+    first.SH.Main.teardown();
+
+    const second = boot({ storage: shared, sessionStorage: sessionStore, href, clock });
+    eq(second.SH.store.currentTabInstanceId, cid, 'ta sama karta po F5');
+    eq(second.SH.TaskManager.counters(taskId, cid).done, 7, 'paczki zadania wczytane pod właściwą kartą');
+    eq(second.SH.TaskManager.shiftTotal(cid, 'done'), 7, 'suma zadań karty');
+    second.SH.Main.teardown();
+});
+
+test('rozbiór klucza licznika zadania dla każdego rodzaju karty', () => {
+    // Granice: karty znane (bez podkreśleń), nierozpoznana (z dwoma),
+    // identyfikator zadania z podkreśleniami i klucze, które kluczem nie są.
+    const SM = SH.StorageManager;
+    const P = SH.CONFIG.STORAGE_PREFIX_TASK_COUNTER;
+    const U = SH.CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX;
+    for (const tabKey of ['CRET', 'REFURB', 'WHD', 'OTHER', U + 'mudhjou6_yj0o7uz']) {
+        const taskId = 'task_mudhjou7_zn92vvx';
+        eq(SM.parseTaskCounterKey(P + taskId + '_' + tabKey), { taskId, tabKey }, tabKey);
+    }
+    eq(SM.parseTaskCounterKey(P + 'CRET'), null, 'bez identyfikatora zadania');
+    eq(SM.parseTaskCounterKey(P + '_CRET'), null, 'pusty identyfikator zadania');
+    eq(SM.parseTaskCounterKey(P + 'task_a_b_'), null, 'pusta karta');
+});
+
 test('zepsuty zapis nie zatrzymuje startu', () => {
     // Magazyn jest wspólny z samym T-REX i bywa czyszczony ręcznie. Śmieć pod
     // kluczem zadań nie może kosztować uruchomienia skryptu.

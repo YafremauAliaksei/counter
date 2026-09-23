@@ -66,9 +66,16 @@
         // Prefiksy poprzednich wersji: ich klucze są usuwane z localStorage przy
         // pierwszym uruchomieniu, żeby na maszynach ze stałą sesją nie zbierały
         // się śmieci.
+        //
+        // 1.3.3: dopisany `statsHelper_v1_0_0_` — schemat wersji 1.0.0–1.2.1.
+        // Przy podniesieniu prefiksu do v1_3_0_ nikt go tu nie dopisał, więc na
+        // stanowiskach bez resetu sesji stare klucze zostałyby na zawsze.
+        // Przy każdej następnej zmianie SCRIPT_ID_PREFIX poprzedni idzie TUTAJ —
+        // pilnuje tego test w 02-defaults.
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
-                             'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_'],
+                             'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
+                             'statsHelper_v1_0_0_'],
         /**
          * Czy pisać cokolwiek do konsoli. Wartość bierze się z jednego miejsca
          * na górze pliku (SCRIPT_LOGS_ENABLED), a tutaj żyje dlatego, że

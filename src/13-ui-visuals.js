@@ -58,6 +58,18 @@
                 this.show(this.resetText(SessionReset.lastReset.kind));
                 SessionReset.lastReset = null;
             }
+            bus.on('storage:writeFailed', () => this.warnStorageFull());
+            if (StorageManager.writeFailed) this.warnStorageFull();
+        },
+        /**
+         * Pełny magazyn — raz na stronę. Zapisów jest kilka na przedmiot, więc
+         * bez tego znacznika powiadomienie wisiałoby na ekranie przez całą zmianę.
+         */
+        storageWarned: false,
+        warnStorageFull() {
+            if (this.storageWarned) return;
+            this.storageWarned = true;
+            this.show(I18n.get('notice_storageFull'), 12000);
         },
         /** Tekst powiadomienia wg rodzaju resetu. */
         resetText(kind) {

@@ -108,3 +108,76 @@ test('saveState() przy pełnym magazynie nie rzuca', () => {
     try { env3.SH.StorageManager.saveState(); } catch (e) { threw = true; }
     notOk(threw, 'saveState() nie ma prawa wypuścić wyjątku');
 });
+
+describe('Karta nierozpoznana przy zepsutych obu magazynach');
+
+test('adres bez gradingMode i dwa odmawiające magazyny: skrypt wstaje i milczy', () => {
+    // Karta nierozpoznana trzyma swój identyfikator w sessionStorage, a zapis
+    // tego identyfikatora nie miał własnego try: wyjątek szedł do catch
+    // w Main.init() i skrypt nie wstawał wcale (bez okna, bez window.SH,
+    // z linią FATAL w konsoli). Wyżej ten plik ładuje zawsze kartę CRET,
+    // więc tej gałęzi nie widział.
+    const href = 'https://trex-prod-eu.aka.amazon.com/some/other/page';
+    const env4 = boot({
+        href,
+        storage: brokenStorage({ fails: true }),
+        sessionStorage: brokenStorage({ fails: true }),
+    });
+    ok(env4.SH, 'window.SH musi istnieć');
+    ok(env4.SH.store.initialized, 'store.initialized');
+    ok(String(env4.SH.store.currentTabInstanceId).startsWith(env4.SH.CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX),
+       'identyfikator karty wygenerowany w pamięci: ' + env4.SH.store.currentTabInstanceId);
+    ok(env4.el('line7_compact') || env4.el('statsWindow'), 'interfejs stoi');
+    eq(env4.net.consoleLog, [], 'console.log');
+    eq(env4.net.consoleError, [], 'console.error');
+});
+
+test('magazyn, który odmawia usuwania kluczy, nie zatrzymuje startu', () => {
+    // Sprzątanie kluczy poprzednich wersji to pierwsze wywołania w init()
+    // i jedyne niepotrzebne do liczenia. Bez własnego try ich wyjątek kończył
+    // start tak samo, jak nieprzechwycony zapis identyfikatora karty.
+    const base = makeStorage();
+    base.setItem('statsHelper_v9_2_0_counter_CRET', '5');
+    const hostile = new Proxy(base, {
+        get(target, prop) {
+            if (prop === 'removeItem') return () => { throw new Error('odmowa'); };
+            return target[prop];
+        },
+    });
+    const env5 = boot({ storage: hostile });
+    ok(env5.SH && env5.SH.store.initialized, 'skrypt wstał');
+    eq(env5.net.consoleError, [], 'console.error');
+});
+
+describe('Pełny magazyn widać na ekranie — raz');
+
+test('magazyn pełny od startu: powiadomienie po postawieniu interfejsu', () => {
+    // Odmowa zdarza się, zanim jest gdzie ją pokazać — znacznik czeka na Notifier.
+    const env6 = boot({ storage: brokenStorage({ fails: true }) });
+    const toast = env6.el('toast');
+    eq(toast.textContent, env6.SH.I18n.get('notice_storageFull'));
+    eq(toast.style.opacity, '1', 'widoczne');
+    eq(env6.net.consoleLog, [], 'console.log — ekran, a nie konsola');
+    eq(env6.net.consoleError, [], 'console.error');
+    env6.SH.Main.teardown();
+});
+
+test('magazyn zapełnił się w trakcie zmiany: jedno powiadomienie, choć zapisów jest wiele', () => {
+    // Zapisów jest kilka na przedmiot. Bez znacznika „już ostrzeżono”
+    // powiadomienie odnawiałoby się przy każdym i wisiało przez całą zmianę.
+    const state = { fails: false };
+    const env7 = boot({ storage: brokenStorage(state) });
+    const toast = env7.el('toast');
+    const cid = env7.SH.store.currentTabInstanceId;
+    notOk(toast.textContent === env7.SH.I18n.get('notice_storageFull'), 'przed odmową nic nie ostrzega');
+
+    state.fails = true;
+    env7.SH.StorageManager.saveCounter(cid, 1);
+    eq(toast.textContent, env7.SH.I18n.get('notice_storageFull'), 'pierwsza odmowa ostrzega');
+
+    toast.textContent = '';
+    env7.SH.StorageManager.saveCounter(cid, 2);
+    env7.SH.StorageManager.saveCounter(cid, 3);
+    eq(toast.textContent, '', 'kolejne odmowy już nie');
+    env7.SH.Main.teardown();
+});

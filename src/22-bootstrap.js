@@ -41,8 +41,16 @@
                 store.currentTabInstanceId = known.key;
             } else {
                 store.currentTabType = CONFIG.UNKNOWN_TAB_TYPE_KEY;
-                store.currentTabInstanceId = sessionStorage.getItem(StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY)) || Utils.generateId(CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
-                sessionStorage.setItem(StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY), store.currentTabInstanceId);
+                // Identyfikator karty nierozpoznanej żyje w sessionStorage, żeby
+                // przeżył F5. Magazyn bywa pełny albo zablokowany — wtedy
+                // identyfikator żyje w pamięci do końca strony. Bez własnego try
+                // wyjątek szedł do catch w init() i skrypt nie wstawał wcale
+                // (1.3.3; test w 11-storage-failure).
+                const idKey = StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY);
+                let saved = null;
+                try { saved = sessionStorage.getItem(idKey); } catch (e) { Utils.error('sessionStorage niedostępny', e); }
+                store.currentTabInstanceId = saved || Utils.generateId(CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
+                try { sessionStorage.setItem(idKey, store.currentTabInstanceId); } catch (e) { Utils.error('Identyfikator karty nie został zapisany', e); }
                 if (!store.userConfig.customTabSettings[store.currentTabInstanceId]) {
                     store.userConfig.customTabSettings[store.currentTabInstanceId] = { displayName: `Tab (${store.currentTabInstanceId.substring(19, 23)})`, includeInGlobal: true };
                 }
@@ -106,6 +114,14 @@
             clearTimeout(ValueLog._archiveTimer);
             clearTimeout(ValueLog._writeBackTimer);
             ValueLog._archiveTimer = ValueLog._writeBackTimer = null;
+            // 1.3.3: odłożone wywołania z debounce. Żyły w domknięciach i po
+            // rozbiórce wciąż strzelały: autozapis nadpisywał magazyn starym
+            // stanem, a skan dopisywał paczkę do klucza, który prowadzi już
+            // nowy egzemplarz (test w 27-pending-writes).
+            StorageManager.scheduleSave.cancel();
+            StorageManager.debouncedLoad.cancel();
+            if (AutoTrigger.debouncedScan) AutoTrigger.debouncedScan.cancel();
+            if (AutoTrigger.debouncedAttach) AutoTrigger.debouncedAttach.cancel();
             document.querySelectorAll(`[id^="${CONFIG.SCRIPT_ID_PREFIX}"]`).forEach(el => el.remove());
             bus.clear();
             // Dostęp z konsoli należał do zdjętego egzemplarza: zostawić go znaczy
@@ -273,9 +289,20 @@
 
                 // Wyjście ze strony: archiwum pisze się z opóźnieniem (patrz
                 // ValueLog.scheduleArchive), więc ostatnia paczka przedmiotów
-                // inaczej by do niego nie zdążyła. Sam dziennik pozycji jest
-                // w tym momencie już w localStorage — on pisze się od razu.
-                this.onPageHide = () => { try { ValueLog.flushArchive(); } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ } };
+                // inaczej by do niego nie zdążyła.
+                //
+                // 1.3.3: to samo dotyczy dwóch innych odłożonych zapisów.
+                // Autozapis ustawień czeka sekundę — zmiana sprzed chwili ginęła
+                // przy F5. Dopisanie własnych wpisów do wspólnego dziennika po
+                // synchronizacji z sąsiednią kartą czeka 400 ms — przedmiot
+                // zamknięty tuż przed wyjściem mógł z niego wypaść.
+                this.onPageHide = () => {
+                    try {
+                        StorageManager.scheduleSave.flush();
+                        ValueLog.flushWriteBack();
+                        ValueLog.flushArchive();
+                    } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ }
+                };
                 window.addEventListener('pagehide', this.onPageHide);
 
                 // Autozapis ustawień. Do 8.1.0 stan zapisywał się dopiero przy

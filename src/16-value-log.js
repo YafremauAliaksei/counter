@@ -151,7 +151,10 @@
                 // kluczu nic nie wie — zdejmujemy notatkę, żeby nie przeszkodziła
                 // sąsiedniej karcie przy następnym zapisie.
                 delete StorageManager._lastWritten[this.key()];
-            } catch (e) { Utils.error('Dziennik wartości nie został zapisany', e); }
+            } catch (e) {
+                Utils.error('Dziennik wartości nie został zapisany', e);
+                StorageManager.reportWriteFailure();
+            }
             this.scheduleArchive();
             bus.emit('valueLog:changed');
         },
@@ -192,6 +195,13 @@
         _scheduleWriteBack() {
             clearTimeout(this._writeBackTimer);
             this._writeBackTimer = setTimeout(() => { this._writeBackTimer = null; this.save(); }, 400);
+        },
+        /** Czekające dopisanie wykonać od razu — przy wyjściu ze strony. */
+        flushWriteBack() {
+            if (!this._writeBackTimer) return;
+            clearTimeout(this._writeBackTimer);
+            this._writeBackTimer = null;
+            this.save();
         },
 
         // ---------------- archiwum ----------------

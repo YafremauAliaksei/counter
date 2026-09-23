@@ -44,10 +44,26 @@
                 delete this._lastWritten[key];
                 Utils.error(`Zapis do magazynu nie powiódł się (${key}): ${e.name}. `
                           + 'Skrypt pracuje dalej, ale stan nie przeżyje przeładowania strony.');
+                this.reportWriteFailure();
                 return false;
             }
             this._lastWritten[key] = value;
             return true;
+        },
+        /**
+         * Magazyn odmówił zapisu — człowiek ma się o tym dowiedzieć (1.3.3).
+         *
+         * Do tej pory odmowa szła wyłącznie do Utils.error, który domyślnie
+         * milczy. Ekran pokazywał poprawne liczby do końca zmiany, a rozjazd
+         * wychodził dopiero po F5 albo w sąsiedniej karcie — cicha utrata jest
+         * gorsza niż jedno powiadomienie, więc tu reguła „skrypt milczy”
+         * świadomie ustępuje. Znacznik zostaje w pamięci, bo odmowa zdarza się
+         * i PRZED postawieniem interfejsu; Notifier pokazuje ją raz na stronę.
+         */
+        writeFailed: false,
+        reportWriteFailure() {
+            this.writeFailed = true;
+            bus.emit('storage:writeFailed');
         },
         saveState() {
             if (!store.initialized) return;
@@ -107,11 +123,21 @@
          * Rozbiór klucza licznika zadania. Identyfikator zadania sam zawiera
          * podkreślenia (`task_abc_def`), więc dzieli się od PRAWEJ: ostatni
          * człon to karta, wszystko przed nim to identyfikator.
+         *
+         * 1.3.3: z JEDNYM wyjątkiem. Karta nierozpoznana ma identyfikator
+         * `unknownTabInstance_abc_def` — też z podkreśleniami — i podział po
+         * ostatnim dawał kartę `def` i zadanie, którego nie ma. Po F5 paczki
+         * takiej karty znikały z zadań, a pierwsza poprawka w panelu zerowała
+         * licznik karty (syncTabCounters bierze sumę zadań za prawdę). Dlatego
+         * najpierw szuka się przedrostka karty nierozpoznanej — w identyfikatorze
+         * zadania on nie wystąpi — a dopiero potem ostatniego podkreślenia.
+         * Format klucza się nie zmienia, stare zapisy czytają się tak samo.
          */
         parseTaskCounterKey(localKey) {
             const rest = localKey.substring(CONFIG.STORAGE_PREFIX_TASK_COUNTER.length);
-            const cut = rest.lastIndexOf('_');
-            if (cut <= 0) return null;
+            const unknownAt = rest.indexOf('_' + CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
+            const cut = unknownAt > 0 ? unknownAt : rest.lastIndexOf('_');
+            if (cut <= 0 || cut === rest.length - 1) return null;
             return { taskId: rest.substring(0, cut), tabKey: rest.substring(cut + 1) };
         },
         /** Wartość licznika zadania z magazynu; śmieć czyta się jako zera. */
@@ -146,21 +172,31 @@
          * 8.5.0: trafiła tu pamięć cen na pięć dób — została odwołana i nie ma
          * po co, żeby wisiała w localStorage.
          */
+        /**
+         * Sprzątanie to pierwsze wywołania w Main.init() i jedyne, które nie
+         * są potrzebne do liczenia. Własny try (1.3.3): magazyn, który odmawia
+         * nawet odczytu listy kluczy, nie może zatrzymać startu — śmieci po
+         * poprzednich wersjach poczekają do następnego uruchomienia.
+         */
         purgeLegacySharedKeys() {
-            (CONFIG.LEGACY_SHARED_KEYS || []).forEach(k => {
-                const full = CONFIG.SHARED_ID_PREFIX + k;
-                if (localStorage.getItem(full) !== null) {
-                    localStorage.removeItem(full);
-                    Utils.log(`Usunięto klucz odwołanej funkcji: ${full}`);
-                }
-            });
+            try {
+                (CONFIG.LEGACY_SHARED_KEYS || []).forEach(k => {
+                    const full = CONFIG.SHARED_ID_PREFIX + k;
+                    if (localStorage.getItem(full) !== null) {
+                        localStorage.removeItem(full);
+                        Utils.log(`Usunięto klucz odwołanej funkcji: ${full}`);
+                    }
+                });
+            } catch (e) { Utils.error('Sprzątanie kluczy odwołanych funkcji pominięte', e); }
         },
         /** Czyści klucze poprzednich wersji (ważne na maszynach bez resetu sesji). */
         purgeLegacyKeys() {
-            const stale = Object.keys(localStorage).filter(k =>
-                CONFIG.LEGACY_ID_PREFIXES.some(p => k.startsWith(p)));
-            stale.forEach(k => localStorage.removeItem(k));
-            if (stale.length) Utils.log(`Usunięto kluczy poprzednich wersji: ${stale.length}`);
+            try {
+                const stale = Object.keys(localStorage).filter(k =>
+                    CONFIG.LEGACY_ID_PREFIXES.some(p => k.startsWith(p)));
+                stale.forEach(k => localStorage.removeItem(k));
+                if (stale.length) Utils.log(`Usunięto kluczy poprzednich wersji: ${stale.length}`);
+            } catch (e) { Utils.error('Sprzątanie kluczy poprzednich wersji pominięte', e); }
         },
         /**
          * @param {boolean} fromRemote - true, jeśli wczytanie wywołało zdarzenie

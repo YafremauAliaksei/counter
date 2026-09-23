@@ -9,7 +9,9 @@
 'use strict';
 
 const { describe, test, eq, ok } = require('./harness');
-const { boot } = require('./dom-stub');
+const { boot, makeEnv } = require('./dom-stub');
+
+const { makeStorage } = makeEnv();
 
 const env = boot();
 
@@ -100,11 +102,43 @@ test('wersja została podstawiona przy budowaniu', () => {
     eq(env.SH.CONFIG.SCRIPT_VERSION, pkg.version, 'wersja w artefakcie musi zgadzać się z package.json');
 });
 
+/**
+ * Każdy prefiks magazynu, jaki kiedykolwiek wyszedł do ludzi — w kolejności.
+ *
+ * Przy zmianie SCRIPT_ID_PREFIX nowy dopisuje się TUTAJ na końcu. Wtedy test
+ * niżej wymusi, żeby poprzedni trafił do LEGACY_ID_PREFIXES — dokładnie ten
+ * krok przegapiono przy przejściu na v1_3_0_ i klucze schematu 1.0–1.2
+ * zostałyby na stanowiskach bez resetu sesji na zawsze.
+ */
+const PREFIX_HISTORY = [
+    'statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_', 'statsHelper_v8_3_0_',
+    'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_', 'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_',
+    'statsHelper_v9_2_0_', 'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_',
+];
+
 test('prefiks magazynu jest spójny i poprzednie wersje trafiły na listę starych', () => {
     ok(/^statsHelper_v\d+_\d+_\d+_$/.test(env.prefix), 'kształt prefiksu: ' + env.prefix);
+    eq(PREFIX_HISTORY[PREFIX_HISTORY.length - 1], env.prefix,
+       'bieżący prefiks musi być ostatni w PREFIX_HISTORY — dopisz go tam');
     const legacy = env.SH.CONFIG.LEGACY_ID_PREFIXES;
-    ok(legacy.includes('statsHelper_v9_2_0_'), 'prefiks poprzedniego wydania musi być sprzątany');
+    const missing = PREFIX_HISTORY.slice(0, -1).filter(p => !legacy.includes(p));
+    eq(missing, [], 'prefiksy poprzednich wersji, których nikt nie sprząta');
     ok(!legacy.includes(env.prefix), 'bieżący prefiks nie może być na liście do usunięcia');
+});
+
+test('sprzątanie usuwa klucze starych schematów i nie rusza bieżących', () => {
+    // Na żywym magazynie, a nie na słowo: klucze starych schematów znikają,
+    // klucze samego T-REX (magazyn jest wspólny z nim) i bieżące zostają.
+    const storage = makeStorage();
+    storage.setItem('statsHelper_v1_0_0_counter_CRET', '120');
+    storage.setItem('statsHelper_v9_2_0_userConfig', '{}');
+    storage.setItem('obcyKluczTREX', 'x');
+    const fresh = boot({ storage });
+    eq(storage.getItem('statsHelper_v1_0_0_counter_CRET'), null, 'schemat 1.0–1.2 usunięty');
+    eq(storage.getItem('statsHelper_v9_2_0_userConfig'), null, 'schemat 9.2 usunięty');
+    eq(storage.getItem('obcyKluczTREX'), 'x', 'klucz samego T-REX nietknięty');
+    ok([...storage._map.keys()].some(k => k.startsWith(fresh.prefix)), 'bieżący schemat zapisał swoje klucze');
+    fresh.SH.Main.teardown();
 });
 
 test('hasła dostępu to GORDONPAULE i BOMBA, dłuższe pierwsze', () => {

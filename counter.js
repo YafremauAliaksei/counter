@@ -183,9 +183,16 @@ const SCRIPT_LOGS_ENABLED = false;
         // Prefiksy poprzednich wersji: ich klucze są usuwane z localStorage przy
         // pierwszym uruchomieniu, żeby na maszynach ze stałą sesją nie zbierały
         // się śmieci.
+        //
+        // 1.3.3: dopisany `statsHelper_v1_0_0_` — schemat wersji 1.0.0–1.2.1.
+        // Przy podniesieniu prefiksu do v1_3_0_ nikt go tu nie dopisał, więc na
+        // stanowiskach bez resetu sesji stare klucze zostałyby na zawsze.
+        // Przy każdej następnej zmianie SCRIPT_ID_PREFIX poprzedni idzie TUTAJ —
+        // pilnuje tego test w 02-defaults.
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
-                             'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_'],
+                             'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
+                             'statsHelper_v1_0_0_'],
         /**
          * Czy pisać cokolwiek do konsoli. Wartość bierze się z jednego miejsca
          * na górze pliku (SCRIPT_LOGS_ENABLED), a tutaj żyje dlatego, że
@@ -1014,6 +1021,7 @@ const SCRIPT_LOGS_ENABLED = false;
             settings_resetCountersButton: 'Reset Item Counters Only', settings_resetCountersConfirm: 'Reset item counters to zero? Appearance settings are kept.',
             newShiftDetected: 'New shift detected — item counters have been reset.',
             resetNotice_stale: 'Data from the previous shift — item counters have been reset.',
+            notice_storageFull: 'Browser storage is full — numbers on screen are correct, but will not survive a page reload (F5).',
             resetNotice_manual: 'Item counters have been reset.',
             settings_manualCounterInputLabel: 'Set count', section_general: 'General', section_currentTab: 'Current Tab Settings (${tabInstanceId})',
             section_visualAids: 'Page Visual Aids (for ${tabName})', section_statsWindow: 'Statistics Window Styling',
@@ -1138,6 +1146,7 @@ const SCRIPT_LOGS_ENABLED = false;
             settings_resetCountersButton: 'Zresetuj Tylko Liczniki', settings_resetCountersConfirm: 'Wyzerować liczniki przedmiotów? Ustawienia wyglądu zostaną zachowane.',
             newShiftDetected: 'Wykryto nową zmianę — liczniki przedmiotów zostały wyzerowane.',
             resetNotice_stale: 'Dane z poprzedniej zmiany — liczniki przedmiotów wyzerowane.',
+            notice_storageFull: 'Pamięć przeglądarki jest pełna — liczby na ekranie są aktualne, ale nie przeżyją przeładowania strony (F5).',
             resetNotice_manual: 'Liczniki przedmiotów zostały wyzerowane.',
             settings_manualCounterInputLabel: 'Ustaw licznik', section_general: 'Ogólne', section_currentTab: 'Ustawienia Bieżącej Karty (${tabInstanceId})',
             section_visualAids: 'Pomoce Wizualne (dla ${tabName})', section_statsWindow: 'Stylizacja Okna Statystyk', section_globalStats: 'Statystyki Globalne',
@@ -1260,6 +1269,7 @@ const SCRIPT_LOGS_ENABLED = false;
             settings_resetCountersButton: 'Сбросить только счётчики', settings_resetCountersConfirm: 'Обнулить счётчики предметов? Настройки внешнего вида сохранятся.',
             newShiftDetected: 'Обнаружена новая смена — счётчики предметов обнулены.',
             resetNotice_stale: 'Данные прошлой смены — счётчики предметов обнулены.',
+            notice_storageFull: 'Память браузера переполнена — числа на экране верные, но не переживут перезагрузку страницы (F5).',
             resetNotice_manual: 'Счётчики предметов обнулены.',
             settings_manualCounterInputLabel: 'Счетчик', section_general: 'Общие', section_currentTab: 'Текущая вкладка (${tabInstanceId})',
             section_visualAids: 'Визуальные эффекты (для ${tabName})', section_statsWindow: 'Стилизация окна статистики', section_globalStats: 'Глобальная статистика',
@@ -1395,12 +1405,32 @@ const SCRIPT_LOGS_ENABLED = false;
         },
         /** Głęboka kopia bloku ustawień. */
         clone(value) { return Utils.isObject(value) ? Utils.deepMerge({}, value) : value; },
+        /**
+         * Odłożenie wywołania do chwili, gdy przez `delay` ms nic się nie działo.
+         *
+         * 1.3.3: zwrócona funkcja ma `.cancel()` i `.flush()`. Czekające
+         * wywołanie żyło dotąd w domknięciu, niedostępne z zewnątrz, więc:
+         *   - rozbiórka (Main.teardown) nie mogła go zgasić i zdjęty egzemplarz
+         *     po sekundzie nadpisywał magazyn swoim starym stanem — `cancel`;
+         *   - zamknięcie karty nie mogło go dokończyć i ostatnia zmiana
+         *     ustawień ginęła — `flush` wykonuje czekające wywołanie od razu.
+         */
         debounce(func, delay) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), delay);
+            let timeout = null;
+            let pending = null;
+            const run = () => {
+                const call = pending;
+                timeout = pending = null;
+                if (call) func.apply(call.self, call.args);
             };
+            const debounced = function(...args) {
+                clearTimeout(timeout);
+                pending = { self: this, args };
+                timeout = setTimeout(run, delay);
+            };
+            debounced.cancel = () => { clearTimeout(timeout); timeout = pending = null; };
+            debounced.flush = () => { clearTimeout(timeout); run(); };
+            return debounced;
         },
         /**
          * Kolor HEX na trójkę „R, G, B” gotową do wstawienia w rgba().
@@ -1746,10 +1776,26 @@ const SCRIPT_LOGS_ENABLED = false;
                 delete this._lastWritten[key];
                 Utils.error(`Zapis do magazynu nie powiódł się (${key}): ${e.name}. `
                           + 'Skrypt pracuje dalej, ale stan nie przeżyje przeładowania strony.');
+                this.reportWriteFailure();
                 return false;
             }
             this._lastWritten[key] = value;
             return true;
+        },
+        /**
+         * Magazyn odmówił zapisu — człowiek ma się o tym dowiedzieć (1.3.3).
+         *
+         * Do tej pory odmowa szła wyłącznie do Utils.error, który domyślnie
+         * milczy. Ekran pokazywał poprawne liczby do końca zmiany, a rozjazd
+         * wychodził dopiero po F5 albo w sąsiedniej karcie — cicha utrata jest
+         * gorsza niż jedno powiadomienie, więc tu reguła „skrypt milczy”
+         * świadomie ustępuje. Znacznik zostaje w pamięci, bo odmowa zdarza się
+         * i PRZED postawieniem interfejsu; Notifier pokazuje ją raz na stronę.
+         */
+        writeFailed: false,
+        reportWriteFailure() {
+            this.writeFailed = true;
+            bus.emit('storage:writeFailed');
         },
         saveState() {
             if (!store.initialized) return;
@@ -1809,11 +1855,21 @@ const SCRIPT_LOGS_ENABLED = false;
          * Rozbiór klucza licznika zadania. Identyfikator zadania sam zawiera
          * podkreślenia (`task_abc_def`), więc dzieli się od PRAWEJ: ostatni
          * człon to karta, wszystko przed nim to identyfikator.
+         *
+         * 1.3.3: z JEDNYM wyjątkiem. Karta nierozpoznana ma identyfikator
+         * `unknownTabInstance_abc_def` — też z podkreśleniami — i podział po
+         * ostatnim dawał kartę `def` i zadanie, którego nie ma. Po F5 paczki
+         * takiej karty znikały z zadań, a pierwsza poprawka w panelu zerowała
+         * licznik karty (syncTabCounters bierze sumę zadań za prawdę). Dlatego
+         * najpierw szuka się przedrostka karty nierozpoznanej — w identyfikatorze
+         * zadania on nie wystąpi — a dopiero potem ostatniego podkreślenia.
+         * Format klucza się nie zmienia, stare zapisy czytają się tak samo.
          */
         parseTaskCounterKey(localKey) {
             const rest = localKey.substring(CONFIG.STORAGE_PREFIX_TASK_COUNTER.length);
-            const cut = rest.lastIndexOf('_');
-            if (cut <= 0) return null;
+            const unknownAt = rest.indexOf('_' + CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
+            const cut = unknownAt > 0 ? unknownAt : rest.lastIndexOf('_');
+            if (cut <= 0 || cut === rest.length - 1) return null;
             return { taskId: rest.substring(0, cut), tabKey: rest.substring(cut + 1) };
         },
         /** Wartość licznika zadania z magazynu; śmieć czyta się jako zera. */
@@ -1848,21 +1904,31 @@ const SCRIPT_LOGS_ENABLED = false;
          * 8.5.0: trafiła tu pamięć cen na pięć dób — została odwołana i nie ma
          * po co, żeby wisiała w localStorage.
          */
+        /**
+         * Sprzątanie to pierwsze wywołania w Main.init() i jedyne, które nie
+         * są potrzebne do liczenia. Własny try (1.3.3): magazyn, który odmawia
+         * nawet odczytu listy kluczy, nie może zatrzymać startu — śmieci po
+         * poprzednich wersjach poczekają do następnego uruchomienia.
+         */
         purgeLegacySharedKeys() {
-            (CONFIG.LEGACY_SHARED_KEYS || []).forEach(k => {
-                const full = CONFIG.SHARED_ID_PREFIX + k;
-                if (localStorage.getItem(full) !== null) {
-                    localStorage.removeItem(full);
-                    Utils.log(`Usunięto klucz odwołanej funkcji: ${full}`);
-                }
-            });
+            try {
+                (CONFIG.LEGACY_SHARED_KEYS || []).forEach(k => {
+                    const full = CONFIG.SHARED_ID_PREFIX + k;
+                    if (localStorage.getItem(full) !== null) {
+                        localStorage.removeItem(full);
+                        Utils.log(`Usunięto klucz odwołanej funkcji: ${full}`);
+                    }
+                });
+            } catch (e) { Utils.error('Sprzątanie kluczy odwołanych funkcji pominięte', e); }
         },
         /** Czyści klucze poprzednich wersji (ważne na maszynach bez resetu sesji). */
         purgeLegacyKeys() {
-            const stale = Object.keys(localStorage).filter(k =>
-                CONFIG.LEGACY_ID_PREFIXES.some(p => k.startsWith(p)));
-            stale.forEach(k => localStorage.removeItem(k));
-            if (stale.length) Utils.log(`Usunięto kluczy poprzednich wersji: ${stale.length}`);
+            try {
+                const stale = Object.keys(localStorage).filter(k =>
+                    CONFIG.LEGACY_ID_PREFIXES.some(p => k.startsWith(p)));
+                stale.forEach(k => localStorage.removeItem(k));
+                if (stale.length) Utils.log(`Usunięto kluczy poprzednich wersji: ${stale.length}`);
+            } catch (e) { Utils.error('Sprzątanie kluczy poprzednich wersji pominięte', e); }
         },
         /**
          * @param {boolean} fromRemote - true, jeśli wczytanie wywołało zdarzenie
@@ -3586,6 +3652,18 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.show(this.resetText(SessionReset.lastReset.kind));
                 SessionReset.lastReset = null;
             }
+            bus.on('storage:writeFailed', () => this.warnStorageFull());
+            if (StorageManager.writeFailed) this.warnStorageFull();
+        },
+        /**
+         * Pełny magazyn — raz na stronę. Zapisów jest kilka na przedmiot, więc
+         * bez tego znacznika powiadomienie wisiałoby na ekranie przez całą zmianę.
+         */
+        storageWarned: false,
+        warnStorageFull() {
+            if (this.storageWarned) return;
+            this.storageWarned = true;
+            this.show(I18n.get('notice_storageFull'), 12000);
         },
         /** Tekst powiadomienia wg rodzaju resetu. */
         resetText(kind) {
@@ -4155,7 +4233,10 @@ const SCRIPT_LOGS_ENABLED = false;
                 // kluczu nic nie wie — zdejmujemy notatkę, żeby nie przeszkodziła
                 // sąsiedniej karcie przy następnym zapisie.
                 delete StorageManager._lastWritten[this.key()];
-            } catch (e) { Utils.error('Dziennik wartości nie został zapisany', e); }
+            } catch (e) {
+                Utils.error('Dziennik wartości nie został zapisany', e);
+                StorageManager.reportWriteFailure();
+            }
             this.scheduleArchive();
             bus.emit('valueLog:changed');
         },
@@ -4196,6 +4277,13 @@ const SCRIPT_LOGS_ENABLED = false;
         _scheduleWriteBack() {
             clearTimeout(this._writeBackTimer);
             this._writeBackTimer = setTimeout(() => { this._writeBackTimer = null; this.save(); }, 400);
+        },
+        /** Czekające dopisanie wykonać od razu — przy wyjściu ze strony. */
+        flushWriteBack() {
+            if (!this._writeBackTimer) return;
+            clearTimeout(this._writeBackTimer);
+            this._writeBackTimer = null;
+            this.save();
         },
 
         // ---------------- archiwum ----------------
@@ -6245,6 +6333,7 @@ const SCRIPT_LOGS_ENABLED = false;
     const AutoTrigger = {
         observer: null,
         debouncedScan: null,
+        debouncedAttach: null,
 
         /**
          * Czy węzeł należy do własnego interfejsu skryptu.
@@ -6285,8 +6374,9 @@ const SCRIPT_LOGS_ENABLED = false;
             // 8.1.0: odtwarzanie observera opakowane w debounce. Wcześniej wisiało
             // na „surowej” zmianie stanu i przeciąganie suwaka interwału skanowania
             // wywoływało dziesiątki disconnect/observe pod rząd.
-            bus.on('store:changed:userConfig.triggerMutationDebounceMs',
-                Utils.debounce(() => this.attach(), 500));
+            // Uchwyt trzymany na obiekcie, żeby rozbiórka mogła go zgasić.
+            this.debouncedAttach = Utils.debounce(() => this.attach(), 500);
+            bus.on('store:changed:userConfig.triggerMutationDebounceMs', this.debouncedAttach);
         },
 
         scan() {
@@ -6367,8 +6457,16 @@ const SCRIPT_LOGS_ENABLED = false;
                 store.currentTabInstanceId = known.key;
             } else {
                 store.currentTabType = CONFIG.UNKNOWN_TAB_TYPE_KEY;
-                store.currentTabInstanceId = sessionStorage.getItem(StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY)) || Utils.generateId(CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
-                sessionStorage.setItem(StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY), store.currentTabInstanceId);
+                // Identyfikator karty nierozpoznanej żyje w sessionStorage, żeby
+                // przeżył F5. Magazyn bywa pełny albo zablokowany — wtedy
+                // identyfikator żyje w pamięci do końca strony. Bez własnego try
+                // wyjątek szedł do catch w init() i skrypt nie wstawał wcale
+                // (1.3.3; test w 11-storage-failure).
+                const idKey = StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY);
+                let saved = null;
+                try { saved = sessionStorage.getItem(idKey); } catch (e) { Utils.error('sessionStorage niedostępny', e); }
+                store.currentTabInstanceId = saved || Utils.generateId(CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
+                try { sessionStorage.setItem(idKey, store.currentTabInstanceId); } catch (e) { Utils.error('Identyfikator karty nie został zapisany', e); }
                 if (!store.userConfig.customTabSettings[store.currentTabInstanceId]) {
                     store.userConfig.customTabSettings[store.currentTabInstanceId] = { displayName: `Tab (${store.currentTabInstanceId.substring(19, 23)})`, includeInGlobal: true };
                 }
@@ -6432,6 +6530,14 @@ const SCRIPT_LOGS_ENABLED = false;
             clearTimeout(ValueLog._archiveTimer);
             clearTimeout(ValueLog._writeBackTimer);
             ValueLog._archiveTimer = ValueLog._writeBackTimer = null;
+            // 1.3.3: odłożone wywołania z debounce. Żyły w domknięciach i po
+            // rozbiórce wciąż strzelały: autozapis nadpisywał magazyn starym
+            // stanem, a skan dopisywał paczkę do klucza, który prowadzi już
+            // nowy egzemplarz (test w 27-pending-writes).
+            StorageManager.scheduleSave.cancel();
+            StorageManager.debouncedLoad.cancel();
+            if (AutoTrigger.debouncedScan) AutoTrigger.debouncedScan.cancel();
+            if (AutoTrigger.debouncedAttach) AutoTrigger.debouncedAttach.cancel();
             document.querySelectorAll(`[id^="${CONFIG.SCRIPT_ID_PREFIX}"]`).forEach(el => el.remove());
             bus.clear();
             // Dostęp z konsoli należał do zdjętego egzemplarza: zostawić go znaczy
@@ -6599,9 +6705,20 @@ const SCRIPT_LOGS_ENABLED = false;
 
                 // Wyjście ze strony: archiwum pisze się z opóźnieniem (patrz
                 // ValueLog.scheduleArchive), więc ostatnia paczka przedmiotów
-                // inaczej by do niego nie zdążyła. Sam dziennik pozycji jest
-                // w tym momencie już w localStorage — on pisze się od razu.
-                this.onPageHide = () => { try { ValueLog.flushArchive(); } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ } };
+                // inaczej by do niego nie zdążyła.
+                //
+                // 1.3.3: to samo dotyczy dwóch innych odłożonych zapisów.
+                // Autozapis ustawień czeka sekundę — zmiana sprzed chwili ginęła
+                // przy F5. Dopisanie własnych wpisów do wspólnego dziennika po
+                // synchronizacji z sąsiednią kartą czeka 400 ms — przedmiot
+                // zamknięty tuż przed wyjściem mógł z niego wypaść.
+                this.onPageHide = () => {
+                    try {
+                        StorageManager.scheduleSave.flush();
+                        ValueLog.flushWriteBack();
+                        ValueLog.flushArchive();
+                    } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ }
+                };
                 window.addEventListener('pagehide', this.onPageHide);
 
                 // Autozapis ustawień. Do 8.1.0 stan zapisywał się dopiero przy
