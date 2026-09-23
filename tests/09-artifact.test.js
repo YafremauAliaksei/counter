@@ -142,17 +142,89 @@ test('adres wydania stoi na hoście z nagłówkiem CORS', () => {
     ok(url.endsWith('/counter.js'), 'adres ma wskazywać na sam plik');
 });
 
-test('każde wejście do sieci jest osłonięte sprawdzeniem modułu', () => {
-    const netLines = [];
-    LINES.forEach((l, i) => {
-        if (IS_COMMENT[i]) return;
-        if (/\bfetch\s*\(/.test(l) || /new\s+Image\s*\(/.test(l)) netLines.push(i + 1);
-    });
-    ok(netLines.length > 0, 'w pliku muszą być wejścia do sieci — inaczej test jest bez sensu');
+/**
+ * INWENTARZ WYJŚĆ DO SIECI (1.3.3, audyt A7, G1.2).
+ *
+ * Do 1.3.3 stał tu test „każde wyjście jest osłonięte”, który porównywał DWIE
+ * LICZBY z całego pliku: ile jest `fetch(` / `new Image(` i ile razy pada
+ * `priceModuleOn()` — także w komentarzach. Między konkretnym wyjściem
+ * a konkretnym sprawdzeniem nie było żadnego związku: strażnik zdjęty
+ * z KeepaOCR.loadImage i zastąpiony komentarzem z siedmioma wzmiankami
+ * przechodził ten test bez problemu. Wykrywacz nie widział też `.src =`
+ * ani `setAttribute('src', …)`, czyli drogi, którą naprawdę idzie wykres.
+ *
+ * Teraz każde miejsce wyjścia do sieci musi stać w funkcji wpisanej do
+ * inwentarza, z jednym z trzech rodzajów ochrony — a każdy z nich jest
+ * sprawdzany na kodzie:
+ *   self    — `priceModuleOn()` w tej samej funkcji, PRZED wyjściem;
+ *   caller  — funkcja jest wołana wyłącznie z podanej funkcji, a tamta ma
+ *             `priceModuleOn()` przed wywołaniem;
+ *   none    — świadomie bez modułu cen, z powodem wypisanym tutaj.
+ * Nowe wyjście do sieci w funkcji spoza inwentarza zapala test, dopóki ktoś
+ * nie wpisze go z powodem. Ostateczną bramką pozostają testy zachowania
+ * (01-silence i pozostałe „Cisza”) — ten test pilnuje, żeby żadnego wyjścia
+ * nie dało się dodać po cichu.
+ */
+const NETWORK_SITES = {
+    loadImage: { guard: 'self' },                       // KeepaOCR: obrazek wykresu do odczytu
+    init: { guard: 'self' },                            // FxRates: kursy walut
+    render: { guard: 'self' },                          // PriceCard: obrazek wykresu na karcie
+    cspReport: { guard: 'self' },                       // SH.cspReport(): próby do Keepa i r.jina.ai
+    run: { guard: 'caller', caller: 'resolve' },        // dostawcy ceny, wołani tylko z PriceCard.resolve
+    readCsp: { guard: 'none', why: 'własna domena strony, tylko z SH.cspReport() wpisanego ręcznie' },
+    link: { guard: 'none', why: 'tekst zakładki do skopiowania — łańcuch znaków, a nie wywołanie' },
+};
 
-    const guards = (ARTIFACT.match(/priceModuleOn\s*\(\s*\)/g) || []).length;
-    ok(guards >= netLines.length,
-       `sprawdzeń priceModuleOn (${guards}) musi być co najmniej tyle, ile wejść do sieci (${netLines.length})`);
+const KEYWORDS = /^(if|for|while|switch|catch|function|return)$/;
+/** Nazwa funkcji, jeśli wiersz ją otwiera: `name(…) {` albo `name: (…) =>`. */
+function functionHeader(line) {
+    let m = /^\s*(?:async\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{\s*$/.exec(line);
+    if (m && !KEYWORDS.test(m[1])) return m[1];
+    m = /^\s*([A-Za-z_$][\w$]*)\s*:\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>)/.exec(line);
+    return m ? m[1] : null;
+}
+const isNetworkLine = (l) => /\bfetch\s*\(/.test(l) || /new\s+Image\s*\(/.test(l)
+    || /setAttribute\(\s*'src'/.test(l) || /\.src\s*=(?!=)/.test(l);
+
+/** Wszystkie wyjścia do sieci: wiersz, funkcja, w której stoi, i jej początek. */
+function networkSites() {
+    const out = [];
+    LINES.forEach((l, i) => {
+        if (IS_COMMENT[i] || !isNetworkLine(l)) return;
+        const indent = l.search(/\S/);
+        for (let j = i - 1; j >= 0; j--) {
+            const name = functionHeader(LINES[j]);
+            if (name && LINES[j].search(/\S/) < indent) { out.push({ line: i, fn: name, start: j }); return; }
+        }
+        out.push({ line: i, fn: null, start: 0 });
+    });
+    return out;
+}
+
+/** Czy między wierszami [from, to) stoi w kodzie (nie w komentarzu) `priceModuleOn()`. */
+const guardedBetween = (from, to) => LINES.slice(from, to)
+    .some((l, k) => !IS_COMMENT[from + k] && /priceModuleOn\s*\(\s*\)/.test(l));
+
+test('każde wyjście do sieci stoi w inwentarzu, a jego ochrona jest w kodzie', () => {
+    const sites = networkSites();
+    ok(sites.length >= 8, 'wyjść do sieci jest kilka — inaczej wykrywacz przestał działać: ' + sites.length);
+    const bad = [];
+    for (const s of sites) {
+        const entry = NETWORK_SITES[s.fn];
+        const where = `wiersz ${s.line + 1} (${s.fn || 'poza funkcją'}): ${LINES[s.line].trim().slice(0, 60)}`;
+        if (!entry) { bad.push('spoza inwentarza — ' + where); continue; }
+        if (entry.guard === 'self' && !guardedBetween(s.start, s.line)) bad.push('brak priceModuleOn() przed wyjściem — ' + where);
+        if (entry.guard === 'caller') {
+            const caller = LINES.findIndex(l => functionHeader(l) === entry.caller);
+            const call = LINES.findIndex((l, k) => k > caller && !IS_COMMENT[k] && new RegExp('\\.' + s.fn + '\\(').test(l));
+            if (caller < 0 || call < 0 || !guardedBetween(caller, call)) bad.push(`${entry.caller} nie sprawdza modułu przed ${s.fn}() — ` + where);
+            const callers = LINES.filter((l, k) => !IS_COMMENT[k] && new RegExp('\\.' + s.fn + '\\(\\s*asin').test(l)).length;
+            if (callers !== 1) bad.push(`${s.fn}() wołane z ${callers} miejsc, inwentarz zna jedno — ` + where);
+        }
+    }
+    eq(bad, [], 'wyjścia do sieci bez udowodnionej ochrony');
+    const used = new Set(sites.map(s => s.fn));
+    eq(Object.keys(NETWORK_SITES).filter(k => !used.has(k)), [], 'wpisy inwentarza bez wyjścia do sieci — do usunięcia');
 });
 
 describe('Przezroczystość dla myszy');

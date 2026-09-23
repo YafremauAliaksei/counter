@@ -46,7 +46,7 @@ test('gdy odczyt rzuci wyjątkiem, karta NIE zostaje schowana', () => {
     P.el.style.display = 'block';
     throws(() => zInnerText(() => { throw new Error('drzewo w rozbiórce'); },
                             () => P.detectAsin()),
-           'wyjątek ma iść dalej — to nie nasza awaria do przemilczenia');
+           'wyjątek ma iść dalej — to nie nasza awaria do przemilczenia', /drzewo w rozbiórce/);
     eq(P.el.style.display, 'block', 'karta musi wrócić mimo wyjątku');
 });
 

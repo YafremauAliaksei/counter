@@ -80,7 +80,7 @@ flowchart TD
     APPLY["Routing.applyTo state"]
     APPLY --> BOTH{"completed ORAZ direction<br/>oba znane?"}
     BOTH -->|"nie"| WAIT["czekamy — druga połowa<br/>przyjdzie w którymś ze skanów"]
-    BOTH -->|"tak"| ONCE{"state.counted<br/>już policzony?"}
+    BOTH -->|"tak"| ONCE{"Routing.state, pole counted<br/>już policzony?"}
     ONCE -->|"tak"| SKIP["nic; applyTo woła się<br/>po KAŻDYM z dwóch zdarzeń"]
     ONCE -->|"nie"| COUNT["countDirection<br/>sell: sold+1 → sold_KARTA<br/>neutral: neutral+1 → neutral_KARTA<br/>unsell: tylko mianownik"]
     COUNT --> SIGN{"entryId istnieje?"}

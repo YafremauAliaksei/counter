@@ -207,7 +207,7 @@ dokładnie.
 | Bramka    | Polecenie              | Co łapie                                                  |
 | --------- | ---------------------- | --------------------------------------------------------- |
 | Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 407 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
+| Testy     | `npm test`             | 425 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
 | Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
 | Format    | `npm run format:check` | rozjazdy w stylu                                          |
 
@@ -315,6 +315,33 @@ z kodu. Dla każdej nowej funkcji trzeba świadomie przejść listę:
 Jeśli którejś z tych granic nie da się osiągnąć — to też jest wynik i warto
 zapisać go w komentarzu do testu.
 
+### Narzędzia, które to umożliwiają (od 1.3.3)
+
+Granice z listy wyżej da się wyrazić tylko narzędziem, które je widzi:
+
+- **`eq` porównuje strukturalnie**, a nie przez `JSON.stringify`: `NaN`,
+  `Infinity`, `null` i `undefined` są różnymi wartościami, klucz z `undefined`
+  to nie brak klucza, daty porównują się po czasie. Dawne `eq(NaN, null)`
+  przechodziło — czyli granice z tej listy były niewyrażalne;
+- **`throws(fn, msg, /wzorzec/)`** sprawdza, KTÓRY wyjątek poleciał; bez wzorca
+  literówka w teście (ReferenceError) udawała oczekiwany wyjątek;
+- **test asynchroniczny ma granicę czasu** (10 s, `TEST_TIMEOUT_MS`), a
+  odrzucenie bez właściciela — asynchroniczny środek testu bez `return` —
+  liczy się jako porażka, a nie jako zaliczenie;
+- **`bootOnStand()` / `makeClock()`** w `tests/dom-stub.js` — zegar ustawiony na
+  konkretną godzinę ścienną. Test, który liczy czas pracy od prawdziwego
+  „teraz”, zależy od godziny uruchomienia (tak było do 1.3.3: zielono 7 godzin
+  na dobę). `tests/tz-probe.js` uruchamia scenariusz w wybranej strefie
+  czasowej w osobnym procesie — do nocy zmiany czasu;
+- **`makeTabNetwork()`** — kilka kart na jednym `localStorage` z przeglądarkową
+  semantyką zdarzenia `storage` (zdarzenie dostają wszystkie karty poza piszącą,
+  doręczenie czeka na `flush()`). Bez tego okno wyścigu nie istnieje w żadnym
+  teście.
+
+Dobry test pada, gdy usunie się linię, której pilnuje. Przy strażnikach
+(prototype pollution, sieć, wyciszenie logów) sprawdza się to wprost: zdjąć
+strażnika, uruchomić test, zobaczyć czerwień, przywrócić.
+
 ### Każdy test musi być uzasadniony
 
 Test bez powodu jest gorszy niż brak testu: utrwala przypadkowy szczegół
@@ -357,6 +384,6 @@ minifikacja albo kilka formatów wyjścia — zmienia się **wyłącznie `build.
 a kontrakt `npm run build → counter.js` zostaje. Reszta repozytorium tego nie
 zauważy.
 
-Tak samo z testami: `tests/harness.js` realizuje cztery funkcje
-(`describe`, `test`, `eq`, `ok`). Przejście na `node:test` albo `vitest`
-to przepisanie jednego pliku.
+Tak samo z testami: `tests/harness.js` realizuje kilka funkcji
+(`describe`, `test`, `eq`, `ok`, `notOk`, `throws`). Przejście na `node:test`
+albo `vitest` to przepisanie jednego pliku.

@@ -15,7 +15,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { state, settle } = require('./harness');
+const { state, settle, installOrphanGuard } = require('./harness');
+
+installOrphanGuard(process);
 
 const DIR = __dirname;
 const filter = process.argv[2] || '';
@@ -51,7 +53,9 @@ for (const f of files) {
 // Testy asynchroniczne rozstrzygają się po przejściu przez wszystkie pliki,
 // więc podsumowanie czeka na nie jawnie. Wcześniej stało tu `setTimeout(…, 50)`
 // i sprawdzenie wolniejsze niż ta granica nie było liczone wcale.
-settle().then(summary);
+// Jedno obejście pętli zdarzeń po ostatnim teście: Node zgłasza odrzucenie
+// bez właściciela dopiero po opróżnieniu kolejki mikrozadań.
+settle().then(() => new Promise(resolve => setImmediate(resolve))).then(summary);
 
 function summary() {
     const ms = Date.now() - started;

@@ -26,7 +26,7 @@ czerwone, znaczy że różni się środowisko, a nie kod.
 | `counter.js` w wersji 1.0.0                               | zbudowany ze `src/`, sprawdzony                                          |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                         |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                                |
-| 30 plików testów, 407 sprawdzeń                           | **wszystkie zielone**                                                    |
+| 31 plików testów, 425 sprawdzeń                           | **wszystkie zielone**                                                    |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                                  |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy                   |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |

@@ -116,10 +116,10 @@ test('nieznany sklep spada do domyślnego, nie do undefined', () => {
 });
 
 test('KeepaOCR.url odrzuca ASIN spoza formatu', () => {
-    throws(() => env.SH.KeepaOCR.url('B0915C748N&evil=1'), 'ASIN z parametrem');
-    throws(() => env.SH.KeepaOCR.url('../../etc/passwd'), 'ścieżka');
-    throws(() => env.SH.KeepaOCR.url(''), 'pusty');
-    throws(() => env.SH.KeepaOCR.url(null), 'null');
+    throws(() => env.SH.KeepaOCR.url('B0915C748N&evil=1'), 'ASIN z parametrem', /niedozwolony ASIN/);
+    throws(() => env.SH.KeepaOCR.url('../../etc/passwd'), 'ścieżka', /niedozwolony ASIN/);
+    throws(() => env.SH.KeepaOCR.url(''), 'pusty', /niedozwolony ASIN/);
+    throws(() => env.SH.KeepaOCR.url(null), 'null', /niedozwolony ASIN/);
     ok(env.SH.KeepaOCR.url('B0915C748N').includes('asin=B0915C748N'));
 });
 
