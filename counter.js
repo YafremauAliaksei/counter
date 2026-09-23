@@ -7507,21 +7507,49 @@ const SCRIPT_LOGS_ENABLED = false;
         workedMs(task, nowMs) {
             if (!task) return 0;
             const now = Number(nowMs) || Date.now();
+            const floor = this.countedFrom();
             let total = 0;
             for (const seg of task.segments) {
+                const from = Math.max(seg.from, floor);
                 const to = seg.to === null ? now : seg.to;
-                if (to <= seg.from) continue;
-                total += (to - seg.from) - ShiftManager.lunchOverlapMs(seg.from, to);
+                if (to <= from) continue;
+                total += (to - from) - ShiftManager.lunchOverlapMs(from, to);
             }
             return Math.max(0, total);
         },
 
-        /** Początek pierwszego odcinka i koniec ostatniego — do podsumowania. */
+        /**
+         * Chwila, od której czas zadań w ogóle się liczy: początek zmiany.
+         *
+         * Sesja wirtualna startuje o 06:20 albo 18:20, a zmiana o 06:30 albo
+         * 18:30 — te dziesięć minut nie jest pracą. Skrypt uruchamia się właśnie
+         * wtedy, więc zadanie domyślne powstawało o 06:20: początku w przyszłości
+         * zapisać się nie da (clampStart). Linia 1 liczyła od 06:30, linia 8 od
+         * 06:20 — przy tych samych paczkach dwa różne tempa, na każdej zmianie.
+         *
+         * Przycięcie jest przy ODCZYCIE, a nie przy zapisie, bo odcinek przed
+         * startem zmiany powstaje kilkoma drogami: zadanie domyślne, nowe zadanie
+         * o 06:25, paczka w pauzie, skrypt wklejony w martwej strefie (18:10),
+         * zanim zmiana w ogóle była znana. Jedno miejsce zamiast czterech.
+         *
+         * Bez rozpoznanej zmiany nie przycina niczego — nie ma od czego.
+         */
+        countedFrom() {
+            const start = store.sessionConfig.shiftCalculatedStartTime;
+            return typeof start === 'number' ? start : -Infinity;
+        },
+
+        /**
+         * Początek pierwszego odcinka i koniec ostatniego — do podsumowania.
+         * Początek widać w panelu, więc przycina się tak samo jak czas: inaczej
+         * panel pokazywałby 06:20, a tempo liczyłoby się od 06:30.
+         */
         span(task) {
             if (!task || !task.segments.length) return { from: null, to: null };
             const first = task.segments[0];
             const last = task.segments[task.segments.length - 1];
-            return { from: first.from, to: last.to };
+            const from = Math.max(first.from, this.countedFrom());
+            return { from, to: last.to === null ? null : Math.max(last.to, from) };
         },
 
         // ---------------- liczniki ----------------

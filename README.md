@@ -205,6 +205,11 @@ Po uruchomieniu skryptu istnieje jedno zadanie — `Default` — zaczynające si
 razem ze zmianą. Dopóki nikt go nie przełączy, wszystko działa dokładnie tak,
 jak przed 1.3.1.
 
+**Czas przed startem zmiany nie liczy się nigdzie.** Skrypt zwykle uruchamia się
+o 06:20 albo 18:20, a zmiana zaczyna się o 06:30 albo 18:30 — te dziesięć minut
+nie wchodzi ani do tempa zmiany, ani do tempa żadnego zadania. Przedmiot
+zrobiony w tym czasie liczy się normalnie jako paczka; nie liczy się tylko czas.
+
 ### Linia 8
 
 Nazwa bieżącego zadania i **jego własne** liczby:
@@ -730,7 +735,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 346 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 353 sprawdzenia,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -748,7 +753,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 25 plików, 346 sprawdzeń
+├── tests/                  ← 26 plików, 353 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -768,7 +773,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 346 sprawdzeń
+npm test             # 353 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
