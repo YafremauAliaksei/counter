@@ -62,12 +62,23 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v7
+      # Akcje przypięte do commita (SHA), a nie do ruchomego tagu v7: tag może
+      # przestawić właściciel akcji albo ktoś, kto go przejmie — i nowy kod
+      # jedzie wtedy sam do przebiegu z prawem zapisu do repozytorium. Tak
+      # zadziałało przejęcie tj-actions/changed-files w marcu 2025. Dependabot
+      # podnosi SHA razem z komentarzem wersji.
+      #
+      # persist-credentials: false — token NIE zostaje w .git/config. Inaczej
+      # każdy kolejny krok, łącznie z akcją obcego autora, ma go pod ręką.
+      # Jedyne miejsce, które go potrzebuje (przesunięcie gałęzi release),
+      # dostaje go jawnie, tylko na czas jednego polecenia.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
 
@@ -173,7 +184,7 @@ jobs:
       # w tym przebiegu, z tego commita”. Weryfikacja u odbiorcy:
       #   gh attestation verify counter.js --repo ${{ github.repository }}
       - name: Poświadcz pochodzenie artefaktu
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: counter.js
 
@@ -192,17 +203,23 @@ jobs:
       # ręczne powtórzenie przebiegu dla starego tagu cofnęłoby ludziom
       # skrypt do poprzedniej wersji.
       - name: Przesuń gałąź release na to wydanie
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           NEWEST=$(git tag --sort=-v:refname | head -n 1)
           if [ "$NEWEST" != "$RELEASE_TAG" ]; then
             echo "::notice::$RELEASE_TAG nie jest najnowszym tagiem ($NEWEST) — gałąź release zostaje bez zmian."
             exit 0
           fi
-          git push origin "HEAD:refs/heads/release"
+          # Postać base64 tokenu GitHub sam nie maskuje w logach — robimy to jawnie.
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$AUTH"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH" \
+              push origin "HEAD:refs/heads/release"
           echo "Gałąź release wskazuje teraz na $RELEASE_TAG."
 
       - name: Utwórz wydanie
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_TAG }}

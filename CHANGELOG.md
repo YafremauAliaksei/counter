@@ -18,7 +18,17 @@ Dla tego projektu SemVer czyta się tak:
 
 - **`tests/25-flow-docs.test.js` — strażnik diagramów.** Dokumentacja tego rodzaju psuje się w jeden sposób: ktoś zmienia nazwę metody albo stałej, a obrazek zostaje z poprzednią. Test wymusza, żeby każda nazwa `Obiekt.metoda`, każda stała konfiguracji i każdy wskazany plik testów naprawdę istniały, żeby etykiety w diagramach były cytowane (niecytowany nawias psuje rysowanie CAŁEGO diagramu) i żeby README prowadziło do pliku — dokument, do którego nic nie prowadzi, przestaje być czytany, a potem przestaje być prawdziwy.
 
+### Bezpieczeństwo
+
+- **Kod ustawień nie włącza już sieci.** Kod krąży po czatach, a jego suma kontrolna niczego nie uwierzytelnia — każdy może go złożyć ręcznie. Numery `0x0200` (wyłącznik modułu cen) i `0x0202` (źródło ceny, np. `r.jina.ai`) włączały moduł cen i wysyłały ASIN każdego przedmiotu do obcego serwisu, a w zakładce — przed pierwszym narysowaniem okna, bez śladu. Oba numery są wycofane na zawsze (`ConfigCode.RETIRED_IDS`); stare kody wczytują się normalnie, te rekordy są pomijane i liczone w sprawozdaniu. Czy i dokąd skrypt wychodzi do sieci, rozstrzyga się tylko ręką, w panelu.
+
+- **Zakładka z `r.ok` i `catch`.** Odpowiedź 404/503 szła do wykonania jako skrypt, a każdy błąd kończył się ciszą — kliknięcie nic nie robiło. Teraz pokazuje się komunikat „StatsHelper nie wystartował” z powodem. Dotyczy zakładki z README i tej, którą daje `SH.configLink()`. W README ostrzeżenie: zakładkę bierze się wyłącznie z README, przysłanej na czacie nie instaluje się nigdy; innej osobie wysyła się kod ustawień, który niczego nie wykonuje.
+
+- **Akcje CI i wydania przypięte do commitów (SHA), a nie do ruchomych tagów**, a checkout nie zostawia tokenu w `.git/config`. Jedyny krok, który go potrzebuje (przesunięcie gałęzi `release`), dostaje go jawnie i maskuje w logach. `attest-build-provenance` podniesiony z v2 na v4. Pilnuje tego nowy test `29-supply-chain`.
+
 ### Naprawiono
+
+- **Cena podana symbolem waluty wypadała z sumy zmiany.** „€ 12,50” szło dalej z walutą „€”, której w tablicy kursów nie ma, więc przeliczenie na euro dawało pustkę — ta sama klasa błędu co 2 991,39 € liczone jako 991,39 w 9.1.1. Symbole zamieniają się teraz na kody (`$` na rynku kanadyjskim to CAD), a wzorzec kwoty rozpoznaje wyłącznie waluty, które da się przeliczyć. Działa tylko przy włączonym module cen.
 
 - **Ręczne odjęcie przesuwało procent sprzedaży.** Zdjęta paczka ma nieznany kierunek, a zdejmowała się z mianownika przy nietkniętej sprzedaży: `−1` przy 10 paczkach i 5 sprzedażach dawało 55%, a `50` wpisane w pole działu przy 100 i 60 — 100%. Teraz odjęcie zdejmuje najpierw paczki spoza mianownika (wpisane ręcznie, audyty), a potem z mianownika, proporcjonalnie zmniejszając sprzedane. Dotyczy skrótu `−1`, pola działu, pola paczek i pola tempa zadania.
 

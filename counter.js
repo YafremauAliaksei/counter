@@ -5160,10 +5160,29 @@ const SCRIPT_LOGS_ENABLED = false;
          * ściągniętym z obcego serwisu, więc musi przepuszczać wyłącznie to,
          * co naprawdę wygląda jak kwota.
          */
-        MONEY: String.raw`(?:(EUR|USD|GBP|PLN|CHF|SEK|DKK|NOK|CZK|HUF|RON)\s?|(€|\$|£|zł)\s?)(\d{1,3}(?:[., ]\d{3})*[.,]\d{2})`,
+        MONEY: String.raw`(?:(EUR|USD|GBP|PLN|SEK|CAD)\s?|(€|\$|£|zł)\s?)(\d{1,3}(?:[., ]\d{3})*[.,]\d{2})`,
+
+        /**
+         * Symbol waluty → kod z tablicy kursów (1.3.3, audyt H1).
+         *
+         * Wcześniej symbol szedł dalej jako „waluta”: „€” nie ma w tablicy
+         * kursów, więc toEur oddawał null i kwota wypadała z sumy zmiany —
+         * ta sama klasa błędu, co cena 2 991,39 € liczona jako 991,39
+         * (CHANGELOG 9.1.1). Wyrażenie MONEY przyjmowało też kody, dla których
+         * kursu nie ma nigdzie (CHF, DKK, NOK, CZK, HUF, RON): żaden z rynków
+         * skryptu w nich nie płaci, a przeliczyć ich i tak nie było czym.
+         * Teraz MONEY zna dokładnie te waluty, które da się przeliczyć — test
+         * pilnuje zgodności z CONFIG.FX_FALLBACK.
+         *
+         * „$” zależy od rynku: na amazon.ca to dolar kanadyjski.
+         */
+        symbolCode(symbol) {
+            if (symbol === '$') return store.userConfig.marketplace === 'ca' ? 'CAD' : 'USD';
+            return { '€': 'EUR', '£': 'GBP', 'zł': 'PLN' }[symbol] || '';
+        },
 
         normalize(currency, symbol, amount) {
-            const cur = currency || symbol || '';
+            const cur = currency || this.symbolCode(symbol);
             let a = String(amount).replace(/[ \s]/g, '');
             const ld = a.lastIndexOf('.'), lc = a.lastIndexOf(',');
             if (ld >= 0 && lc >= 0) {
@@ -7060,6 +7079,26 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         /**
+         * NUMERY WYCOFANE — spalone na zawsze, nigdy nie wracają do REGISTRY.
+         *
+         *   0x0200  priceCard.moduleEnabled — główny wyłącznik sieci
+         *   0x0202  priceCard.source        — dokąd idą zapytania (np. r.jina.ai)
+         *
+         * 1.3.3 (audyt B3): kod ustawień krąży po czatach i każdy może go złożyć
+         * ręcznie — suma kontrolna niczego nie uwierzytelnia. Z tymi dwoma
+         * numerami kod z czatu włączał moduł cen i wysyłał ASIN każdego
+         * przedmiotu do obcego serwisu, a w zakładce robił to przed pierwszym
+         * narysowaniem okna, czyli bez śladu. To łamało główną właściwość
+         * produktu: po wklejeniu skrypt nie wychodzi do sieci, dopóki człowiek
+         * SAM tego nie włączy. CZY i DOKĄD skrypt wychodzi do sieci, rozstrzyga
+         * się teraz tylko w panelu, ręką.
+         *
+         * Stare kody z tymi numerami dalej się wczytują — te rekordy są po
+         * prostu pomijane i liczone w sprawozdaniu jako wycofane.
+         */
+        RETIRED_IDS: [0x0200, 0x0202],
+
+        /**
          * REJESTR USTAWIEŃ — jedyne miejsce, które trzeba ruszyć, dodając
          * ustawienie do kodu.
          *
@@ -7113,9 +7152,8 @@ const SCRIPT_LOGS_ENABLED = false;
             { id: 0x0118, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.OTHER', type: 'color' },
 
             // --- karta ceny ---
-            { id: 0x0200, root: 'local', path: 'priceCard.moduleEnabled', type: 'bool' },
+            // 0x0200 i 0x0202 wycofane w 1.3.3 — patrz RETIRED_IDS niżej.
             { id: 0x0201, root: 'local', path: 'priceCard.visible', type: 'bool' },
-            { id: 0x0202, root: 'local', path: 'priceCard.source', type: 'enum', list: 'source' },
             { id: 0x0203, root: 'local', path: 'priceCard.logValues', type: 'bool' },
             { id: 0x0204, root: 'local', path: 'priceCard.marketFallback', type: 'bool' },
             { id: 0x0205, root: 'local', path: 'priceCard.showPrice', type: 'bool' },
@@ -7296,7 +7334,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
             const byId = new Map(this.REGISTRY.map(e => [e.id, e]));
             const patch = { local: {}, user: {} };
-            const stats = { applied: 0, unknown: 0, invalid: 0 };
+            const stats = { applied: 0, unknown: 0, invalid: 0, retired: 0 };
             let i = 1;
             while (i < bytes.length - 1) {
                 if (i + 3 > bytes.length - 1) { stats.invalid++; break; }
@@ -7307,6 +7345,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 const value = bytes.slice(from, from + len);
                 i = from + len;
 
+                if (this.RETIRED_IDS.includes(id)) { stats.retired++; continue; }
                 const entry = byId.get(id);
                 if (!entry) { stats.unknown++; continue; }
                 const parsed = this._fromBytes(entry, value);
@@ -7345,6 +7384,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 'kod przyjęty': true,
                 'ustawień nałożonych': written,
                 'rekordów nieznanych (nowszy skrypt je zrozumie)': res.stats.unknown,
+                'rekordów wycofanych (sieć włącza się tylko w panelu)': res.stats.retired,
                 'rekordów odrzuconych': res.stats.invalid,
             };
         },
@@ -7393,10 +7433,16 @@ const SCRIPT_LOGS_ENABLED = false;
             // do okna, potem rusza pobieranie pliku. Skrypt zastaje go gotowego
             // i nakłada sam, w środku uruchomienia — bez mrugnięcia domyślnym
             // wyglądem i bez zgadywania, czy `SH` zdążyło już powstać.
+            //
+            // 1.3.3 (audyt A3): `r.ok` i `catch`. Bez nich odpowiedź 404/503
+            // szła do wykonania jako skrypt („404: Not Found” → SyntaxError),
+            // a każdy błąd ginął w odrzuconej obietnicy: człowiek klikał i nic
+            // się nie działo, bez słowa dlaczego.
             // eslint-disable-next-line no-script-url -- tekst zakładki, patrz wyżej
-            return "javascript:(async()=>{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
+            return "javascript:(async()=>{try{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
                 + "';const r=await fetch('" + CONFIG.RELEASE_URL
-                + "',{cache:'no-store'});eval(await r.text());})();void 0;";
+                + "',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}"
+                + "catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;";
         },
     };
 

@@ -47,12 +47,19 @@ Tam, gdzie konsola jest zamknięta, a i tak wygodniej. Nowa zakładka, dowolna
 nazwa, a jako adres:
 
 ```
-javascript:(async()=>{const r=await fetch('https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
+javascript:(async()=>{try{const r=await fetch('https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
 ```
 
 Kliknięcie na stronie T-REX pobiera i uruchamia **ostatnie wydanie**.
 
-Trzy szczegóły w tym adresie nie są przypadkowe:
+> **Zakładkę bierze się wyłącznie stąd — z tego README.** Zakładki przysłanej
+> na czacie nie instaluje się nigdy, nawet jeśli wygląda znajomo. Adres
+> zakładki to program, który wykonuje się na stronie T-REX z uprawnieniami
+> zalogowanej osoby; wystarczy jeden zmieniony adres pliku w środku, żeby
+> uruchomić cudzy kod — a na oko tego nie widać. Ustawienia wymienia się
+> **kodem** (`0x…`, patrz „Kod ustawień”), który niczego nie wykonuje.
+
+Szczegóły w tym adresie nie są przypadkowe:
 
 - **`raw.githubusercontent.com`, a nie adres pliku wydania na `github.com`.**
   Zakładka pobiera plik z **cudzej strony**, czyli zapytaniem międzydomenowym,
@@ -67,6 +74,10 @@ Trzy szczegóły w tym adresie nie są przypadkowe:
 - **`cache:'no-store'`** — żeby przeglądarka nie podała starego pliku z pamięci
   podręcznej. Sam `raw.` trzyma odpowiedź 5 minut po swojej stronie, więc świeże
   wydanie dojeżdża do wszystkich najdalej po tylu;
+- **`r.ok` i `catch`** (od 1.3.3) — gdy plik się nie pobierze (brak sieci,
+  odpowiedź 404/503), pokazuje się komunikat „StatsHelper nie wystartował”
+  z powodem. Wcześniej treść odpowiedzi błędu szła do wykonania, a każdy błąd
+  kończył się ciszą: kliknięcie po prostu nic nie robiło;
 - **`void 0` na końcu** — bez tego zakładka, której wyrażenie zwraca tekst,
   potrafi zastąpić nim całą stronę.
 
@@ -504,6 +515,10 @@ ustawień** na dole panelu pokazuje coś w rodzaju
 ```
 
 Ten ciąg wystarczy podać komuś na czacie albo przepisać sobie na drugi komputer.
+Kod niczego nie wykonuje i od 1.3.3 **nie włącza sieci**: numery, które
+decydowały o tym, czy i dokąd skrypt wychodzi do internetu (wyłącznik modułu cen
+i źródło ceny), są wycofane. Stary kod z nimi wczyta się normalnie, a te dwa
+rekordy zostaną pominięte — moduł cen włącza się tylko ręką, w panelu.
 Wkleja się go w to samo miejsce w panelu („Wklej tu kod” → „Nałóż kod”) albo
 w konsoli:
 
@@ -515,12 +530,14 @@ SH.configLink(); // gotowa zakładka z tym kodem w środku
 
 ### Zakładka, która sama stawia ustawienia
 
-`SH.configLink()` (albo pole „Gotowa zakładka” w panelu) daje gotowy adres:
-nowy człowiek wkleja go raz do zakładek i od pierwszego kliknięcia ma cudzy
-wygląd, bez przeklikiwania panelu.
+`SH.configLink()` (albo pole „Gotowa zakładka” w panelu) daje gotowy adres
+dla **siebie** — na drugi komputer albo po wyczyszczeniu przeglądarki — który
+od pierwszego kliknięcia stawia własny wygląd, bez przeklikiwania panelu.
+Innej osobie wysyła się kod, a nie zakładkę (patrz ostrzeżenie w „Szybkim
+starcie”).
 
 ```
-javascript:(async()=>{window['statsHelper_v1_0_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});eval(await r.text());})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_3_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -602,7 +619,10 @@ z zewnątrz, a nie jak polecenie:
   drukowalne ASCII;
 - suma kontrolna na końcu łapie ciąg urwany przy kopiowaniu albo przekłamany;
 - nieznany numer, zła długość i śmieciowa wartość są pomijane **pojedynczo**,
-  z adnotacją w sprawozdaniu, zamiast wywracać cały kod.
+  z adnotacją w sprawozdaniu, zamiast wywracać cały kod;
+- **w rejestrze nie ma nic, co włącza sieć** (od 1.3.3): wyłącznik modułu cen
+  i źródło ceny są wycofane, bo kod krąży po czatach, a jego suma kontrolna
+  niczego nie uwierzytelnia — każdy może go złożyć ręcznie.
 
 Sprawozdanie wraca z `SH.config(...)`:
 
@@ -738,6 +758,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 | `innerHTML` tylko do czyszczenia (`= ''`), nigdy z treścią            | sprawdzane testem        |
 | Ani `eval`, ani `new Function`, ani `document.write`                  | sprawdzane testem        |
 | Kod ustawień zapisuje tylko pod ścieżki z rejestru, z przycięciem     | `ConfigCode.decode`      |
+| Kod ustawień nie włącza sieci — takie numery są wycofane              | `ConfigCode.RETIRED_IDS` |
 | Ochrona przed prototype pollution (`__proto__`, `constructor`)        | `Utils.deepMerge`        |
 | Liczby z konfiguracji są zaciskane do zakresu, zanim trafią do CSS    | `Utils.clampNum`         |
 | Kolory sprawdzane zakotwiczonym wyrażeniem, inaczej — szary           | `Utils.hexToRgb`         |
@@ -753,7 +774,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 387 sprawdzeń,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 400 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -771,7 +792,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 28 plików, 387 sprawdzeń
+├── tests/                  ← 29 plików, 400 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -791,7 +812,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 387 sprawdzeń
+npm test             # 400 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

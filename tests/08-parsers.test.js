@@ -76,6 +76,39 @@ test('normalize radzi sobie z formatem polskim i angielskim', () => {
     eq(P.normalize('EUR', null, 'nie liczba'), null);
 });
 
+describe('Waluta ceny musi dać się przeliczyć (audyt H1)');
+
+test('symbol waluty zamienia się na kod z tablicy kursów', () => {
+    // „€ 12,50” szło dalej jako waluta „€”, której w tablicy kursów nie ma:
+    // toEur oddawał null i kwota wypadała z sumy zmiany.
+    const F = env.SH.FxRates;
+    for (const [sym, code] of [['€', 'EUR'], ['£', 'GBP'], ['zł', 'PLN'], ['$', 'USD']]) {
+        const n = P.normalize(null, sym, '12,50');
+        eq(n.currency, code, sym);
+        ok(F.toEur(n.value, n.currency) > 0, sym + ' przelicza się na euro');
+    }
+});
+
+test('„$” na rynku kanadyjskim to dolar kanadyjski', () => {
+    const before = env.SH.store.userConfig.marketplace;
+    env.SH.store.userConfig.marketplace = 'ca';
+    try {
+        eq(P.normalize(null, '$', '10.00').currency, 'CAD');
+    } finally {
+        env.SH.store.userConfig.marketplace = before;
+    }
+});
+
+test('każda waluta, którą rozpoznaje wzorzec kwoty, ma kurs w tablicy zapasowej', () => {
+    // Wzorzec przyjmował CHF, DKK, NOK, CZK, HUF, RON — bez kursu nigdzie.
+    // Kwota rozpoznana, ale nieprzeliczalna, to kwota, która cicho znika.
+    const codes = P.MONEY.match(/\(([A-Z|]+)\)/)[1].split('|');
+    const table = env.SH.CONFIG.FX_FALLBACK;
+    eq(codes.filter(c => !table[c]), [], 'kody bez kursu');
+    const found = P.parseJina('Markdown Content:\nCHF 15.08 with 10 percent savings', true);
+    eq(found, null, 'kwota w walucie bez kursu nie jest ceną');
+});
+
 describe('Dziennik wartości');
 
 test('_migrate nadaje stabilne id i odrzuca śmieci', () => {

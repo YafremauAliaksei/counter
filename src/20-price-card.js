@@ -72,10 +72,29 @@
          * ściągniętym z obcego serwisu, więc musi przepuszczać wyłącznie to,
          * co naprawdę wygląda jak kwota.
          */
-        MONEY: String.raw`(?:(EUR|USD|GBP|PLN|CHF|SEK|DKK|NOK|CZK|HUF|RON)\s?|(€|\$|£|zł)\s?)(\d{1,3}(?:[., ]\d{3})*[.,]\d{2})`,
+        MONEY: String.raw`(?:(EUR|USD|GBP|PLN|SEK|CAD)\s?|(€|\$|£|zł)\s?)(\d{1,3}(?:[., ]\d{3})*[.,]\d{2})`,
+
+        /**
+         * Symbol waluty → kod z tablicy kursów (1.3.3, audyt H1).
+         *
+         * Wcześniej symbol szedł dalej jako „waluta”: „€” nie ma w tablicy
+         * kursów, więc toEur oddawał null i kwota wypadała z sumy zmiany —
+         * ta sama klasa błędu, co cena 2 991,39 € liczona jako 991,39
+         * (CHANGELOG 9.1.1). Wyrażenie MONEY przyjmowało też kody, dla których
+         * kursu nie ma nigdzie (CHF, DKK, NOK, CZK, HUF, RON): żaden z rynków
+         * skryptu w nich nie płaci, a przeliczyć ich i tak nie było czym.
+         * Teraz MONEY zna dokładnie te waluty, które da się przeliczyć — test
+         * pilnuje zgodności z CONFIG.FX_FALLBACK.
+         *
+         * „$” zależy od rynku: na amazon.ca to dolar kanadyjski.
+         */
+        symbolCode(symbol) {
+            if (symbol === '$') return store.userConfig.marketplace === 'ca' ? 'CAD' : 'USD';
+            return { '€': 'EUR', '£': 'GBP', 'zł': 'PLN' }[symbol] || '';
+        },
 
         normalize(currency, symbol, amount) {
-            const cur = currency || symbol || '';
+            const cur = currency || this.symbolCode(symbol);
             let a = String(amount).replace(/[ \s]/g, '');
             const ld = a.lastIndexOf('.'), lc = a.lastIndexOf(',');
             if (ld >= 0 && lc >= 0) {

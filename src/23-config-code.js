@@ -103,6 +103,26 @@
         },
 
         /**
+         * NUMERY WYCOFANE — spalone na zawsze, nigdy nie wracają do REGISTRY.
+         *
+         *   0x0200  priceCard.moduleEnabled — główny wyłącznik sieci
+         *   0x0202  priceCard.source        — dokąd idą zapytania (np. r.jina.ai)
+         *
+         * 1.3.3 (audyt B3): kod ustawień krąży po czatach i każdy może go złożyć
+         * ręcznie — suma kontrolna niczego nie uwierzytelnia. Z tymi dwoma
+         * numerami kod z czatu włączał moduł cen i wysyłał ASIN każdego
+         * przedmiotu do obcego serwisu, a w zakładce robił to przed pierwszym
+         * narysowaniem okna, czyli bez śladu. To łamało główną właściwość
+         * produktu: po wklejeniu skrypt nie wychodzi do sieci, dopóki człowiek
+         * SAM tego nie włączy. CZY i DOKĄD skrypt wychodzi do sieci, rozstrzyga
+         * się teraz tylko w panelu, ręką.
+         *
+         * Stare kody z tymi numerami dalej się wczytują — te rekordy są po
+         * prostu pomijane i liczone w sprawozdaniu jako wycofane.
+         */
+        RETIRED_IDS: [0x0200, 0x0202],
+
+        /**
          * REJESTR USTAWIEŃ — jedyne miejsce, które trzeba ruszyć, dodając
          * ustawienie do kodu.
          *
@@ -156,9 +176,8 @@
             { id: 0x0118, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.OTHER', type: 'color' },
 
             // --- karta ceny ---
-            { id: 0x0200, root: 'local', path: 'priceCard.moduleEnabled', type: 'bool' },
+            // 0x0200 i 0x0202 wycofane w 1.3.3 — patrz RETIRED_IDS niżej.
             { id: 0x0201, root: 'local', path: 'priceCard.visible', type: 'bool' },
-            { id: 0x0202, root: 'local', path: 'priceCard.source', type: 'enum', list: 'source' },
             { id: 0x0203, root: 'local', path: 'priceCard.logValues', type: 'bool' },
             { id: 0x0204, root: 'local', path: 'priceCard.marketFallback', type: 'bool' },
             { id: 0x0205, root: 'local', path: 'priceCard.showPrice', type: 'bool' },
@@ -339,7 +358,7 @@
 
             const byId = new Map(this.REGISTRY.map(e => [e.id, e]));
             const patch = { local: {}, user: {} };
-            const stats = { applied: 0, unknown: 0, invalid: 0 };
+            const stats = { applied: 0, unknown: 0, invalid: 0, retired: 0 };
             let i = 1;
             while (i < bytes.length - 1) {
                 if (i + 3 > bytes.length - 1) { stats.invalid++; break; }
@@ -350,6 +369,7 @@
                 const value = bytes.slice(from, from + len);
                 i = from + len;
 
+                if (this.RETIRED_IDS.includes(id)) { stats.retired++; continue; }
                 const entry = byId.get(id);
                 if (!entry) { stats.unknown++; continue; }
                 const parsed = this._fromBytes(entry, value);
@@ -388,6 +408,7 @@
                 'kod przyjęty': true,
                 'ustawień nałożonych': written,
                 'rekordów nieznanych (nowszy skrypt je zrozumie)': res.stats.unknown,
+                'rekordów wycofanych (sieć włącza się tylko w panelu)': res.stats.retired,
                 'rekordów odrzuconych': res.stats.invalid,
             };
         },
@@ -436,9 +457,15 @@
             // do okna, potem rusza pobieranie pliku. Skrypt zastaje go gotowego
             // i nakłada sam, w środku uruchomienia — bez mrugnięcia domyślnym
             // wyglądem i bez zgadywania, czy `SH` zdążyło już powstać.
+            //
+            // 1.3.3 (audyt A3): `r.ok` i `catch`. Bez nich odpowiedź 404/503
+            // szła do wykonania jako skrypt („404: Not Found” → SyntaxError),
+            // a każdy błąd ginął w odrzuconej obietnicy: człowiek klikał i nic
+            // się nie działo, bez słowa dlaczego.
             // eslint-disable-next-line no-script-url -- tekst zakładki, patrz wyżej
-            return "javascript:(async()=>{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
+            return "javascript:(async()=>{try{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
                 + "';const r=await fetch('" + CONFIG.RELEASE_URL
-                + "',{cache:'no-store'});eval(await r.text());})();void 0;";
+                + "',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}"
+                + "catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;";
         },
     };
