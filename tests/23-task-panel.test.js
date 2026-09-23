@@ -171,13 +171,18 @@ test('godzina wpisana ręcznie i tekst, który godziną nie jest', () => {
     eq(TM.active().segments[0].from, before, 'śmieć nie rusza początku');
 });
 
-test('godzina późniejsza niż teraz to wczoraj, a nie pomyłka', () => {
-    // Nocna zmiana: o 00:40 wpisane „23:30” znaczy pół godziny temu.
+test('godzina późniejsza niż teraz na zmianie dziennej przycina się do teraz', () => {
+    // Do 1.3.2 każda godzina późniejsza niż teraz szła na wczoraj, więc „18:00”
+    // wpisane o 15:00 cofało zadanie o 21 godzin. Teraz liczy się najbliższa
+    // taka godzina: dzisiejsza 18:00 jest bliżej niż wczorajsza, a przyszłość
+    // setStart przycina do teraz. Przypadek nocny („23:30” o 00:40 to wczoraj)
+    // sprawdza tests/26-shift-boundaries.test.js na zegarze ustawionym na noc.
+    reset(120);
     const now = clock.now();
-    const ahead = new Date(now + 3 * HOUR);
-    const parsed = TM.parseClock(SH.Utils.formatClock(ahead.getTime()));
-    ok(parsed < now, 'znacznik z przeszłości');
-    ok(Math.abs((now + 3 * HOUR - 24 * HOUR) - parsed) < 61000, 'dokładnie dobę wcześniej');
+    const field = nodes().find(n => n.tagName === 'INPUT' && n.placeholder === 'HH:MM');
+    type(field, SH.Utils.formatClock(now + 3 * HOUR));
+    const from = TM.active().segments[0].from;
+    ok(Math.abs(from - now) < 2000, 'początek to teraz, a nie wczoraj: ' + new Date(from).toString());
 });
 
 describe('Paczki i tempo to dwa pola opisujące to samo');

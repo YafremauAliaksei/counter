@@ -320,15 +320,18 @@
         // --- Zarządzanie cyklem życia zmiany (8.1.0) ---
         // Zmiana trwa 10,5 h. Jeśli zapisany początek zmiany jest starszy niż
         // 12 h — dane są na pewno z poprzedniej zmiany (maszyna nie zresetowała
-        // sesji) i podlegają wyczyszczeniu.
+        // sesji) i podlegają wyczyszczeniu. Wyjątek (1.3.3): zegar ścienny
+        // wskazuje wciąż TĘ SAMĄ zmianę — w październikową noc zmiany czasu
+        // nocna zmiana trwa 12,42 h zegara (patrz checkStaleOnBoot).
         STALE_SESSION_MS: 12 * 60 * 60 * 1000,
         // Wpisy o aktywnych kartach starsze niż ten okres są wyrzucane.
         TAB_INSTANCE_TTL_MS: 12 * 60 * 60 * 1000,
         // Różnica między zapisanym a wyliczonym początkiem zmiany, po której
         // zmianę uznaje się za inną (ochrona przed drganiem paru sekund).
         SHIFT_IDENTITY_TOLERANCE_MS: 60 * 1000,
-        // Dopóki zmiana nie jest rozpoznana (skrypt wystartował przed otwarciem
-        // okna zmiany) — sprawdzać ponownie w tym odstępie.
+        // Co ile sprawdzać, jaka zmiana trwa. Do 1.3.2 tylko do pierwszego
+        // rozpoznania; od 1.3.3 przez cały czas życia skryptu, żeby karta
+        // otwarta przez noc sama zauważyła następną zmianę (Main.startShiftWatch).
         SHIFT_RETRY_INTERVAL_MS: 30 * 1000,
         // Autozapis ustawień po zmianie stanu.
         AUTOSAVE_DEBOUNCE_MS: 1000,

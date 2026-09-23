@@ -506,10 +506,19 @@
         /**
          * Godzina wpisana ręcznie („18:32”) na znacznik czasu.
          *
-         * Godzina PÓŹNIEJSZA NIŻ TERAZ to wczoraj, a nie pomyłka: na nocnej
-         * zmianie o 00:40 wpisane „23:30” znaczy pół godziny temu. Bez tego
-         * clampStart przyciąłby wartość do „teraz” i człowiek dostałby zadanie
-         * o zerowej długości zamiast komunikatu, że czegoś nie rozumiemy.
+         * Wynik to NAJBLIŻSZA taka godzina: dzisiejsza albo wczorajsza. Na
+         * nocnej zmianie o 00:40 wpisane „23:30” znaczy pięćdziesiąt minut temu,
+         * a nie prawie dobę naprzód. Bez tego clampStart przyciąłby wartość do
+         * „teraz” i człowiek dostałby zadanie o zerowej długości.
+         *
+         * 1.3.3, dwie poprawki:
+         *   - „wczoraj” liczy się przez setDate(-1), a nie odjęciem 24 h: doba
+         *     zmiany czasu ma 23 albo 25 godzin i „23:30” lądowało o 22:30
+         *     albo o 00:30 (w tym repozytorium już tak robi lunchOverlapMs);
+         *   - wczoraj wybiera się tylko wtedy, gdy jest BLIŻEJ niż dziś.
+         *     Wcześniej każda godzina choćby minutę późniejsza niż teraz szła
+         *     na wczoraj, więc „06:36” wpisane o 06:35:30 cofało zadanie o dobę.
+         *     Godzina z dzisiaj tuż przed nami przycina się w setStart do teraz.
          *
          * @returns {number|null} null, gdy tekst nie jest godziną.
          */
@@ -519,11 +528,14 @@
             const hours = parseInt(m[1], 10);
             const minutes = parseInt(m[2], 10);
             if (hours > 23 || minutes > 59) return null;
-            const d = new Date();
+            const now = Date.now();
+            const d = new Date(now);
             d.setHours(hours, minutes, 0, 0);
-            let ms = d.getTime();
-            if (ms > Date.now()) ms -= 24 * 3600000;
-            return ms;
+            const today = d.getTime();
+            if (today <= now) return today;
+            d.setDate(d.getDate() - 1);
+            const yesterday = d.getTime();
+            return today - now < now - yesterday ? today : yesterday;
         },
 
         /**

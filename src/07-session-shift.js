@@ -116,6 +116,13 @@
             const start = store.sessionConfig.shiftCalculatedStartTime;
             if (!start || Date.now() - start <= CONFIG.STALE_SESSION_MS) return false;
 
+            // Zegar ścienny mówi, że to WCIĄŻ ta sama zmiana — więc dane nie są
+            // przeterminowane, choćby minęło ponad 12 h. Jedyny taki przypadek:
+            // październikowa noc zmiany czasu. 18:30 CEST → 05:55 CET to 12,42 h,
+            // a nie 11,42 — i F5 o 05:35 zerował zmianę 20 minut przed końcem.
+            const current = ShiftManager.currentShift();
+            if (current && current.start === start) return false;
+
             const ageH = ((Date.now() - start) / 3600000).toFixed(1);
             store.sessionConfig.shiftType = null;
             store.sessionConfig.shiftCalculatedStartTime = null;
@@ -126,7 +133,15 @@
     };
 
     const ShiftManager = {
-        update() {
+        /**
+         * Zmiana, która trwa TERAZ według zegara ściennego: `{type, start}`,
+         * albo null w martwej strefie (17:55–18:19 i 05:55–06:19).
+         *
+         * Wydzielone z update(), bo to samo pytanie zadaje sprawdzenie
+         * przeterminowanych danych — „czy zapisana zmiana to ta, która trwa?”
+         * — i nie może odpowiadać na nie inaczej niż update().
+         */
+        currentShift() {
             const now = new Date();
             const minutes = now.getHours() * 60 + now.getMinutes();
             const ST = CONFIG.SHIFT_TIMES_LOCAL;
@@ -150,13 +165,21 @@
                 if (now.getHours() < 12 && CST.NIGHT.H >= 12) sTime.setDate(now.getDate() - 1);
             }
 
+            return sType ? { type: sType, start: sTime.getTime() } : null;
+        },
+
+        update() {
+            const current = this.currentShift();
+
             // 8.1.0: w „martwej strefie” między zmianami (17:55-18:19 / 05:55-06:19)
             // NIE zerujemy zapisanej zmiany. Wcześniej kasowało to czas startu
             // i temu, kto został po 05:00, statystyka nagle się zerowała.
             // Przy okazji zostaje kotwica do sprawdzenia przeterminowanych danych.
-            if (!sType) return;
+            if (!current) return;
 
-            const newStart = sTime.getTime();
+            const sType = current.type;
+            const sTime = new Date(current.start);
+            const newStart = current.start;
             const oldStart = store.sessionConfig.shiftCalculatedStartTime;
             const oldType = store.sessionConfig.shiftType;
 

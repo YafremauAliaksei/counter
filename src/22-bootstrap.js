@@ -52,28 +52,31 @@
             store.sessionConfig.activeTabInstances[store.currentTabInstanceId] = Date.now();
         },
         /**
-         * Póki zmiana nie jest rozpoznana, sprawdzać ją z timera.
-         * Jedyny realny przypadek: skrypt wklejono do konsoli parę minut przed
-         * otwarciem okna zmiany (np. o 18:17). W 8.0.0 ShiftManager.update()
-         * wywoływał się dokładnie raz i taka karta zostawała bez zmiany do końca.
-         * Sprawdzanie idzie TYLKO póki zmiany nie ma, więc wyzerować już
-         * trwającej zmiany ten timer nie może.
+         * Sprawdzanie zmiany z timera — przez cały czas życia skryptu.
+         *
+         * Do 8.x timer chodził tylko do pierwszego rozpoznania zmiany: jedyną
+         * przewidzianą sytuacją był skrypt wklejony parę minut przed otwarciem
+         * okna zmiany (np. o 18:17). W 8.0.0 ShiftManager.update() wywoływał się
+         * dokładnie raz i taka karta zostawała bez zmiany do końca.
+         *
+         * Od 1.3.3 chodzi ZAWSZE. Na stanowisku bez resetu sesji karta T-REX
+         * potrafi zostać otwarta przez noc, a ponowne kliknięcie zakładki na
+         * działającej stronie jest ignorowane (ochrona przed podwójnym
+         * uruchomieniem). Bez tego timera piątkowe paczki dopisywały się do
+         * czwartkowego licznika, aż ktoś przeładował stronę.
+         *
+         * To bezpieczne o każdej porze, bo update() zeruje dane TYLKO wtedy,
+         * gdy zegar ścienny wskazuje inną zmianę niż zapisana: w trakcie tej
+         * samej zmiany (także po północy na nocnej) wylicza ten sam początek,
+         * a w martwej strefie nie robi nic. Pilnuje tego
+         * tests/26-shift-boundaries.test.js.
          */
         shiftWatchTimer: null,
         startShiftWatch() {
-            if (store.sessionConfig.shiftType) return;
             // 8.3.0: uchwyt timera trzyma Main. Wcześniej żył tylko w zmiennej
-            // lokalnej i gdyby zmiana nigdy nie została rozpoznana (skrypt
-            // wklejono w dzień wolny), nie było czym zatrzymać przeglądu.
+            // lokalnej i nie było czym zatrzymać przeglądu przy rozbiórce.
             clearInterval(this.shiftWatchTimer);
-            this.shiftWatchTimer = setInterval(() => {
-                ShiftManager.update();
-                if (store.sessionConfig.shiftType) {
-                    clearInterval(this.shiftWatchTimer);
-                    this.shiftWatchTimer = null;
-                    Utils.log('Zmiana rozpoznana przez timer oczekiwania.');
-                }
-            }, CONFIG.SHIFT_RETRY_INTERVAL_MS);
+            this.shiftWatchTimer = setInterval(() => ShiftManager.update(), CONFIG.SHIFT_RETRY_INTERVAL_MS);
         },
 
         /**

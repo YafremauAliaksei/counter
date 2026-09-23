@@ -437,15 +437,18 @@ const SCRIPT_LOGS_ENABLED = false;
         // --- Zarządzanie cyklem życia zmiany (8.1.0) ---
         // Zmiana trwa 10,5 h. Jeśli zapisany początek zmiany jest starszy niż
         // 12 h — dane są na pewno z poprzedniej zmiany (maszyna nie zresetowała
-        // sesji) i podlegają wyczyszczeniu.
+        // sesji) i podlegają wyczyszczeniu. Wyjątek (1.3.3): zegar ścienny
+        // wskazuje wciąż TĘ SAMĄ zmianę — w październikową noc zmiany czasu
+        // nocna zmiana trwa 12,42 h zegara (patrz checkStaleOnBoot).
         STALE_SESSION_MS: 12 * 60 * 60 * 1000,
         // Wpisy o aktywnych kartach starsze niż ten okres są wyrzucane.
         TAB_INSTANCE_TTL_MS: 12 * 60 * 60 * 1000,
         // Różnica między zapisanym a wyliczonym początkiem zmiany, po której
         // zmianę uznaje się za inną (ochrona przed drganiem paru sekund).
         SHIFT_IDENTITY_TOLERANCE_MS: 60 * 1000,
-        // Dopóki zmiana nie jest rozpoznana (skrypt wystartował przed otwarciem
-        // okna zmiany) — sprawdzać ponownie w tym odstępie.
+        // Co ile sprawdzać, jaka zmiana trwa. Do 1.3.2 tylko do pierwszego
+        // rozpoznania; od 1.3.3 przez cały czas życia skryptu, żeby karta
+        // otwarta przez noc sama zauważyła następną zmianę (Main.startShiftWatch).
         SHIFT_RETRY_INTERVAL_MS: 30 * 1000,
         // Autozapis ustawień po zmianie stanu.
         AUTOSAVE_DEBOUNCE_MS: 1000,
@@ -2107,6 +2110,13 @@ const SCRIPT_LOGS_ENABLED = false;
             const start = store.sessionConfig.shiftCalculatedStartTime;
             if (!start || Date.now() - start <= CONFIG.STALE_SESSION_MS) return false;
 
+            // Zegar ścienny mówi, że to WCIĄŻ ta sama zmiana — więc dane nie są
+            // przeterminowane, choćby minęło ponad 12 h. Jedyny taki przypadek:
+            // październikowa noc zmiany czasu. 18:30 CEST → 05:55 CET to 12,42 h,
+            // a nie 11,42 — i F5 o 05:35 zerował zmianę 20 minut przed końcem.
+            const current = ShiftManager.currentShift();
+            if (current && current.start === start) return false;
+
             const ageH = ((Date.now() - start) / 3600000).toFixed(1);
             store.sessionConfig.shiftType = null;
             store.sessionConfig.shiftCalculatedStartTime = null;
@@ -2117,7 +2127,15 @@ const SCRIPT_LOGS_ENABLED = false;
     };
 
     const ShiftManager = {
-        update() {
+        /**
+         * Zmiana, która trwa TERAZ według zegara ściennego: `{type, start}`,
+         * albo null w martwej strefie (17:55–18:19 i 05:55–06:19).
+         *
+         * Wydzielone z update(), bo to samo pytanie zadaje sprawdzenie
+         * przeterminowanych danych — „czy zapisana zmiana to ta, która trwa?”
+         * — i nie może odpowiadać na nie inaczej niż update().
+         */
+        currentShift() {
             const now = new Date();
             const minutes = now.getHours() * 60 + now.getMinutes();
             const ST = CONFIG.SHIFT_TIMES_LOCAL;
@@ -2141,13 +2159,21 @@ const SCRIPT_LOGS_ENABLED = false;
                 if (now.getHours() < 12 && CST.NIGHT.H >= 12) sTime.setDate(now.getDate() - 1);
             }
 
+            return sType ? { type: sType, start: sTime.getTime() } : null;
+        },
+
+        update() {
+            const current = this.currentShift();
+
             // 8.1.0: w „martwej strefie” między zmianami (17:55-18:19 / 05:55-06:19)
             // NIE zerujemy zapisanej zmiany. Wcześniej kasowało to czas startu
             // i temu, kto został po 05:00, statystyka nagle się zerowała.
             // Przy okazji zostaje kotwica do sprawdzenia przeterminowanych danych.
-            if (!sType) return;
+            if (!current) return;
 
-            const newStart = sTime.getTime();
+            const sType = current.type;
+            const sTime = new Date(current.start);
+            const newStart = current.start;
             const oldStart = store.sessionConfig.shiftCalculatedStartTime;
             const oldType = store.sessionConfig.shiftType;
 
@@ -6352,28 +6378,31 @@ const SCRIPT_LOGS_ENABLED = false;
             store.sessionConfig.activeTabInstances[store.currentTabInstanceId] = Date.now();
         },
         /**
-         * Póki zmiana nie jest rozpoznana, sprawdzać ją z timera.
-         * Jedyny realny przypadek: skrypt wklejono do konsoli parę minut przed
-         * otwarciem okna zmiany (np. o 18:17). W 8.0.0 ShiftManager.update()
-         * wywoływał się dokładnie raz i taka karta zostawała bez zmiany do końca.
-         * Sprawdzanie idzie TYLKO póki zmiany nie ma, więc wyzerować już
-         * trwającej zmiany ten timer nie może.
+         * Sprawdzanie zmiany z timera — przez cały czas życia skryptu.
+         *
+         * Do 8.x timer chodził tylko do pierwszego rozpoznania zmiany: jedyną
+         * przewidzianą sytuacją był skrypt wklejony parę minut przed otwarciem
+         * okna zmiany (np. o 18:17). W 8.0.0 ShiftManager.update() wywoływał się
+         * dokładnie raz i taka karta zostawała bez zmiany do końca.
+         *
+         * Od 1.3.3 chodzi ZAWSZE. Na stanowisku bez resetu sesji karta T-REX
+         * potrafi zostać otwarta przez noc, a ponowne kliknięcie zakładki na
+         * działającej stronie jest ignorowane (ochrona przed podwójnym
+         * uruchomieniem). Bez tego timera piątkowe paczki dopisywały się do
+         * czwartkowego licznika, aż ktoś przeładował stronę.
+         *
+         * To bezpieczne o każdej porze, bo update() zeruje dane TYLKO wtedy,
+         * gdy zegar ścienny wskazuje inną zmianę niż zapisana: w trakcie tej
+         * samej zmiany (także po północy na nocnej) wylicza ten sam początek,
+         * a w martwej strefie nie robi nic. Pilnuje tego
+         * tests/26-shift-boundaries.test.js.
          */
         shiftWatchTimer: null,
         startShiftWatch() {
-            if (store.sessionConfig.shiftType) return;
             // 8.3.0: uchwyt timera trzyma Main. Wcześniej żył tylko w zmiennej
-            // lokalnej i gdyby zmiana nigdy nie została rozpoznana (skrypt
-            // wklejono w dzień wolny), nie było czym zatrzymać przeglądu.
+            // lokalnej i nie było czym zatrzymać przeglądu przy rozbiórce.
             clearInterval(this.shiftWatchTimer);
-            this.shiftWatchTimer = setInterval(() => {
-                ShiftManager.update();
-                if (store.sessionConfig.shiftType) {
-                    clearInterval(this.shiftWatchTimer);
-                    this.shiftWatchTimer = null;
-                    Utils.log('Zmiana rozpoznana przez timer oczekiwania.');
-                }
-            }, CONFIG.SHIFT_RETRY_INTERVAL_MS);
+            this.shiftWatchTimer = setInterval(() => ShiftManager.update(), CONFIG.SHIFT_RETRY_INTERVAL_MS);
         },
 
         /**
@@ -7730,10 +7759,19 @@ const SCRIPT_LOGS_ENABLED = false;
         /**
          * Godzina wpisana ręcznie („18:32”) na znacznik czasu.
          *
-         * Godzina PÓŹNIEJSZA NIŻ TERAZ to wczoraj, a nie pomyłka: na nocnej
-         * zmianie o 00:40 wpisane „23:30” znaczy pół godziny temu. Bez tego
-         * clampStart przyciąłby wartość do „teraz” i człowiek dostałby zadanie
-         * o zerowej długości zamiast komunikatu, że czegoś nie rozumiemy.
+         * Wynik to NAJBLIŻSZA taka godzina: dzisiejsza albo wczorajsza. Na
+         * nocnej zmianie o 00:40 wpisane „23:30” znaczy pięćdziesiąt minut temu,
+         * a nie prawie dobę naprzód. Bez tego clampStart przyciąłby wartość do
+         * „teraz” i człowiek dostałby zadanie o zerowej długości.
+         *
+         * 1.3.3, dwie poprawki:
+         *   - „wczoraj” liczy się przez setDate(-1), a nie odjęciem 24 h: doba
+         *     zmiany czasu ma 23 albo 25 godzin i „23:30” lądowało o 22:30
+         *     albo o 00:30 (w tym repozytorium już tak robi lunchOverlapMs);
+         *   - wczoraj wybiera się tylko wtedy, gdy jest BLIŻEJ niż dziś.
+         *     Wcześniej każda godzina choćby minutę późniejsza niż teraz szła
+         *     na wczoraj, więc „06:36” wpisane o 06:35:30 cofało zadanie o dobę.
+         *     Godzina z dzisiaj tuż przed nami przycina się w setStart do teraz.
          *
          * @returns {number|null} null, gdy tekst nie jest godziną.
          */
@@ -7743,11 +7781,14 @@ const SCRIPT_LOGS_ENABLED = false;
             const hours = parseInt(m[1], 10);
             const minutes = parseInt(m[2], 10);
             if (hours > 23 || minutes > 59) return null;
-            const d = new Date();
+            const now = Date.now();
+            const d = new Date(now);
             d.setHours(hours, minutes, 0, 0);
-            let ms = d.getTime();
-            if (ms > Date.now()) ms -= 24 * 3600000;
-            return ms;
+            const today = d.getTime();
+            if (today <= now) return today;
+            d.setDate(d.getDate() - 1);
+            const yesterday = d.getTime();
+            return today - now < now - yesterday ? today : yesterday;
         },
 
         /**
