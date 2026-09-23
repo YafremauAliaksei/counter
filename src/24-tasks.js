@@ -235,8 +235,11 @@
          */
         setStart(id, ms) {
             const task = this.byId(id);
-            if (!task) return;
-            const wanted = Math.min(Math.max(0, Number(ms) || 0), Date.now());
+            const asked = Number(ms);
+            // 1.3.3 (audyt E5): tekst, który liczbą nie jest, dawał 0, czyli
+            // 1 stycznia 1970. Zero i liczby ujemne tak samo nic nie znaczą.
+            if (!task || !Number.isFinite(asked) || asked <= 0) return;
+            const wanted = Math.min(Math.max(asked, this.previousEnd(task)), Date.now());
             const first = task.segments[0];
             if (wanted <= first.from) {
                 first.from = wanted;
@@ -244,9 +247,35 @@
                 const kept = task.segments
                     .filter(seg => seg.to === null || seg.to > wanted)
                     .map(seg => ({ from: Math.max(seg.from, wanted), to: seg.to }));
-                task.segments = kept.length ? kept : [{ from: wanted, to: null }];
+                // 1.3.3 (audyt F6): zadanie zatrzymane zostaje zatrzymane.
+                // Wcześniej odcinek zastępczy był otwarty i przestawienie
+                // początku po cichu puszczało zegar.
+                const running = this.isRunning(task);
+                task.segments = kept.length ? kept : [{ from: wanted, to: running ? null : wanted }];
             }
             this._commit(store.tasks);
+        },
+
+        /**
+         * Koniec ostatniego odcinka INNYCH zadań, który leży przed początkiem
+         * tego zadania — granica, poniżej której jego początku cofnąć nie wolno.
+         *
+         * 1.3.3 (audyt E1): „początek zmiany” na drugim zadaniu cofał je na
+         * 06:30, choć pierwsze trwało do 12:00. Dwa zadania liczyły te same
+         * godziny, suma zadań przekraczała czas zmiany, a obiad odejmował się
+         * dwa razy. Ten sam błąd co w 1.3.2, tylko piętro wyżej: tamten był
+         * wewnątrz zadania, ten między zadaniami.
+         */
+        previousEnd(task) {
+            const own = task.segments[0].from;
+            let end = 0;
+            for (const other of store.tasks) {
+                if (other.id === task.id) continue;
+                for (const seg of other.segments) {
+                    if (seg.to !== null && seg.to <= own && seg.to > end) end = seg.to;
+                }
+            }
+            return end;
         },
 
         remove(id) {
@@ -395,18 +424,45 @@
          * sprzedaży — ani w dół (gdyby liczyła się jak niesprzedaż), ani w górę.
          */
         adjustManual(tabKey, delta) {
+            // Zero to nie poprawka: −1 przy pustym liczniku nie może zdjąć pauzy.
+            if (!delta) return;
+            // 1.3.3 (audyt F1): odjęcie idzie drogą wpisania liczby wprost, czyli
+            // od najnowszego zadania wstecz. Wcześniej brało je tylko aktywne
+            // zadanie i przycinało do zera: gdy paczki leżały w poprzednim,
+            // licznik karty spadał, a suma zadań nie.
+            if (delta < 0) {
+                this.applyManualTotal(tabKey, this.shiftTotal(tabKey, 'done') + delta);
+                return;
+            }
             // Przez ensureRunning, a nie przez active(): ręczna paczka też jest
             // paczką, więc kończy pauzę tak samo, jak zaliczona automatycznie.
             const task = this.ensureRunning();
             if (!task) return;
             const c = this.counters(task.id, tabKey);
-            const done = Math.max(0, c.done + delta);
-            const used = done - c.done;          // ile naprawdę weszło po przycięciu do zera
-            this._write(task.id, tabKey, {
-                done,
-                sold: Math.min(c.sold, done),
-                neutral: Math.max(0, Math.min(done, c.neutral + used)),
-            });
+            this._write(task.id, tabKey, { ...c, done: c.done + delta, neutral: c.neutral + delta });
+        },
+
+        /**
+         * Liczniki po zmniejszeniu paczek do `done` — bez przesunięcia procentu.
+         *
+         * Zdejmowana paczka ma nieznany kierunek, więc procent (sprzedane przez
+         * paczki z mianownika) nie ma prawa od tego drgnąć. Kolejność:
+         *   1. najpierw paczki SPOZA mianownika (wpisane ręcznie, audyty) —
+         *      procentu nie dotykają wcale, więc +1 i −1 to para odwracalna;
+         *   2. potem paczki z mianownika, a sprzedane maleją proporcjonalnie.
+         *
+         * Do 1.3.2 zdejmowało się z mianownika, a sprzedaż tylko przycinało od
+         * góry (audyt F2, F3): −1 przy 10/5 dawało 55%, a „50” wpisane przy
+         * 100 paczkach i 60 sprzedażach — 100%. Całkowite paczki nie pozwalają
+         * zachować procentu co do joty, więc zostaje z dokładnością do jednej.
+         */
+        _shrink(c, done) {
+            const drop = c.done - done;
+            const neutral = Math.max(0, c.neutral - drop);
+            const rated = c.done - c.neutral;
+            const ratedLeft = rated - (drop - (c.neutral - neutral));
+            const sold = rated > 0 ? Math.round(c.sold * ratedLeft / rated) : 0;
+            return { done, sold: Math.min(sold, ratedLeft), neutral };
         },
 
         /**
@@ -431,12 +487,7 @@
                 const c = this.counters(task.id, tabKey);
                 if (!c.done) continue;
                 const take = Math.min(c.done, -diff);
-                const done = c.done - take;
-                this._write(task.id, tabKey, {
-                    done,
-                    sold: Math.min(c.sold, done),
-                    neutral: Math.min(c.neutral, done),
-                });
+                this._write(task.id, tabKey, this._shrink(c, c.done - take));
                 diff += take;
             }
         },
@@ -493,14 +544,36 @@
             const wanted = Math.max(0, Number(target) || 0);
             const delta = wanted - this.totals(task).done;
             if (!delta) return;
+            this._applyDelta(task, tabKey, delta);
+        },
+
+        /**
+         * Zmiana paczek zadania na jednej karcie — wspólna dla pola paczek
+         * i pola tempa. W górę: paczki poza mianownik, bo ich kierunku nikt nie
+         * zna. W dół: przez _shrink, żeby procent nie drgnął.
+         */
+        _applyDelta(task, tabKey, delta) {
             const c = this.counters(task.id, tabKey);
-            const done = Math.max(0, c.done + delta);
-            const used = done - c.done;
-            this._write(task.id, tabKey, {
-                done,
-                sold: Math.min(c.sold, done),
-                neutral: Math.max(0, Math.min(done, c.neutral + used)),
-            });
+            if (delta >= 0) {
+                this._write(task.id, tabKey, { ...c, done: c.done + delta, neutral: c.neutral + delta });
+            } else {
+                this._write(task.id, tabKey, this._shrink(c, Math.max(0, c.done + delta)));
+            }
+        },
+
+        /**
+         * Wpisane liczby paczek karty trafiają do liczników zmiany: tyle, ile
+         * mają zadania. Jedno miejsce dla panelu i dla skrótu klawiszowego —
+         * wcześniej skrót przepisywał tylko licznik „poza mianownikiem”, a nie
+         * sprzedane, i przy odjęciu linia 1 rozjeżdżała się z zadaniami.
+         */
+        syncShift(tabKey) {
+            store.tabCounters[tabKey] = this.shiftTotal(tabKey, 'done');
+            store.tabSold[tabKey] = this.shiftTotal(tabKey, 'sold');
+            store.tabNeutral[tabKey] = this.shiftTotal(tabKey, 'neutral');
+            StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
+            StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
+            StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
         },
 
         /**
@@ -554,16 +627,7 @@
             if (!task) return null;
             const target = this.doneForRate(task, rate, nowMs);
             if (target === null) return null;
-            const current = this.totals(task).done;
-            const c = this.counters(task.id, tabKey);
-            const delta = target - current;
-            const done = Math.max(0, c.done + delta);
-            const used = done - c.done;
-            this._write(task.id, tabKey, {
-                done,
-                sold: Math.min(c.sold, done),
-                neutral: Math.max(0, Math.min(done, c.neutral + used)),
-            });
+            this._applyDelta(task, tabKey, target - this.totals(task).done);
             return this.totals(task).done;
         },
 

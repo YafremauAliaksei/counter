@@ -448,6 +448,10 @@ const SCRIPT_LOGS_ENABLED = false;
         // wskazuje wciąż TĘ SAMĄ zmianę — w październikową noc zmiany czasu
         // nocna zmiana trwa 12,42 h zegara (patrz checkStaleOnBoot).
         STALE_SESSION_MS: 12 * 60 * 60 * 1000,
+        // Górna granica licznika czytanego z magazynu (1.3.3, audyt F9). Zmiana
+        // to kilkaset paczek; wartość spoza zakresu to śmieć albo cudza ręka,
+        // a `'9'.repeat(21)` czytało się jako 1e21 i rozsadzało każdą linię.
+        COUNTER_MAX: 1000000,
         // Wpisy o aktywnych kartach starsze niż ten okres są wyrzucane.
         TAB_INSTANCE_TTL_MS: 12 * 60 * 60 * 1000,
         // Różnica między zapisanym a wyliczonym początkiem zmiany, po której
@@ -1872,10 +1876,19 @@ const SCRIPT_LOGS_ENABLED = false;
             if (cut <= 0 || cut === rest.length - 1) return null;
             return { taskId: rest.substring(0, cut), tabKey: rest.substring(cut + 1) };
         },
+        /**
+         * Licznik z magazynu: liczba całkowita od zera do CONFIG.COUNTER_MAX.
+         * Magazyn jest wspólny z T-REX i można go edytować ręcznie — ujemne,
+         * ułamki i liczby na dwadzieścia cyfr nie mają prawa dojść do ekranu.
+         */
+        parseCount(raw) {
+            const n = parseInt(raw, 10);
+            return Number.isFinite(n) && n > 0 ? Math.min(n, CONFIG.COUNTER_MAX) : 0;
+        },
         /** Wartość licznika zadania z magazynu; śmieć czyta się jako zera. */
         parseTaskCounterValue(raw) {
             const parts = String(raw == null ? '' : raw).split(',');
-            const num = (i) => Math.max(0, parseInt(parts[i], 10) || 0);
+            const num = (i) => this.parseCount(parts[i]);
             return { done: num(0), sold: num(1), neutral: num(2) };
         },
         removeCounter(tabKey) {
@@ -1958,13 +1971,13 @@ const SCRIPT_LOGS_ENABLED = false;
                     const key = localStorage.key(i);
                     if (key && key.startsWith(prefix)) {
                         const tabKey = key.substring(prefix.length);
-                        store.tabCounters[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                        store.tabCounters[tabKey] = this.parseCount(localStorage.getItem(key));
                     } else if (key && key.startsWith(soldPrefix)) {
                         const tabKey = key.substring(soldPrefix.length);
-                        store.tabSold[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                        store.tabSold[tabKey] = this.parseCount(localStorage.getItem(key));
                     } else if (key && key.startsWith(neutralPrefix)) {
                         const tabKey = key.substring(neutralPrefix.length);
-                        store.tabNeutral[tabKey] = parseInt(localStorage.getItem(key), 10) || 0;
+                        store.tabNeutral[tabKey] = this.parseCount(localStorage.getItem(key));
                     } else if (key && key.startsWith(taskPrefix)) {
                         const parsed = this.parseTaskCounterKey(key.substring(CONFIG.SCRIPT_ID_PREFIX.length));
                         if (!parsed) continue;
@@ -1992,14 +2005,30 @@ const SCRIPT_LOGS_ENABLED = false;
                 .map(t => ({
                     id: t.id,
                     name: String(t.name || CONFIG.DEFAULT_TASK_NAME).slice(0, CONFIG.TASK_MAX_NAME_LEN),
-                    segments: t.segments
-                        .filter(seg => seg && typeof seg.from === 'number')
-                        .map(seg => ({ from: seg.from, to: typeof seg.to === 'number' ? seg.to : null })),
-                }))
-                .filter(t => t.segments.length);
+                    segments: this.cleanSegments(t.segments),
+                }));
             store.tasks = list;
             const activeId = parsed && typeof parsed.activeId === 'string' ? parsed.activeId : null;
             store.activeTaskId = list.some(t => t.id === activeId) ? activeId : (list.length ? list[list.length - 1].id : null);
+        },
+        /**
+         * Odcinki zadania z magazynu (1.3.3, audyt E6, F11). JSON przepuszcza
+         * `1e999`, czyli nieskończoność, a ręczna edycja — zero, liczby ujemne
+         * i daty z przyszłości: na ekranie wychodziło „Infinityg NaNm”.
+         *
+         * Odcinek poprawny: początek skończony, dodatni, nie w przyszłości;
+         * koniec pusty albo nie wcześniej niż początek. Resztę się pomija.
+         * Zadanie, któremu nie zostało nic, NIE znika — dostaje zamknięty
+         * odcinek zerowej długości. Jego paczki leżą pod osobnymi kluczami
+         * i bez zadania wypadłyby z sumy, a panel wyzerowałby licznik karty.
+         */
+        cleanSegments(raw) {
+            const now = Date.now();
+            const ok = (Array.isArray(raw) ? raw : [])
+                .filter(seg => seg && Number.isFinite(seg.from) && seg.from > 0 && seg.from <= now)
+                .map(seg => ({ from: seg.from, to: Number.isFinite(seg.to) ? seg.to : null }))
+                .filter(seg => seg.to === null || seg.to >= seg.from);
+            return ok.length ? ok : [{ from: now, to: now }];
         },
         listen() {
             // 8.3.0: referencja do obsługi jest zapamiętana — potrzebna w Main.teardown().
@@ -2021,13 +2050,13 @@ const SCRIPT_LOGS_ENABLED = false;
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_COUNTER.length);
                     // e.newValue === null znaczy, że klucz został usunięty — to
                     // reset liczników przez sąsiednią kartę przy zmianie zmiany.
-                    const val = parseInt(e.newValue, 10) || 0;
+                    const val = this.parseCount(e.newValue);
                     if (store.tabCounters[tabKey] !== val) store.tabCounters[tabKey] = val;
                 } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_SOLD)) {
                     // Licznik sprzedanych sąsiedniej karty — potrzebny liniom 2 i 7,
                     // które liczą procent po WSZYSTKICH kartach naraz.
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
-                    const val = parseInt(e.newValue, 10) || 0;
+                    const val = this.parseCount(e.newValue);
                     if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
                 } else if (localKey === CONFIG.STORAGE_KEY_TASKS) {
                     // Zadanie jest własnością człowieka, a nie karty: przejście
@@ -2046,7 +2075,7 @@ const SCRIPT_LOGS_ENABLED = false;
                     // Audyty sąsiedniej karty — z tego samego powodu: bez nich
                     // linie 2 i 7 policzyłyby procent z za dużego mianownika.
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL.length);
-                    const val = parseInt(e.newValue, 10) || 0;
+                    const val = this.parseCount(e.newValue);
                     if (store.tabNeutral[tabKey] !== val) store.tabNeutral[tabKey] = val;
                 } else if (!store.uiFlags.isSettingsPanelVisible) {
                     this.debouncedLoad();
@@ -2630,7 +2659,7 @@ const SCRIPT_LOGS_ENABLED = false;
              * wszystkich trzech językach.
              */
             const cSold = store.tabSold[cid] || 0;
-            const cRated = cCount - (store.tabNeutral[cid] || 0);
+            const cRated = Math.max(0, cCount - (store.tabNeutral[cid] || 0));
 
             // Linia 1: bieżąca zakładka
             this.lines.line1_currentTab.textContent = I18n.get('statsLine1_current', {
@@ -2672,7 +2701,10 @@ const SCRIPT_LOGS_ENABLED = false;
                 if (included && active) {
                     gTotal += count;
                     gSold += store.tabSold[k] || 0;
-                    gRated += count - (store.tabNeutral[k] || 0);
+                    // Nieujemny wkład karty (1.3.3, audyt F5): „poza mianownikiem”
+                    // większe od paczek bierze się tylko ze śmieci albo wyścigu
+                    // kart, a wtedy ujemny wkład zawyżał procent całości.
+                    gRated += Math.max(0, count - (store.tabNeutral[k] || 0));
                     if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),
@@ -2874,8 +2906,16 @@ const SCRIPT_LOGS_ENABLED = false;
             const chk = h('input', { type: 'checkbox', checked, onChange: (e) => onChange(e.target.checked), style: { transform: 'scale(1.2)', marginRight: '8px', cursor: 'pointer' } });
             return h('label', { style: { display: 'flex', alignItems: 'center', cursor: 'pointer', flexGrow: '1' } }, chk, h('span', { textContent: label }));
         },
+        /**
+         * Pole liczby. Pusty tekst NIE jest zerem (1.3.3, audyt F8): jedno
+         * Backspace i Enter w polu licznika działu kasowało paczki zmiany bez
+         * pytania. Zero trzeba wpisać świadomie.
+         */
         numberInput(val, onChange) {
-            return h('input', { type: 'number', min: 0, value: val, onChange: (e) => onChange(parseInt(e.target.value, 10) || 0), style: { width: '80px', padding: '4px', textAlign: 'right' }});
+            return h('input', { type: 'number', min: 0, value: val, onChange: (e) => {
+                const n = parseInt(e.target.value, 10);
+                if (Number.isFinite(n)) onChange(Math.max(0, n));
+            }, style: { width: '80px', padding: '4px', textAlign: 'right' }});
         }
     };
 
@@ -3108,14 +3148,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * zmieniła, a licznik karty ma za nią nadążyć. Gdyby zostało po staremu,
          * linia 1 pokazywałaby inną liczbę niż linia 8 dla tej samej pracy.
          */
-        syncTabCounters(tabKey) {
-            store.tabCounters[tabKey] = TaskManager.shiftTotal(tabKey, 'done');
-            store.tabSold[tabKey] = TaskManager.shiftTotal(tabKey, 'sold');
-            store.tabNeutral[tabKey] = TaskManager.shiftTotal(tabKey, 'neutral');
-            StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
-            StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
-            StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
-        },
+        syncTabCounters(tabKey) { TaskManager.syncShift(tabKey); },
 
         /**
          * LICZNIKI DZIAŁÓW — przeniesione pod zadania (1.3.0).
@@ -6314,14 +6347,14 @@ const SCRIPT_LOGS_ENABLED = false;
             const cid = store.currentTabInstanceId;
             const cur = store.tabCounters[cid] || 0;
             const next = Math.max(0, cur + delta);
-            const applied = next - cur;
             if (opts.manual) {
-                TaskManager.adjustManual(cid, applied);
-                store.tabNeutral[cid] = TaskManager.shiftTotal(cid, 'neutral');
-                StorageManager.saveNeutral(cid, store.tabNeutral[cid]);
-            } else {
-                TaskManager.addItem(cid);
+                // Liczniki zmiany (paczki, sprzedane, poza mianownikiem) idą
+                // z zadań — odjęcie zmienia też sprzedane (patrz _shrink).
+                TaskManager.adjustManual(cid, next - cur);
+                TaskManager.syncShift(cid);
+                return;
             }
+            TaskManager.addItem(cid);
             store.tabCounters[cid] = next;
             StorageManager.saveCounter(cid, next);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
@@ -6765,7 +6798,7 @@ const SCRIPT_LOGS_ENABLED = false;
                     // wyjdzie z listy wpisanej na górze pliku: po edycji warto
                     // sprawdzić SH.normalizeAccessPasswords(['moje', 'hasła'])
                     // zamiast zgadywać, czy literówka przeszła.
-                    InputManager, normalizeAccessPasswords,
+                    InputManager, UIBuilder, normalizeAccessPasswords,
                     /**
                      * KOD KONFIGURACJI (1.2.0).
                      *
@@ -7605,8 +7638,11 @@ const SCRIPT_LOGS_ENABLED = false;
          */
         setStart(id, ms) {
             const task = this.byId(id);
-            if (!task) return;
-            const wanted = Math.min(Math.max(0, Number(ms) || 0), Date.now());
+            const asked = Number(ms);
+            // 1.3.3 (audyt E5): tekst, który liczbą nie jest, dawał 0, czyli
+            // 1 stycznia 1970. Zero i liczby ujemne tak samo nic nie znaczą.
+            if (!task || !Number.isFinite(asked) || asked <= 0) return;
+            const wanted = Math.min(Math.max(asked, this.previousEnd(task)), Date.now());
             const first = task.segments[0];
             if (wanted <= first.from) {
                 first.from = wanted;
@@ -7614,9 +7650,35 @@ const SCRIPT_LOGS_ENABLED = false;
                 const kept = task.segments
                     .filter(seg => seg.to === null || seg.to > wanted)
                     .map(seg => ({ from: Math.max(seg.from, wanted), to: seg.to }));
-                task.segments = kept.length ? kept : [{ from: wanted, to: null }];
+                // 1.3.3 (audyt F6): zadanie zatrzymane zostaje zatrzymane.
+                // Wcześniej odcinek zastępczy był otwarty i przestawienie
+                // początku po cichu puszczało zegar.
+                const running = this.isRunning(task);
+                task.segments = kept.length ? kept : [{ from: wanted, to: running ? null : wanted }];
             }
             this._commit(store.tasks);
+        },
+
+        /**
+         * Koniec ostatniego odcinka INNYCH zadań, który leży przed początkiem
+         * tego zadania — granica, poniżej której jego początku cofnąć nie wolno.
+         *
+         * 1.3.3 (audyt E1): „początek zmiany” na drugim zadaniu cofał je na
+         * 06:30, choć pierwsze trwało do 12:00. Dwa zadania liczyły te same
+         * godziny, suma zadań przekraczała czas zmiany, a obiad odejmował się
+         * dwa razy. Ten sam błąd co w 1.3.2, tylko piętro wyżej: tamten był
+         * wewnątrz zadania, ten między zadaniami.
+         */
+        previousEnd(task) {
+            const own = task.segments[0].from;
+            let end = 0;
+            for (const other of store.tasks) {
+                if (other.id === task.id) continue;
+                for (const seg of other.segments) {
+                    if (seg.to !== null && seg.to <= own && seg.to > end) end = seg.to;
+                }
+            }
+            return end;
         },
 
         remove(id) {
@@ -7765,18 +7827,45 @@ const SCRIPT_LOGS_ENABLED = false;
          * sprzedaży — ani w dół (gdyby liczyła się jak niesprzedaż), ani w górę.
          */
         adjustManual(tabKey, delta) {
+            // Zero to nie poprawka: −1 przy pustym liczniku nie może zdjąć pauzy.
+            if (!delta) return;
+            // 1.3.3 (audyt F1): odjęcie idzie drogą wpisania liczby wprost, czyli
+            // od najnowszego zadania wstecz. Wcześniej brało je tylko aktywne
+            // zadanie i przycinało do zera: gdy paczki leżały w poprzednim,
+            // licznik karty spadał, a suma zadań nie.
+            if (delta < 0) {
+                this.applyManualTotal(tabKey, this.shiftTotal(tabKey, 'done') + delta);
+                return;
+            }
             // Przez ensureRunning, a nie przez active(): ręczna paczka też jest
             // paczką, więc kończy pauzę tak samo, jak zaliczona automatycznie.
             const task = this.ensureRunning();
             if (!task) return;
             const c = this.counters(task.id, tabKey);
-            const done = Math.max(0, c.done + delta);
-            const used = done - c.done;          // ile naprawdę weszło po przycięciu do zera
-            this._write(task.id, tabKey, {
-                done,
-                sold: Math.min(c.sold, done),
-                neutral: Math.max(0, Math.min(done, c.neutral + used)),
-            });
+            this._write(task.id, tabKey, { ...c, done: c.done + delta, neutral: c.neutral + delta });
+        },
+
+        /**
+         * Liczniki po zmniejszeniu paczek do `done` — bez przesunięcia procentu.
+         *
+         * Zdejmowana paczka ma nieznany kierunek, więc procent (sprzedane przez
+         * paczki z mianownika) nie ma prawa od tego drgnąć. Kolejność:
+         *   1. najpierw paczki SPOZA mianownika (wpisane ręcznie, audyty) —
+         *      procentu nie dotykają wcale, więc +1 i −1 to para odwracalna;
+         *   2. potem paczki z mianownika, a sprzedane maleją proporcjonalnie.
+         *
+         * Do 1.3.2 zdejmowało się z mianownika, a sprzedaż tylko przycinało od
+         * góry (audyt F2, F3): −1 przy 10/5 dawało 55%, a „50” wpisane przy
+         * 100 paczkach i 60 sprzedażach — 100%. Całkowite paczki nie pozwalają
+         * zachować procentu co do joty, więc zostaje z dokładnością do jednej.
+         */
+        _shrink(c, done) {
+            const drop = c.done - done;
+            const neutral = Math.max(0, c.neutral - drop);
+            const rated = c.done - c.neutral;
+            const ratedLeft = rated - (drop - (c.neutral - neutral));
+            const sold = rated > 0 ? Math.round(c.sold * ratedLeft / rated) : 0;
+            return { done, sold: Math.min(sold, ratedLeft), neutral };
         },
 
         /**
@@ -7801,12 +7890,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 const c = this.counters(task.id, tabKey);
                 if (!c.done) continue;
                 const take = Math.min(c.done, -diff);
-                const done = c.done - take;
-                this._write(task.id, tabKey, {
-                    done,
-                    sold: Math.min(c.sold, done),
-                    neutral: Math.min(c.neutral, done),
-                });
+                this._write(task.id, tabKey, this._shrink(c, c.done - take));
                 diff += take;
             }
         },
@@ -7863,14 +7947,36 @@ const SCRIPT_LOGS_ENABLED = false;
             const wanted = Math.max(0, Number(target) || 0);
             const delta = wanted - this.totals(task).done;
             if (!delta) return;
+            this._applyDelta(task, tabKey, delta);
+        },
+
+        /**
+         * Zmiana paczek zadania na jednej karcie — wspólna dla pola paczek
+         * i pola tempa. W górę: paczki poza mianownik, bo ich kierunku nikt nie
+         * zna. W dół: przez _shrink, żeby procent nie drgnął.
+         */
+        _applyDelta(task, tabKey, delta) {
             const c = this.counters(task.id, tabKey);
-            const done = Math.max(0, c.done + delta);
-            const used = done - c.done;
-            this._write(task.id, tabKey, {
-                done,
-                sold: Math.min(c.sold, done),
-                neutral: Math.max(0, Math.min(done, c.neutral + used)),
-            });
+            if (delta >= 0) {
+                this._write(task.id, tabKey, { ...c, done: c.done + delta, neutral: c.neutral + delta });
+            } else {
+                this._write(task.id, tabKey, this._shrink(c, Math.max(0, c.done + delta)));
+            }
+        },
+
+        /**
+         * Wpisane liczby paczek karty trafiają do liczników zmiany: tyle, ile
+         * mają zadania. Jedno miejsce dla panelu i dla skrótu klawiszowego —
+         * wcześniej skrót przepisywał tylko licznik „poza mianownikiem”, a nie
+         * sprzedane, i przy odjęciu linia 1 rozjeżdżała się z zadaniami.
+         */
+        syncShift(tabKey) {
+            store.tabCounters[tabKey] = this.shiftTotal(tabKey, 'done');
+            store.tabSold[tabKey] = this.shiftTotal(tabKey, 'sold');
+            store.tabNeutral[tabKey] = this.shiftTotal(tabKey, 'neutral');
+            StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
+            StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
+            StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
         },
 
         /**
@@ -7924,16 +8030,7 @@ const SCRIPT_LOGS_ENABLED = false;
             if (!task) return null;
             const target = this.doneForRate(task, rate, nowMs);
             if (target === null) return null;
-            const current = this.totals(task).done;
-            const c = this.counters(task.id, tabKey);
-            const delta = target - current;
-            const done = Math.max(0, c.done + delta);
-            const used = done - c.done;
-            this._write(task.id, tabKey, {
-                done,
-                sold: Math.min(c.sold, done),
-                neutral: Math.max(0, Math.min(done, c.neutral + used)),
-            });
+            this._applyDelta(task, tabKey, target - this.totals(task).done);
             return this.totals(task).done;
         },
 

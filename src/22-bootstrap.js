@@ -349,7 +349,7 @@
                     // wyjdzie z listy wpisanej na górze pliku: po edycji warto
                     // sprawdzić SH.normalizeAccessPasswords(['moje', 'hasła'])
                     // zamiast zgadywać, czy literówka przeszła.
-                    InputManager, normalizeAccessPasswords,
+                    InputManager, UIBuilder, normalizeAccessPasswords,
                     /**
                      * KOD KONFIGURACJI (1.2.0).
                      *

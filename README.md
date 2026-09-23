@@ -169,11 +169,15 @@ Mówi, ile ze zrobionych przedmiotów pojechało na sprzedaż.
   do sumy globalnej;
 - **działa przy wyłączonym module cen**: kierunek ustala się z tekstu strony,
   tak samo jak kod sortowania w linii 6, i nie wymaga ani jednego zapytania;
-- **ręczna poprawka licznika** (skróty klawiszowe, pola w panelu) od 1.3.1
-  **nie rusza procentu wcale**: wchodzi do liczby sztuk i równocześnie poza
-  mianownik, bo kierunku takiego przedmiotu nikt nie zna. Wcześniej trafiała do
-  mianownika i rozcieńczała procent po każdym powrocie do pracy z ręcznie
-  wpisaną liczbą paczek;
+- **ręczna poprawka licznika** (skróty klawiszowe, pola w panelu) **nie
+  przesuwa procentu**, bo kierunku takiej paczki nikt nie zna:
+  - **dodanie** (od 1.3.1) wchodzi do liczby sztuk i równocześnie poza
+    mianownik — procent nie drgnie wcale;
+  - **odjęcie** (od 1.3.3) zdejmuje najpierw paczki spoza mianownika (wpisane
+    ręcznie, audyty), a dopiero potem te z mianownika, zmniejszając sprzedane
+    proporcjonalnie. `+1` i `−1` to para odwracalna co do sztuki; przy większym
+    odjęciu procent zostaje z dokładnością do jednej paczki. Wcześniej `50`
+    wpisane przy 100 paczkach i 60 sprzedażach dawało `100%`;
 - żyje jedną zmianę i zeruje się razem z licznikami.
 
 ### Linia 6 dokładniej
@@ -749,7 +753,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 373 sprawdzenia,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 387 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -767,7 +771,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 27 plików, 373 sprawdzenia
+├── tests/                  ← 28 plików, 387 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -787,7 +791,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 373 sprawdzenia
+npm test             # 387 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

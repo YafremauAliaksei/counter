@@ -50,7 +50,15 @@
             const chk = h('input', { type: 'checkbox', checked, onChange: (e) => onChange(e.target.checked), style: { transform: 'scale(1.2)', marginRight: '8px', cursor: 'pointer' } });
             return h('label', { style: { display: 'flex', alignItems: 'center', cursor: 'pointer', flexGrow: '1' } }, chk, h('span', { textContent: label }));
         },
+        /**
+         * Pole liczby. Pusty tekst NIE jest zerem (1.3.3, audyt F8): jedno
+         * Backspace i Enter w polu licznika działu kasowało paczki zmiany bez
+         * pytania. Zero trzeba wpisać świadomie.
+         */
         numberInput(val, onChange) {
-            return h('input', { type: 'number', min: 0, value: val, onChange: (e) => onChange(parseInt(e.target.value, 10) || 0), style: { width: '80px', padding: '4px', textAlign: 'right' }});
+            return h('input', { type: 'number', min: 0, value: val, onChange: (e) => {
+                const n = parseInt(e.target.value, 10);
+                if (Number.isFinite(n)) onChange(Math.max(0, n));
+            }, style: { width: '80px', padding: '4px', textAlign: 'right' }});
         }
     };

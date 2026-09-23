@@ -182,7 +182,7 @@
              * wszystkich trzech językach.
              */
             const cSold = store.tabSold[cid] || 0;
-            const cRated = cCount - (store.tabNeutral[cid] || 0);
+            const cRated = Math.max(0, cCount - (store.tabNeutral[cid] || 0));
 
             // Linia 1: bieżąca zakładka
             this.lines.line1_currentTab.textContent = I18n.get('statsLine1_current', {
@@ -224,7 +224,10 @@
                 if (included && active) {
                     gTotal += count;
                     gSold += store.tabSold[k] || 0;
-                    gRated += count - (store.tabNeutral[k] || 0);
+                    // Nieujemny wkład karty (1.3.3, audyt F5): „poza mianownikiem”
+                    // większe od paczek bierze się tylko ze śmieci albo wyścigu
+                    // kart, a wtedy ujemny wkład zawyżał procent całości.
+                    gRated += Math.max(0, count - (store.tabNeutral[k] || 0));
                     if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
                         tabName: I18n.getTabName(k).substring(0, 10),

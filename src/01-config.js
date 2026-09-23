@@ -331,6 +331,10 @@
         // wskazuje wciąż TĘ SAMĄ zmianę — w październikową noc zmiany czasu
         // nocna zmiana trwa 12,42 h zegara (patrz checkStaleOnBoot).
         STALE_SESSION_MS: 12 * 60 * 60 * 1000,
+        // Górna granica licznika czytanego z magazynu (1.3.3, audyt F9). Zmiana
+        // to kilkaset paczek; wartość spoza zakresu to śmieć albo cudza ręka,
+        // a `'9'.repeat(21)` czytało się jako 1e21 i rozsadzało każdą linię.
+        COUNTER_MAX: 1000000,
         // Wpisy o aktywnych kartach starsze niż ten okres są wyrzucane.
         TAB_INSTANCE_TTL_MS: 12 * 60 * 60 * 1000,
         // Różnica między zapisanym a wyliczonym początkiem zmiany, po której
