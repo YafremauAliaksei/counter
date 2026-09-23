@@ -730,7 +730,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 > skopiowania, a wykonuje go przeglądarka, gdy człowiek sam kliknie swoją
 > zakładkę. Test pilnuje, że wystąpienie jest jedno i że siedzi właśnie tam.
 
-Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 343 sprawdzenia,
+Wszystkie punkty są pokryte testami automatycznymi. `npm test` — 346 sprawdzeń,
 z czego jedna trzecia dotyczy bezpieczeństwa.
 
 ---
@@ -748,7 +748,7 @@ production/
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 25 plików, 343 sprawdzenia
+├── tests/                  ← 25 plików, 346 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -768,7 +768,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 343 sprawdzenia
+npm test             # 346 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

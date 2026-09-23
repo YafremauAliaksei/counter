@@ -27,11 +27,12 @@
 'use strict';
 
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot, makeEnv } = require('./dom-stub');
+const { boot, bootOnStand, makeEnv } = require('./dom-stub');
 
 const { makeStorage } = makeEnv();
 
-const env = boot();
+const env = bootOnStand();
+const clock = env.clock;
 const SH = env.SH;
 const TM = SH.TaskManager;
 const MIN = 60 * 1000;
@@ -58,7 +59,7 @@ function reset(startMs) {
     SH.store.tabCounters[cid] = 0;
     SH.store.tabSold[cid] = 0;
     SH.store.tabNeutral[cid] = 0;
-    TM.create('Default', startMs == null ? Date.now() - HOUR : startMs);
+    TM.create('Default', startMs == null ? clock.now() - HOUR : startMs);
     return cid;
 }
 
@@ -126,7 +127,7 @@ describe('Powrót do pracy po awarii maszyny');
 test('wpisanie „zrobiłem dziś 180” podnosi tempo i nie rusza procentu', () => {
     // Komputer stoi na sesji tymczasowej: po awaryjnym restarcie pamięć
     // przeglądarki jest pusta, a człowiek pamięta tylko swoją liczbę paczek.
-    const cid = reset(Date.now() - 3 * HOUR);
+    const cid = reset(clock.now() - 3 * HOUR);
     TM.applyManualTotal(cid, 180);
     SH.store.tabCounters[cid] = 180;
     SH.store.tabNeutral[cid] = TM.shiftTotal(cid, 'neutral');
@@ -142,7 +143,7 @@ test('wpisanie „zrobiłem dziś 180” podnosi tempo i nie rusza procentu', ()
 test('procent liczy się od przedmiotu, przy którym człowiek wrócił do pracy', () => {
     // To jest sedno poprzedniego sprawdzenia widziane od strony człowieka:
     // po wpisaniu 180 paczek kolejne przedmioty budują procent od nowa.
-    const cid = reset(Date.now() - 3 * HOUR);
+    const cid = reset(clock.now() - 3 * HOUR);
     TM.applyManualTotal(cid, 180);
     SH.store.tabCounters[cid] = 180;
     SH.store.tabNeutral[cid] = TM.shiftTotal(cid, 'neutral');
@@ -156,10 +157,10 @@ test('procent liczy się od przedmiotu, przy którym człowiek wrócił do pracy
 });
 
 test('wpisanie liczby MNIEJSZEJ niż suma zadań zdejmuje od najnowszego wstecz', () => {
-    const cid = reset(Date.now() - 2 * HOUR);
+    const cid = reset(clock.now() - 2 * HOUR);
     TM.applyManualTotal(cid, 50);                 // zadanie pierwsze: 50
     const first = TM.active().id;
-    TM.create('drugie', Date.now() - HOUR);
+    TM.create('drugie', clock.now() - HOUR);
     TM.applyManualTotal(cid, 80);                 // zadanie drugie: +30
     eq(TM.counters(first, cid).done, 50);
     eq(TM.counters(TM.active().id, cid).done, 30);
@@ -184,9 +185,9 @@ describe('Przełączanie i wznawianie');
 test('przejście do nowego zadania zamyka poprzednie na tej samej chwili', () => {
     // Bez tego czas liczyłby się dwa razy: koniec jednego odcinka i początek
     // drugiego muszą być tym samym punktem.
-    reset(Date.now() - 2 * HOUR);
+    reset(clock.now() - 2 * HOUR);
     const first = TM.active();
-    const switchAt = Date.now() - 30 * MIN;
+    const switchAt = clock.now() - 30 * MIN;
     TM.create('fast_process', switchAt);
 
     eq(first.segments[0].to, switchAt, 'poprzednie zamknięte');
@@ -197,12 +198,12 @@ test('przejście do nowego zadania zamyka poprzednie na tej samej chwili', () =>
 test('wznowienie to TEN SAM identyfikator i nowy odcinek', () => {
     // Inaczej zmiana rozpada się na trzy wpisy 30 / 100 / 30 i nie widać,
     // że tempo trzymało się stabilnie.
-    const cid = reset(Date.now() - 5 * HOUR);
+    const cid = reset(clock.now() - 5 * HOUR);
     const normal = TM.active();
     TM.applyManualTotal(cid, 90);
 
-    TM.create('fast', Date.now() - 2 * HOUR);
-    const resumed = TM.resume(normal.id, Date.now() - MIN);
+    TM.create('fast', clock.now() - 2 * HOUR);
+    const resumed = TM.resume(normal.id, clock.now() - MIN);
 
     eq(resumed.id, normal.id, 'ten sam identyfikator');
     eq(SH.store.tasks.length, 2, 'dwa zadania, nie trzy');
@@ -211,7 +212,7 @@ test('wznowienie to TEN SAM identyfikator i nowy odcinek', () => {
 });
 
 test('czas zadania to suma odcinków, a nie odstęp od pierwszego do ostatniego', () => {
-    const now = Date.now();
+    const now = clock.now();
     reset(now - 5 * HOUR);
     const normal = TM.active();
     TM.create('fast', now - 4 * HOUR);            // pierwszy odcinek: godzina
@@ -223,11 +224,11 @@ test('czas zadania to suma odcinków, a nie odstęp od pierwszego do ostatniego'
 test('początek nie ucieka w przyszłość ani przed poprzedni odcinek', () => {
     // Bez drugiego ograniczenia przestawienie startu „wstecz” tuż po
     // przełączeniu dałoby poprzedniemu zadaniu odcinek ujemnej długości.
-    const now = Date.now();
+    const now = clock.now();
     reset(now - HOUR);
     const first = TM.active();
     TM.create('przyszłość', now + 10 * HOUR);
-    ok(TM.active().segments[0].from <= Date.now(), 'przyszłość przycięta do teraz');
+    ok(TM.active().segments[0].from <= clock.now(), 'przyszłość przycięta do teraz');
 
     TM.resume(first.id, now - 10 * HOUR);
     const seg = first.segments[first.segments.length - 1];
@@ -237,7 +238,7 @@ test('początek nie ucieka w przyszłość ani przed poprzedni odcinek', () => {
 test('pauza zatrzymuje zegar, a paczka po pauzie otwiera nowy odcinek', () => {
     // Czas, którego nie było, nie wraca: nowy odcinek zaczyna się od paczki,
     // a nie wstecz od chwili pauzy.
-    const cid = reset(Date.now() - HOUR);
+    const cid = reset(clock.now() - HOUR);
     TM.pause();
     const task = TM.active();
     notOk(TM.isRunning(task), 'zegar stoi');
@@ -266,7 +267,7 @@ describe('Początek zadania — poprawka z 1.3.2');
  * prawa przekroczyć odstępu od początku zadania do teraz.
  */
 test('klikanie „początek zmiany” przy zatrzymanym zegarze nie dokłada godzin', () => {
-    const now = Date.now();
+    const now = clock.now();
     const shiftStart = now - 3 * HOUR;
     SH.store.sessionConfig.shiftCalculatedStartTime = shiftStart;
     reset(shiftStart);
@@ -275,36 +276,36 @@ test('klikanie „początek zmiany” przy zatrzymanym zegarze nie dokłada godz
     for (let i = 0; i < 3; i++) {
         TM.pause();
         TM.setStart(task.id, shiftStart);
-        TM.resume(task.id, Date.now());
+        TM.resume(task.id, clock.now());
         TM.setStart(task.id, shiftStart);
     }
 
     const worked = TM.workedMs(task);
-    ok(worked <= Date.now() - TM.span(task).from + 1000,
+    ok(worked <= clock.now() - TM.span(task).from + 1000,
        'czas zadania: ' + (worked / HOUR).toFixed(2) + 'h, a od początku minęły '
-       + ((Date.now() - TM.span(task).from) / HOUR).toFixed(2) + 'h');
+       + ((clock.now() - TM.span(task).from) / HOUR).toFixed(2) + 'h');
     ok(Math.abs(worked - 3 * HOUR) < MIN, 'trzy godziny, nie dziewięć');
 });
 
 test('przepracowany czas nigdy nie przekracza odstępu od początku zadania', () => {
     // Niezmiennik ogólny, nie jeden scenariusz: cokolwiek zrobimy z zadaniem,
     // suma odcinków mieści się między jego początkiem a teraz.
-    const now = Date.now();
+    const now = clock.now();
     reset(now - 2 * HOUR);
     const task = TM.active();
     TM.pause();
-    TM.resume(task.id, Date.now());
+    TM.resume(task.id, clock.now());
     TM.setStart(task.id, now - 90 * MIN);
     TM.pause();
-    TM.resume(task.id, Date.now());
+    TM.resume(task.id, clock.now());
     TM.setStart(task.id, now - 30 * MIN);
 
-    ok(TM.workedMs(task) <= Date.now() - TM.span(task).from + 1000,
+    ok(TM.workedMs(task) <= clock.now() - TM.span(task).from + 1000,
        'suma odcinków większa niż cały odstęp');
 });
 
 test('przesunięcie WSTECZ rozciąga pierwszy odcinek', () => {
-    const now = Date.now();
+    const now = clock.now();
     reset(now - HOUR);
     const task = TM.active();
     TM.setStart(task.id, now - 3 * HOUR);
@@ -313,7 +314,7 @@ test('przesunięcie WSTECZ rozciąga pierwszy odcinek', () => {
 });
 
 test('przesunięcie W PRZÓD obcina to, co przed nim, i zostawia przerwy', () => {
-    const now = Date.now();
+    const now = clock.now();
     reset(now - 4 * HOUR);
     const task = TM.active();
     // Przerwa w środku: [-4h .. -3h] praca, [-3h .. -2h] przerwa, [-2h .. teraz] praca.
@@ -328,23 +329,23 @@ test('przesunięcie W PRZÓD obcina to, co przed nim, i zostawia przerwy', () =>
 });
 
 test('początek w przyszłości przycina się do teraz', () => {
-    const now = Date.now();
+    const now = clock.now();
     reset(now - HOUR);
     TM.setStart(TM.active().id, now + 5 * HOUR);
-    ok(TM.span(TM.active()).from <= Date.now(), 'nie w przyszłości');
+    ok(TM.span(TM.active()).from <= clock.now(), 'nie w przyszłości');
     ok(TM.workedMs(TM.active()) < MIN, 'zadanie właśnie się zaczęło');
 });
 
 test('wznowienie nie może zacząć się przed własną pauzą', () => {
     // Inaczej dwa odcinki nachodzą na siebie i ten sam czas liczy się dwa razy.
-    const now = Date.now();
+    const now = clock.now();
     reset(now - 2 * HOUR);
     const task = TM.active();
     TM.pause();
     const pausedAt = task.segments[0].to;
     TM.resume(task.id, now - 3 * HOUR);
     eq(task.segments[1].from >= pausedAt, true, 'wznowienie nie cofa się przed pauzę');
-    ok(TM.workedMs(task) <= Date.now() - TM.span(task).from + 1000);
+    ok(TM.workedMs(task) <= clock.now() - TM.span(task).from + 1000);
 });
 
 describe('Nazwa zadania');
@@ -368,7 +369,7 @@ test('tempo poniżej granicy z konfiguracji nie istnieje', () => {
     // Wartość graniczna: dzielenie przez czas bliski zeru dałoby tysiące paczek
     // na godzinę w pierwszej sekundzie zadania. Granica jest wspólna z linią 1,
     // żeby obie nie mówiły czego innego o tej samej pierwszej minucie.
-    const now = Date.now();
+    const now = clock.now();
     reset(now);
     eq(TM.rate(TM.active(), now), 0);
     eq(TM.doneForRate(TM.active(), 30, now), null, 'nie ma z czego liczyć');
@@ -382,7 +383,7 @@ test('wpisane tempo zamienia się na całkowitą liczbę paczek', () => {
     // Przykład z hali: 1 godzina 17 minut pracy, człowiek pamięta „było jakieś
     // 118”. 118 × 77/60 = 151,43 -> 151 paczek, czyli naprawdę 117,7 na godzinę.
     // Panel pokaże właśnie 117,7, bo tyle da się osiągnąć przy całych paczkach.
-    const now = Date.now();
+    const now = clock.now();
     reset(now - 77 * MIN);
     const task = TM.active();
     const done = TM.doneForRate(task, 118, now);
@@ -395,7 +396,7 @@ test('wpisane tempo zamienia się na całkowitą liczbę paczek', () => {
 });
 
 test('tempo zerowe i ujemne', () => {
-    const now = Date.now();
+    const now = clock.now();
     reset(now - HOUR);
     eq(TM.doneForRate(TM.active(), 0, now), 0);
     eq(TM.doneForRate(TM.active(), -5, now), null, 'ujemne tempo nie istnieje');
@@ -407,33 +408,41 @@ describe('Obiad znika z czasu zadania');
 test('przerwa pokrywająca się z odcinkiem jest odjęta', () => {
     // Kto nie pamiętał o pauzie na obiad, miałby w zadaniu pół godziny pracy,
     // której nie było. Rachunek jest ten sam, co w linii 1 — jedno miejsce.
+    //
+    // Obiad włącza się tylko na czas tego testu i wyłącza w `finally`: przed
+    // tą poprawką sprzątanie stało linijkę za asercją, więc porażka zostawiała
+    // obiad włączony i czerwień rozlewała się na kolejne testy pliku.
     const S = SH.store;
-    const shiftStart = new Date();
+    const shiftStart = new clock.Date();
     shiftStart.setHours(6, 30, 0, 0);
     S.sessionConfig.shiftCalculatedStartTime = shiftStart.getTime();
     S.sessionConfig.selectedLunchIndex = 0;      // 11:20-11:50, pół godziny
+    try {
+        const from = new Date(shiftStart); from.setHours(11, 0, 0, 0);
+        const to = new Date(shiftStart); to.setHours(12, 0, 0, 0);
+        eq(SH.ShiftManager.lunchOverlapMs(from.getTime(), to.getTime()), 30 * MIN);
 
-    const from = new Date(shiftStart); from.setHours(11, 0, 0, 0);
-    const to = new Date(shiftStart); to.setHours(12, 0, 0, 0);
-    eq(SH.ShiftManager.lunchOverlapMs(from.getTime(), to.getTime()), 30 * MIN);
-
-    reset(from.getTime());
-    TM.pause(to.getTime());
-    eq(TM.workedMs(TM.active()), 30 * MIN, 'godzina odcinka minus pół godziny obiadu');
-
-    S.sessionConfig.selectedLunchIndex = null;
+        reset(from.getTime());
+        TM.pause(to.getTime());
+        eq(TM.workedMs(TM.active()), 30 * MIN, 'godzina odcinka minus pół godziny obiadu');
+    } finally {
+        S.sessionConfig.selectedLunchIndex = null;
+    }
 });
 
 test('przerwa poza odcinkiem nic nie zabiera', () => {
     const S = SH.store;
-    const shiftStart = new Date();
+    const shiftStart = new clock.Date();
     shiftStart.setHours(6, 30, 0, 0);
     S.sessionConfig.shiftCalculatedStartTime = shiftStart.getTime();
     S.sessionConfig.selectedLunchIndex = 0;
-    const from = new Date(shiftStart); from.setHours(8, 0, 0, 0);
-    const to = new Date(shiftStart); to.setHours(9, 0, 0, 0);
-    eq(SH.ShiftManager.lunchOverlapMs(from.getTime(), to.getTime()), 0);
-    S.sessionConfig.selectedLunchIndex = null;
+    try {
+        const from = new Date(shiftStart); from.setHours(8, 0, 0, 0);
+        const to = new Date(shiftStart); to.setHours(9, 0, 0, 0);
+        eq(SH.ShiftManager.lunchOverlapMs(from.getTime(), to.getTime()), 0);
+    } finally {
+        S.sessionConfig.selectedLunchIndex = null;
+    }
 });
 
 describe('Usuwanie zadania');
@@ -445,11 +454,11 @@ test('ostatniego zadania usunąć się nie da', () => {
 });
 
 test('usunięte zadanie zabiera swoje paczki z licznika karty', () => {
-    const cid = reset(Date.now() - 2 * HOUR);
+    const cid = reset(clock.now() - 2 * HOUR);
     TM.applyManualTotal(cid, 40);
     SH.store.tabCounters[cid] = 40;
     SH.store.tabNeutral[cid] = TM.shiftTotal(cid, 'neutral');
-    const doomed = TM.create('do usunięcia', Date.now() - HOUR);
+    const doomed = TM.create('do usunięcia', clock.now() - HOUR);
     TM.applyManualTotal(cid, 60);
     SH.store.tabCounters[cid] = 60;
     SH.store.tabNeutral[cid] = TM.shiftTotal(cid, 'neutral');
@@ -464,13 +473,13 @@ describe('Zapis i odczyt');
 
 test('zadania i ich liczniki przeżywają F5', () => {
     const shared = makeStorage();
-    const first = boot({ storage: shared });
+    const first = boot({ storage: shared, clock });
     const cid = first.SH.store.currentTabInstanceId;
     first.SH.TaskManager.rename(first.SH.TaskManager.active().id, 'nocny');
-    first.SH.TaskManager.create('drugi', Date.now() - 10 * MIN);
+    first.SH.TaskManager.create('drugi', clock.now() - 10 * MIN);
     first.SH.TaskManager.applyManualTotal(cid, 7);
 
-    const second = boot({ storage: shared });
+    const second = boot({ storage: shared, clock });
     eq(second.SH.store.tasks.length, 2, 'lista wczytana');
     eq(second.SH.store.tasks[0].name, 'nocny', 'nazwa przeżyła');
     eq(second.SH.TaskManager.active().name, 'drugi', 'aktywne to nadal to samo zadanie');
@@ -483,14 +492,14 @@ test('zepsuty zapis nie zatrzymuje startu', () => {
     // kluczem zadań nie może kosztować uruchomienia skryptu.
     const shared = makeStorage();
     shared.setItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS), '{to nie jest JSON');
-    const broken = boot({ storage: shared });
+    const broken = boot({ storage: shared, clock });
     ok(broken.SH, 'skrypt wstał');
     eq(broken.SH.store.tasks.length, 1, 'zadanie domyślne postawione od nowa');
 });
 
 test('reset zmiany kasuje zadania i stawia domyślne', () => {
-    const cid = reset(Date.now() - HOUR);
-    TM.create('do skasowania', Date.now() - 10 * MIN);
+    const cid = reset(clock.now() - HOUR);
+    TM.create('do skasowania', clock.now() - 10 * MIN);
     TM.applyManualTotal(cid, 5);
     SH.SessionReset.resetItemData('test', 'manual');
 
@@ -503,7 +512,7 @@ test('reset zmiany kasuje zadania i stawia domyślne', () => {
 describe('Linia 8 i cisza');
 
 test('linia 8 pokazuje nazwę zadania i jego własne liczby', () => {
-    const cid = reset(Date.now() - HOUR);
+    const cid = reset(clock.now() - HOUR);
     TM.rename(TM.active().id, 'fast_process');
     SH.AutoTrigger.scan();
     item('CRITS-PRG2');
@@ -518,7 +527,7 @@ test('linia 8 pokazuje nazwę zadania i jego własne liczby', () => {
 });
 
 test('pauza jest widoczna w linii 8', () => {
-    reset(Date.now() - HOUR);
+    reset(clock.now() - HOUR);
     TM.pause();
     SH.StatsWindowRenderer.renderContent();
     const text = SH.StatsWindowRenderer.lines.line8_taskInfo.textContent;
