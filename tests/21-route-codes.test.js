@@ -1,5 +1,5 @@
 /**
- * 21-route-codes.test.js — rodziny kodów sortowania i trzeci kierunek (1.3.0).
+ * 21-route-codes.test.js — rodziny kodów sortowania i trzeci kierunek.
  *
  * TRZY RZECZY, KTÓRYCH TU PILNUJEMY:
  *
@@ -9,7 +9,7 @@
  *      chodziłby dalej, tylko procent stałby w miejscu.
  *   2. OGON KODU JEST DOWOLNY. Na ekranie bywa `External-Repair` albo
  *      `Audit-cokolwiek`, a na liście stoi sam `External` i `AUDIT`. To nie
- *      jest niedbałość, tylko ta sama zasada, na której od dawna działa
+ *      jest niedbałość, tylko ta sama zasada, na której działa
  *      `FBATransfer-...`: wzorzec zaczepia się o początek kodu.
  *   3. AUDYT WYPADA Z MIANOWNIKA PROCENTU. Decyzja audytora zapada godziny
  *      później i nie na tym ekranie, więc taki przedmiot nie jest ani
@@ -51,7 +51,7 @@ function resetCounters() {
     SH.store.tabSold[cid] = 0;
     SH.store.tabNeutral[cid] = 0;
     // Zera także w magazynie: licznik rośnie od wartości zapisanej, a nie od
-    // tej w pamięci (StorageManager.freshCount, audyt D7).
+    // tej w pamięci (StorageManager.freshCount).
     SH.StorageManager.saveCounter(cid, 0);
     SH.StorageManager.saveSold(cid, 0);
     SH.StorageManager.saveNeutral(cid, 0);

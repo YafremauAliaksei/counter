@@ -53,10 +53,9 @@ describe('Dziesięć minut przed startem zmiany nie jest pracą');
 
 for (const [label, h, startH, type] of [['dzienna', 6, 6, 'day'], ['nocna', 18, 18, 'night']]) {
     test(`zmiana ${label}: skrypt włączony o ${hh(h)}:20, zadanie liczy od ${hh(startH)}:30`, () => {
-        // Przed poprawką zadanie domyślne zaczynało się o X:20: zegar nie
-        // pozwala zapisać początku w przyszłości, więc 06:30 przycinało się do
-        // chwili uruchomienia. Linia 1 liczyła od 06:30, linia 8 od 06:20 —
-        // przy tych samych paczkach dwa różne tempa, każdego dnia.
+        // Początku w przyszłości zapisać się nie da, więc zadanie domyślne
+        // powstaje o X:20 — a liczyć ma od X:30, jak linia 1. Inaczej przy
+        // tych samych paczkach linie 1 i 8 dawałyby dwa różne tempa.
         const clock = makeClock(at(16, h, 20));
         const env = boot({ clock });
         const S = env.SH.store;
@@ -169,11 +168,11 @@ for (const [label, h] of [['dzienna', 6], ['nocna', 18]]) {
 describe('Karta otwarta przez noc sama zauważa nową zmianę');
 
 /**
- * Stanowisko bez resetu sesji, karta T-REX zostawiona otwarta na noc. Do tej
- * poprawki skrypt sprawdzał zmianę tylko do pierwszego rozpoznania, a ponowne
- * kliknięcie zakładki na działającej stronie jest ignorowane (ochrona przed
- * podwójnym uruchomieniem). W piątek o 06:25 okno pokazywało więc czwartkowe
- * 120 paczek, a piątkowe dopisywały się do nich.
+ * Stanowisko bez resetu sesji, karta T-REX zostawiona otwarta na noc.
+ * Ponowne kliknięcie zakładki na działającej stronie jest ignorowane (ochrona
+ * przed podwójnym uruchomieniem), więc zmianę musi zauważyć sam skrypt —
+ * inaczej w piątek o 06:25 okno pokazywałoby czwartkowe 120 paczek, a piątkowe
+ * dopisywałyby się do nich.
  */
 function openOvernight(h) {
     const { makeStorage } = makeEnv();
@@ -259,8 +258,7 @@ describe('Godzina wpisana ręcznie');
 
 test('godzina wpisana ręcznie to najbliższa taka godzina: dziś albo wczoraj', () => {
     // Nocna zmiana: o 00:40 wpisane „23:30” znaczy pięćdziesiąt minut temu.
-    // Ale „06:36” wpisane o 06:35:30 to TERAZ, a nie prawie doba wstecz —
-    // wcześniej każda godzina choćby minutę późniejsza szła na wczoraj.
+    // Ale „06:36” wpisane o 06:35:30 to TERAZ, a nie prawie doba wstecz.
     const clock = makeClock(at(17, 0, 40));
     const env = boot({ clock });
     const TM = env.SH.TaskManager;

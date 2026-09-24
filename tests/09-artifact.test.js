@@ -8,7 +8,7 @@
  *   - że w kodzie nie ma konstrukcji, których w tym projekcie być nie może
  *     (eval, innerHTML z treścią, document.write);
  *   - że wszystkie adresy w pliku należą do znanej listy hostów;
- *   - że wymogi językowe 1.0.0 są utrzymane (komentarze i logi po polsku,
+ *   - że wymogi językowe są utrzymane (komentarze i logi po polsku,
  *     lokalizacja rosyjska nietknięta);
  *   - że artefakt zgadza się z manifestem i ze źródłami.
  *
@@ -43,9 +43,9 @@ describe('Komentarze opisują kod, a nie jego historię');
 
 /**
  * Komentarz w kodzie mówi, co robi fragment i dlaczego tak — w czasie
- * teraźniejszym. Historia zmian („w 8.3.0 było…”, „1.3.3, audyt D7”) należy
- * do CHANGELOG i historii gita: w kodzie rozrasta plik i przesłania
- * wyjaśnienie, a po kilku wydaniach nikt nie pamięta, czym były tamte wersje.
+ * teraźniejszym. Historia zmian („w wersji N było…”, „poprawka z audytu”)
+ * należy do CHANGELOG i historii gita: w kodzie rozrasta plik i przesłania
+ * wyjaśnienie — działa zawsze tylko bieżąca wersja.
  *
  * Sprawdzane są linie komentarzy i komentarze na końcu linii kodu. Wyjątek:
  * `@version` w nagłówku userscriptu — to wersja tego pliku, a nie historia.
@@ -79,16 +79,15 @@ test('nie ma new Function, document.write ani insertAdjacentHTML', () => {
 /**
  * `eval` — JEDNO DOZWOLONE WYSTĄPIENIE I ANI JEDNEGO WIĘCEJ.
  *
- * Skrypt nie wykonuje kodu z łańcucha i nigdy nie ma tego robić. Ale od 1.2.0
- * układa TEKST gotowej zakładki przeglądarki, a zakładka pobiera plik i podaje
+ * Skrypt nie wykonuje kodu z łańcucha i nigdy nie ma tego robić. Ale układa
+ * TEKST gotowej zakładki przeglądarki, a zakładka pobiera plik i podaje
  * go do `eval` — bo tak uruchamia się ten skrypt tam, gdzie konsola jest
  * zamknięta. To słowo trafia więc do artefaktu jako treść do skopiowania przez
  * człowieka, a nie jako wywołanie.
  *
- * Dawne sprawdzenie „nie ma w pliku słowa eval” było wygodne właśnie dlatego, że
- * nie wymagało myślenia. Rozluźnienie go do „ani jednego wywołania” byłoby
- * ryzykowne: trzeba by odróżniać wywołanie od łańcucha regexpem, a takie
- * rozróżnienie zawsze da się obejść. Dlatego zostaje sprawdzenie POLICZALNE
+ * Sprawdzenie „ani jednego wywołania” byłoby ryzykowne: trzeba by odróżniać
+ * wywołanie od łańcucha regexpem, a takie rozróżnienie zawsze da się obejść.
+ * Dlatego sprawdzenie jest POLICZALNE
  * i ustawione na jedno konkretne miejsce — drugie wystąpienie, skądkolwiek by
  * przyszło, zapala bramkę i wymaga wyjaśnienia tutaj.
  */
@@ -148,11 +147,11 @@ test('wszystkie adresy zewnętrzne należą do znanej listy', () => {
 /**
  * ADRES WYDANIA MUSI STAĆ NA HOŚCIE, KTÓRY PRZEPUSZCZA ZAPYTANIA MIĘDZYDOMENOWE.
  *
- * Wydanie 1.2.0 wyszło z adresem `github.com/…/releases/latest/download/…`
- * i zakładka nie działała u nikogo: pobranie pliku wydania kończy się
- * przekierowaniem BEZ nagłówka `Access-Control-Allow-Origin`, więc przeglądarka
- * zrywa zapytanie („blocked by CORS policy”). Kliknięcie takiego adresu działa,
- * `fetch` z cudzej strony — nie, i to jest różnica, której nie widać z kodu.
+ * Adres `github.com/…/releases/latest/download/…` nie działa w zakładce:
+ * pobranie pliku wydania kończy się przekierowaniem BEZ nagłówka
+ * `Access-Control-Allow-Origin`, więc przeglądarka zrywa zapytanie („blocked
+ * by CORS policy”). Kliknięcie takiego adresu działa, `fetch` z cudzej strony
+ * — nie, i to jest różnica, której nie widać z kodu.
  *
  * Sprawdzenie jest listą hostów, o których WIADOMO, że nagłówek wystawiają.
  * Nowy host dopisuje się tutaj dopiero po sprawdzeniu nagłówków odpowiedzi,
@@ -171,17 +170,14 @@ test('adres wydania stoi na hoście z nagłówkiem CORS', () => {
 });
 
 /**
- * INWENTARZ WYJŚĆ DO SIECI (1.3.3, audyt A7, G1.2).
+ * INWENTARZ WYJŚĆ DO SIECI.
  *
- * Do 1.3.3 stał tu test „każde wyjście jest osłonięte”, który porównywał DWIE
- * LICZBY z całego pliku: ile jest `fetch(` / `new Image(` i ile razy pada
- * `priceModuleOn()` — także w komentarzach. Między konkretnym wyjściem
- * a konkretnym sprawdzeniem nie było żadnego związku: strażnik zdjęty
- * z KeepaOCR.loadImage i zastąpiony komentarzem z siedmioma wzmiankami
- * przechodził ten test bez problemu. Wykrywacz nie widział też `.src =`
- * ani `setAttribute('src', …)`, czyli drogi, którą naprawdę idzie wykres.
+ * Porównanie dwóch liczb z całego pliku (ile `fetch(`, ile `priceModuleOn()`)
+ * niczego nie dowodzi: strażnik zdjęty z KeepaOCR.loadImage i zastąpiony
+ * komentarzem z wzmiankami przeszedłby bez problemu. Wykrywacz musi też
+ * widzieć `.src =` i `setAttribute('src', …)` — tędy idzie wykres.
  *
- * Teraz każde miejsce wyjścia do sieci musi stać w funkcji wpisanej do
+ * Każde miejsce wyjścia do sieci musi stać w funkcji wpisanej do
  * inwentarza, z jednym z trzech rodzajów ochrony — a każdy z nich jest
  * sprawdzany na kodzie:
  *   self    — `priceModuleOn()` w tej samej funkcji, PRZED wyjściem;
@@ -403,9 +399,9 @@ test('w src/ nie ma plików spoza manifestu', () => {
 });
 
 test('mapa modułów w src/README.md zna każdy moduł i nie kłamie o jego rozmiarze', () => {
-    // Audyt J13–J16: kolumna „Linii” pokazywała rozmiary sprzed roku — 06-storage
-    // jako ~145 przy 490 wierszach. Mapa, która myli rząd wielkości, prowadzi
-    // w złe miejsce. Tolerancja 25%, żeby zwykła poprawka nie wymagała ruszania mapy.
+    // Mapa, która myli rząd wielkości (~145 przy 490 wierszach), prowadzi
+    // w złe miejsce. Tolerancja 25%, żeby zwykła poprawka nie wymagała
+    // ruszania mapy.
     const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'build.manifest.json'), 'utf8'));
     const map = fs.readFileSync(path.join(ROOT, 'src', 'README.md'), 'utf8');
     const bad = [];

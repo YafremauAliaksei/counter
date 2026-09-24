@@ -282,8 +282,8 @@ test('kod wydany dziś ma znaczyć to samo za rok', () => {
     eq(S.localTabConfig.linesConfig.line1_currentTab.visible, true);
     eq(S.localTabConfig.linesConfig.line1_currentTab.colorHex, '#ff8800');
     eq(S.localTabConfig.linesConfig.line1_currentTab.alpha, 75);
-    // Próbka ma też rekord 0x0202 (źródło ceny = jina). Od 1.3.3 ten numer
-    // jest wycofany: format się nie zmienił, rekord czyta się i POMIJA.
+    // Próbka ma też rekord 0x0202 (źródło ceny = jina). Ten numer jest
+    // wycofany: rekord czyta się i POMIJA.
     eq(S.localTabConfig.priceCard.source, e.SH.DEFAULT_LOCAL_CONFIG.priceCard.source, 'źródło nie z kodu');
     eq(report['rekordów wycofanych (sieć włącza się tylko w panelu)'], 1);
     eq(S.localTabConfig.priceCard.width, 420);
@@ -453,9 +453,8 @@ test('poprawna odpowiedź wykonuje się bez żadnego komunikatu', () => {
 });
 
 test('zakładki w README mają te same bezpieczniki co generowana, i bieżący prefiks', () => {
-    // README to miejsce, z którego ludzie kopiują zakładkę. Rozjazd z kodem
-    // już raz się zdarzył: przykład z kodem ustawień niósł prefiks v1_0_0_,
-    // pod którym skrypt 1.3.x niczego nie czyta.
+    // README to miejsce, z którego ludzie kopiują zakładkę — przykład ze
+    // starą nazwą zmiennej albo starym prefiksem nie zadziała u nikogo.
     const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
     const links = readme.split('\n').filter(l => l.startsWith('javascript:'));
     ok(links.length >= 2, 'w README są dwie zakładki');
@@ -477,10 +476,10 @@ test('kod ustawień nie kosztował ani zapytania, ani linii w konsoli', () => {
     eq(env.net.consoleError, [], 'console.error');
 });
 
-describe('Kod z czatu nie włącza sieci (audyt B3)');
+describe('Kod z czatu nie włącza sieci');
 
 /**
- * Kod złożony ręcznie, dokładnie ten z audytu: moduł cen włączony, karta
+ * Kod złożony ręcznie, wrogi: moduł cen włączony, karta
  * widoczna, dziennik włączony, źródło = r.jina.ai. Suma kontrolna to zwykła
  * suma bajtów — niczego nie uwierzytelnia, więc taki kod może przyjść od
  * każdego jako „moje ustawienia okna”.

@@ -8,8 +8,8 @@
  *    i cienia. Wszystko, co zaśmieca, włącza się ręcznie.
  *
  * 2. Karta NIE ŁAPIE MYSZY. To warunek pracy, a nie kosmetyka: pod kartą leży
- *    interfejs T-REX i człowiek musi w niego trafiać. Link z kodem produktu był
- *    jedynym wyjątkiem — od 1.0.0 włącza się ręcznie.
+ *    interfejs T-REX i człowiek musi w niego trafiać. Jedyny wyjątek — link
+ *    z kodem produktu — włącza się ręcznie.
  */
 
 'use strict';
@@ -38,7 +38,7 @@ function zCena(ms) {
 describe('Wartości domyślne karty');
 
 test('domyślnie karta pokazuje CENĘ I NIC WIĘCEJ', () => {
-    // Sedno wyglądu 1.1.0: po włączeniu modułu cen na ekranie ma pojawić się
+    // Sedno wyglądu: po włączeniu modułu cen na ekranie ma pojawić się
     // jedna linijka z kwotą. Wszystko, co jest identyfikatorem albo diagnostyką,
     // startuje wyłączone.
     const d = SH.DEFAULT_LOCAL_CONFIG.priceCard;
@@ -148,10 +148,9 @@ test('granice: alfa spoza zakresu i kolor nie do przyjęcia', () => {
 });
 
 test('stan NIE jest już niesiony kolorem — cena i awaria wyglądają tak samo', () => {
-    // Do 1.1.0 zielona cena znaczyła „jest”, pomarańczowa kreska „tnie CSP”.
-    // Teraz kolor jest ustawieniem wyglądu, a stan mówi tekst — który przy
-    // awarii pokazuje się zawsze. Sprawdzamy, że kolor faktycznie przestał
-    // zależeć od stanu.
+    // Kolor jest ustawieniem wyglądu, a stan mówi tekst — który przy awarii
+    // pokazuje się zawsze. Kolor nie może zależeć od stanu, bo znaczenia
+    // koloru nikt nie musi pamiętać.
     zCena();
     const przyCenie = colorOf(P.priceEl);
     P.cache.set(ASIN, { status: 'fail', reason: 'nie ma ceny' });

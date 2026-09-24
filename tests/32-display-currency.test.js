@@ -1,5 +1,5 @@
 /**
- * 32-display-currency.test.js — waluta wyświetlania (1.4.0).
+ * 32-display-currency.test.js — waluta wyświetlania.
  *
  * PO CO. Dla części ludzi kwota w funtach albo koronach nie znaczy nic, a
  * decyzję trzeba podjąć od razu. Karta ceny i linia 6 mogą więc pokazywać
@@ -10,8 +10,8 @@
  * mnożenie przy rysowaniu. Stąd obietnice sprawdzane niżej:
  *   - zmiana waluty w trakcie zmiany nie zmienia ani jednej liczby w euro;
  *   - domyślnie wszystko w euro (decyzja autora, wyjątek od zasady „nowe
- *     domyślnie wyłączone” — CHANGELOG 1.4.0), a „jak w sklepie” wygląda
- *     co do znaku jak przed 1.4.0;
+ *     domyślnie wyłączone” — CLAUDE.md §3), a „jak w sklepie” pokazuje cenę
+ *     dokładnie tak, jak przyszła ze sklepu;
  *   - śmieci w magazynie dają wartość domyślną, a brak kursu — cenę sklepu
  *     i euro; nigdy „NaN zł” albo zero.
  *
@@ -84,8 +84,8 @@ test('świeża instalacja: cena z co.uk od razu w euro, cena w euro bez ≈', ()
 });
 
 test('stary zapis bez tego pola dostaje euro, a nie walutę sklepu', () => {
-    // Ktoś z 1.3.x ma w magazynie userConfig bez displayCurrency — po
-    // aktualizacji wczytanie uzupełnia brak wartością domyślną.
+    // Zapis sprzed pojawienia się tego pola nie ma displayCurrency —
+    // wczytanie uzupełnia brak wartością domyślną.
     const first = boot();
     const saved = JSON.parse(first.sandbox.localStorage.getItem(first.prefix + 'userConfig') || 'null');
     ok(saved, 'userConfig leży w magazynie');
@@ -100,7 +100,7 @@ test('linia 6 w euro, ze znakiem €, jak zawsze', () => {
     eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt');
 });
 
-describe('„Jak w sklepie”: ekran jak przed 1.4.0');
+describe('„Jak w sklepie”: cena tak, jak przyszła ze sklepu');
 
 test('karta pokazuje cenę dokładnie tak, jak przyszła ze sklepu', () => {
     setCurrency('native');
@@ -127,7 +127,7 @@ test('euro: cena w euro bez ≈ — niczego nie przeliczano', () => {
     eq(showCard(price(11699, 'EUR')), '11699.00 €');
 });
 
-test('złote: przejście przez tysiąc nie gubi rzędu (CHANGELOG 9.1.1)', () => {
+test('złote: przejście przez tysiąc nie gubi rzędu', () => {
     setCurrency('PLN');
     eq(showCard(price(999.99, 'EUR')), '≈ 3999.96 zł');
     eq(showCard(price(1000, 'EUR')), '≈ 4000.00 zł');

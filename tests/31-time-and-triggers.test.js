@@ -1,17 +1,16 @@
 /**
  * 31-time-and-triggers.test.js — granice drobnych funkcji, od których zależy
- * wszystko inne (audyt G4: kluczowe klastry mutantów, które przeżyły).
+ * wszystko inne.
  *
- * WYZWALACZE decydują, czy przedmiot w ogóle zostanie zaliczony. Mutant bez
- * flagi `i` i mutant bez wyłączenia `PROBLEM-SOLVE` przeżywały cały zestaw —
- * czyli zmiana, która po cichu przestaje liczyć połowę przedmiotów albo zaczyna
- * liczyć odesłane do rozwiązywania problemów, nie zapalała niczego.
+ * WYZWALACZE decydują, czy przedmiot w ogóle zostanie zaliczony. Wyrażenie bez
+ * flagi `i` albo bez wyłączenia `PROBLEM-SOLVE` po cichu przestałoby liczyć
+ * część przedmiotów albo zaczęło liczyć odesłane do rozwiązywania problemów.
  *
- * CZAS NA EKRANIE (formatDuration, formatTime, timeStringToDate) nie był
- * wymieniony w żadnym teście, choć stoi w każdej linii okna statystyk.
+ * CZAS NA EKRANIE (formatDuration, formatTime, timeStringToDate) stoi w każdej
+ * linii okna statystyk.
  *
- * clone() — zwrócenie referencji zamiast kopii to klasa błędu z 8.3.0,
- * której poświęcony jest 17-wierszowy komentarz, a żaden test.
+ * clone() — zwrócenie referencji zamiast kopii sprawia, że stan w pamięci
+ * i wartości domyślne dzielą jeden obiekt.
  */
 
 'use strict';

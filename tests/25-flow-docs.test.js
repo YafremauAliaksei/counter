@@ -114,8 +114,8 @@ describe('Diagramy opisują kod, który naprawdę istnieje');
 
 /**
  * Czy `obj.member` naprawdę istnieje RAZEM — a nie oba człony osobno gdzieś
- * w pliku (1.3.3, audyt J6: 7 z 7 wymyślonych par typu `ValueLog.scan`
- * przechodziło, bo `ValueLog` i `scan` istnieją, tylko nie razem).
+ * w pliku (`ValueLog.scan` nie istnieje, choć `ValueLog` i `scan` istnieją
+ * osobno).
  *
  * Wystarcza jedno z dwojga: para stoi w kodzie dosłownie (`Obj.member`),
  * albo `member` jest zdefiniowane wewnątrz bloku `const Obj = { … };`.

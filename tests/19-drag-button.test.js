@@ -60,8 +60,8 @@ test('włączenie trybu zmienia napis przycisku', () => {
 });
 
 test('PUSZCZENIE MYSZY po przeciągnięciu wraca przycisk do spoczynku', () => {
-    // Sedno poprawki: flagę zdejmuje dragger, a nie obsługa kliknięcia — panel
-    // i tak ma się o tym dowiedzieć.
+    // Flagę zdejmuje dragger, a nie obsługa kliknięcia — panel i tak ma się
+    // o tym dowiedzieć.
     const el = env.el('statsWindow');
     el.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 20 });
 

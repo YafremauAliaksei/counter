@@ -3,9 +3,9 @@
  *
  * DLACZEGO TEN PLIK ISTNIEJE. localStorage tej domeny dzielimy z samym TREX,
  * więc kwota potrafi się skończyć nie z naszej winy, a `setItem` zaczyna rzucać
- * wyjątek. Do tej poprawki wyjątek szedł z StorageManager.write() w górę
- * nieprzechwycony, trafiał do catch w Main.init() i skrypt NIE WSTAWAŁ WCALE:
- * zamiast stracić przeniesienie liczników przez F5, człowiek tracił licznik.
+ * wyjątek. Wyjątek puszczony z StorageManager.write() w górę zatrzymałby
+ * Main.init() i skrypt by nie wstał: zamiast stracić przeniesienie liczników
+ * przez F5, człowiek straciłby licznik.
  *
  * Testy niżej pilnują trzech rzeczy naraz: skrypt wstaje, liczy dalej w pamięci
  * i NADAL MILCZY (nieudany zapis to nie powód, żeby złamać obietnicę pustej
@@ -94,9 +94,8 @@ test('nieudany zapis wraca false i NIE zostawia notatki „zapisane”', () => {
     notOk(Object.prototype.hasOwnProperty.call(SM._lastWritten, key),
         '_lastWritten nie może twierdzić, że wartość leży w magazynie');
 
-    // Kwota zwolniła — TA SAMA wartość musi dać się zapisać.
-    // To jest druga połowa poprawki: gdy notatka stała przed zapisem,
-    // deduplikacja odrzucała tę próbę i wartość nie trafiała do magazynu nigdy.
+    // Kwota zwolniła — TA SAMA wartość musi dać się zapisać. Notatka
+    // postawiona przed zapisem kazałaby deduplikacji odrzucić tę próbę.
     state.fails = false;
     eq(SM.write(key, 'x'), true, 'powtórka po zwolnieniu kwoty');
     eq(env2.sandbox.localStorage.getItem(key), 'x');
@@ -133,9 +132,8 @@ test('adres bez gradingMode i dwa odmawiające magazyny: skrypt wstaje i milczy'
 });
 
 test('magazyn, który odmawia usuwania kluczy, nie zatrzymuje startu', () => {
-    // Sprzątanie kluczy poprzednich wersji to pierwsze wywołania w init()
-    // i jedyne niepotrzebne do liczenia. Bez własnego try ich wyjątek kończył
-    // start tak samo, jak nieprzechwycony zapis identyfikatora karty.
+    // Sprzątanie kluczy poprzednich schematów to pierwsze wywołania w init()
+    // i jedyne niepotrzebne do liczenia — ich wyjątek nie może zatrzymać startu.
     const base = makeStorage();
     base.setItem('statsHelper_v9_2_0_counter_CRET', '5');
     const hostile = new Proxy(base, {

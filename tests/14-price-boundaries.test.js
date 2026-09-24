@@ -2,11 +2,9 @@
  * 14-price-boundaries.test.js — wartości graniczne w drodze ceny na ekran.
  *
  * DLACZEGO OSOBNY PLIK. Cena myli się cicho: nie ma wyjątku, jest liczba, która
- * wygląda wiarygodnie. Raz już to kosztowało wydanie — „€ 2,991.39” szło do
- * dziennika jako „991.39”, bo nikt nie sprawdził przedmiotu droższego niż tysiąc
- * euro (CHANGELOG 9.1.1). Ten plik przechodzi po granicach RZĘDÓW WIELKOŚCI,
- * żeby drugi raz nie okazało się, że nikt nie sprawdził przedmiotu droższego
- * niż dziesięć tysięcy.
+ * wygląda wiarygodnie — „€ 2,991.39” zapisane jako „991.39” zaniża sumę zmiany
+ * o 2000 € i nikt tego nie zauważy. Ten plik przechodzi po granicach RZĘDÓW
+ * WIELKOŚCI, od jednej cyfry do przedmiotów droższych niż dziesięć tysięcy.
  *
  * NAJWAŻNIEJSZA ZASADA, KTÓREJ TU PILNUJEMY: przy niezgodności parser ODMAWIA
  * (null), a nie zwraca tego, co udało mu się wyciąć. Odmowa jest widoczna —
@@ -20,7 +18,7 @@
  *   B0FJ6K5H5V   AMD Ryzen Threadripper PRO 9995WX   — rząd 5 cyfr (ok. 11-12 tys.)
  *   B0CK2ZQJZ6   AMD Ryzen Threadripper PRO 7995WX   — rząd 4-5 cyfr
  *   B079KTSCGG   Fluke Networks DSX2-8000/GLD        — tester sieciowy, rząd 5 cyfr
- *   B091FXSL4P   FLUKE networks Advanced-Kit         — ten z regresji 9.1.1
+ *   B091FXSL4P   FLUKE networks Advanced-Kit         — „€ 2,991.39”, separator tysięcy
  *
  * Uczciwe zastrzeżenie: cen tych przedmiotów NIE dało się sprawdzić na żywo
  * z tego środowiska (wyjście na amazon.de jest zablokowane), a asortyment
@@ -65,7 +63,7 @@ test('setki, tysiące, dziesiątki tysięcy i setki tysięcy', () => {
 test('cena bez separatora powyżej pięciu cyfr to ODMOWA, nie obcinek', () => {
     // Wzorzec bez separatora sięga pięciu cyfr. Szósta znaczy, że rozbiór
     // pikseli poszedł nie tak — i wtedy jedyną uczciwą odpowiedzią jest null.
-    // Gdyby zamiast tego wrócił obcinek, dostalibyśmy dokładnie błąd z 9.1.1.
+    // Obcinek zamiast odmowy to cena zaniżona o najstarszy rząd.
     eq(ocr('99999.99'), '99999.99', 'pięć cyfr jeszcze przechodzi');
     eq(ocr('123456.78'), null, 'sześć cyfr bez separatora — odmowa');
     eq(ocr('1234567.89'), null);
@@ -95,7 +93,7 @@ test('formaty spotykane na prawdziwych stronach', () => {
     eq(jina('€ 1,000.00'), 1000, 'separator angielski');
     eq(jina('€ 1.000,00'), 1000, 'separator niemiecki');
     eq(jina('€ 1 234,56'), 1234.56, 'separatorem bywa spacja');
-    eq(jina('€ 2,991.39'), 2991.39, 'regresja 9.1.1, ścieżka tekstowa');
+    eq(jina('€ 2,991.39'), 2991.39, 'separator tysięcy, ścieżka tekstowa');
     eq(jina('€ 11,699.00'), 11699, 'rząd Threadrippera PRO');
     eq(jina('€ 11.699,00'), 11699, 'ten sam przedmiot, zapis niemiecki');
     eq(jina('EUR 0.00'), 0);
@@ -104,16 +102,16 @@ test('formaty spotykane na prawdziwych stronach', () => {
 test('powyżej 999 bez separatora — ODMOWA, a nie trzy ostatnie cyfry', () => {
     // To jest sedno tego pliku. Wzorzec kwoty wymaga symbolu waluty TUŻ PRZED
     // liczbą, więc nie dopasuje się do środka „99999.99” i nie wytnie stamtąd
-    // „999.99”. Gdyby symbol przestał być wymagany, wróciłby błąd z 9.1.1 —
-    // tym razem w ścieżce tekstowej.
+    // „999.99”. Bez wymaganego symbolu ścieżka tekstowa obcinałaby najstarszy
+    // rząd ceny.
     eq(jina('€ 1000.00'), null);
     eq(jina('€ 99999.99'), null);
     eq(jina('€ 123456.78'), null);
 });
 
 test('waluta jest ścisłą listą, a nie trzema wielkimi literami', () => {
-    // Złapane na stanowisku: szeroki wzorzec wyciągał „UTF 8.00”
-    // z ?ie=UTF8&nodeId=505048 i pokazywał to jako cenę.
+    // Szeroki wzorzec wyciągnąłby „UTF 8.00” z ?ie=UTF8&nodeId=505048
+    // i pokazał to jako cenę.
     eq(jina('UTF 8.00'), null);
     eq(jina('ABC 12.34'), null);
     eq(jina('12.34'), null, 'kwota bez waluty to nie cena');

@@ -5,14 +5,14 @@
  * chwilę po zmianie DOM. Dwa momenty w życiu karty trafiają w to okno:
  *
  *   ZAMKNIĘCIE / F5 (pagehide). Zmiana ustawienia sprzed pół sekundy jeszcze
- *   nie leży w magazynie. Do 1.3.2 przy wyjściu ze strony dopisywało się tylko
- *   archiwum dziennika, więc ostatnia poprawka ustawień ginęła (audyt D6, D10).
+ *   nie leży w magazynie — pagehide musi ją dopisać, razem z archiwum
+ *   dziennika, inaczej ostatnia poprawka ustawień ginie.
  *
  *   ROZBIÓRKA (SH.Main.teardown). Zalecany sposób wymiany wersji: zdjąć
- *   egzemplarz i wkleić nowy. Odłożone wywołania zdjętego egzemplarza żyły
- *   dalej w domknięciach debounce: po sekundzie nadpisywały magazyn jego
- *   starym stanem, a skan dopisywał paczkę do klucza, który nowy egzemplarz
- *   już prowadzi (audyt C1a, C1b).
+ *   egzemplarz i wkleić nowy. Odłożone wywołania zdjętego egzemplarza żyją
+ *   w domknięciach debounce — nie zgaszone nadpisałyby magazyn jego starym
+ *   stanem, a skan dopisałby paczkę do klucza, który prowadzi już nowy
+ *   egzemplarz.
  */
 
 'use strict';
@@ -112,7 +112,7 @@ test('cancel gasi czekające wywołanie, a flush po cancel nic nie robi', () => 
 
 test('dopisanie do wspólnego dziennika czekające 400 ms idzie do magazynu przy pagehide', () => {
     // Własne wpisy karty, których sąsiad nie widział, dopisują się po 400 ms.
-    // Zamknięcie karty w tym oknie gubiło przedmiot (audyt D6).
+    // Zamknięcie karty w tym oknie nie może zgubić przedmiotu.
     const storage = makeStorage();
     const env = boot({ storage });
     const VL = env.SH.ValueLog;

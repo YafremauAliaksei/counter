@@ -78,10 +78,10 @@ function reset(minutesAgo) {
     S.tabSold[cid] = 0;
     S.tabNeutral[cid] = 0;
     // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
-    // zapis zadań scala się z magazynem (audyt D1), a ten opisywałby
+    // zapis zadań scala się z magazynem, a ten opisywałby
     // poprzedni test — często z innym początkiem zmiany.
     env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
-    // Zera także w magazynie — licznik rośnie od wartości zapisanej (D7).
+    // Zera także w magazynie — licznik rośnie od wartości zapisanej.
     SH.TaskManager.syncShift(cid);
     TM.create('Default', clock.now() - minutesAgo * MIN);
     SH.SettingsPanel.render();
@@ -178,10 +178,9 @@ test('godzina wpisana ręcznie i tekst, który godziną nie jest', () => {
 });
 
 test('godzina późniejsza niż teraz na zmianie dziennej przycina się do teraz', () => {
-    // Do 1.3.2 każda godzina późniejsza niż teraz szła na wczoraj, więc „18:00”
-    // wpisane o 15:00 cofało zadanie o 21 godzin. Teraz liczy się najbliższa
-    // taka godzina: dzisiejsza 18:00 jest bliżej niż wczorajsza, a przyszłość
-    // setStart przycina do teraz. Przypadek nocny („23:30” o 00:40 to wczoraj)
+    // „18:00” wpisane o 15:00 nie cofa zadania o 21 godzin: liczy się
+    // najbliższa taka godzina — dzisiejsza 18:00 jest bliżej niż wczorajsza,
+    // a przyszłość setStart przycina do teraz. Przypadek nocny („23:30” o 00:40 to wczoraj)
     // sprawdza tests/26-shift-boundaries.test.js na zegarze ustawionym na noc.
     reset(120);
     const now = clock.now();
@@ -285,8 +284,8 @@ describe('Teksty panelu');
 
 test('panel w każdym języku bez surowych kluczy tłumaczeń', () => {
     // Brakujący klucz nie wywala skryptu — pokazuje na ekranie „[klucz]”.
-    // Tak stało w panelu przy linii 8 („[lineSettings_taskInfo]”) od 1.3.1
-    // do 1.3.3 (audyt H3), bo żaden test nie czytał gotowego panelu.
+    // Brak klucza widać dopiero w gotowym panelu, więc test czyta panel
+    // w każdym języku.
     const before = S.userConfig.language;
     try {
         for (const { code } of SH.CONFIG.AVAILABLE_LANGUAGES) {
@@ -302,9 +301,8 @@ test('panel w każdym języku bez surowych kluczy tłumaczeń', () => {
 });
 
 test('podpowiedź linii 7 mówi o trzech liczbach, a linia 8 ma swoją', () => {
-    // Linia 7 pokazuje trzy liczby od 1.1.0, a podpowiedź mówiła „dwie liczby,
-    // nic więcej” (audyt H4). Podpowiedź linii 8 była w słownikach, ale nigdzie
-    // się nie wyświetlała.
+    // Linia 7 pokazuje trzy liczby i podpowiedź ma to mówić; podpowiedź
+    // linii 8 ma być w panelu, a nie tylko w słownikach.
     const text = String(SH.SettingsPanel.el.textContent);
     ok(text.includes(label('lineSettings_compactHint')), 'podpowiedź linii 7 w panelu');
     ok(/trzy|three/i.test(label('lineSettings_compactHint')), 'o trzech liczbach');

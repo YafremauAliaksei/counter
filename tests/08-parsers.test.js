@@ -19,7 +19,7 @@ const V = env.SH.ValueLog;
 
 describe('Odczyt ceny z wykresu — separator dziesiętny i tysięczny');
 
-test('toDecimal: separator tysięcy (regresja z wydania 9.1.1)', () => {
+test('toDecimal: separator tysięcy — „2,991.39” to 2991.39, nie 991.39', () => {
     // B091FXSL4P, FLUKE networks Advanced-Kit: Keepa drukuje „€ 2,991.39”,
     // a odczyt zwracał „991.39” — błąd 2000 € na jednym przedmiocie.
     eq(K.toDecimal('2.991.39'), '2991.39');
@@ -58,7 +58,7 @@ test('pickHighest bierze najwyższą cenę, nie pierwszą serię', () => {
 describe('Odczyt ceny z tekstu strony');
 
 test('parseJina nie bierze „UTF 8.00” z adresu za cenę', () => {
-    // Złapane na stanowisku: szeroki wzorzec waluty wyciągał UTF8 z ?ie=UTF8&nodeId=...
+    // Szeroki wzorzec waluty wyciągnąłby „UTF 8.00” z ?ie=UTF8&nodeId=...
     const r = P.parseJina('Markdown Content:\nhttps://x/?ie=UTF8&nodeId=505048 UTF 8.00', true);
     eq(r, null, 'waluta musi pochodzić ze ścisłej listy');
 });
@@ -76,7 +76,7 @@ test('normalize radzi sobie z formatem polskim i angielskim', () => {
     eq(P.normalize('EUR', null, 'nie liczba'), null);
 });
 
-describe('Waluta ceny musi dać się przeliczyć (audyt H1)');
+describe('Waluta ceny musi dać się przeliczyć');
 
 test('symbol waluty zamienia się na kod z tablicy kursów', () => {
     // „€ 12,50” szło dalej jako waluta „€”, której w tablicy kursów nie ma:

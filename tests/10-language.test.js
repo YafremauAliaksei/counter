@@ -123,3 +123,91 @@ test('wyjątki nadal istnieją i nadal zawierają to, dla czego je zrobiono', ()
     ok(config.includes('канирование номера LP'), 'wyzwalacz T-REX musi zostać');
     ok(config.includes("name: 'Русский'"), 'rosyjski musi zostać na liście języków');
 });
+
+describe('Komentarze w kodzie bez historii wersji');
+
+/**
+ * Działa zawsze tylko bieżąca wersja, więc komentarz w kodzie mówi, co robi
+ * kod i dlaczego — w czasie teraźniejszym, bez odniesień do wersji. Historia
+ * zmian należy do CHANGELOG, dokumentacji i gita. 09-artifact pilnuje tego
+ * w artefakcie; tutaj — w każdym pliku kodu repozytorium: źródła, testy,
+ * narzędzia i workflow.
+ *
+ * Wyjątki: `@version` w nagłówku userscriptu (wersja tego pliku) i komentarz
+ * przy akcji przypiętej do SHA (`uses: …@<sha> # v7.0.1` — wersja akcji,
+ * którą podnosi Dependabot).
+ */
+const VERSION_IN_COMMENT = /\b[0-9]\.[0-9]{1,2}\.[0-9]\b/;
+const AUDIT_IN_COMMENT = /\baudyt(u|em)?\s+[A-Z][0-9]/;
+
+/** Komentarze pliku: [numer linii, tekst]. JS/HTML — `//`, `/* */`, `<!-- -->`; YAML — `#`. */
+function commentsOf(rel) {
+    const lines = fs.readFileSync(path.join(ROOT, rel), 'utf8').split(/\r?\n/);
+    const yaml = /\.ya?ml$/.test(rel);
+    const out = [];
+    let inBlock = false;
+    lines.forEach((l, i) => {
+        const t = l.trim();
+        if (yaml) {
+            if (/uses:\s*\S+@[0-9a-f]{40}\s+#/.test(l)) return;
+            const m = /(^|\s)#(.*)$/.exec(l);
+            if (m) out.push([i + 1, m[2]]);
+            return;
+        }
+        if (inBlock) {
+            out.push([i + 1, t]);
+            if (t.includes('*/') || t.includes('-->')) inBlock = false;
+        } else if (t.startsWith('/*') || t.startsWith('<!--')) {
+            out.push([i + 1, t]);
+            if (!t.includes('*/') && !t.includes('-->')) inBlock = true;
+        } else if (t.startsWith('//')) {
+            out.push([i + 1, t]);
+        } else {
+            const m = /\s\/\/\s(.*)$/.exec(l);
+            if (m) out.push([i + 1, m[1]]);
+        }
+    });
+    return out;
+}
+
+const CODE_FILES = FILES.filter(f => f !== 'counter.js'
+    && (/\.(js|html)$/.test(f) || /^\.github\/.*\.ya?ml$/.test(f)));
+
+test('pliki kodu w ogóle się przeskanowały', () => {
+    for (const must of ['src/01-config.js', 'tests/harness.js', 'build.js', '.github/workflows/ci.yml']) {
+        ok(CODE_FILES.includes(must), 'brak na liście: ' + must);
+    }
+});
+
+test('w komentarzach kodu nie ma numerów wersji ani odsyłaczy do audytu', () => {
+    const bad = [];
+    for (const rel of CODE_FILES) {
+        for (const [n, text] of commentsOf(rel)) {
+            if (/@version\b/.test(text)) continue;
+            if (VERSION_IN_COMMENT.test(text) || AUDIT_IN_COMMENT.test(text)) {
+                bad.push(`${rel}:${n}: ${text.trim().slice(0, 80)}`);
+            }
+        }
+    }
+    eq(bad, [], 'historia zmian w komentarzach — przenieść do CHANGELOG');
+});
+
+test('strażnik łapie wersję w każdej z trzech postaci komentarza', () => {
+    // Sprawdzenie samego wykrywacza: bez niego pusty wynik mógłby znaczyć
+    // tylko tyle, że komentarzy w ogóle nie widać.
+    const tmp = path.join(ROOT, 'tests', '.guard-probe.js');
+    // Treść próbki składana z kawałków, żeby ten plik sam nie zawierał
+    // komentarza z wersją w oczach strażnika.
+    const v = ['1', '3', '3'].join('.');
+    const probe = ['// w ' + v + ' było inaczej', 'const x = 1; ' + '//' + ' aud' + 'yt D7',
+                   '/*', ' * od ' + v, ' */', ''].join('\n');
+    fs.writeFileSync(tmp, probe);
+    try {
+        const found = commentsOf('tests/.guard-probe.js')
+            .filter(([, t]) => VERSION_IN_COMMENT.test(t) || AUDIT_IN_COMMENT.test(t))
+            .map(([n]) => n);
+        eq(found, [1, 2, 4]);
+    } finally {
+        fs.unlinkSync(tmp);
+    }
+});

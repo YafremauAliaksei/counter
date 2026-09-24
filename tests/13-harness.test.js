@@ -2,10 +2,9 @@
  * 13-harness.test.js — sprawdzenie samego narzędzia do testowania.
  *
  * Runner jest własny i ma dokładnie jedną nieoczywistą właściwość: musi czekać
- * na testy asynchroniczne. Wcześniej nie czekał — dawał obietnicom 50 ms i szedł
- * wypisać podsumowanie, więc sprawdzenie wolniejsze niż ta granica nie było
- * uwzględnione ANI JAKO ZALICZONE, ANI JAKO NIEZALICZONE. Test, którego porażka
- * nie zatrzymuje CI, jest gorszy niż brak testu: daje fałszywe poczucie pokrycia.
+ * na testy asynchroniczne. Runner ze stałą granicą czasu pominąłby sprawdzenie
+ * wolniejsze od niej — ani jako zaliczone, ani jako niezaliczone. Test, którego
+ * porażka nie zatrzymuje CI, jest gorszy niż brak testu.
  *
  * Plik numerowany jako ostatni celowo: rozstrzyga się po wszystkich pozostałych.
  */
@@ -27,8 +26,8 @@ test('sprawdzenie rozstrzygające po 120 ms jest uwzględnione', () => {
 
 test('odrzucona obietnica nie jest liczona jako zaliczona', () => {
     // Sprawdzamy zachowanie runnera bez wywoływania w nim porażki: gdyby test
-    // asynchroniczny był liczony jako zaliczony PRZED rozstrzygnięciem (tak było
-    // wcześniej), poniższa obietnica po odrzuceniu dopisałaby się do obu
+    // asynchroniczny był liczony jako zaliczony PRZED rozstrzygnięciem,
+    // poniższa obietnica po odrzuceniu dopisałaby się do obu
     // liczników naraz. Tutaj przechwytujemy odrzucenie sami i sprawdzamy tylko,
     // że łańcuch dochodzi do końca.
     let zlapane = null;
@@ -80,7 +79,7 @@ test('testy czasu pracy nie sięgają po zegar gospodarza', () => {
     eq(bad, [], 'pliki z zegarem gospodarza');
 });
 
-describe('eq rozróżnia to, czego JSON nie rozróżnia (audyt G2.1)');
+describe('eq rozróżnia to, czego JSON nie rozróżnia');
 
 test('NaN, Infinity, null i undefined to różne wartości', () => {
     // JSON.stringify zamienia NaN i Infinity w "null" i gubi klucze
@@ -109,7 +108,7 @@ test('kolejność kluczy nie ma znaczenia, obiekty z piaskownicy porównują si�
     eq(foreign, { list: [1, 2], at: new Date(7) });
 });
 
-describe('Granica czasu i odrzucenia bez właściciela (audyt G2.2, G2.3)');
+describe('Granica czasu i odrzucenia bez właściciela');
 
 test('obietnica, która nie rozstrzyga się nigdy, pada po granicy czasu', () => {
     let reason = null;
@@ -137,7 +136,7 @@ test('asercja zgubiona w odrzuconej obietnicy liczy się jako porażka', () => {
     eq(out.failed, 1, 'porażka policzona');
 });
 
-describe('throws sprawdza, KTÓRY wyjątek (audyt G2.4)');
+describe('throws sprawdza, KTÓRY wyjątek');
 
 test('literówka w teście nie udaje oczekiwanego wyjątku', () => {
     throws(() => { throw new Error('niedozwolony ASIN: x'); }, 'właściwy wyjątek', /niedozwolony ASIN/);

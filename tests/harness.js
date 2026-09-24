@@ -29,25 +29,19 @@ function describe(name) {
 }
 
 /**
- * Testy asynchroniczne, na które runner CZEKA.
+ * Testy asynchroniczne, na które runner czeka.
  *
- * Wcześniej test zwracający obietnicę był od razu liczony jako zaliczony,
- * a jego ewentualna porażka dopisywała się później — czyli test padający
- * trafiał do OBU liczników naraz. Runner nie czekał przy tym na nic: dawał
- * obietnicom 50 ms i wypisywał podsumowanie, więc sprawdzenie wolniejsze niż
- * ta granica nie było uwzględnione wcale, a jego porażka nie zatrzymywała CI.
- *
- * Teraz obietnica trafia tutaj, a run.js czeka na wszystkie przed
- * podsumowaniem. Wynik ogłasza się dopiero po rozstrzygnięciu.
+ * Obietnica zwrócona przez test trafia tutaj, a run.js czeka na wszystkie
+ * przed podsumowaniem. Wynik ogłasza się dopiero po rozstrzygnięciu —
+ * inaczej padający test liczyłby się od razu jako zaliczony, a porażka
+ * wolniejszego sprawdzenia nie zatrzymałaby CI.
  */
 const pending = [];
 
 /**
- * Górna granica czasu testu asynchronicznego (1.3.3, audyt G2.2).
- *
- * Obietnica, która nie rozstrzyga się nigdy, wieszała cały przebieg: runner
- * czekał bez końca, bez podsumowania i bez jednej linii — w CI do ogólnego
- * limitu zadania. Teraz taki test po prostu pada z nazwą.
+ * Górna granica czasu testu asynchronicznego. Obietnica, która nie
+ * rozstrzyga się nigdy, zawiesiłaby cały przebieg bez podsumowania; z granicą
+ * taki test pada z nazwą.
  */
 const TIMEOUT_MS = Number(process.env.TEST_TIMEOUT_MS) || 10000;
 
@@ -84,13 +78,12 @@ function test(name, fn) {
 }
 
 /**
- * Odrzucenie bez właściciela to porażka, a nie cisza (1.3.3, audyt G2.3).
+ * Odrzucenie bez właściciela to porażka, a nie cisza.
  *
  * Test z asynchronicznym środkiem bez `return` — `() => { (async () => {
- * ok(false); })(); }` — zwracał undefined, więc liczył się jako zaliczony od
- * razu, a jego asercja ginęła w odrzuconej obietnicy, której nikt nie słuchał.
- * process.exit(0) na końcu przebiegu nie zostawiał nawet ostrzeżenia Node.
- * Runner instaluje ten strażnik przed pierwszym plikiem.
+ * ok(false); })(); }` — zwraca undefined i liczy się jako zaliczony, a jego
+ * asercja ginie w odrzuconej obietnicy. Ten strażnik (instalowany przez
+ * runner przed pierwszym plikiem) zamienia takie odrzucenie w porażkę.
  */
 function installOrphanGuard(proc) {
     proc.on('unhandledRejection', (e) => {
@@ -118,15 +111,13 @@ function settle() {
 }
 
 /**
- * Równość STRUKTURALNA (1.3.3, audyt G2.1).
+ * Równość strukturalna.
  *
- * Do tej pory eq porównywało wyniki JSON.stringify — a JSON nie odróżnia
- * NaN, Infinity i null (wszystkie to "null"), gubi klucze z wartością
- * undefined i zamienia datę w tekst. Granice, których projekt wymaga wprost
- * (NaN, Infinity, null, undefined — „wszystko to przychodzi z localStorage”),
- * były więc niewyrażalne jego własnym narzędziem: eq(NaN, null) przechodziło.
+ * Nie przez JSON.stringify: JSON nie odróżnia NaN, Infinity i null (wszystko
+ * to "null"), gubi klucze z wartością undefined i zamienia datę w tekst —
+ * a właśnie takie granice projekt każe sprawdzać.
  *
- * Teraz: wartości proste przez ===, z NaN równym tylko NaN; typy muszą się
+ * Reguły: wartości proste przez ===, z NaN równym tylko NaN; typy muszą się
  * zgadzać; obiekty i tablice rekurencyjnie, z tym samym zestawem kluczy
  * (klucz z undefined to nie brak klucza); daty po czasie. Obiekty
  * z piaskownicy `vm` mają konstruktory innego realmu — dlatego rodzaj
@@ -176,9 +167,9 @@ function notOk(value, msg) {
 }
 
 /**
- * Oczekiwany wyjątek. `expected` (opcjonalne, 1.3.3, audyt G2.4) to wyrażenie
- * regularne na treść komunikatu: bez niego throws(() => nieMaTakiejZmiennej.x)
- * przechodziło, bo ReferenceError z literówki to też wyjątek.
+ * Oczekiwany wyjątek. `expected` (opcjonalne) to wyrażenie regularne na treść
+ * komunikatu — bez niego throws(() => nieMaTakiejZmiennej.x) przechodzi, bo
+ * ReferenceError z literówki to też wyjątek.
  */
 function throws(fn, msg, expected) {
     let error = null;

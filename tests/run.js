@@ -51,8 +51,8 @@ for (const f of files) {
 }
 
 // Testy asynchroniczne rozstrzygają się po przejściu przez wszystkie pliki,
-// więc podsumowanie czeka na nie jawnie. Wcześniej stało tu `setTimeout(…, 50)`
-// i sprawdzenie wolniejsze niż ta granica nie było liczone wcale.
+// więc podsumowanie czeka na nie jawnie — bez stałej granicy czasu, która
+// pominęłaby sprawdzenie wolniejsze od niej.
 // Jedno obejście pętli zdarzeń po ostatnim teście: Node zgłasza odrzucenie
 // bez właściciela dopiero po opróżnieniu kolejki mikrozadań.
 settle().then(() => new Promise(resolve => setImmediate(resolve))).then(summary);
