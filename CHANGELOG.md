@@ -10,6 +10,14 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **Waluta wyświetlania.** Panel → „Karta ceny” → „Kwoty pokazywać w”: waluta sklepu (jak dotąd, domyślnie) albo jedna stała waluta — EUR, PLN, GBP, SEK, USD, CAD. Karta ceny i linia 6 pokazują wtedy kwoty w tej walucie; cena przeliczona ma znak `≈`, a kwota oryginalna zostaje w wierszu źródła. Liczy się zawsze w euro: dziennik trzyma cenę sklepu, suma idzie w euro, a waluta wyświetlania to ostatnie mnożenie przy rysowaniu — dlatego zmiana waluty w trakcie zmiany niczego nie gubi. Ustawienie jest wspólne dla wszystkich kart i przechodzi przez kod ustawień (numer `0x030a`). Bez kursu do wybranej waluty karta pokazuje cenę sklepu, a linia 6 euro. Nowy `tests/32-display-currency.test.js`.
+
+---
+
 ## 1.3.3 — 2026-09-23
 
 ### Dodano

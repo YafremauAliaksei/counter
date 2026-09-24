@@ -201,7 +201,8 @@ Mówi, ile ze zrobionych przedmiotów pojechało na sprzedaż.
 
 ### Linia 6 dokładniej
 
-Działa tylko przy włączonym module cen. Pokazuje trzy liczby w euro: ile
+Działa tylko przy włączonym module cen. Pokazuje trzy liczby w euro (albo
+w walucie wyświetlania, jeśli ją wybrano — patrz „Waluta wyświetlania”): ile
 zarobiono na sprzedaży, ile poszło do utylizacji, różnicę. Kolory niosą treść:
 plus zielony, minus czerwony, wynik pokolorowany według własnego znaku. `?N`
 na końcu to przedmioty, dla których kod sortowania tak i nie przyszedł; nie idą
@@ -414,6 +415,40 @@ aktualizacja skryptu nie kasuje.
 **Kursy walut** — jedno zapytanie przy włączeniu, potem dobę z pamięci. Potrzebne,
 żeby dodać do siebie ceny z różnych rynków: funty z `co.uk`, dolary z `com`,
 korony ze `se` sprowadza się do euro.
+
+### Waluta wyświetlania
+
+Panel → „Karta ceny” → **Kwoty pokazywać w**. Do wyboru: waluta sklepu (bez
+przeliczania, domyślnie) albo jedna stała waluta — `EUR`, `PLN`, `GBP`, `SEK`,
+`USD`, `CAD`. Po co: kwota w funtach czy koronach wielu osobom nie mówi nic,
+a decyzję o przedmiocie podejmuje się w sekundę. Kto myśli w euro albo
+w złotych, widzi wszystko w euro albo w złotych.
+
+**Liczy się zawsze w euro**, niezależnie od wyboru:
+
+1. dziennik zapisuje cenę tak, jak przyszła ze sklepu (`GBP 12.50`);
+2. do sumy zmiany wchodzi ona przeliczona na euro;
+3. dopiero na ekranie euro mnoży się przez kurs wybranej waluty.
+
+Dlatego zmiana waluty w środku zmiany niczego nie gubi i niczego nie przelicza
+wstecz — zmienia się tylko to, jak liczby wyglądają. Przykład, kurs 1 € = 4 zł:
+
+| Na karcie przy wyborze | `GBP 12.50` ze sklepu | `EUR 999.99` ze sklepu |
+| ---------------------- | --------------------- | ---------------------- |
+| waluta sklepu          | `GBP 12.50`           | `EUR 999.99`           |
+| EUR                    | `≈ 15.63 €`           | `999.99 €`             |
+| PLN                    | `≈ 62.50 zł`          | `≈ 3999.96 zł`         |
+
+`≈` znaczy „przeliczone”: kurs jest dzienny (a przy braku sieci — wbudowany
+w plik), więc to szacunek, nie cena z Amazonu. Cena w tej samej walucie idzie
+bez znaku. Kto chce porównać kartę ze stroną sklepu, włącza wiersz źródła —
+przy przeliczonej cenie stoi tam kwota oryginalna.
+
+Linia 6 idzie za tym samym wyborem: przy walucie sklepu zostaje w euro (bilans
+z kilku sklepów nie ma jednej „waluty sklepu”), przy wybranej — pokazuje się
+w niej. Ustawienie jest wspólne dla wszystkich kart, jak wybór sklepu, więc
+CRET i WHD mówią jedną walutą. Jeśli kursu do wybranej waluty nie ma, karta
+pokazuje cenę sklepu, a linia 6 — euro; nigdy zero ani `NaN`.
 
 ### Skąd bierze się cena
 
@@ -832,7 +867,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 31 plików, 432 sprawdzenia
+├── tests/                  ← 32 pliki, 453 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -852,7 +887,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 432 sprawdzenia
+npm test             # 453 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

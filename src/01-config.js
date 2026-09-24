@@ -301,6 +301,16 @@
          * cen. Nie ma tu żadnego zapytania — tablica jest wpisana w plik.
          */
         FX_FALLBACK: { EUR: 1, USD: 1.156, GBP: 0.856, PLN: 4.33, SEK: 11.27, CAD: 1.605 },
+        /**
+         * WALUTY WYŚWIETLANIA (1.4.0) i znak, który stoi po kwocie.
+         *
+         * Wyłącznie waluty, dla których FX_FALLBACK ma kurs: przeliczenie musi
+         * działać także przy wyłączonej sieci, na samej tablicy wbudowanej.
+         * Liczy się zawsze w euro — waluta wyświetlania to tylko ostatni krok,
+         * mnożenie przez kurs przy rysowaniu. Dlatego zmiana waluty w środku
+         * zmiany niczego nie gubi i niczego nie przelicza wstecz.
+         */
+        DISPLAY_CURRENCIES: { EUR: '€', PLN: 'zł', GBP: '£', SEK: 'kr', USD: '$', CAD: 'CA$' },
         // 8.5.0: klucz pamięci cen został wyłącznie do jednorazowego sprzątania —
         // sama pamięć została usunięta.
         LEGACY_SHARED_KEYS: ['asinPrices'],
@@ -623,6 +633,10 @@
         language: CONFIG.DEFAULT_LANGUAGE,
         // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
         marketplace: CONFIG.DEFAULT_MARKETPLACE,
+        // Waluta, w której karta ceny i linia 6 POKAZUJĄ kwoty (1.4.0).
+        // 'native' = bez przeliczania: karta w walucie sklepu, linia 6 w euro,
+        // czyli dokładnie tak jak przed 1.4.0. Sumy liczone są w euro zawsze.
+        displayCurrency: 'native',
         globalStatsContributionKnown: Object.keys(CONFIG.KNOWN_TAB_TYPES)
             .reduce((acc, key) => ({ ...acc, [key]: true }), {}),
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None' },

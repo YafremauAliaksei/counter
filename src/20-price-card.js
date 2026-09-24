@@ -981,6 +981,15 @@
          * @param {HTMLElement} el   wiersz do zapisania
          * @param {string} text      treść; pusta chowa wiersz
          */
+        /**
+         * Tekst ceny na karcie: w walucie wyświetlania, jeśli ją wybrano,
+         * inaczej tak, jak przyszła ze sklepu (1.4.0). Sam obiekt ceny się nie
+         * zmienia — do dziennika idzie kwota i waluta sklepu, a do sumy euro.
+         */
+        priceText(p) {
+            return FxRates.display(p.value, p.currency) || p.text;
+        },
+
         setLine(el, text) {
             el.textContent = text || '';
             el.style.display = text ? 'block' : 'none';
@@ -1036,7 +1045,7 @@
                 this.priceEl.style.display = 'block';
                 this.priceEl.textContent =
                     (prev && prev.status === 'ok' && prev.current && pc.showPrice)
-                        ? prev.current.text : '…';
+                        ? this.priceText(prev.current) : '…';
                 this.rrpEl.style.textDecoration = 'none';
                 // Stan przejściowy, nie awaria — idzie pod wyłącznikami.
                 const hunting = this.searchingOther === asin;
@@ -1065,7 +1074,7 @@
             // 1. Cena jest — pokazujemy, cokolwiek blokowałaby polityka.
             if (r && r.status === 'ok') {
                 const price = r.current || r.rrp;
-                this.priceEl.textContent = pc.showPrice && price ? price.text : '';
+                this.priceEl.textContent = pc.showPrice && price ? this.priceText(price) : '';
                 this.priceEl.style.display = pc.showPrice ? 'block' : 'none';
 
                 // Druga linia: albo prawdziwa RRP (daje ją tylko jina/keepa-api),
@@ -1073,7 +1082,7 @@
                 // TYLKO przy RRP: przekreślona cena znaczy „stara”, a wieszanie
                 // tego na żywej ofercie byłoby wprost dezinformacją.
                 if (pc.showRrp && r.rrp) {
-                    this.rrpEl.textContent = `${I18n.get('priceCard_rrp')} ${r.rrp.text}`;
+                    this.rrpEl.textContent = `${I18n.get('priceCard_rrp')} ${this.priceText(r.rrp)}`;
                     this.rrpEl.style.textDecoration = 'line-through';
                     this.rrpEl.style.display = 'block';
                 } else if (pc.showRrp && r.secondary) {
@@ -1097,6 +1106,9 @@
                     : '';
                 const bits = [];
                 if (pc.showSource) bits.push(r.source);
+                // Przy przeliczeniu cena ze sklepu zostaje do wglądu w wierszu
+                // źródła — dla kogoś, kto porównuje kartę ze stroną Amazonu.
+                if (pc.showSource && price && this.priceText(price).startsWith('≈')) bits.push(price.text);
                 if (fromOther) bits.push(fromOther);
                 // Czas ma własny wyłącznik i działa niezależnie od nazwy źródła:
                 // przełącznik, który nic nie robi, dopóki nie włączy się innego,

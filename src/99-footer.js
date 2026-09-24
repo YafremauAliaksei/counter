@@ -127,6 +127,9 @@
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)
+   displayCurrency = 'native'  'native' | 'EUR' | 'PLN' | 'GBP' | 'SEK' | 'USD' | 'CAD'
+                              'native' = karta w walucie sklepu, linia 6 w euro;
+                              sumy zawsze w euro, to tylko waluta pokazywania
    globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true, OTHER: true }
                               które działy wliczają się do sumy w liniach 2 i 7
    keyboardShortcuts = { INCREMENT: 'None', DECREMENT: 'None' }

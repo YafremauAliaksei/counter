@@ -100,6 +100,7 @@
             graphMode: ['legend', 'right', 'full'],
             language: ['pl', 'en', 'ru'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
+            displayCurrency: ['native', 'EUR', 'PLN', 'GBP', 'SEK', 'USD', 'CAD'],
         },
 
         /**
@@ -209,6 +210,7 @@
             { id: 0x0309, root: 'user', path: 'globalStatsContributionKnown.OTHER', type: 'bool' },
             { id: 0x0307, root: 'user', path: 'keyboardShortcuts.INCREMENT', type: 'text' },
             { id: 0x0308, root: 'user', path: 'keyboardShortcuts.DECREMENT', type: 'text' },
+            { id: 0x030a, root: 'user', path: 'displayCurrency', type: 'enum', list: 'displayCurrency' },
         ],
 
         // ---------------- pomocnicze ----------------

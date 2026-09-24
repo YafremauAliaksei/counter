@@ -482,6 +482,18 @@
                 }));
             }
 
+            // 1.4.0: waluta, w której kwoty się POKAZUJE. Liczy się zawsze
+            // w euro, więc przełączenie w trakcie zmiany niczego nie gubi.
+            // Ustawienie wspólne jak sklep: wszystkie karty mówią jedną walutą.
+            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_displayCurrency'), UIBuilder.select(
+                [{ value: 'native', text: I18n.get('priceCard_displayNative') }]
+                    .concat(Object.entries(CONFIG.DISPLAY_CURRENCIES).map(([code, sign]) => ({
+                        value: code, text: `${code} (${sign})`,
+                    }))),
+                FxRates.displayCurrency() || 'native',
+                v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
+            secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
+
             // 8.4.0: trzy pozycje zamiast checkboxa „ciągnij tekstem”.
             // Kolejność na liście — od zalecanej do zapasowych.
             secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select([
