@@ -52,7 +52,7 @@ describe('Komentarze opisują kod, a nie jego historię');
  */
 test('w komentarzach nie ma numerów wersji ani odsyłaczy do audytu', () => {
     const VERSION = /\b[0-9]\.[0-9]{1,2}\.[0-9]\b/;
-    const AUDIT = /\baudyt(u|em)?\s+[A-Z][0-9]/;
+    const AUDIT = /\b[Aa]udyt(u|em)?\s+[A-Z][0-9]/;
     const bad = [];
     LINES.forEach((l, i) => {
         let text = null;
@@ -442,9 +442,9 @@ test('mapa modułów w src/README.md zna każdy moduł i nie kłamie o jego rozm
 });
 
 test('sam build odmawia, gdy w src/ leży moduł spoza manifestu', () => {
-    // Audyt I3: test wyżej łapał sierotę tylko w `npm test`, a `npm run build`
-    // zgłaszał sukces z artefaktem bez nowego kodu. Kopia repozytorium
-    // w katalogu tymczasowym, żeby nie dotykać prawdziwego src/.
+    // Test wyżej łapie sierotę tylko w `npm test`. Tu sprawdza się sam build:
+    // ma odmówić, zamiast zgłosić sukces z artefaktem bez nowego kodu. Kopia
+    // repozytorium w katalogu tymczasowym, żeby nie dotykać prawdziwego src/.
     const os = require('os');
     const { spawnSync } = require('child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sh-build-'));
