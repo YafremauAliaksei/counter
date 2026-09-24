@@ -270,11 +270,13 @@ wyłączonym module.
 
 Malejąco według pożytku:
 
-1. **Przepuścić stanowisko w żywej przeglądarce.** Testy automatyczne działają
-   w atrapie DOM; stanowisko (`tests/manual/`) sprawdza to, czego atrapa nie
-   pokrywa: prawdziwy `MutationObserver`, autentyczne zdarzenia `storage` między
-   kartami, realne pobranie obrazka Keepa. Scenariusz sprawdzenia jest
-   w `CONTRIBUTING.md`, rozdział „Ręczne sprawdzenie w przeglądarce”.
+1. **Rozbudowywać testy stanowiska** (`tests/stand/specs/`, `npm run test:e2e`).
+   Są już: cisza przy domyślnym starcie (także pod CSP), cykl przedmiotu z kodami
+   sortowania, dwie karty i F5, granica zmiany na podstawionym zegarze, moduł
+   cen z odczytem obrazka, wyłączenie modułu i blokada CSP. Warto dopisać: panel
+   ustawień otwierany hasłem i kod ustawień z zakładki. Zadanie CI „Stanowisko
+   w przeglądarce” warto dopisać do wymaganych sprawdzeń, gdy pokaże stabilność.
+   Zasady — `CONTRIBUTING.md`, „Stanowisko i testy w przeglądarce”.
 
 2. **Dodać plakietki do README** — status CI i wersję ostatniego wydania.
 

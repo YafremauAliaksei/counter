@@ -5,10 +5,12 @@ name: CI
 # Bez niej czerwony przebieg jest tylko ostrzeżeniem i PR da się scalić mimo
 # niego. Stan i instrukcja: HANDOFF.md, rozdział 2.4.
 #
-# Podział na trzy zadania jest celowy:
+# Podział na cztery zadania jest celowy:
 #   verify  — zero zależności, musi działać zawsze i wszędzie; to jest
 #             prawdziwa bramka i to ją ustawia się jako "required check";
 #   lint    — wymaga npm install, więc zależy od dostępności rejestru;
+#   stand   — testy stanowiska w prawdziwym Chromium (npm run test:e2e);
+#             potrzebuje rejestru i pobrania przeglądarki;
 #   matrix  — sprawdza, że artefakt buduje się tak samo na Linuksie,
 #             Windowsie i macOS (końce linii!) i na kilku wersjach Node.
 
@@ -92,6 +94,32 @@ jobs:
 
       - name: Prettier
         run: npm run format:check
+
+  stand:
+    name: Stanowisko w przeglądarce
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalacja narzędzi
+        run: npm ci --no-audit --no-fund
+
+      # Wersja przeglądarki wynika z przypiętej wersji @playwright/test
+      # w package-lock.json, więc każdy przebieg dostaje tę samą.
+      - name: Przeglądarka
+        run: npx playwright install --with-deps chromium
+
+      # Do prawdziwej sieci testy nie wychodzą: każde zapytanie poza
+      # stanowisko jest przechwytywane (tests/stand/specs/helpers.js).
+      - name: Testy stanowiska
+        run: npm run test:e2e
 
   matrix:
     name: Node ${{ matrix.node }} / ${{ matrix.os }}

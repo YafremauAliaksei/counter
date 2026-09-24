@@ -85,7 +85,8 @@ module.exports = [
 
     // --- Narzędzia i testy: zwykły Node ---
     {
-        files: ['build.js', 'tests/**/*.js', 'eslint.config.js'],
+        files: ['build.js', 'tests/**/*.js', 'eslint.config.js', 'playwright.config.js'],
+        ignores: ['tests/stand/stand.js'],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'commonjs',
@@ -97,6 +98,36 @@ module.exports = [
             ...js.configs.recommended.rules,
             'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }],
             'no-console': 'off',
+            eqeqeq: ['error', 'smart'],
+            'prefer-const': 'error',
+            'no-var': 'error',
+        },
+    },
+
+    // --- Testy stanowiska: Node, ale funkcje przekazywane do page.evaluate
+    // wykonują się w przeglądarce, więc znają też jej globalne nazwy ---
+    {
+        files: ['tests/stand/specs/**/*.js'],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+            },
+        },
+    },
+
+    // --- Silnik stanowiska: zwykły skrypt strony w przeglądarce ---
+    {
+        files: ['tests/stand/stand.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'script',
+            globals: {
+                ...globals.browser,
+            },
+        },
+        rules: {
+            ...js.configs.recommended.rules,
+            'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }],
             eqeqeq: ['error', 'smart'],
             'prefer-const': 'error',
             'no-var': 'error',

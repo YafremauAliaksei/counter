@@ -8,6 +8,9 @@ pnpm-lock.yaml
 # lintera i formattera. Zależności produkcyjnych projekt nadal nie ma.
 
 # Wyniki narzędzi
+# Raporty testów stanowiska (npm run test:e2e)
+test-results/
+playwright-report/
 .eslintcache
 *.tsbuildinfo
 coverage/
