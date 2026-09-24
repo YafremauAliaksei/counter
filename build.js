@@ -72,10 +72,9 @@ function build() {
         throw new Error(`wersja w package.json ("${version}") nie jest w formacie SemVer`);
     }
 
-    // Plik w src/ spoza manifestu nie trafia do artefaktu — po cichu. Ktoś
-    // dodaje moduł, zapomina o manifeście, testy przechodzą (bo testują
-    // artefakt), a nowy kod nie istnieje (1.3.3, audyt I3). Test w 09-artifact
-    // łapał to w `npm test`, ale sam build przechodził i zgłaszał sukces.
+    // Plik w src/ spoza manifestu nie trafiłby do artefaktu — po cichu:
+    // testy sprawdzają artefakt, więc nowy moduł bez wpisu w manifeście
+    // po prostu by nie istniał. Build odmawia zamiast zgłaszać sukces.
     const known = new Set(
         [...manifest.modules.map((m) => m.file), manifest.banner, manifest.footer].map((f) =>
             path.basename(f)

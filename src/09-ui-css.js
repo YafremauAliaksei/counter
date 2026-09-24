@@ -6,23 +6,16 @@
             this.styleEl = h('style', { id: 'reactiveStyles' });
             document.head.appendChild(this.styleEl);
             this.updateAll();
-            // 8.3.0: tylko wygląd karty. Wcześniej przebudowa całego łańcucha CSS
-            // (z podmianą textContent w <style>, czyli unieważnieniem stylów
-            // całego dokumentu) szła przy KAŻDEJ zmianie stanu, łącznie
-            // z uiFlags na każdym przetworzonym przedmiocie.
+            // Tylko wygląd karty: podmiana textContent w <style> unieważnia
+            // style całego dokumentu, więc nie może iść przy każdej zmianie
+            // stanu (np. flagach ustawianych na każdym przedmiocie).
             onStorePaths(['localTabConfig'], () => this.updateAll());
         },
         updateAll() {
             const lc = store.localTabConfig;
-            // 8.1.0: usunięta zmienna --sh-overlay-opacity — nikt jej nie czytał.
-            // Parzysta do niej --sh-bg-overlay w VisualsRenderer była natomiast
-            // czytana, ale nigdzie niedefiniowana; kolor nakładki i tak ustawia się
-            // z JS.
-            //
-            // BEZPIECZEŃSTWO: każda liczba wchodząca do tego łańcucha przechodzi
-            // przez Utils.clampNum, a każdy kolor przez Utils.hexToRgb. Oba
-            // zwracają wyłącznie cyfry, więc wartość z localStorage nie może
-            // zamknąć reguły i dopisać własnej.
+            // Każda liczba w tym łańcuchu przechodzi przez Utils.clampNum,
+            // a każdy kolor przez Utils.hexToRgb. Oba zwracają same cyfry, więc
+            // wartość z localStorage nie może zamknąć reguły i dopisać własnej.
             const bgAlpha = Utils.clampNum(lc.statsWindowBgAlpha, 0, 100, 0);
             let css = `:root {
                 --sh-bg-color: rgba(${Utils.hexToRgb(lc.statsWindowBgColorHex)}, ${bgAlpha / 100});

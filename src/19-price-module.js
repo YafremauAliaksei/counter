@@ -1,14 +1,13 @@
     // ==========================================
-    // 6h. WŁĄCZNIK MODUŁU CEN (9.2.0)
+    // 6h. WŁĄCZNIK MODUŁU CEN
     // ==========================================
     /**
      * Dwie operacje: „obudź sieć” i „uśpij sieć”. Woła je wyłącznie panel
      * ustawień oraz konsola (SH.priceOn() / SH.priceOff()).
      *
-     * Sensem tego modułu jest to, że PIERWSZE w całym cyklu życia skryptu
-     * zapytanie do sieci zewnętrznej wychodzi stąd i znikąd indziej. Dopóki
-     * enable() nie zostanie wywołane, ani FxRates, ani KeepaOCR, ani PriceCard
-     * nie mają prawa nawiązać połączenia — i każde z nich sprawdza to samodzielnie.
+     * Pierwsze zapytanie do sieci zewnętrznej wychodzi stąd i znikąd indziej.
+     * Dopóki enable() nie zostanie wywołane, FxRates, KeepaOCR i PriceCard nie
+     * nawiązują połączeń — i każde z nich sprawdza to samodzielnie.
      */
     const PriceModule = {
         enable() {

@@ -39,6 +39,34 @@ function commentMap() {
 }
 const IS_COMMENT = commentMap();
 
+describe('Komentarze opisują kod, a nie jego historię');
+
+/**
+ * Komentarz w kodzie mówi, co robi fragment i dlaczego tak — w czasie
+ * teraźniejszym. Historia zmian („w 8.3.0 było…”, „1.3.3, audyt D7”) należy
+ * do CHANGELOG i historii gita: w kodzie rozrasta plik i przesłania
+ * wyjaśnienie, a po kilku wydaniach nikt nie pamięta, czym były tamte wersje.
+ *
+ * Sprawdzane są linie komentarzy i komentarze na końcu linii kodu. Wyjątek:
+ * `@version` w nagłówku userscriptu — to wersja tego pliku, a nie historia.
+ */
+test('w komentarzach nie ma numerów wersji ani odsyłaczy do audytu', () => {
+    const VERSION = /\b[0-9]\.[0-9]{1,2}\.[0-9]\b/;
+    const AUDIT = /\baudyt(u|em)?\s+[A-Z][0-9]/;
+    const bad = [];
+    LINES.forEach((l, i) => {
+        let text = null;
+        if (IS_COMMENT[i]) text = l;
+        else {
+            const tail = /\s\/\/\s(.*)$/.exec(l);
+            if (tail) text = tail[1];
+        }
+        if (!text || /@version\b/.test(text)) return;
+        if (VERSION.test(text) || AUDIT.test(text)) bad.push(`wiersz ${i + 1}: ${text.trim().slice(0, 90)}`);
+    });
+    eq(bad, [], 'historia zmian w komentarzach — przenieść do CHANGELOG');
+});
+
 describe('Zakazane konstrukcje');
 
 test('nie ma new Function, document.write ani insertAdjacentHTML', () => {

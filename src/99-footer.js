@@ -145,8 +145,8 @@
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
    SCRIPT_ID_PREFIX = 'statsHelper_v1_3_0_'
        Prefiks wszystkich kluczy w localStorage. Koduje SCHEMAT danych, a nie
-       numer wydania: 1.3.1 i następne zostają przy 'v1_3_0', dopóki układ
-       zapisywanych pól się nie zmieni. Zmiana prefiksu = start od zera
+       numer wydania: zostaje ten sam, dopóki układ zapisywanych pól się
+       nie zmieni. Zmiana prefiksu = start od zera
        (stare ustawienia i liczniki przestają być widoczne).
    DEBUG_MODE = false         bierze się z SCRIPT_LOGS_ENABLED z góry pliku;
                               tu jest wartość startowa, SH.logsOn() zmienia ją w locie
@@ -161,7 +161,7 @@
    AUTO_TRIGGER_REGEX                 co oznacza KONIEC przedmiotu (+1 do licznika)
    ROUTE_SELL_CODES / ROUTE_UNSELL_CODES   kody sortowania: sprzedaż / utylizacja
    PRICE_MIN_REQUEST_GAP_MS = 3000    minimalna przerwa między zapytaniami
-   PRICE_FALLBACK_MAX_TRIES = Infinity  ile sklepów zapasowych sprawdzać (1.4.0: wszystkie)
+   PRICE_FALLBACK_MAX_TRIES = Infinity  ile sklepów zapasowych sprawdzać (wszystkie)
    PRICE_FALLBACK_LAST = ['com', 'ca']  rynki spoza Europy — w przeglądzie na końcu
    FX_FALLBACK                        kursy wbudowane, używane bez sieci
    PRICE_KEEPA_API_KEY = ''           płatny klucz Keepa (opcjonalny)

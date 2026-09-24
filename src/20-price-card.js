@@ -4,88 +4,58 @@
     /**
      * Pokazuje cenę produktu, który jest właśnie obsługiwany.
      *
-     * DLACZEGO TAK, A NIE PROŚCIEJ. Bezpośredni fetch na amazon.de ze strony
-     * T-REX jest niemożliwy: Same-Origin Policy. Sprawdzone na żywo na obcej
-     * domenie — blokuje się wszystko: zwykły fetch, XMLHttpRequest, no-cors
-     * (oddaje opaque z pustym ciałem), iframe (odczyt rzuca SecurityError),
-     * script src, a nawet widżety partnerskie amazon-adsystem, które niby są
-     * stworzone do osadzania na cudzych stronach. Tampermonkey obchodzi to
-     * wyłącznie dlatego, że GM_xmlhttpRequest wykonuje się w uprzywilejowanym
-     * kontekście rozszerzenia, a nie w stronie.
+     * Zapytanie do amazon.* ze strony T-REX jest niemożliwe (Same-Origin
+     * Policy: zwykły fetch, XHR, no-cors, iframe, script src i widżety
+     * partnerskie są blokowane; Tampermonkey obchodzi to tylko dlatego, że
+     * GM_xmlhttpRequest działa w kontekście rozszerzenia). Źródła są dwa:
+     *   r.jina.ai       — tekst strony, oddaje nagłówki CORS;
+     *   graph.keepa.com — obrazek, któremu CORS nie jest potrzebny.
      *
-     * Dlatego źródła są dokładnie dwa:
-     *   r.jina.ai       — oddaje nagłówki CORS, zwraca tekst strony;
-     *   graph.keepa.com — obrazek, a obrazkowi CORS nie jest potrzebny z zasady.
-     *
-     * GŁÓWNA ZASADA: JEDNO ZAPYTANIE NA JEDEN ASIN. Logika ta sama, co
-     * u licznika: `poniżej` daje dokładnie jeden przyrost — nowy ASIN daje
-     * dokładnie jedno wejście do sieci. Pięć jednakowych przedmiotów pod rząd
-     * (klient zwrócił pięć sztuk) odpracuje się jako pięć przedmiotów, ale
-     * zapytanie pójdzie jedno.
-     *
-     * 9.2.0: nad tym wszystkim stoi jeszcze jeden warunek — moduł cen musi być
-     * włączony ręcznie. Dopóki nie jest, ten moduł nie wysyła nic.
+     * Jedno zapytanie na przedmiot, pytane przy nowym ASIN albo na początku
+     * nowego przedmiotu. Nic nie wychodzi, dopóki moduł cen nie zostanie
+     * włączony ręcznie.
      */
     const PriceCard = {
-        // asin -> {status, current, rrp, source, ms}. To nie pamięć cen: cena
-        // pytana jest na nowo przy każdym przedmiocie (8.5.0). To ostatni znany
-        // wynik, rysowany póki leci nowe zapytanie.
-        // 9.1.0: rozmiar ograniczony, patrz _remember().
+        // asin -> {status, current, rrp, source, ms}. To nie pamięć cen (cena
+        // jest pytana przy każdym przedmiocie), tylko ostatni wynik do
+        // rysowania, póki leci nowe zapytanie. Rozmiar ogranicza _remember().
         cache: new Map(),
         inFlight: new Set(),
         shownAsin: null,
-        // ASIN, dla którego właśnie trwa przegląd sklepów (8.6.0).
+        // ASIN, dla którego właśnie trwa przegląd sklepów.
         searchingOther: null,
         awaiting: false,         // zaczął się nowy przedmiot, czekamy na ASIN
         requestCount: 0,
-        // Obrazki Keepa liczą się osobno od zapytań tekstowych: mają własny,
-        // hojniejszy limit (patrz CONFIG.PRICE_MAX_IMAGE_REQUESTS).
+        // Obrazki Keepa liczą się osobno od zapytań tekstowych — mają własny
+        // limit (CONFIG.PRICE_MAX_IMAGE_REQUESTS).
         imageCount: 0,
         nextSlotAt: 0,
         el: null,
 
         /**
-         * Content-Security-Policy strony — DRUGA bariera, niezależna od CORS.
-         * Wystawia ją serwer strony nagłówkiem albo meta-tagiem i obejść jej
-         * z kodu strony nie da się w zasadzie: w tym cały sens CSP.
+         * Blokady Content-Security-Policy — druga bariera, niezależna od CORS.
+         * Wystawia ją serwer strony i z kodu strony obejść się jej nie da;
+         * brakujące źródło przeglądarka tnie przed wyjściem w sieć.
          *
-         * Jeśli w polityce nie ma potrzebnego źródła, przeglądarka utnie
-         * zapytanie jeszcze przed wyjściem w sieć. Wikipedia jest tu dobrym
-         * przykładem: nie ma tam ani img-src, ani connect-src, wszystko spada
-         * do `default-src 'self'` i nie ładuje się ani obrazek Keepa, ani
-         * zapytanie do r.jina.ai.
-         *
-         * Zostawiać po cichu pustej ramki nie wolno — człowiek pomyśli, że skrypt
-         * się zepsuł. Przeglądarka sama zgłasza blokadę zdarzeniem
-         * securitypolicyviolation, po nim to rozpoznajemy.
+         * Blokadę zgłasza zdarzenie securitypolicyviolation — po nim karta
+         * mówi, dlaczego ceny nie ma, zamiast zostawić pustą ramkę.
          */
         csp: { img: false, net: false, notified: false },
 
         // ---------------- rozbiór odpowiedzi ----------------
         /**
-         * Waluta to ścisła lista, a nie [A-Z]{3}. Złapane na stanowisku: szeroki
-         * wzorzec wyciągnął „UTF 8.00” z linku ?ie=UTF8&nodeId=505048 i pokazał
-         * to jako cenę. Grosze też są obowiązkowe: Amazon zawsze drukuje dwa
-         * miejsca, a wymaganie części dziesiętnej odcina całą klasę śmieci.
-         *
-         * Jest to zarazem filtr bezpieczeństwa: wzorzec pracuje na tekście
-         * ściągniętym z obcego serwisu, więc musi przepuszczać wyłącznie to,
-         * co naprawdę wygląda jak kwota.
+         * Kwota w tekście strony. Waluta ze ścisłej listy, a nie [A-Z]{3}
+         * (szeroki wzorzec łapie „UTF 8.00” z parametru ?ie=UTF8), grosze
+         * obowiązkowe (Amazon drukuje zawsze dwa miejsca). Tekst pochodzi
+         * z obcego serwisu, więc wzorzec przepuszcza wyłącznie to, co wygląda
+         * jak kwota — i wyłącznie waluty, które da się przeliczyć (test pilnuje
+         * zgodności z CONFIG.FX_FALLBACK).
          */
         MONEY: String.raw`(?:(EUR|USD|GBP|PLN|SEK|CAD)\s?|(€|\$|£|zł)\s?)(\d{1,3}(?:[., ]\d{3})*[.,]\d{2})`,
 
         /**
-         * Symbol waluty → kod z tablicy kursów (1.3.3, audyt H1).
-         *
-         * Wcześniej symbol szedł dalej jako „waluta”: „€” nie ma w tablicy
-         * kursów, więc toEur oddawał null i kwota wypadała z sumy zmiany —
-         * ta sama klasa błędu, co cena 2 991,39 € liczona jako 991,39
-         * (CHANGELOG 9.1.1). Wyrażenie MONEY przyjmowało też kody, dla których
-         * kursu nie ma nigdzie (CHF, DKK, NOK, CZK, HUF, RON): żaden z rynków
-         * skryptu w nich nie płaci, a przeliczyć ich i tak nie było czym.
-         * Teraz MONEY zna dokładnie te waluty, które da się przeliczyć — test
-         * pilnuje zgodności z CONFIG.FX_FALLBACK.
-         *
+         * Symbol waluty → kod z tablicy kursów. Symbol przepuszczony dalej
+         * jako „waluta” nie miałby kursu i kwota wypadłaby z sumy zmiany.
          * „$” zależy od rynku: na amazon.ca to dolar kanadyjski.
          */
         symbolCode(symbol) {
@@ -107,25 +77,16 @@
         },
 
         /**
-         * Dwa tryby, a różnica jest zasadnicza. Odpowiedź adresowana
-         * (z x-target-selector) to 350-1800 bajtów jednego bloku ceny i tam
-         * pierwsze trafienie na kwotę jest ceną. Odpowiedź całą stroną to
-         * 180-200 KB i pierwsze trafienie będzie śmieciem: w pomiarze taka
-         * odpowiedź zawierała 12 różnych kwot. Dlatego na długim ciele cenę
-         * bierze się TYLKO po kotwicy „… with N percent savings”.
-         *
-         * Pomiar na trzech produktach, czemu to ważne:
-         *   Philips GU10  adresowo -> 15.08   stroną -> 17.04  (adresowo poprawnie)
-         *   Tineco        oba tryby zgodne
-         *   ARNOMED       adresowo 422, stroną ceny nie ma wcale
+         * Rozbiór odpowiedzi r.jina.ai w dwóch trybach. Odpowiedź adresowana
+         * (x-target-selector) to jeden blok ceny i pierwsza kwota jest ceną.
+         * Cała strona (ok. 200 KB) zawiera kilkanaście kwot — tam cenę bierze
+         * się tylko po kotwicy „… with N percent savings”.
          */
         parseJina(text, targeted) {
             const body = text.split('Markdown Content:').pop() || '';
             const stale = /cached snapshot/i.test(text);
-            // targeted przychodzi od dostawcy. Wcześniej ustalało się po długości
-            // ciała (< 4000) i to kłamało: strona zgody na ciasteczka też jest
-            // krótka, przez co zapasowa ścieżka „pierwsze trafienie” działała tam,
-            // gdzie ceny nie ma w ogóle.
+            // O trybie mówi dostawca (`targeted`), a nie długość ciała — strona
+            // zgody na ciasteczka też jest krótka, a ceny na niej nie ma.
             const M = this.MONEY;
 
             const rrpM = body.match(new RegExp(String.raw`(?:RRP|UVP|Statt|List Price):\s*` + M, 'i'));
@@ -150,17 +111,11 @@
             return [
                 {
                     /**
-                     * Cena odczytana z obrazka wykresu (8.4.0).
-                     *
-                     * Stoi PIERWSZA i jest włączona domyślnie: daje euro
-                     * z niemieckiej witryny, nie wymaga klucza i nie chodzi ani
-                     * na Amazona, ani przez obce proxy — tylko obrazek
-                     * z graph.keepa.com, który skrypt i tak umie wczytać od 8.2.0.
-                     *
-                     * Działa też w trybie 'graph': obrazek jest potrzebny w obu
-                     * przypadkach, różnica polega tylko na tym, czy się go
-                     * pokazuje. Dzięki temu dziennik wartości napełnia się
-                     * niezależnie od wybranego widoku.
+                     * Cena odczytana z obrazka wykresu — pierwsza i domyślna:
+                     * nie wymaga klucza ani obcego proxy, tylko obrazka
+                     * z graph.keepa.com. Działa też w trybie 'graph' (różnica
+                     * to tylko to, czy obrazek się pokazuje), więc dziennik
+                     * napełnia się niezależnie od widoku.
                      */
                     name: 'keepa-ocr',
                     get available() {
@@ -170,9 +125,7 @@
                         return pc.source === 'ocr' || pc.source === 'graph' || !!pc.logValues;
                     },
                     isImage: true,
-                    // Licznik prowadzi pętla w resolve(): dostawca nie powinien
-                    // wiedzieć, jak urządzona jest ewidencja limitów (w 8.4.0-8.5.0
-                    // liczył sam i jego zapytania trafiały DO OBU liczników naraz).
+                    // Liczniki zapytań prowadzi pętla w resolve(), nie dostawca.
                     async run(asin, signal, market) {
                         const d = await KeepaOCR.read(asin, market);
                         if (!d) throw new Error('cena na wykresie nierozpoznana');
@@ -180,11 +133,9 @@
                     },
                 },
                 {
-                    // Oficjalne API Keepa. CORS oddaje (sprawdzone: zapytanie
-                    // z obcej domeny zwróciło czytelny JSON), potrzebny jest
-                    // tylko płatny klucz. Gdy klucz się pojawi, stanie się to
-                    // najlepszym źródłem: dokładna cena w euro z niemieckiej
-                    // witryny, bez rozbierania szablonu strony.
+                    // Oficjalne API Keepa: oddaje CORS, wymaga płatnego klucza.
+                    // Z kluczem to najlepsze źródło — dokładna cena bez
+                    // rozbierania szablonu strony.
                     name: 'keepa-api',
                     get available() { return !!CONFIG.PRICE_KEEPA_API_KEY; },
                     async run(asin, signal) {
@@ -215,9 +166,8 @@
                                 'x-cache-tolerance': String(CONFIG.PRICE_JINA_CACHE_TOLERANCE_S),
                             },
                         });
-                        // 422 = takiego bloku na stronie nie ma (inny szablon albo
-                        // strona zgody na ciasteczka). To nie awaria łącza, tylko
-                        // powód, żeby spróbować następnego trybu.
+                        // 422 = bloku na stronie nie ma (inny szablon, strona
+                        // zgody na ciasteczka) — próbujemy następnego trybu.
                         if (r.status === 422) throw new Error('nie ma bloku z ceną');
                         if (!r.ok) throw new Error('HTTP ' + r.status);
                         return self.parseJina(await r.text(), true);
@@ -240,12 +190,9 @@
 
         // ---------------- sieć ----------------
         /**
-         * Przerwa między zapytaniami. 8.3.0: slot rezerwuje się SYNCHRONICZNIE,
-         * przed jakimkolwiek await.
-         *
-         * Wcześniej `lastRequestAt` zapisywało się PO śnie, więc dwa równoległe
-         * resolve() czytały tę samą wartość, spały tyle samo i wychodziły w sieć
-         * w tym samym momencie — przerwy nie było wcale.
+         * Przerwa między zapytaniami. Slot rezerwuje się synchronicznie, przed
+         * pierwszym await — inaczej dwa równoległe resolve() odczytałyby tę
+         * samą wartość i wyszły w sieć jednocześnie.
          */
         respectRateLimit() {
             const now = Date.now();
@@ -256,12 +203,8 @@
         },
 
         /**
-         * Limit czasu zapytania. 8.3.0: timer jest zdejmowany, a sam fetch
-         * przerywany.
-         *
-         * Wcześniej setTimeout nie był czyszczony przy powodzeniu — na każde
-         * zapytanie zostawał wiszący timer na 30 s — a „odpadły po timeoucie”
-         * fetch dalej ciągnął odpowiedź: nie było czym go anulować.
+         * Limit czasu zapytania: po przekroczeniu fetch jest przerywany
+         * (AbortController), a timer zdejmowany w każdym przypadku.
          *
          * @param {(signal: AbortSignal) => Promise} run
          */
@@ -276,9 +219,8 @@
         },
 
         /**
-         * Wynik rozbioru obrazka do wspólnej postaci. Waluta bierze się z TEGO
-         * rynku, z którego zdjęto cenę, a nie z wybranego: przy przeglądzie
-         * sklepów to są różne rzeczy.
+         * Wynik rozbioru obrazka do wspólnej postaci. Waluta pochodzi z rynku,
+         * z którego zdjęto cenę — przy przeglądzie sklepów to nie wybrany sklep.
          */
         buildOcrResult(d, market) {
             const key = market || marketplaceKey();
@@ -295,19 +237,7 @@
         },
 
         /**
-         * PRZEGLĄD POZOSTAŁYCH SKLEPÓW (8.6.0).
-         *
-         * Wywoływany tylko wtedy, gdy wybrany rynek ceny nie dał. Przechodzi
-         * pozostałe rynki z danymi Keepa w LOSOWEJ kolejności, z sekundową
-         * przerwą, i zwraca pierwszy sukces. Ustawienia sklepu nie rusza: to
-         * jednorazowa próba dla jednego przedmiotu, następny znów zacznie od
-         * wybranego.
-         *
-         * Losowa kolejność nie jest tu ozdobą: przy stałej kolejności całe
-         * pudło zmiany szłoby w jeden i ten sam rynek zapasowy.
-         */
-        /**
-         * KOLEJNOŚĆ PRZEGLĄDU (1.4.0): rynek z linku na stronie, potem Europa,
+         * Kolejność przeglądu sklepów: rynek z linku na stronie, potem Europa,
          * na końcu PRICE_FALLBACK_LAST — w obrębie grupy losowo. Bez wybranego
          * rynku (ten już odpowiedział „nie ma”) i bez rynków, dla których Keepa
          * nie ma danych.
@@ -334,6 +264,11 @@
                 .slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
         },
 
+        /**
+         * PRZEGLĄD POZOSTAŁYCH SKLEPÓW, gdy wybrany rynek ceny nie dał
+         * (zasady: CONFIG.PRICE_FALLBACK_*). Zwraca pierwszy sukces albo null.
+         * Wybrany sklep się nie zmienia — następny przedmiot zaczyna od niego.
+         */
         async tryOtherMarkets(asin) {
             const from = marketplaceKey();
             const hint = this.linkMarket && this.linkMarket.asin === asin ? this.linkMarket.key : null;
@@ -341,8 +276,8 @@
             Utils.log(`[CENA] ${asin}: na ${from} ceny nie ma, próbuję ${tries.join(', ')}`);
 
             for (const key of tries) {
-                // 9.2.0: moduł mógł zostać wyłączony w trakcie przeglądu —
-                // przerywamy natychmiast, zamiast dosyłać resztę zapytań.
+                // Moduł mógł zostać wyłączony w trakcie przeglądu — przerywamy
+                // natychmiast, zamiast dosyłać resztę zapytań.
                 if (!priceModuleOn()) break;
                 if (this.csp.img) break;
                 if (this.imageCount >= CONFIG.PRICE_MAX_IMAGE_REQUESTS) {
@@ -374,14 +309,10 @@
         },
 
         /**
-         * Zapytać ponownie o cenę produktu, który jest teraz na ekranie
-         * (po zmianie ustawień).
-         *
-         * Jeśli po tym ASIN już leci zapytanie, `inFlight` nowego nie przepuści
-         * — i bez notatki o zamiarze odświeżenie PRZEPADŁOBY PO CICHU. Łapie się
-         * to tak: przełączono sklep w trakcie zapytania i na ekranie zostałaby
-         * cena poprzedniego rynku. Dlatego stawiamy flagę, a resolve() po
-         * zakończeniu sam ponawia odświeżenie.
+         * Zapytać ponownie o cenę produktu na ekranie (po zmianie ustawień).
+         * Gdy po tym ASIN już leci zapytanie, `inFlight` nowego nie przepuści
+         * — wtedy zostaje flaga, a resolve() po zakończeniu sam ponawia
+         * odświeżenie (inaczej po zmianie sklepu została cena starego rynku).
          */
         _refreshPending: null,
         refresh() {
@@ -393,27 +324,15 @@
         },
 
         /**
-         * CENA PYTANA JEST NA NOWO PRZY KAŻDYM PRZEDMIOCIE (8.5.0).
+         * Pyta o cenę — na nowo przy każdym przedmiocie. Cena na Amazonie
+         * zmienia się w ciągu dnia, więc trwałej pamięci cen nie ma; `cache`
+         * to tylko ostatni wynik do rysowania.
          *
-         * W 8.4.0 stała tu pamięć na pięć dób i powtórne spotkanie ASIN brało
-         * cenę z magazynu. Okazało się to błędem: cena na Amazonie zmienia się
-         * w ciągu dnia — przy weryfikacji wzorca produkt podrożał z 9,20 do 9,22
-         * w kilka godzin — a więc i w obrębie jednej zmiany ten sam produkt może
-         * kosztować różnie. Dziennik nabity wczorajszymi cenami daje błędną sumę,
-         * a poznać tego po samej sumie nie sposób.
-         *
-         * Dlatego trwałej pamięci cen nie ma wcale. Mapa `cache` została, ale
-         * jest teraz po prostu OSTATNIM WYNIKIEM do rysowania, a nie powodem,
-         * żeby pominąć zapytanie: każdy nowy przedmiot idzie do sieci.
-         *
-         * Ochroną przed lawiną jest `inFlight`: póki zapytanie po tym ASIN leci,
-         * drugie nie wychodzi. Częstotliwość ogranicza sam cykl obsługi: check()
-         * rusza resolve() przy zmianie ASIN albo na początku nowego przedmiotu,
-         * a nie przy każdej mutacji DOM.
-         *
-         * 9.2.0: pierwszym warunkiem jest moduł cen. To jest ta sama bariera, co
-         * w KeepaOCR.loadImage(), postawiona świadomie dwa razy — na wejściu
-         * i na wyjściu.
+         * Przed lawiną chroni `inFlight` (drugie zapytanie po tym samym ASIN nie
+         * wychodzi), a częstotliwość ogranicza cykl obsługi: check() woła
+         * resolve() przy zmianie ASIN albo na początku przedmiotu, nie przy
+         * każdej mutacji DOM. Pierwszy warunek to moduł cen — ta sama bariera
+         * co w KeepaOCR.loadImage(), celowo na wejściu i na wyjściu.
          */
         async resolve(asin, { manual = false } = {}) {
             if (!asin) return null;
@@ -437,20 +356,13 @@
                 let limitHit = false;
                 for (const p of this.providers()) {
                     if (p.available === false) continue;
-                    // Zdarzenie securitypolicyviolation przylatuje asynchronicznie,
-                    // już po odmowie fetch, dlatego flagę sprawdzamy w każdym
-                    // obiegu: inaczej następny dostawca zdążyłby wejść w zawczasu
-                    // zablokowaną sieć.
+                    // securitypolicyviolation przychodzi asynchronicznie, po
+                    // odmowie fetch — flagę sprawdzamy w każdym obiegu, żeby
+                    // następny dostawca nie wchodził w zablokowaną sieć.
                     if (this.csp.net) break;
 
-                    /**
-                     * LIMIT SPRAWDZA SIĘ PO TYPIE DOSTAWCY (poprawka 8.6.0).
-                     *
-                     * Wcześniej wspólny licznik requestCount rósł u WSZYSTKICH
-                     * dostawców, łącznie z obrazkowym, a sprawdzenie stało JEDNO,
-                     * przed pętlą, przeciwko limitowi tekstowemu. Osobny licznik
-                     * obrazków, założony w 8.4.0, niczego przy tym nie rozstrzygał.
-                     */
+                    // Limit sprawdza się po typie dostawcy: obrazki i zapytania
+                    // tekstowe mają osobne liczniki i osobne limity.
                     const isImg = !!p.isImage;
                     const used = isImg ? this.imageCount : this.requestCount;
                     const cap  = isImg ? CONFIG.PRICE_MAX_IMAGE_REQUESTS
@@ -521,13 +433,10 @@
         },
 
         /**
-         * Zapamiętać wynik po ASIN, przycinając pamięć karty (9.1.0).
-         *
-         * Mapa trzyma kolejność wstawiania, więc „usuń i włóż od nowa” robi z niej
-         * LRU: najdawniej niespotykany ASIN ląduje pierwszym kluczem i wychodzi
-         * pierwszy. Do 9.1.0 Mapa rosła przez całą zmianę — przy tysiącu z górą
-         * przedmiotów to zbędne megabajty w pamięci karty, która i tak żyje
-         * dziesięć godzin bez przeładowania.
+         * Zapamiętać wynik po ASIN, przycinając pamięć karty do
+         * PRICE_CACHE_MAX_ENTRIES. Mapa trzyma kolejność wstawiania, więc
+         * „usuń i włóż od nowa” robi z niej LRU — bez przycinania rosłaby przez
+         * całą zmianę.
          */
         _remember(asin, result) {
             this.cache.delete(asin);
@@ -542,12 +451,12 @@
 
         // ---------------- szukanie ASIN ----------------
         /**
-         * Rynek z linku do produktu (1.4.0): `https://www.amazon.it/dp/…` → 'it'.
+         * Rynek z linku do produktu: `https://www.amazon.it/dp/…` → 'it'.
          *
          * Tylko hosty z CONFIG.MARKETPLACES, porównane w całości — link
          * względny, obcy host albo `amazon.it.evil.example` dają null. Wynik
-         * decyduje wyłącznie o KOLEJNOŚCI przeglądu rynków; adres zapytania
-         * dalej składa się z tablicy, a nie z tekstu strony.
+         * decyduje wyłącznie o kolejności przeglądu rynków; adres zapytania
+         * składa się z tablicy, a nie z tekstu strony.
          */
         marketFromHref(href) {
             const m = /^(?:https?:)?\/\/([^/?#:]+)/i.exec(String(href || ''));
@@ -576,24 +485,17 @@
                 }
             }
             this.linkMarket = null;
-            // Rezerwa po tekście — gdy linku na stronie nie ma wcale.
+            // Rezerwa po tekście, gdy linku do produktu nie ma.
             //
-            // Przyjmujemy ASIN TYLKO WTEDY, gdy jest na stronie jeden. Jeśli jest
-            // ich kilka, ustalić bieżącego po tekście się nie da: kolejność
-            // w dokumencie nic nie mówi o świeżości. Sprawdzone na stanowisku —
-            // najpierw brało się pierwsze trafienie i karta cofała się do
-            // najstarszego ASIN z dziennika, potem ostatnie — i czepiała się ASIN
-            // z cudzego panelu stanu. Oba warianty kłamały, więc przy
-            // niejednoznaczności uczciwiej nie zgadywać, tylko zostawić na karcie
-            // ostatnie, co było wiadome na pewno.
-            // Karta znika na czas odczytu, żeby nie podać nam WŁASNEGO ASIN —
-            // pokazuje przecież poprzedni przedmiot. Przywrócenie idzie przez
-            // `finally`: gdyby odczyt innerText rzucił (a robi to przy
-            // rozbieranym drzewie), karta zostałaby schowana na zawsze i wyglądało
-            // by to jak zepsuty skrypt, choć powodem byłby jeden wyjątek.
-            // Bez wartości początkowej: przypisanie w `try` jest jedyną drogą
-            // do użycia `text` niżej, więc `= ''` byłoby wartością, której nikt
-            // nigdy nie przeczyta (ESLint, no-useless-assignment).
+            // ASIN tylko wtedy, gdy na stronie jest jeden: przy kilku kolejność
+            // w dokumencie nie mówi, który jest bieżący (pierwszy to bywa stary
+            // wpis dziennika, ostatni — cudzy panel stanu). Przy
+            // niejednoznaczności karta zostaje przy ostatnim pewnym ASIN.
+            //
+            // Karta znika na czas odczytu, żeby nie podać własnego ASIN
+            // (pokazuje poprzedni przedmiot). Przywrócenie w `finally` —
+            // innerText rzuca przy rozbieranym drzewie, a karta nie może
+            // zostać schowana na zawsze.
             const prev = this.el && this.el.style.display;
             let text;
             try {
@@ -619,19 +521,15 @@
         /**
          * Czyta i rozbiera Content-Security-Policy strony.
          *
-         * CSP to IMIENNA LISTA HOSTÓW, a nie wyłącznik. Częsty błąd: „mój skrypt
-         * z githuba się załadował, czyli polityka jest miękka”. Nie — znaczy to
-         * tylko tyle, że dozwolony jest właśnie tamten host. U Wikipedii na
-         * przykład raw.githubusercontent.com na liście jest (potrzebny do
-         * gadżetów), a graph.keepa.com i r.jina.ai nie.
+         * CSP to imienna lista hostów, a nie wyłącznik: to, że skrypt
+         * z githuba się załadował, znaczy tylko, że dozwolony jest tamten host,
+         * a nie graph.keepa.com czy r.jina.ai.
          *
-         * Polityka częściej przychodzi nagłówkiem HTTP niż meta-tagiem, dlatego
-         * nagłówek doczytuje się zapytaniem o własną stronę: idzie ono na własny
-         * origin i przechodzi nawet przy `connect-src 'self'`.
-         *
-         * 9.2.0: to jedyne zapytanie w pliku, które nie zależy od modułu cen —
-         * bo nie wychodzi poza własną domenę i leci wyłącznie wtedy, gdy człowiek
-         * sam wywoła SH.cspReport() z konsoli.
+         * Polityka częściej przychodzi nagłówkiem HTTP niż meta-tagiem, więc
+         * nagłówek doczytuje się zapytaniem o własną stronę (własny origin,
+         * przechodzi nawet przy `connect-src 'self'`). To jedyne zapytanie
+         * niezależne od modułu cen: nie wychodzi poza własną domenę i leci tylko
+         * po ręcznym SH.cspReport().
          */
         async readCsp() {
             const meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
@@ -665,11 +563,8 @@
             if (!list) return 'dyrektywa nie ustawiona i default-src też — dozwolone';
             const used = parsed.directives[directive] ? directive : 'default-src (fallback)';
 
-            // 8.3.0: rozbiór źródeł według gramatyki CSP. Poprzednia wersja umiała
-            // tylko gołą nazwę hosta i kłamała na wszystkim innym: politykę typu
-            // `img-src https:` (dopuszcza dowolne źródło https) ogłaszała
-            // zakazującą, a `'none'` i `'self'` nie rozumiała w ogóle.
-            // Diagnostyka, której nie można wierzyć, jest gorsza niż jej brak.
+            // Rozbiór źródeł według gramatyki CSP: host (z maską *.),
+            // sam schemat (`https:`), 'none' i 'self'.
             if (list.some(s => s.toLowerCase() === "'none'")) {
                 return `ZABRONIONE (wg ${used}: 'none')`;
             }
@@ -696,32 +591,21 @@
 
         /**
          * Zmiana ASIN jest samodzielnym wyzwalaczem, niezależnym od cyklu
-         * przedmiotu.
+         * przedmiotu: przy porzuconym przedmiocie flaga itemInProgress zostaje
+         * podniesiona, armNewItem() nie zadziała, a karta i tak musi pokazać
+         * nowy produkt.
          *
-         * To ważne przy przerwanej obsłudze. Jeśli przedmiot porzucono, nie
-         * dochodząc do `Przypisz nowy`, flaga itemInProgress zostaje wzniesiona
-         * i następne `poniżej` NIE daje już przejścia false->true, czyli
-         * armNewItem() nie zadziała. Karta i tak musi pokazać nowy produkt,
-         * dlatego decyzja zapada po samym ASIN, a nie po stanie cyklu.
-         *
-         * awaiting potrzebny jest tylko do przypadku odwrotnego: ten sam ASIN
-         * pod rząd (klient zwrócił pięć jednakowych rzeczy) — tam ASIN się nie
-         * zmienia i przerysowanie wznosi właśnie początek nowego przedmiotu.
+         * `awaiting` obsługuje przypadek odwrotny: ten sam ASIN pod rząd (pięć
+         * jednakowych zwrotów) — ASIN się nie zmienia, więc o nowym zapytaniu
+         * decyduje początek nowego przedmiotu.
          */
         check() {
-            // 9.2.0: przy wyłączonym module nie ma nawet po co szukać ASIN —
-            // wynik i tak byłby użyty wyłącznie do zapytania sieciowego.
+            // Bez modułu cen ASIN nie jest potrzebny — służy tylko zapytaniu.
             if (!priceModuleOn()) return;
             const pc = store.localTabConfig.priceCard;
-            /**
-             * 8.5.0: kartę można SCHOWAĆ, nie wyłączając silnika.
-             *
-             * Potrzebne na zmiany, gdzie patrzeć na cenę nie ma po co, a znać
-             * sumę pod koniec zmiany warto: obrazek się ładuje, cena jest
-             * rozpoznawana, dziennik się napełnia, a na ekranie zostaje tylko
-             * linia sumy w oknie statystyk. Dlatego warunkiem wyjścia nie jest
-             * „karta niewidoczna”, tylko „i niewidoczna, i dziennik nieprowadzony”.
-             */
+            // Karta może być schowana przy prowadzonym dzienniku (widać tylko
+            // sumę w linii 6) — wychodzimy dopiero, gdy nie ma ani karty,
+            // ani dziennika.
             if (!pc.visible && !pc.logValues) return;
             const asin = this.detectAsin();
             if (!asin) return;
@@ -756,19 +640,11 @@
             });
 
             /**
-             * ASIN — JEDYNY KLIKALNY ELEMENT KARTY (8.5.0).
-             *
-             * Karta jest przezroczysta dla myszy: `pointer-events:none` na niej
-             * i na wszystkich dzieciach, żeby kliknięcia dochodziły do interfejsu
-             * T-REX. Dla linku robi się dokładnie jeden wyjątek —
-             * `pointer-events:auto` na samym elemencie. CSS na to pozwala:
-             * potomek może odzyskać zdarzenia, nawet jeśli przodek ich nie
-             * przyjmuje. Wszystko inne — cena, RRP, źródło, ramka wykresu —
-             * zostaje przezroczyste dla kliknięć.
-             *
-             * Link prowadzi do /dp/<ASIN> w TYM SAMYM sklepie, z którego wykresu
-             * wzięto cenę (patrz CONFIG.MARKETPLACES), inaczej sprawdzenie ceny
-             * oczami traci sens: otworzyłaby się witryna innego kraju.
+             * Kod produktu — jedyny element karty, który może łapać mysz.
+             * Karta i jej dzieci mają `pointer-events:none`; link odzyskuje
+             * zdarzenia własnym `pointer-events:auto`, gdy klikalność jest
+             * włączona (applyStyle). Prowadzi do /dp/<ASIN> w sklepie, z którego
+             * wzięto cenę.
              */
             this.asinEl = h('a', {
                 target: '_blank',
@@ -779,9 +655,8 @@
             this.rrpEl = h('div');
             this.srcEl = h('div');
             this.graphWrap = h('div');
-            // no-referrer jest obowiązkowy. Keepa oddaje obrazek tylko wtedy, gdy
-            // nagłówka Referer nie ma: z localhost i z każdą inną polityką
-            // przychodzi błąd, bez referera — 500x200 w 79 ms.
+            // no-referrer jest obowiązkowy: Keepa oddaje obrazek tylko bez
+            // nagłówka Referer.
             this.graphImg = h('img', { referrerPolicy: 'no-referrer' });
             this.graphWrap.appendChild(this.graphImg);
             this.el.append(this.asinEl, this.priceEl, this.rrpEl, this.srcEl, this.graphWrap);
@@ -805,9 +680,8 @@
                 this.applyStyle();   // link włącza się i wyłącza razem z trybem
             });
 
-            // Łapiemy blokady CSP po naszych własnych hostach.
-            // 8.3.0: referencja do obsługi jest zapamiętana — potrzebna
-            // w Main.teardown().
+            // Blokady CSP po naszych hostach. Referencja do obsługi jest
+            // zapamiętana dla Main.teardown().
             this.onCspViolation = (e) => {
                 const uri = String(e.blockedURI || '');
                 if (!/graph\.keepa\.com|r\.jina\.ai|api\.keepa\.com/.test(uri)) return;
@@ -827,8 +701,7 @@
             };
             document.addEventListener('securitypolicyviolation', this.onCspViolation);
 
-            // 8.3.0: włączono/wyłączono źródło tekstowe — wpisy 'off' w pamięci
-            // przestały być prawdziwe.
+            // Zmieniło się źródło ceny — wpisy 'off' w pamięci przestały być prawdziwe.
             bus.on('store:changed:localTabConfig.priceCard.source', () => this.refresh());
             bus.on('store:changed:localTabConfig.priceCard.logValues', () => this.refresh());
             // Zmiana sklepu zmienia i wykres, i walutę — pytamy ponownie.
@@ -838,19 +711,16 @@
             bus.on('store:changed:uiFlags.itemInProgress', (d) => { if (d.value === true) this.armNewItem(); });
             // Stronę skanuje AutoTrigger, osobnego obserwatora nie zakładamy.
             bus.on('page:scanned', () => this.check());
-            // 8.3.0: karta zależy tylko od własnych ustawień i języka.
+            // Karta zależy tylko od własnych ustawień i języka.
             onStorePaths(['localTabConfig.priceCard', 'userConfig.language'], () => this.applyStyle());
 
             this.check();
         },
 
         /**
-         * Kolor WSZYSTKICH tekstów karty — jedna wartość na całą kartę, dokładnie
-         * jak przy liniach okna statystyk.
-         *
-         * Liczony przy każdym applyStyle(), a nie zapamiętywany: applyStyle
-         * wywołuje się po zmianie ustawień karty, więc nowy kolor ma być widoczny
-         * od razu, a nie po przeładowaniu strony.
+         * Kolor wszystkich tekstów karty — jedna wartość na kartę, jak w liniach
+         * okna. Liczony przy każdym applyStyle(), więc zmiana w panelu działa
+         * od razu.
          */
         textColor() {
             const pc = store.localTabConfig.priceCard;
@@ -862,23 +732,17 @@
             if (!this.el) return;
             const pc = store.localTabConfig.priceCard;
 
-            // 9.2.0: przy wyłączonym module karty nie ma na ekranie w ogóle —
-            // pokazywałaby wyłącznie „—”, sugerując, że coś się liczy w tle.
+            // Bez modułu cen karty nie ma na ekranie — sama „—” sugerowałaby,
+            // że coś liczy się w tle.
             this.el.style.display = (pc.visible && priceModuleOn()) ? 'block' : 'none';
             this.el.style.width = `${Utils.clampNum(pc.width, 120, 1600, 280)}px`;
             this.el.style.left = pc.position.left || '14px';
             if (pc.position.top) { this.el.style.top = pc.position.top; this.el.style.bottom = 'auto'; }
             else { this.el.style.top = 'auto'; this.el.style.bottom = '14px'; }
 
-            /**
-             * TŁO, RAMKA I CIEŃ IDĄ RAZEM (1.0.0).
-             *
-             * Przy przezroczystym tle — a takie jest teraz domyślne — ramka
-             * i cień zostawiłyby na ekranie pustą obwódkę wiszącą nad stroną:
-             * najgorsze z obu światów. Dlatego wszystkie trzy zależą od jednej
-             * wartości: jest tło, jest oprawa; nie ma tła, zostaje sam tekst,
-             * dokładnie jak w liniach okna statystyk.
-             */
+            // Tło, ramka i cień idą razem: przy przezroczystym tle ramka i cień
+            // zostawiłyby pustą obwódkę nad stroną. Nie ma tła — zostaje sam
+            // tekst, jak w liniach okna.
             const bgAlpha = Utils.clampNum(pc.bgAlpha, 0, 100, 0);
             const rgb = Utils.hexToRgb(pc.bgColorHex);
             this.el.style.background = bgAlpha > 0 ? `rgba(${rgb}, ${bgAlpha / 100})` : 'transparent';
@@ -890,19 +754,13 @@
             this.el.style.fontFamily =
                 CONFIG.FONT_FAMILY_OPTIONS[pc.fontFamily] || CONFIG.FONT_FAMILY_OPTIONS.default;
 
-            // WAŻNE: skrót `font:` wymaga podania rodziny, a `inherit` jest w nim
-            // niedopuszczalny — przeglądarka po cichu wyrzuca CAŁĄ regułę.
-            // Złapane na stanowisku: cena rysowała się 14px/400 zamiast 30px/800.
-            // Dlatego właściwości ustawia się osobno.
+            // Właściwości osobno, nie skrótem `font:` — skrót wymaga rodziny,
+            // nie przyjmuje `inherit` i przeglądarka po cichu wyrzuca całą regułę.
             const fs = Utils.clampNum(pc.fontSize, 10, 96, 16);
             const px = (k) => Math.max(9, Math.round(fs * k)) + 'px';
 
-            /**
-             * Cień tekstu jest tu obowiązkowy właśnie DLATEGO, że tło bywa
-             * przezroczyste: jasny tekst na jasnym fragmencie cudzej strony
-             * przestaje być czytelny. Jest słaby — ma odciąć literę od tła,
-             * a nie rysować się sam.
-             */
+            // Słaby cień tekstu, bo tło bywa przezroczyste: jasny tekst na
+            // jasnym fragmencie strony przestałby być czytelny.
             const SHADOW = 'text-shadow:0 1px 3px rgba(0,0,0,.6)';
             const COLOR = 'color:' + this.textColor();
 
@@ -910,18 +768,9 @@
             // Przy włączonym przeciąganiu jest zdejmowany: wtedy ciągnie się całą
             // kartę, a kliknięcie w link wyprowadziłoby ze strony w środku gestu.
             const dragging = store.uiFlags.isPriceCardDragging;
-            /**
-             * KLIKALNOŚĆ KODU PRODUKTU (1.0.0: domyślnie WYŁĄCZONA).
-             *
-             * `pointer-events:auto` na linku było jedynym wyjątkiem od
-             * przezroczystej karty, czyli jedynym miejscem, w którym karta mogła
-             * przykryć przycisk T-REX. Skoro jej zadaniem jest nie przeszkadzać,
-             * wyjątek włącza się ręcznie.
-             *
-             * Przy przeciąganiu link jest zdejmowany niezależnie od ustawienia:
-             * wtedy ciągnie się całą kartę, a kliknięcie wyprowadziłoby ze strony
-             * w środku gestu.
-             */
+            // Klikalność kodu produktu (domyślnie wyłączona — to jedyne miejsce,
+            // w którym karta mogłaby przykryć przycisk T-REX). Przy przeciąganiu
+            // link jest zdejmowany niezależnie od ustawienia.
             const linkOn = pc.asinClickable === true && !dragging;
             this.asinEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(0.8), 'line-height:1.3',
@@ -934,8 +783,7 @@
                 SHADOW,
             ].join(';');
 
-            // Cena: ta sama grubość, co w liniach okna statystyk. Tłuste 800
-            // przy przezroczystym tle wyglądało jak baner, a nie jak podpowiedź.
+            // Cena tą samą grubością co linie okna — to podpowiedź, nie baner.
             this.priceEl.style.cssText = [
                 'font-weight:400', 'font-size:' + px(1), 'line-height:1.25',
                 'margin:' + (bgAlpha > 0 ? '4px 0 2px' : '1px 0 0'),
@@ -953,18 +801,10 @@
                 SHADOW,
             ].join(';');
 
-            // Dwa różne tryby wyświetlania wykresu.
-            //
-            // PRZYCIĘCIE (domyślnie): obrazek NIE jest skalowany — wychodzi
-            // w natywnych 500x200 i przesuwa się w lewo o brakującą szerokość.
-            // Czyli zwężenie karty odcina wykres z lewej, a nie ściska go.
-            // Wysokość zostaje stała, a tekst legendy piksel w piksel — właśnie
-            // tak cena czyta się najlepiej. Legenda Keepa jest narysowana
-            // w prawym górnym rogu, więc widać ją nawet wtedy, gdy z wykresu
-            // zostaje jedna trzecia szerokości.
-            //
-            // BEZ PRZYCIĘCIA: wykres wpisuje się w szerokość karty w całości,
-            // proporcjonalnie się zmniejszając.
+            // Tryby wykresu. Przycięcie: obrazek w natywnych 500x200 przesuwa
+            // się w lewo, więc zwężenie karty odcina wykres z lewej, a legenda
+            // (prawy górny róg) zostaje piksel w piksel. Bez przycięcia: cały
+            // wykres wpisany w szerokość karty.
             const inner = Utils.clampNum(pc.width, 120, 1600, 280) - 28;
             const W = CONFIG.PRICE_KEEPA_PNG_W, H = CONFIG.PRICE_KEEPA_PNG_H;
             const frame = (w, h) => `overflow:hidden;width:${w}px;height:${h}px;margin-top:8px;`
@@ -997,10 +837,9 @@
                 this.graphImg.style.cssText =
                     `width:${inner}px;height:auto;margin-left:0;margin-top:0;display:block;max-width:none`;
             }
-            // 8.4.0: ramka wykresu widoczna TYLKO w trybie 'graph'.
-            // W trybie 'ocr' obrazek i tak się ładuje — czyta się z niego cenę —
-            // ale żyje poza dokumentem, w offscreen-canvas, i na ekran nie trafia.
-            // Obrazek tnie CSP — pustej ramki nie pokazujemy wcale.
+            // Ramka wykresu tylko w trybie 'graph'. W trybie 'ocr' obrazek żyje
+            // poza dokumentem (canvas) i na ekran nie trafia. Przy blokadzie
+            // CSP pustej ramki nie pokazujemy.
             this.graphWrap.style.display =
                 (pc.source === 'graph' && pc.showGraph && !this.csp.img && priceModuleOn()) ? 'block' : 'none';
 
@@ -1008,40 +847,29 @@
         },
 
         /**
-         * DWIE ROLE DRUGIEGO I TRZECIEGO WIERSZA — i zasada, która je rozdziela.
-         *
-         * Wiersz RRP i wiersz źródła noszą raz informację dodatkową (cena
-         * katalogowa, nazwa dostawcy, czas), a raz POWÓD, DLA KTÓREGO CENY NIE MA
-         * (blokada CSP, wyczerpany limit, źródła odpracowały bez wyniku).
-         *
-         * Wyłączniki `showRrp` i `showSource` dotyczą WYŁĄCZNIE pierwszej roli.
-         * Komunikat o awarii pokazuje się zawsze: karta, która przy zablokowanym
-         * CSP pokazuje samą kreskę bez słowa wyjaśnienia, jest nie do odróżnienia
-         * od zepsutego skryptu — a to dokładnie ten rodzaj cichej awarii, którego
-         * ten projekt nie toleruje nigdzie indziej.
-         *
-         * Stany PRZEJŚCIOWE (trwa zapytanie, trwa przegląd sklepów) idą pod
-         * wyłącznikami, bo awarią nie są, a przy karcie jednolinijkowej migałyby
-         * drugim wierszem przy każdym przedmiocie.
-         *
-         * Pomocnik poniżej NIE zna wyłączników i to jest celowe: decyzję
-         * podejmuje wywołujący, bo tylko on wie, czy wpisuje informację, czy
-         * powód awarii. Tutaj zostaje jedna reguła — pusty tekst znaczy „schowaj
-         * wiersz”, żeby po wyłączeniu nie zostawała pusta linijka odsuwająca
-         * resztę karty.
-         *
-         * @param {HTMLElement} el   wiersz do zapisania
-         * @param {string} text      treść; pusta chowa wiersz
-         */
-        /**
          * Tekst ceny na karcie: w walucie wyświetlania, jeśli ją wybrano,
-         * inaczej tak, jak przyszła ze sklepu (1.4.0). Sam obiekt ceny się nie
-         * zmienia — do dziennika idzie kwota i waluta sklepu, a do sumy euro.
+         * inaczej tak, jak przyszła ze sklepu. Obiekt ceny się nie zmienia —
+         * do dziennika idzie kwota i waluta sklepu, do sumy euro.
          */
         priceText(p) {
             return FxRates.display(p.value, p.currency) || p.text;
         },
 
+        /**
+         * Wpisuje tekst w wiersz karty; pusty tekst chowa wiersz, żeby nie
+         * zostawała pusta linijka.
+         *
+         * Wiersz RRP i wiersz źródła niosą raz informację dodatkową (cena
+         * katalogowa, dostawca, czas), a raz powód braku ceny (CSP, limit,
+         * brak wyniku). Wyłączniki `showRrp` i `showSource` dotyczą tylko
+         * pierwszej roli — powód awarii pokazuje się zawsze, bo karta z samą
+         * kreską wygląda jak zepsuty skrypt. Stany przejściowe (zapytanie,
+         * przegląd sklepów) idą pod wyłącznikami, żeby nie migać drugim
+         * wierszem przy każdym przedmiocie. O roli decyduje wywołujący.
+         *
+         * @param {HTMLElement} el   wiersz do zapisania
+         * @param {string} text      treść; pusta chowa wiersz
+         */
         setLine(el, text) {
             el.textContent = text || '';
             el.style.display = text ? 'block' : 'none';
@@ -1063,25 +891,22 @@
             }
 
             this.asinEl.textContent = `${asin}`;
-            // Link prowadzi na TEN rynek, z którego zdjęto cenę. Jeśli znaleziono
-            // ją przeglądem sklepów, to nie jest wybrany sklep i prowadzić do
-            // wybranego nie wolno: człowiek otworzyłby amazon.de i nie zobaczył
-            // tam pokazanej ceny.
+            // Link prowadzi na rynek, z którego zdjęto cenę — po przeglądzie
+            // sklepów to nie wybrany sklep.
             const found = this.cache.get(asin);
             if (pc.asinClickable === true) {
                 const url = productUrl(asin, found && found.market);
                 this.asinEl.setAttribute('href', url);
                 this.asinEl.title = url;
             } else {
-                // Przy wyłączonej klikalności kod produktu jest ZWYKŁYM TEKSTEM.
-                // Samo `pointer-events:none` by nie wystarczyło: element z href
-                // zostaje w kolejności tabulacji i otwiera się środkowym
-                // przyciskiem myszy. Bez href nie ma czego otworzyć.
+                // Bez klikalności kod jest zwykłym tekstem, bez href: element
+                // z href zostaje w kolejności tabulacji i otwiera się środkowym
+                // przyciskiem, nawet przy `pointer-events:none`.
                 this.asinEl.removeAttribute('href');
                 this.asinEl.title = '';
             }
-            // !csp.img jest obowiązkowy także tutaj: applyStyle() ramkę chowa,
-            // a render() wywołuje się później i bez tego sprawdzenia przywracałby ją.
+            // !csp.img także tutaj — applyStyle() chowa ramkę, a render()
+            // idzie później i przywróciłby ją.
             if (pc.source === 'graph' && pc.showGraph && !this.csp.img && priceModuleOn()) {
                 this.graphWrap.style.display = 'block';
                 const want = this.keepaUrl(asin, found && found.market);
@@ -1089,10 +914,8 @@
             }
 
             if (this.inFlight.has(asin)) {
-                // 8.5.0: cena pytana jest na nowo przy każdym przedmiocie, więc
-                // „…” zamiast liczby migałoby bez przerwy. Jeśli poprzedni wynik
-                // po tym samym ASIN jest — pokazujemy go przygaszony, a w linii
-                // źródła piszemy, że trwa odświeżanie.
+                // Póki trwa zapytanie, zostaje poprzedni wynik po tym ASIN —
+                // „…” migałoby przy każdym przedmiocie.
                 const prev = this.cache.get(asin);
                 this.priceEl.style.display = 'block';
                 this.priceEl.textContent =
@@ -1110,18 +933,9 @@
 
             const r = this.cache.get(asin);
 
-            // KOLEJNOŚĆ GAŁĘZI JEST WAŻNA (8.3.0).
-            //
-            // W 8.2.0 sprawdzenie CSP stało WYŻEJ niż rozbiór statusu i było
-            // zapisane jako `r.status === 'csp' || this.csp.img || this.csp.net`.
-            // Przez to wystarczyła blokada OBRAZKA (img-src), żeby otrzymana już
-            // cena była wyrzucana, a zamiast niej pokazywało się „—” z komunikatem
-            // o zablokowanym wykresie. Kombinacja całkiem realna: CSP to imienna
-            // lista hostów i connect-src spokojnie przepuszcza r.jina.ai, podczas
-            // gdy img-src tnie graph.keepa.com.
-            //
-            // Teraz najpierw patrzymy, czy cena jest, a dopiero potem tłumaczymy,
-            // czemu jej nie ma.
+            // Kolejność gałęzi jest ważna: najpierw „czy cena jest”, dopiero
+            // potem „dlaczego jej nie ma”. Blokada samego obrazka (img-src) nie
+            // może wyrzucić ceny otrzymanej z r.jina.ai (connect-src).
 
             // 1. Cena jest — pokazujemy, cokolwiek blokowałaby polityka.
             if (r && r.status === 'ok') {
@@ -1129,10 +943,9 @@
                 this.priceEl.textContent = pc.showPrice && price ? this.priceText(price) : '';
                 this.priceEl.style.display = pc.showPrice ? 'block' : 'none';
 
-                // Druga linia: albo prawdziwa RRP (daje ją tylko jina/keepa-api),
-                // albo druga seria wykresu („Neu 11.49”). Przekreślenie stawia się
-                // TYLKO przy RRP: przekreślona cena znaczy „stara”, a wieszanie
-                // tego na żywej ofercie byłoby wprost dezinformacją.
+                // Druga linia: RRP (tylko z jina/keepa-api) albo druga seria
+                // wykresu („Neu 11.49”). Przekreślenie tylko przy RRP —
+                // przekreślona cena znaczy „stara”, nie żywa oferta.
                 if (pc.showRrp && r.rrp) {
                     this.rrpEl.textContent = `${I18n.get('priceCard_rrp')} ${this.priceText(r.rrp)}`;
                     this.rrpEl.style.textDecoration = 'line-through';
@@ -1147,12 +960,8 @@
                     this.rrpEl.style.display = pc.showRrp ? 'block' : 'none';
                 }
 
-                /**
-                 * Cena z OBCEGO rynku musi być widoczna jako taka i dlatego ta
-                 * jedna adnotacja NIE podlega wyłącznikowi źródła: inaczej suma
-                 * zmiany niepostrzeżenie zmieszałaby waluty i witryny, a przy
-                 * dwóch rynkach w euro nie widać tego nawet po samej kwocie.
-                 */
+                // Adnotacja „z innego sklepu” nie podlega wyłącznikowi źródła —
+                // przy dwóch rynkach w euro nie widać różnicy nawet po kwocie.
                 const fromOther = (r.fallback && r.market)
                     ? I18n.get('priceCard_foundIn', { host: marketplace(r.market).host.replace(/^www\./, '') })
                     : '';
@@ -1162,9 +971,7 @@
                 // źródła — dla kogoś, kto porównuje kartę ze stroną Amazonu.
                 if (pc.showSource && price && this.priceText(price).startsWith('≈')) bits.push(price.text);
                 if (fromOther) bits.push(fromOther);
-                // Czas ma własny wyłącznik i działa niezależnie od nazwy źródła:
-                // przełącznik, który nic nie robi, dopóki nie włączy się innego,
-                // jest gorszy niż brak przełącznika.
+                // Czas ma własny wyłącznik, niezależny od nazwy źródła.
                 if (pc.showLatency) bits.push(`${r.ms}ms`);
                 if (pc.showSource && r.stale) bits.push(I18n.get('priceCard_cached'));
                 this.setLine(this.srcEl, bits.join(' · '));

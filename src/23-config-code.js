@@ -1,5 +1,5 @@
     // ==========================================
-    // 10. KOD KONFIGURACJI (1.2.0)
+    // 10. KOD KONFIGURACJI
     // ==========================================
     /**
      * PRZENOSZENIE USTAWIEŃ JEDNYM CIĄGIEM SZESNASTKOWYM.
@@ -10,47 +10,27 @@
      * albo od razu w zakładce przeglądarki, doklejony za wywołaniem skryptu.
      *
      * =====================================================================
-     * DLACZEGO TO NIE JEST STAŁY UKŁAD BITÓW
+     * FORMAT: SAMOOPISUJĄCE SIĘ REKORDY, A NIE STAŁY UKŁAD BITÓW
      * =====================================================================
-     * Pomysł „każde ustawienie dostaje swoje bity pod stałym adresem” jest
-     * kuszący i działa dokładnie do pierwszego wydania, w którym coś się zmieni.
-     * Załamuje się na trzech rzeczach naraz:
-     *
-     *   1. STARY SKRYPT, NOWY KOD. Doszło ustawienie, więc ciąg jest dłuższy.
-     *      Stary skrypt nie wie, gdzie kończy się to, co zna — bo przy stałym
-     *      układzie długość pola jest wiedzą, a nie częścią danych. Musi odrzucić
-     *      cały kod.
-     *   2. NOWY SKRYPT, STARY KOD. Trzeba pamiętać KAŻDY historyczny układ bitów
-     *      i wybierać go po numerze wersji. To rośnie w nieskończoność.
-     *   3. CZŁOWIEK. Przydzielanie offsetów bitowych ręcznie to praca, w której
-     *      pomyłka jest cicha: kod się wczyta, tylko ustawienia wylądują nie tam.
-     *
-     * Dlatego ciąg jest zbiorem SAMOOPISUJĄCYCH SIĘ REKORDÓW, a nie mapą bitów:
-     *
      *      [id: 2 bajty][długość: 1 bajt][wartość: tyle bajtów, ile podano]
      *
-     * Długość w każdym rekordzie załatwia punkt 1: nieznany rekord da się
-     * PRZESKOCZYĆ, nie rozumiejąc go. Stały, nigdy nierecyklingowany numer `id`
-     * załatwia punkt 2: nowy skrypt rozpoznaje stare rekordy po numerze, a nie
-     * po pozycji. Rejestr poniżej załatwia punkt 3: numer, ścieżka i typ stoją
-     * w jednej linii, obok siebie.
+     *   - długość w rekordzie pozwala przeskoczyć rekord nieznany, więc kod
+     *     z nowszego wydania wczyta się w starszym skrypcie;
+     *   - stały, nigdy nieużywany ponownie numer `id` pozwala nowemu skryptowi
+     *     rozpoznać stare rekordy bez pamiętania historycznych układów;
+     *   - numer, ścieżka i typ stoją w jednej linii rejestru, więc nie ma
+     *     ręcznego przydzielania offsetów, w którym pomyłka byłaby cicha.
      *
-     * To jest ten sam pomysł, na którym stoi protobuf, sprowadzony do rozmiaru
-     * tego projektu. Wejście i wyjście pozostaje takie, jak miało być: ciąg
+     * Ten sam pomysł co protobuf, w rozmiarze tego projektu. Na zewnątrz: ciąg
      * szesnastkowy, wielkość liter bez znaczenia.
      *
      * =====================================================================
      * KOD ZAWIERA TYLKO TO, CO RÓŻNI SIĘ OD WARTOŚCI DOMYŚLNYCH
      * =====================================================================
-     * I to jest druga decyzja, ważniejsza od formatu.
-     *
-     * Kod jest ŁATKĄ, a nie zdjęciem całej konfiguracji. Kto zmienił trzy rzeczy,
-     * ma w kodzie trzy rekordy. Skutek, dla którego to robimy, jest jednak inny
-     * niż długość ciągu: gdy w następnym wydaniu zmieni się wartość domyślna
-     * czegoś, czego ten człowiek nigdy nie ruszał, on tę nową wartość DOSTANIE.
-     * Przy zdjęciu całej konfiguracji zostałby na zawsze przy starych domyślnych,
-     * nie wiedząc o tym — dokładnie tak, jak dzieje się to z zapisaną
-     * konfiguracją w localStorage.
+     * Kod jest łatką, a nie zdjęciem konfiguracji: kto zmienił trzy rzeczy,
+     * ma trzy rekordy. Gdy w nowym wydaniu zmieni się wartość domyślna czegoś,
+     * czego człowiek nie ruszał, dostanie on nową wartość — przy zdjęciu
+     * całości zostałby na zawsze przy starej.
      *
      * =====================================================================
      * BEZPIECZEŃSTWO
@@ -67,22 +47,15 @@
         FORMAT: 0x01,
 
         /**
-         * KOD PODSTAWIONY PRZED URUCHOMIENIEM.
+         * Nazwa zmiennej okna z kodem podstawionym przed uruchomieniem.
          *
-         * Zakładka z ustawieniami (patrz `link`) najpierw wpisuje kod do okna
-         * pod tę nazwę, a dopiero potem ściąga i wykonuje plik. Dzięki temu
-         * ustawienia wchodzą WEWNĄTRZ `Main.init()`, zaraz po wczytaniu stanu
-         * z magazynu — czyli przed pierwszym rysowaniem okna.
+         * Zakładka (link) najpierw wpisuje tu kod, a dopiero potem pobiera
+         * i wykonuje plik — ustawienia wchodzą wewnątrz Main.init(), zaraz po
+         * wczytaniu magazynu i przed pierwszym rysowaniem okna. Wywołanie
+         * `SH.config` po pliku mogłoby trafić przed powstaniem `SH` (init czeka
+         * na DOMContentLoaded), a okno mrugnęłoby wyglądem domyślnym.
          *
-         * Wcześniejszy pomysł — wykonać plik, a zaraz za nim, w tej samej linii,
-         * `SH.config('0x…')` — miał dwie dziury. Po pierwsze `SH` powstaje
-         * dopiero w `Main.init()`, a ten czeka na `DOMContentLoaded`, gdy strona
-         * jeszcze się wczytuje: wywołanie tuż po wykonaniu pliku trafiało wtedy
-         * w niebyt. Po drugie nawet przy
-         * gotowej stronie okno zdążyło się narysować ustawieniami domyślnymi
-         * i dopiero potem przeskakiwało na swoje — widoczne mrugnięcie.
-         *
-         * Nazwa jest długa i z przedrostkiem skryptu, bo to cudza strona.
+         * Nazwa długa, z przedrostkiem skryptu — to cudza strona.
          */
         BOOT_GLOBAL: CONFIG.SCRIPT_ID_PREFIX + 'CONFIG_CODE',
 
@@ -109,17 +82,14 @@
          *   0x0200  priceCard.moduleEnabled — główny wyłącznik sieci
          *   0x0202  priceCard.source        — dokąd idą zapytania (np. r.jina.ai)
          *
-         * 1.3.3 (audyt B3): kod ustawień krąży po czatach i każdy może go złożyć
-         * ręcznie — suma kontrolna niczego nie uwierzytelnia. Z tymi dwoma
-         * numerami kod z czatu włączał moduł cen i wysyłał ASIN każdego
-         * przedmiotu do obcego serwisu, a w zakładce robił to przed pierwszym
-         * narysowaniem okna, czyli bez śladu. To łamało główną właściwość
-         * produktu: po wklejeniu skrypt nie wychodzi do sieci, dopóki człowiek
-         * SAM tego nie włączy. CZY i DOKĄD skrypt wychodzi do sieci, rozstrzyga
-         * się teraz tylko w panelu, ręką.
+         * Kod ustawień krąży po czatach i każdy może go złożyć ręcznie — suma
+         * kontrolna niczego nie uwierzytelnia. Kod nie może więc decydować, czy
+         * i dokąd skrypt wychodzi do sieci: z tymi numerami włączałby moduł cen
+         * i wysyłał ASIN-y do obcego serwisu, w zakładce jeszcze przed
+         * narysowaniem okna. Rozstrzyga się to tylko w panelu, ręką.
          *
-         * Stare kody z tymi numerami dalej się wczytują — te rekordy są po
-         * prostu pomijane i liczone w sprawozdaniu jako wycofane.
+         * Kody z tymi numerami nadal się wczytują — te rekordy są pomijane
+         * i liczone w sprawozdaniu jako wycofane.
          */
         RETIRED_IDS: [0x0200, 0x0202],
 
@@ -134,10 +104,9 @@
          *      0x0200–0x02FF   karta ceny
          *      0x0300–0x03FF   ustawienia wspólne dla wszystkich kart
          *
-         * ZASADA, KTÓREJ NIE WOLNO ZŁAMAĆ: numer raz wydany nie wraca do obiegu.
-         * Ustawienie, które znika ze skryptu, znika też z tego rejestru — ale
-         * jego numer zostaje spalony na zawsze, bo u kogoś w kieszeni leży kod,
-         * w którym ten numer coś znaczy.
+         * Numer raz wydany nie wraca do obiegu. Ustawienie usunięte ze skryptu
+         * znika z rejestru, ale jego numer zostaje spalony (RETIRED_IDS), bo
+         * u kogoś leży kod, w którym ten numer coś znaczy.
          *
          * `root` mówi, do której gałęzi stanu trafia wartość: 'local' to
          * ustawienia tej karty, 'user' — wspólne dla wszystkich.
@@ -153,10 +122,10 @@
             { id: 0x0007, root: 'local', path: 'pageOverlayOpacity', type: 'u8', min: 0, max: 100 },
             { id: 0x0008, root: 'local', path: 'pageIndicatorTextVisible', type: 'bool' },
 
-            // --- linie 1–7 ---
+            // --- linie 1–8 ---
             ...['line1_currentTab', 'line2_globalSummary', 'line3_shiftInfo', 'line4_lunchInfo',
                 'line5_realTimeClock', 'line6_valueSum', 'line7_compact',
-                // 1.3.0 — linia 8 dostaje blok 0x0170, kolejny wolny po linii 7.
+                // Linia 8 — blok 0x0170, kolejny po linii 7.
                 'line8_taskInfo'].flatMap((key, i) => {
                 const base = 0x0100 + i * 0x10;
                 return [
@@ -172,12 +141,12 @@
             { id: 0x0115, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.CRET', type: 'color' },
             { id: 0x0116, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.REFURB', type: 'color' },
             { id: 0x0117, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.WHD', type: 'color' },
-            // 1.3.2 — czwarty, ręczny dział. Numery kolejne i nigdy wcześniej
-            // nie wydane, więc stare kody nie zmieniają znaczenia.
+            // Dział ręczny OTHER — numery dotąd niewydane, więc starsze kody
+            // nie zmieniają znaczenia.
             { id: 0x0118, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.OTHER', type: 'color' },
 
             // --- karta ceny ---
-            // 0x0200 i 0x0202 wycofane w 1.3.3 — patrz RETIRED_IDS niżej.
+            // 0x0200 i 0x0202 są wycofane — patrz RETIRED_IDS.
             { id: 0x0201, root: 'local', path: 'priceCard.visible', type: 'bool' },
             { id: 0x0203, root: 'local', path: 'priceCard.logValues', type: 'bool' },
             { id: 0x0204, root: 'local', path: 'priceCard.marketFallback', type: 'bool' },
@@ -455,15 +424,10 @@
          * jedyne miejsce w całym pliku ze słowem `eval`.
          */
         link() {
-            // Kolejność w tym ciągu jest całym mechanizmem: najpierw kod trafia
-            // do okna, potem rusza pobieranie pliku. Skrypt zastaje go gotowego
-            // i nakłada sam, w środku uruchomienia — bez mrugnięcia domyślnym
-            // wyglądem i bez zgadywania, czy `SH` zdążyło już powstać.
-            //
-            // 1.3.3 (audyt A3): `r.ok` i `catch`. Bez nich odpowiedź 404/503
-            // szła do wykonania jako skrypt („404: Not Found” → SyntaxError),
-            // a każdy błąd ginął w odrzuconej obietnicy: człowiek klikał i nic
-            // się nie działo, bez słowa dlaczego.
+            // Kolejność jest mechanizmem: najpierw kod trafia do okna, potem
+            // rusza pobieranie pliku, który zastaje go gotowego (BOOT_VAR).
+            // `r.ok` nie puszcza strony błędu 404/503 do wykonania, a `catch`
+            // pokazuje przyczynę zamiast milczeć po kliknięciu.
             // eslint-disable-next-line no-script-url -- tekst zakładki, patrz wyżej
             return "javascript:(async()=>{try{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
                 + "';const r=await fetch('" + CONFIG.RELEASE_URL

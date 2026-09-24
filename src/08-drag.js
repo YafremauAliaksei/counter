@@ -1,13 +1,9 @@
     /**
-     * Fabryka przeciągania.
+     * Fabryka przeciągania — wspólna dla okna statystyk i karty ceny.
      *
-     * W 8.1.0 był to jeden na sztywno zapisany obiekt dla okna statystyk.
-     * W 8.2.0 pojawił się drugi przeciągalny panel — karta ceny — więc logika
-     * została wyniesiona do fabryki zamiast kopiowania.
-     *
-     * Oba panele w normalnym stanie są przezroczyste dla myszy
-     * (pointer-events:none), dlatego przeciąganie włącza się flagą z ustawień:
-     * dopiero wtedy element zaczyna przyjmować zdarzenia.
+     * Oba panele są normalnie przezroczyste dla myszy (pointer-events:none),
+     * więc przeciąganie włącza się flagą z ustawień; dopiero wtedy element
+     * przyjmuje zdarzenia. Po puszczeniu flaga gaśnie sama.
      */
     function createDragger({ elementId, getFlag, setFlag, savePosition }) {
         return {

@@ -10,6 +10,14 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Zmieniono
+
+- **Komentarze w kodzie opisują kod, a nie jego historię.** Wszystkie moduły `src/` i `build.js` przepisane: komentarz mówi w czasie teraźniejszym, co robi fragment i dlaczego tak — powody decyzji i pułapki zostały, kronika wersji („w 8.3.0 było…”, „1.3.3, audyt D7”) i spis zmian 8.x–9.x w nagłówku pliku zniknęły. Kod nie zmienił się ani o jeden token (sprawdzone porównaniem tokenów artefaktu przed i po); artefakt jest krótszy o ok. 1100 linii. Nowy test w `tests/09-artifact.test.js` nie przepuści numeru wersji ani odsyłacza do audytu w komentarzu, a zasada jest zapisana w CLAUDE.md i CONTRIBUTING.md.
+
+---
+
 ## 1.4.0 — 2026-09-24
 
 ### Dodano

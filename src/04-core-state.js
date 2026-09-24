@@ -19,23 +19,19 @@
                 try { cb(payload); } catch (e) { Utils.error(`Event handler error for ${event}`, e); }
             });
         }
-        /** Zdejmuje wszystkie subskrypcje. Potrzebne przy awaryjnym rozbiórce (Main.teardown). */
+        /** Zdejmuje wszystkie subskrypcje — przy rozbiórce egzemplarza (Main.teardown). */
         clear() { this.listeners = {}; }
     }
 
     const bus = new EventBus();
 
     /**
-     * Subskrypcja zmian stanu PO GAŁĘZIACH (8.3.0).
+     * Subskrypcja zmian stanu ograniczona do gałęzi (`prefixes`).
      *
-     * W 8.2.0 na gołym `store:changed` wisiało pięć procedur: przebudowa CSS,
-     * render okna statystyk, nakładka, przerysowanie karty ceny i autozapis.
-     * Żadna nie patrzyła na ścieżkę, więc każdy drobiazg ciągnął za sobą
-     * wszystko naraz. Najbardziej biło to po uiFlags: AutoTrigger.scan() rusza
-     * itemInProgress i autoTriggerFound na każdym przedmiocie, a każda taka
-     * flaga wywoływała pełną przebudowę łańcucha CSS z podmianą textContent
-     * w <style> — czyli unieważnienie stylów całego dokumentu — plus pełny
-     * re-render statystyk i karty ceny.
+     * Obsługa na gołym `store:changed` reagowałaby na każdą zmianę, także na
+     * flagi uiFlags przestawiane przy każdym przedmiocie — a przebudowa CSS
+     * unieważnia style całego dokumentu. Każdy odbiorca słucha więc tylko
+     * swoich ścieżek.
      */
     function onStorePaths(prefixes, handler) {
         return bus.on('store:changed', ({ path }) => {
@@ -73,9 +69,8 @@
                 }
                 return true;
             },
-            // 8.1.0: usunięcie klucza też jest reaktywne. Potrzebne do zbierania
-            // śmieci po kartach (SessionReset.pruneTabInstances) — wcześniej
-            // delete przechodził obok magistrali i UI się nie przerysowywał.
+            // Usunięcie klucza też jest reaktywne — na nim stoi sprzątanie
+            // wpisów po kartach (SessionReset.pruneTabInstances).
             deleteProperty(obj, prop) {
                 if (!(prop in obj)) return true;
                 const fullPath = path ? `${path}.${prop}` : prop;
@@ -88,15 +83,12 @@
         });
     }
 
-    // Definicja podstawowej struktury stanu
     /**
-     * Stan zmiany — wspólny dla wszystkich kart. Wydzielony (1.3.3), bo
-     * scalanie ustawień między kartami uzupełnia nim pola, których brakuje
-     * w magazynie (StorageManager._adoptShared).
+     * Stan zmiany — wspólny dla wszystkich kart. Osobny obiekt, bo scalanie
+     * ustawień między kartami uzupełnia nim pola, których brakuje w magazynie
+     * (StorageManager._adoptShared).
      */
     const DEFAULT_SESSION_CONFIG = {
-        // 8.3.0: usunięte sessionLastActivityTimestamp — zadeklarowane
-        // w 8.0.0, nigdzie nieczytane i niezapisywane.
         shiftType: null, shiftCalculatedStartTime: null, selectedLunchIndex: null, activeTabInstances: {},
     };
 
@@ -105,28 +97,24 @@
         currentTabType: CONFIG.UNKNOWN_TAB_TYPE_KEY,
         currentTabInstanceId: null,
         tabCounters: {},
-        // Ile z policzonych przedmiotów pojechało na sprzedaż — na każdą kartę
-        // osobno, tak samo jak tabCounters. Mianownikiem procentu jest tabCounters.
+        // Ile z policzonych przedmiotów pojechało na sprzedaż — na kartę,
+        // jak tabCounters. Mianownikiem procentu jest tabCounters.
         tabSold: {},
         // Przedmioty wyjęte z mianownika procentu (audyt, ręczne wpisy) — patrz
         // Routing i TaskManager.
         tabNeutral: {},
         /**
-         * ZADANIA (1.3.0). Lista jest zwykłą tablicą, więc NIE jest reaktywna
-         * po elementach — TaskManager podmienia ją w całości przy każdej
-         * zmianie i tylko dzięki temu linia 8 oraz panel dowiadują się o niej.
+         * Zadania. Tablica nie jest reaktywna po elementach — TaskManager
+         * podmienia ją w całości przy każdej zmianie i dzięki temu linia 8
+         * oraz panel dowiadują się o niej.
          */
         tasks: [],
         activeTaskId: null,
         taskCounters: {},
-        // 8.3.0: usunięte pole defaultLocalTabConfig — nikt go nigdy nie czytał,
-        // a w całości dublowało się w localStorage przy każdym zapisie.
-        // 1.2.0: wartości przeniesione do DEFAULT_USER_CONFIG, bo kod konfiguracji
-        // musi mieć z czym porównywać bieżący stan.
         userConfig: Utils.deepMerge({}, DEFAULT_USER_CONFIG),
         localTabConfig: Utils.deepMerge({}, DEFAULT_LOCAL_CONFIG),
         sessionConfig: Utils.deepMerge({}, DEFAULT_SESSION_CONFIG),
-        // itemInProgress zadeklarowany jawnie (w 8.0.0 powstawał w locie z AutoTrigger.scan)
+        // itemInProgress: trwa przedmiot (między wyzwalaczem wstępnym a końcowym).
         uiFlags: { isSettingsPanelVisible: false, isStatsWindowDragging: false, isPriceCardDragging: false,
                    autoTriggerFound: false, itemInProgress: false }
     };
@@ -134,12 +122,10 @@
     const store = createReactive(baseState);
 
     /**
-     * CZY MODUŁ CEN JEST WŁĄCZONY (9.2.0).
-     *
-     * Jedno miejsce prawdy dla wszystkich bezpieczników sieciowych. Świadomie
-     * porównanie do `true`, a nie zwykła prawdziwość: wartość przychodzi
-     * z localStorage, a wszystko, co nie jest jawnym `true` (brak pola, `null`,
-     * łańcuch, liczba), ma znaczyć WYŁĄCZONE.
+     * Czy moduł cen jest włączony — jedno miejsce prawdy dla wszystkich
+     * bezpieczników sieciowych. Porównanie do `true`, a nie prawdziwość:
+     * wartość przychodzi z localStorage i wszystko inne niż jawne `true`
+     * (brak pola, `null`, łańcuch, liczba) znaczy „wyłączony”.
      */
     function priceModuleOn() {
         return store.localTabConfig

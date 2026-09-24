@@ -3,39 +3,26 @@
     // ==========================================
     const InputManager = {
         /**
-         * Ostatnie naciśnięte znaki, jako ŁAŃCUCH, a nie tablica.
-         *
-         * Wcześniej była tablica sklejana przez join('') przy każdym
-         * naciśnięciu. Łańcuch z slice() robi to samo bez tworzenia tablicy
-         * pośredniej — a to kod, który chodzi na każdy klawisz przez całą
-         * dziesięciogodzinną zmianę.
+         * Ostatnie naciśnięte znaki — łańcuch przycinany slice(), bez tablicy
+         * pośredniej (kod chodzi na każdy klawisz przez całą zmianę).
          */
         seqBuffer: '',
         /** Najdłuższe hasło — tyle znaków trzeba pamiętać i ani znaku więcej. */
         _maxPasswordLen: 0,
         /**
-         * Hasła pogrupowane po OSTATNIM znaku.
-         *
-         * Sedno optymalizacji. Bez tego każde naciśnięcie klawisza porównywałoby
-         * bufor z każdym hasłem po kolei. Tak porównanie w ogóle się nie zaczyna,
-         * dopóki naciśnięty znak nie jest ostatnim znakiem któregoś z haseł —
-         * czyli przy zwykłym pisaniu prawie nigdy. Przy 'GORDONPAULE' i 'BOMBA'
-         * pracę uruchamiają wyłącznie litery E i A.
-         *
-         * Mapa buduje się RAZ, w init(), a nie przy każdym klawiszu.
+         * Hasła pogrupowane po ostatnim znaku. Porównanie z buforem zaczyna się
+         * tylko wtedy, gdy naciśnięty znak kończy któreś hasło — przy
+         * 'GORDONPAULE' i 'BOMBA' tylko przy E i A. Mapa buduje się raz, w init().
          */
         _passwordsByLastChar: null,
         init() {
-            // 8.3.0: obsługa jest nazwana — potrzebna do Main.teardown().
+            // Obsługa nazwana — potrzebna do Main.teardown().
             this.onKeyDown = (e) => {
                 if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
 
-                // AUTOPOWTARZANIE. Wciśnięty klawisz generuje keydown dziesiątki
-                // razy na sekundę i do 8.3.0 każde takie zdarzenie dawało +1 do
-                // licznika, z zapisem do localStorage. Dla licznika, dla którego
-                // napisany jest cały skrypt, to wprost psucie danych roboczych:
-                // prawy Shift, jeden z domyślnych wariantów, łatwo przycisnąć
-                // przypadkiem. Hasło dostępu autopowtarzanie też zaśmieca.
+                // Autopowtarzanie pomijamy: przytrzymany klawisz daje dziesiątki
+                // keydown na sekundę, a każde byłoby +1 do licznika (prawy Shift
+                // łatwo przycisnąć przypadkiem) i śmieciem w buforze haseł.
                 if (e.repeat) return;
 
                 if (store.userConfig.keyboardShortcuts.INCREMENT !== 'None' && e.code === store.userConfig.keyboardShortcuts.INCREMENT) {
@@ -45,21 +32,15 @@
                 }
 
                 /**
-                 * HASŁA DOSTĘPU (patrz SETTINGS_ACCESS_PASSWORDS na górze pliku).
+                 * Hasła dostępu (SETTINGS_ACCESS_PASSWORDS w nagłówku pliku).
                  *
-                 * Bufor ma tyle znaków, ile NAJDŁUŻSZE hasło, i przesuwa się jak
-                 * okno. Hasło uznaje się za wpisane, gdy bufor KOŃCZY SIĘ na nim —
-                 * dzięki temu wpisywanie czegokolwiek wcześniej niczego nie psuje,
-                 * a hasła różnej długości żyją na jednej liście bez osobnych
-                 * buforów.
+                 * Bufor ma długość najdłuższego hasła i przesuwa się jak okno;
+                 * hasło jest wpisane, gdy bufor się na nim kończy. Po trafieniu
+                 * bufor jest czyszczony — inaczej hasło będące końcówką innego
+                 * zadziałałoby dwa razy, a toggle() otworzyłby i zamknął panel.
                  *
-                 * Po trafieniu bufor jest czyszczony. To nie porządki: bez tego
-                 * hasło, które jest końcówką innego, zadziałałoby dwa razy pod
-                 * rząd, a `toggle()` otworzyłby i natychmiast zamknął panel.
-                 *
-                 * To nie jest zabezpieczenie kryptograficzne i nie ma nim być:
-                 * chodzi wyłącznie o to, żeby panel nie otwierał się przypadkiem
-                 * podczas normalnej pracy ze skanerem.
+                 * To nie jest zabezpieczenie kryptograficzne — chodzi tylko o to,
+                 * żeby panel nie otwierał się przypadkiem przy pracy ze skanerem.
                  */
                 if (this._maxPasswordLen > 0 && e.key.length === 1) {
                     const ch = e.key.toUpperCase();
@@ -76,12 +57,9 @@
                 }
             };
             /**
-             * Przygotowanie haseł. Robi się RAZ, przy starcie: lista z góry pliku
-             * jest stała przez całe życie egzemplarza, więc liczenie jej przy
-             * każdym naciśnięciu klawisza byłoby czystą stratą.
-             *
-             * Kolejność w grupie zostaje taka, jak w CONFIG — od najdłuższego —
-             * więc gdy w jednym naciśnięciu pasuje kilka haseł, wygrywa dłuższe.
+             * Przygotowanie haseł — raz, przy starcie. Kolejność w grupie jak
+             * w CONFIG (od najdłuższego), więc przy kilku trafieniach naraz
+             * wygrywa dłuższe hasło.
              */
             const passwords = CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS || [];
             this._passwordsByLastChar = new Map();
@@ -116,8 +94,7 @@
             TaskManager.addItem(cid);
             StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
-            // 'tabCounters'), więc jawnego wywołania renderContent() już tu nie ma:
-            // dawało dwa pełne rendery na każdy przedmiot.
+            // 'tabCounters') — jawne renderContent() dałoby drugi render.
         }
     };
 
@@ -127,15 +104,11 @@
         debouncedAttach: null,
 
         /**
-         * Czy węzeł należy do własnego interfejsu skryptu.
-         *
-         * To kluczowa poprawka 8.1.0. Okno statystyk, nakładka, wskaźnik i panel
-         * ustawień leżą w tym samym document.body, który obserwuje observer.
-         * Strony, dla których pisany był skrypt, przez całą zmianę są statyczne —
-         * czyli praktycznie JEDYNYM źródłem mutacji był sam skrypt, który
-         * przerysowuje statystykę raz na sekundę. Każda taka mutacja uruchamiała
-         * scan() z odczytem document.body.innerText, a to wymuszone przeliczenie
-         * geometrii całej strony, jedna z najdroższych operacji w DOM.
+         * Czy węzeł należy do własnego interfejsu skryptu. Okno statystyk,
+         * nakładka i panel leżą w obserwowanym document.body, a okno
+         * przerysowuje się co sekundę — bez tego filtra każda taka mutacja
+         * uruchamiałaby scan() z odczytem innerText (przeliczenie geometrii
+         * całej strony).
          */
         isOwnNode(node) {
             if (!node) return false;
@@ -162,25 +135,18 @@
 
         init() {
             this.attach();
-            // 8.1.0: odtwarzanie observera opakowane w debounce. Wcześniej wisiało
-            // na „surowej” zmianie stanu i przeciąganie suwaka interwału skanowania
-            // wywoływało dziesiątki disconnect/observe pod rząd.
-            // Uchwyt trzymany na obiekcie, żeby rozbiórka mogła go zgasić.
+            // Odtwarzanie observera z debounce — przeciąganie suwaka interwału
+            // dawałoby dziesiątki disconnect/observe. Uchwyt na obiekcie, żeby
+            // rozbiórka mogła go zgasić.
             this.debouncedAttach = Utils.debounce(() => this.attach(), 500);
             bus.on('store:changed:userConfig.triggerMutationDebounceMs', this.debouncedAttach);
         },
 
         scan() {
             const txt = document.body.innerText || '';
-            /**
-             * Kierunek czyta się PIERWSZY i to jest ważne (9.0.0).
-             *
-             * Kod sortowania i wyzwalacz końcowy nierzadko lądują w jednej klatce:
-             * ekran przerysował się w całości i „Przypisz nowy”, i „Zeskanuj
-             * CRITS-POZ1” widać jednocześnie. Odczytawszy kierunek przed
-             * licznikiem, zdążymy postawić znak wprost w momencie tworzenia wpisu,
-             * zamiast doganiać go następnym skanem.
-             */
+            // Kierunek czyta się przed licznikiem: kod sortowania i wyzwalacz
+            // końcowy często przychodzą w jednej klatce, a wtedy znak staje od
+            // razu przy tworzeniu wpisu.
             Routing.observe(txt);
 
             if (CONFIG.PRE_TRIGGER_REGEX.test(txt)) store.uiFlags.itemInProgress = true;
@@ -189,10 +155,9 @@
                     InputManager.modifyCounter(1);
                     store.uiFlags.autoTriggerFound = true;
                     store.uiFlags.itemInProgress = false;
-                    // 8.4.0: przedmiot przeszedł PEŁNĄ ścieżkę — dopiero teraz jego
-                    // wartość trafia do dziennika. Zdarzenie emituje się właśnie
-                    // tutaj, a nie w modifyCounter(): skróty klawiszowe i ręczna
-                    // poprawka licznika dziennika nie napełniają.
+                    // Przedmiot przeszedł pełną ścieżkę — zdarzenie dla dziennika
+                    // idzie stąd, a nie z modifyCounter(), bo skróty i ręczne
+                    // poprawki dziennika nie napełniają.
                     bus.emit('item:completed');
                 }
             } else {

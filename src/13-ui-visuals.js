@@ -1,8 +1,8 @@
     // Renderer przyciemnienia i wskaźnika
     const VisualsRenderer = {
         init() {
-            // 8.1.0: id jest obowiązkowe — po nim AutoTrigger odróżnia własne
-            // elementy skryptu od zmian strony (patrz AutoTrigger.isOwnNode).
+            // id jest obowiązkowe — po nim AutoTrigger odróżnia własne elementy
+            // skryptu od zmian strony (AutoTrigger.isOwnNode).
             this.overlay = h('div', { id: 'pageOverlay', style: { position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh', zIndex: '1', pointerEvents: 'none', transition: 'background-color 0.4s', backgroundColor: 'transparent' } });
             this.indicator = h('div', { id: 'pageIndicator', style: { position: 'fixed', top: '50%', right: '100px', transform: 'translateY(-50%) rotate(90deg)', transformOrigin: 'bottom right', fontSize: '5vw', fontWeight: 'bold', zIndex: '2', pointerEvents: 'none', transition: 'opacity 0.4s', opacity: '0' } });
             document.body.appendChild(this.overlay);
@@ -31,11 +31,10 @@
     };
 
     /**
-     * Krótkie wyskakujące powiadomienie. Potrzebne przede wszystkim przy
-     * resecie liczników: człowiek musi widzieć, że zerowanie było zamierzone,
-     * a nie że dane zgubiły się same. Reset może zdarzyć się przed pojawieniem
-     * się UI (na etapie ładowania), dlatego ostatni komunikat pamiętany jest
-     * w SessionReset.lastReset i pokazuje się zaraz po inicjalizacji interfejsu.
+     * Krótkie wyskakujące powiadomienie — głównie przy resecie liczników:
+     * człowiek ma widzieć, że zerowanie było zamierzone, a nie że dane zgubiły
+     * się same. Reset bywa przed postawieniem interfejsu, więc ostatni
+     * komunikat czeka w SessionReset.lastReset.
      */
     const Notifier = {
         init() {
