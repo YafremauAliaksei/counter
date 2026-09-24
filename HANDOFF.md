@@ -33,7 +33,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 33 pliki testów, 476 sprawdzeń                            | **wszystkie zielone**                                               |
+| 33 pliki testów, 482 sprawdzeń                            | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |
@@ -170,6 +170,33 @@ i `package-lock.json` oraz przebudowuje artefakt; w CHANGELOG `## Niewydane`
 → `## X.Y.Z — RRRR-MM-DD`; wersja w README), potem tag z interfejsu GitHuba.
 Po wydaniu warto porównać `counter.js` z gałęzi `release`, spod tagu i z załącznika
 wydania — trzy kopie mają mieć ten sam SHA-256.
+
+### 2.6. Przeniesienie do wewnętrznego gita i na wewnętrzny serwer
+
+Kod nie zna miejsca, w którym leży: w `src/`, `build.js` i w artefakcie nie ma
+adresu repozytorium ani nazwy właściciela (pilnuje tego test w
+`tests/09-artifact.test.js`). Z GitHubem związane jest wyłącznie otoczenie
+repozytorium. Przy przeprowadzce:
+
+1. **Adres pliku dla zakładki** — `config.releaseUrl` w `package.json`, potem
+   `npm run build`. Adres `https`, bez apostrofów, spacji i parametrów (build
+   odrzuci inny). Serwer musi odpowiadać nagłówkiem
+   `Access-Control-Allow-Origin` — sprawdzić `curl -sI <adres>` — a polityka CSP
+   strony T-REX musi dopuszczać jego host w `connect-src` (`await SH.cspReport()`
+   pokazuje to po włączeniu adresu). Puste pole znaczy: panel pokazuje
+   podpowiedź zamiast gotowej zakładki, reszta działa.
+2. **CODEOWNERS** — wpisać zespół. Test bierze nazwy właścicieli właśnie stąd
+   i sprawdza, że nie trafiły do kodu.
+3. **CI** — `.github/workflows/ci.yml` to cztery polecenia: `npm run build:check`,
+   `npm test`, `npm run lint`, `npm run format:check` (dwa ostatnie po `npm ci`).
+   `release.yml`: tag `vX.Y.Z` → te same bramki → zgodność wersji → publikacja
+   `counter.js` z sumą SHA-256. Odtworzyć w wewnętrznym CI; testy
+   `29-supply-chain` i część `10-language` czytają pliki z `.github/` — przy
+   zmianie ich miejsca poprawić ścieżki w testach.
+4. **README** — „Szybki start” (adres zakładki i link do wydań) i „Wydania”
+   opisują GitHuba; do przepisania pod nowe miejsce publikacji.
+5. **`dependabot.yml`** — zastąpić tym, czym wewnętrznie aktualizuje się
+   `devDependencies` i wersje narzędzi CI.
 
 ---
 

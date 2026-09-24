@@ -31,7 +31,9 @@
  *   3. przed każdym modułem wstawia znacznik `// ─── src/xx-nazwa.js ───`,
  *      żeby w gotowym pliku było widać, skąd pochodzi dany fragment
  *      (rollup w trybie nieminifikowanym robi dokładnie to samo);
- *   4. podstawia wersję z package.json w miejsce __VERSION__;
+ *   4. podstawia wersję z package.json w miejsce __VERSION__, a adres
+ *      wydania (pole `config.releaseUrl`, domyślnie puste) w miejsce
+ *      __RELEASE_URL__;
  *   5. sprawdza wynik: składnia, brak pozostałych znaczników, obecność
  *      rzeczy, bez których plik jest bezużyteczny.
  *
@@ -56,6 +58,26 @@ function read(file) {
     return fs.readFileSync(path.join(ROOT, file), 'utf8');
 }
 
+/**
+ * Czy adres wydania nadaje się do wstawienia. Zwraca opis problemu albo null.
+ *
+ * Adres trafia w dwa miejsca bez żadnego kodowania: do literału w
+ * apostrofach w CONFIG i do tekstu zakładki sklejanego z kawałków
+ * (ConfigCode.link()). Dlatego dozwolony jest tylko wąski zestaw znaków —
+ * apostrof, cudzysłów, ukośnik wsteczny czy spacja rozerwałyby kod albo
+ * zakładkę. Tylko https: zakładka działa na stronie https, a zapytanie
+ * po http przeglądarka zablokuje jako mieszaną treść. Pusty adres jest
+ * poprawny i znaczy „bez gotowej zakładki”.
+ */
+function releaseUrlProblem(url) {
+    if (url === '') return null;
+    if (typeof url !== 'string') return 'adres wydania musi być tekstem';
+    if (!/^https:\/\/[A-Za-z0-9.-]+(:\d{1,5})?(\/[A-Za-z0-9._~%/-]*)?$/.test(url)) {
+        return `adres wydania ("${url}") musi być adresem https bez znaków specjalnych`;
+    }
+    return null;
+}
+
 /** Każdy moduł kończy się dokładnie jednym znakiem nowej linii. */
 function normalize(text) {
     return text.replace(/\r\n/g, '\n').replace(/\s*$/, '') + '\n';
@@ -65,6 +87,10 @@ function build() {
     const manifest = JSON.parse(read('build.manifest.json'));
     const pkg = JSON.parse(read('package.json'));
     const version = pkg.version;
+    const releaseUrl = (pkg.config && pkg.config.releaseUrl) ?? '';
+
+    const urlProblem = releaseUrlProblem(releaseUrl);
+    if (urlProblem) throw new Error(urlProblem);
 
     if (!/^\d+\.\d+\.\d+$/.test(version)) {
         throw new Error(`wersja w package.json ("${version}") nie jest w formacie SemVer`);
@@ -117,6 +143,14 @@ function build() {
         );
     }
     out = out.split('__VERSION__').join(version);
+
+    // --- podstawienie adresu wydania ---
+    if (!out.includes('__RELEASE_URL__')) {
+        throw new Error(
+            'w źródłach nie ma __RELEASE_URL__ — adres wydania nie zostałby podstawiony'
+        );
+    }
+    out = out.split('__RELEASE_URL__').join(releaseUrl);
 
     return { text: out, version, moduleCount: manifest.modules.length };
 }
@@ -223,4 +257,7 @@ function main() {
     );
 }
 
-main();
+// Uruchomiony jako skrypt — buduje; wczytany przez require() (testy) —
+// udostępnia tylko sprawdzenie adresu, bez pisania na dysk.
+if (require.main === module) main();
+module.exports = { releaseUrlProblem };

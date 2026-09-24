@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
-// @namespace    bomba.stats.helper
+// @namespace    statshelper.counter
 // @version      1.4.1
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
@@ -133,19 +133,17 @@ const SCRIPT_LOGS_ENABLED = false;
         SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
         /**
          * Adres, spod którego zakładka pobiera skrypt. Z niego ConfigCode.link()
-         * składa gotową zakładkę z kodem ustawień.
+         * składa gotową zakładkę z kodem ustawień. Pusty adres znaczy „zakładki
+         * nie ma”: panel pokazuje podpowiedź, a kod ustawień działa bez zmian.
          *
-         * Musi to być raw.githubusercontent.com: zakładka pobiera plik przez
-         * `fetch` z cudzej strony, a to przechodzi tylko przy nagłówku
-         * `Access-Control-Allow-Origin`. raw go wystawia (`*`); pobranie
-         * wydania z github.com odpowiada przekierowaniem bez tego nagłówka
-         * i przeglądarka zrywa zapytanie („blocked by CORS policy”).
-         *
-         * Gałąź `release` wskazuje ostatnie wydanie — przesuwa ją tylko
-         * workflow wydania, więc uruchamia się wyłącznie kod świadomie wydany.
-         * Przypięcie do wersji: ta sama ścieżka z tagiem zamiast `release`.
+         * Wartość podstawia build.js z pola `config.releaseUrl` w package.json,
+         * więc w źródłach adresu nie ma — każde miejsce publikacji ustawia
+         * własny. Serwer musi odpowiadać nagłówkiem
+         * `Access-Control-Allow-Origin`: zakładka pobiera plik przez `fetch`
+         * ze strony T-REX, a bez nagłówka (także po przekierowaniu, które go
+         * gubi) przeglądarka zrywa zapytanie („blocked by CORS policy”).
          */
-        RELEASE_URL: 'https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',
+        RELEASE_URL: '',
         /**
          * Hasła z nagłówka w jednej postaci (normalizeAccessPasswords).
          * Porównuje je z buforem klawiatury InputManager. Pusta lista znaczy
@@ -792,6 +790,7 @@ const SCRIPT_LOGS_ENABLED = false;
             configCode_hint: 'The code holds everything you changed away from the defaults: lines, colours, transparency, sizes, position, switches. Paste it on another machine and you get the same interface.',
             configCode_yours: 'Your code',
             configCode_link: 'Ready-made bookmarklet',
+            configCode_linkMissing: 'This build has no release address, so there is no ready-made bookmarklet. The code above works as usual: paste it on another machine.',
             configCode_select: 'Select for copying',
             configCode_paste: 'Paste a code here',
             configCode_apply: 'Apply code',
@@ -919,6 +918,7 @@ const SCRIPT_LOGS_ENABLED = false;
             configCode_hint: 'W kodzie siedzi wszystko, co zmieniłeś względem wartości domyślnych: linie, kolory, przezroczystość, rozmiary, położenie, wyłączniki. Wklejony na innej maszynie daje ten sam interfejs.',
             configCode_yours: 'Twój kod',
             configCode_link: 'Gotowa zakładka',
+            configCode_linkMissing: 'Ta kompilacja nie ma adresu wydania, więc gotowej zakładki nie ma. Kod powyżej działa jak zwykle: wklej go na innej maszynie.',
             configCode_select: 'Zaznacz do skopiowania',
             configCode_paste: 'Wklej tu kod',
             configCode_apply: 'Nałóż kod',
@@ -1046,6 +1046,7 @@ const SCRIPT_LOGS_ENABLED = false;
             configCode_hint: 'В коде лежит всё, что вы изменили относительно значений по умолчанию: строки, цвета, прозрачность, размеры, положение, выключатели. Вставленный на другой машине даёт тот же интерфейс.',
             configCode_yours: 'Ваш код',
             configCode_link: 'Готовая закладка',
+            configCode_linkMissing: 'В этой сборке не задан адрес релиза, поэтому готовой закладки нет. Код выше работает как обычно: вставьте его на другой машине.',
             configCode_select: 'Выделить для копирования',
             configCode_paste: 'Вставьте сюда код',
             configCode_apply: 'Применить код',
@@ -3283,9 +3284,11 @@ const SCRIPT_LOGS_ENABLED = false;
             });
 
             const codeBox = readOnlyBox(ConfigCode.encode());
-            const linkBox = readOnlyBox(ConfigCode.link());
             secCode.appendChild(UIBuilder.row(I18n.get('configCode_yours'), codeBox));
-            secCode.appendChild(UIBuilder.row(I18n.get('configCode_link'), linkBox));
+            const link = ConfigCode.link();
+            secCode.appendChild(link
+                ? UIBuilder.row(I18n.get('configCode_link'), readOnlyBox(link))
+                : UIBuilder.hint(I18n.get('configCode_linkMissing')));
 
             secCode.appendChild(UIBuilder.button(I18n.get('configCode_select'), () => {
                 codeBox.focus();
@@ -5192,9 +5195,9 @@ const SCRIPT_LOGS_ENABLED = false;
         /**
          * Czyta i rozbiera Content-Security-Policy strony.
          *
-         * CSP to imienna lista hostów, a nie wyłącznik: to, że skrypt
-         * z githuba się załadował, znaczy tylko, że dozwolony jest tamten host,
-         * a nie graph.keepa.com czy r.jina.ai.
+         * CSP to imienna lista hostów, a nie wyłącznik: to, że skrypt się
+         * załadował, znaczy tylko, że dozwolony jest host, z którego go
+         * pobrano, a nie graph.keepa.com czy r.jina.ai.
          *
          * Polityka częściej przychodzi nagłówkiem HTTP niż meta-tagiem, więc
          * nagłówek doczytuje się zapytaniem o własną stronę (własny origin,
@@ -6226,8 +6229,11 @@ const SCRIPT_LOGS_ENABLED = false;
                             'graph.keepa.com': 'img-src',
                             'r.jina.ai': 'connect-src',
                             'api.keepa.com': 'connect-src',
-                            'raw.githubusercontent.com': 'connect-src',
                         };
+                        // Host wydania — zakładka pobiera z niego skrypt.
+                        // Tylko wtedy, gdy ta kompilacja ma adres wydania.
+                        const release = /^https:\/\/([^/:]+)/.exec(CONFIG.RELEASE_URL);
+                        if (release) HOSTS[release[1]] = 'connect-src';
                         const verdict = {};
                         for (const [host, dir] of Object.entries(HOSTS)) {
                             verdict[`${host} (${dir})`] = PriceCard.cspAllows(parsed, dir, host);
@@ -6721,8 +6727,14 @@ const SCRIPT_LOGS_ENABLED = false;
          * tutaj nie wywołuje — stąd wyłączona reguła lintera, która widzi samo
          * słowo `javascript:` w ciągu znaków. Test artefaktu pilnuje, że jest to
          * jedyne miejsce w całym pliku ze słowem `eval`.
+         *
+         * @returns {string|null} zakładka albo null, gdy w tej kompilacji nie
+         *   ma adresu wydania (CONFIG.RELEASE_URL).
          */
         link() {
+            // Bez adresu wydania zakładka nie miałaby czego pobrać — null
+            // zamiast tekstu, który po kliknięciu kończy się błędem.
+            if (!CONFIG.RELEASE_URL) return null;
             // Kolejność jest mechanizmem: najpierw kod trafia do okna, potem
             // rusza pobieranie pliku, który zastaje go gotowego (BOOT_VAR).
             // `r.ok` nie puszcza strony błędu 404/503 do wykonania, a `catch`
