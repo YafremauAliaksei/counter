@@ -706,9 +706,17 @@ const SCRIPT_LOGS_ENABLED = false;
          *
          *   - tylko dla JEDNEGO przedmiotu: ustawienie sklepu się nie zmienia,
          *     następny przedmiot znów zaczyna od wybranego domyślnie;
-         *   - kolejność LOSOWA, żeby nie dobijać tego samego rynku zapasowego
-         *     tysiąc razy na zmianę;
+         *   - 1.4.0: WSZYSTKIE rynki, a nie pięć wylosowanych. Cena bywa tylko na
+         *     jednym rynku z całej listy i losowanie pięciu z dziewięciu omijało
+         *     go przy każdej próbie z prawdopodobieństwem 4/9;
+         *   - 1.4.0: najpierw rynek z LINKU na stronie (np. amazon.it/dp/…),
+         *     jeśli to nie wybrany — tam produkt na pewno był wystawiony, więc
+         *     to najlepszy kandydat i zwykle jedyne potrzebne zapytanie;
+         *   - potem rynki europejskie, na końcu PRICE_FALLBACK_LAST (poza
+         *     Europą); w obrębie grupy kolejność LOSOWA, żeby nie dobijać
+         *     jednego rynku zapasowego tysiąc razy na zmianę;
          *   - między próbami sekunda przerwy — to tło, nie ma po co się spieszyć;
+         *     przegląd przerywa się, gdy na ekranie pojawi się inny przedmiot;
          *   - tylko rynki, dla których Keepa w ogóle ma dane (keepa_ok).
          *
          * Cena znaleziona na innym rynku ciągnie za sobą i walutę, i link
@@ -717,9 +725,11 @@ const SCRIPT_LOGS_ENABLED = false;
          */
         PRICE_FALLBACK_ENABLED: true,
         PRICE_FALLBACK_DELAY_MS: 1000,
-        // Ile rynków zapasowych próbować. Więcej — dłużej i drożej w zapytaniach;
-        // w praktyce cena znajduje się w pierwszych dwóch-trzech.
-        PRICE_FALLBACK_MAX_TRIES: 5,
+        // Ile rynków zapasowych próbować. 1.4.0: wszystkie (było 5 wylosowanych) —
+        // patrz wyżej. Liczba zostaje jako hamulec, gdyby lista rynków urosła.
+        PRICE_FALLBACK_MAX_TRIES: Infinity,
+        // Rynki spoza Europy — w przeglądzie na samym końcu (1.4.0).
+        PRICE_FALLBACK_LAST: ['com', 'ca'],
         PRICE_ASIN_FROM_HREF: /\/(?:dp|gp\/product|product)\/([A-Z0-9]{10})/,
         PRICE_ASIN_FROM_TEXT: /\b(B[01][A-Z0-9]{8})\b/,
 
@@ -752,9 +762,16 @@ const SCRIPT_LOGS_ENABLED = false;
         // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
         marketplace: CONFIG.DEFAULT_MARKETPLACE,
         // Waluta, w której karta ceny i linia 6 POKAZUJĄ kwoty (1.4.0).
-        // 'native' = bez przeliczania: karta w walucie sklepu, linia 6 w euro,
-        // czyli dokładnie tak jak przed 1.4.0. Sumy liczone są w euro zawsze.
-        displayCurrency: 'native',
+        // Sumy liczone są w euro zawsze; to tylko sposób pokazania.
+        // 'native' = bez przeliczania: karta w walucie sklepu, linia 6 w euro.
+        //
+        // Domyślnie 'EUR' — ŚWIADOMY WYJĄTEK od zasady „nowe domyślnie
+        // wyłączone” (decyzja autora, CHANGELOG 1.4.0): liczy się rynek
+        // europejski, a kwota w funtach czy koronach dla wielu osób nie znaczy
+        // nic. Nie dotyka to sieci ani liczb — przeliczenie idzie na kursach,
+        // które i tak są w pamięci (albo na tablicy wbudowanej), a kartę widać
+        // dopiero po ręcznym włączeniu modułu cen.
+        displayCurrency: 'EUR',
         globalStatsContributionKnown: Object.keys(CONFIG.KNOWN_TAB_TYPES)
             .reduce((acc, key) => ({ ...acc, [key]: true }), {}),
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None' },
@@ -4980,13 +4997,17 @@ const SCRIPT_LOGS_ENABLED = false;
          * WALUTA WYŚWIETLANIA (1.4.0) albo null, czyli „jak w sklepie”.
          *
          * Wartość przychodzi z localStorage, więc może być czymkolwiek:
-         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie klucz własny
-         * CONFIG.DISPLAY_CURRENCIES — wszystko inne to zachowanie domyślne.
+         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie 'native' albo
+         * klucz własny CONFIG.DISPLAY_CURRENCIES — wszystko inne to wartość
+         * domyślna (euro), a nie ciche przejście na waluty sklepów.
          */
         displayCurrency() {
+            const own = (c) => typeof c === 'string'
+                && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, c);
             const cur = store.userConfig && store.userConfig.displayCurrency;
-            return typeof cur === 'string'
-                && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, cur) ? cur : null;
+            if (cur === 'native') return null;
+            if (own(cur)) return cur;
+            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : null;
         },
 
         /**
@@ -5688,15 +5709,38 @@ const SCRIPT_LOGS_ENABLED = false;
          * Losowa kolejność nie jest tu ozdobą: przy stałej kolejności całe
          * pudło zmiany szłoby w jeden i ten sam rynek zapasowy.
          */
+        /**
+         * KOLEJNOŚĆ PRZEGLĄDU (1.4.0): rynek z linku na stronie, potem Europa,
+         * na końcu PRICE_FALLBACK_LAST — w obrębie grupy losowo. Bez wybranego
+         * rynku (ten już odpowiedział „nie ma”) i bez rynków, dla których Keepa
+         * nie ma danych.
+         *
+         * @param {string} from       rynek już sprawdzony
+         * @param {string|null} hint  rynek z linku do produktu na stronie
+         * @param {function} [random] źródło losowości (testy podają własne)
+         */
+        fallbackOrder(from, hint, random = Math.random) {
+            const shuffle = (list) => {
+                for (let i = list.length - 1; i > 0; i--) {     // tasowanie Fishera-Yatesa
+                    const j = Math.floor(random() * (i + 1));
+                    [list[i], list[j]] = [list[j], list[i]];
+                }
+                return list;
+            };
+            const pool = Object.keys(CONFIG.MARKETPLACES)
+                .filter(k => k !== from && k !== hint && CONFIG.MARKETPLACES[k].keepa_ok);
+            const late = pool.filter(k => CONFIG.PRICE_FALLBACK_LAST.includes(k));
+            const first = hint && hint !== from && CONFIG.MARKETPLACES[hint]
+                && CONFIG.MARKETPLACES[hint].keepa_ok ? [hint] : [];
+            return first
+                .concat(shuffle(pool.filter(k => !late.includes(k))), shuffle(late))
+                .slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
+        },
+
         async tryOtherMarkets(asin) {
             const from = marketplaceKey();
-            const pool = Object.keys(CONFIG.MARKETPLACES)
-                .filter(k => k !== from && CONFIG.MARKETPLACES[k].keepa_ok);
-            for (let i = pool.length - 1; i > 0; i--) {         // tasowanie Fishera-Yatesa
-                const j = Math.floor(Math.random() * (i + 1));
-                [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
-            const tries = pool.slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
+            const hint = this.linkMarket && this.linkMarket.asin === asin ? this.linkMarket.key : null;
+            const tries = this.fallbackOrder(from, hint);
             Utils.log(`[CENA] ${asin}: na ${from} ceny nie ma, próbuję ${tries.join(', ')}`);
 
             for (const key of tries) {
@@ -5900,12 +5944,41 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         // ---------------- szukanie ASIN ----------------
+        /**
+         * Rynek z linku do produktu (1.4.0): `https://www.amazon.it/dp/…` → 'it'.
+         *
+         * Tylko hosty z CONFIG.MARKETPLACES, porównane w całości — link
+         * względny, obcy host albo `amazon.it.evil.example` dają null. Wynik
+         * decyduje wyłącznie o KOLEJNOŚCI przeglądu rynków; adres zapytania
+         * dalej składa się z tablicy, a nie z tekstu strony.
+         */
+        marketFromHref(href) {
+            const m = /^(?:https?:)?\/\/([^/?#:]+)/i.exec(String(href || ''));
+            if (!m) return null;
+            const host = m[1].toLowerCase().replace(/^www\./, '');
+            return Object.keys(CONFIG.MARKETPLACES)
+                .find(k => CONFIG.MARKETPLACES[k].host.replace(/^www\./, '') === host) || null;
+        },
+
+        /**
+         * Rynek linku, z którego wzięto ostatni ASIN: { asin, key } albo null.
+         * ASIN z samego tekstu strony rynku nie ma — wtedy przegląd idzie
+         * zwykłą kolejnością.
+         */
+        linkMarket: null,
+
         detectAsin() {
             for (const a of document.querySelectorAll('a[href*="/dp/"], a[href*="/gp/product/"]')) {
                 if (a.closest('#' + CONFIG.SCRIPT_ID_PREFIX + 'priceCard')) continue;
-                const m = (a.getAttribute('href') || '').match(CONFIG.PRICE_ASIN_FROM_HREF);
-                if (m) return m[1];
+                const href = a.getAttribute('href') || '';
+                const m = href.match(CONFIG.PRICE_ASIN_FROM_HREF);
+                if (m) {
+                    const key = this.marketFromHref(href);
+                    this.linkMarket = key ? { asin: m[1], key } : null;
+                    return m[1];
+                }
             }
+            this.linkMarket = null;
             // Rezerwa po tekście — gdy linku na stronie nie ma wcale.
             //
             // Przyjmujemy ASIN TYLKO WTEDY, gdy jest na stronie jeden. Jeśli jest
@@ -8709,7 +8782,7 @@ const SCRIPT_LOGS_ENABLED = false;
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)
-   displayCurrency = 'native'  'native' | 'EUR' | 'PLN' | 'GBP' | 'SEK' | 'USD' | 'CAD'
+   displayCurrency = 'EUR'     'native' | 'EUR' | 'PLN' | 'GBP' | 'SEK' | 'USD' | 'CAD'
                               'native' = karta w walucie sklepu, linia 6 w euro;
                               sumy zawsze w euro, to tylko waluta pokazywania
    globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true, OTHER: true }
@@ -8743,7 +8816,8 @@ const SCRIPT_LOGS_ENABLED = false;
    AUTO_TRIGGER_REGEX                 co oznacza KONIEC przedmiotu (+1 do licznika)
    ROUTE_SELL_CODES / ROUTE_UNSELL_CODES   kody sortowania: sprzedaż / utylizacja
    PRICE_MIN_REQUEST_GAP_MS = 3000    minimalna przerwa między zapytaniami
-   PRICE_FALLBACK_MAX_TRIES = 5       ile sklepów zapasowych sprawdzać
+   PRICE_FALLBACK_MAX_TRIES = Infinity  ile sklepów zapasowych sprawdzać (1.4.0: wszystkie)
+   PRICE_FALLBACK_LAST = ['com', 'ca']  rynki spoza Europy — w przeglądzie na końcu
    FX_FALLBACK                        kursy wbudowane, używane bez sieci
    PRICE_KEEPA_API_KEY = ''           płatny klucz Keepa (opcjonalny)
 

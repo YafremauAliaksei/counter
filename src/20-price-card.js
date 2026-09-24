@@ -306,15 +306,38 @@
          * Losowa kolejność nie jest tu ozdobą: przy stałej kolejności całe
          * pudło zmiany szłoby w jeden i ten sam rynek zapasowy.
          */
+        /**
+         * KOLEJNOŚĆ PRZEGLĄDU (1.4.0): rynek z linku na stronie, potem Europa,
+         * na końcu PRICE_FALLBACK_LAST — w obrębie grupy losowo. Bez wybranego
+         * rynku (ten już odpowiedział „nie ma”) i bez rynków, dla których Keepa
+         * nie ma danych.
+         *
+         * @param {string} from       rynek już sprawdzony
+         * @param {string|null} hint  rynek z linku do produktu na stronie
+         * @param {function} [random] źródło losowości (testy podają własne)
+         */
+        fallbackOrder(from, hint, random = Math.random) {
+            const shuffle = (list) => {
+                for (let i = list.length - 1; i > 0; i--) {     // tasowanie Fishera-Yatesa
+                    const j = Math.floor(random() * (i + 1));
+                    [list[i], list[j]] = [list[j], list[i]];
+                }
+                return list;
+            };
+            const pool = Object.keys(CONFIG.MARKETPLACES)
+                .filter(k => k !== from && k !== hint && CONFIG.MARKETPLACES[k].keepa_ok);
+            const late = pool.filter(k => CONFIG.PRICE_FALLBACK_LAST.includes(k));
+            const first = hint && hint !== from && CONFIG.MARKETPLACES[hint]
+                && CONFIG.MARKETPLACES[hint].keepa_ok ? [hint] : [];
+            return first
+                .concat(shuffle(pool.filter(k => !late.includes(k))), shuffle(late))
+                .slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
+        },
+
         async tryOtherMarkets(asin) {
             const from = marketplaceKey();
-            const pool = Object.keys(CONFIG.MARKETPLACES)
-                .filter(k => k !== from && CONFIG.MARKETPLACES[k].keepa_ok);
-            for (let i = pool.length - 1; i > 0; i--) {         // tasowanie Fishera-Yatesa
-                const j = Math.floor(Math.random() * (i + 1));
-                [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
-            const tries = pool.slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
+            const hint = this.linkMarket && this.linkMarket.asin === asin ? this.linkMarket.key : null;
+            const tries = this.fallbackOrder(from, hint);
             Utils.log(`[CENA] ${asin}: na ${from} ceny nie ma, próbuję ${tries.join(', ')}`);
 
             for (const key of tries) {
@@ -518,12 +541,41 @@
         },
 
         // ---------------- szukanie ASIN ----------------
+        /**
+         * Rynek z linku do produktu (1.4.0): `https://www.amazon.it/dp/…` → 'it'.
+         *
+         * Tylko hosty z CONFIG.MARKETPLACES, porównane w całości — link
+         * względny, obcy host albo `amazon.it.evil.example` dają null. Wynik
+         * decyduje wyłącznie o KOLEJNOŚCI przeglądu rynków; adres zapytania
+         * dalej składa się z tablicy, a nie z tekstu strony.
+         */
+        marketFromHref(href) {
+            const m = /^(?:https?:)?\/\/([^/?#:]+)/i.exec(String(href || ''));
+            if (!m) return null;
+            const host = m[1].toLowerCase().replace(/^www\./, '');
+            return Object.keys(CONFIG.MARKETPLACES)
+                .find(k => CONFIG.MARKETPLACES[k].host.replace(/^www\./, '') === host) || null;
+        },
+
+        /**
+         * Rynek linku, z którego wzięto ostatni ASIN: { asin, key } albo null.
+         * ASIN z samego tekstu strony rynku nie ma — wtedy przegląd idzie
+         * zwykłą kolejnością.
+         */
+        linkMarket: null,
+
         detectAsin() {
             for (const a of document.querySelectorAll('a[href*="/dp/"], a[href*="/gp/product/"]')) {
                 if (a.closest('#' + CONFIG.SCRIPT_ID_PREFIX + 'priceCard')) continue;
-                const m = (a.getAttribute('href') || '').match(CONFIG.PRICE_ASIN_FROM_HREF);
-                if (m) return m[1];
+                const href = a.getAttribute('href') || '';
+                const m = href.match(CONFIG.PRICE_ASIN_FROM_HREF);
+                if (m) {
+                    const key = this.marketFromHref(href);
+                    this.linkMarket = key ? { asin: m[1], key } : null;
+                    return m[1];
+                }
             }
+            this.linkMarket = null;
             // Rezerwa po tekście — gdy linku na stronie nie ma wcale.
             //
             // Przyjmujemy ASIN TYLKO WTEDY, gdy jest na stronie jeden. Jeśli jest

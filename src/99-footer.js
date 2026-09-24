@@ -127,7 +127,7 @@
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)
-   displayCurrency = 'native'  'native' | 'EUR' | 'PLN' | 'GBP' | 'SEK' | 'USD' | 'CAD'
+   displayCurrency = 'EUR'     'native' | 'EUR' | 'PLN' | 'GBP' | 'SEK' | 'USD' | 'CAD'
                               'native' = karta w walucie sklepu, linia 6 w euro;
                               sumy zawsze w euro, to tylko waluta pokazywania
    globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true, OTHER: true }
@@ -161,7 +161,8 @@
    AUTO_TRIGGER_REGEX                 co oznacza KONIEC przedmiotu (+1 do licznika)
    ROUTE_SELL_CODES / ROUTE_UNSELL_CODES   kody sortowania: sprzedaż / utylizacja
    PRICE_MIN_REQUEST_GAP_MS = 3000    minimalna przerwa między zapytaniami
-   PRICE_FALLBACK_MAX_TRIES = 5       ile sklepów zapasowych sprawdzać
+   PRICE_FALLBACK_MAX_TRIES = Infinity  ile sklepów zapasowych sprawdzać (1.4.0: wszystkie)
+   PRICE_FALLBACK_LAST = ['com', 'ca']  rynki spoza Europy — w przeglądzie na końcu
    FX_FALLBACK                        kursy wbudowane, używane bez sieci
    PRICE_KEEPA_API_KEY = ''           płatny klucz Keepa (opcjonalny)
 

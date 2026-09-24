@@ -14,7 +14,11 @@ Dla tego projektu SemVer czyta się tak:
 
 ### Dodano
 
-- **Waluta wyświetlania.** Panel → „Karta ceny” → „Kwoty pokazywać w”: waluta sklepu (jak dotąd, domyślnie) albo jedna stała waluta — EUR, PLN, GBP, SEK, USD, CAD. Karta ceny i linia 6 pokazują wtedy kwoty w tej walucie; cena przeliczona ma znak `≈`, a kwota oryginalna zostaje w wierszu źródła. Liczy się zawsze w euro: dziennik trzyma cenę sklepu, suma idzie w euro, a waluta wyświetlania to ostatnie mnożenie przy rysowaniu — dlatego zmiana waluty w trakcie zmiany niczego nie gubi. Ustawienie jest wspólne dla wszystkich kart i przechodzi przez kod ustawień (numer `0x030a`). Bez kursu do wybranej waluty karta pokazuje cenę sklepu, a linia 6 euro. Nowy `tests/32-display-currency.test.js`.
+- **Waluta wyświetlania, domyślnie euro.** Panel → „Karta ceny” → „Kwoty pokazywać w”: EUR (domyślnie), PLN, GBP, SEK, USD, CAD albo waluta sklepu bez przeliczania. Karta ceny i linia 6 pokazują kwoty w tej walucie; cena przeliczona ma znak `≈`, a kwota oryginalna zostaje w wierszu źródła. Euro domyślnie to świadomy wyjątek od zasady „nowe domyślnie wyłączone” (decyzja autora): nie dotyka sieci ani liczb, a kartę widać dopiero po ręcznym włączeniu modułu cen — cena z `co.uk` wygląda teraz `≈ 15.63 €` zamiast `GBP 12.50`, a śmieci w magazynie też dają euro. Liczy się zawsze w euro: dziennik trzyma cenę sklepu, suma idzie w euro, a waluta wyświetlania to ostatnie mnożenie przy rysowaniu — dlatego zmiana waluty w trakcie zmiany niczego nie gubi. Ustawienie jest wspólne dla wszystkich kart i przechodzi przez kod ustawień (numer `0x030a`). Bez kursu do wybranej waluty karta pokazuje cenę sklepu, a linia 6 euro. Nowy `tests/32-display-currency.test.js`.
+
+### Zmieniono
+
+- **Przegląd sklepów idzie przez wszystkie rynki, a pierwszy jest rynek z linku na stronie.** Do 1.3.x po porażce na wybranym rynku (domyślnie `amazon.de`) skrypt losował pięć z dziewięciu pozostałych — cena, która była tylko na jednym rynku, wypadała z prawdopodobieństwem 4/9 przy każdym przedmiocie. Teraz: najpierw rynek z linku do produktu na stronie T-REX (`amazon.it/dp/…` → `it`), bo tam produkt na pewno był wystawiony i zwykle wystarcza jedno zapytanie; potem pozostałe rynki europejskie losowo; na końcu `com` i `ca`. Host z linku decyduje tylko o kolejności — adres zapytania dalej pochodzi z listy rynków, a obcy albo podrobiony host (`amazon.it.evil.example`) jest ignorowany. Nowy `tests/33-market-fallback.test.js`.
 
 ---
 

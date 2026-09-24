@@ -588,9 +588,17 @@
          *
          *   - tylko dla JEDNEGO przedmiotu: ustawienie sklepu się nie zmienia,
          *     następny przedmiot znów zaczyna od wybranego domyślnie;
-         *   - kolejność LOSOWA, żeby nie dobijać tego samego rynku zapasowego
-         *     tysiąc razy na zmianę;
+         *   - 1.4.0: WSZYSTKIE rynki, a nie pięć wylosowanych. Cena bywa tylko na
+         *     jednym rynku z całej listy i losowanie pięciu z dziewięciu omijało
+         *     go przy każdej próbie z prawdopodobieństwem 4/9;
+         *   - 1.4.0: najpierw rynek z LINKU na stronie (np. amazon.it/dp/…),
+         *     jeśli to nie wybrany — tam produkt na pewno był wystawiony, więc
+         *     to najlepszy kandydat i zwykle jedyne potrzebne zapytanie;
+         *   - potem rynki europejskie, na końcu PRICE_FALLBACK_LAST (poza
+         *     Europą); w obrębie grupy kolejność LOSOWA, żeby nie dobijać
+         *     jednego rynku zapasowego tysiąc razy na zmianę;
          *   - między próbami sekunda przerwy — to tło, nie ma po co się spieszyć;
+         *     przegląd przerywa się, gdy na ekranie pojawi się inny przedmiot;
          *   - tylko rynki, dla których Keepa w ogóle ma dane (keepa_ok).
          *
          * Cena znaleziona na innym rynku ciągnie za sobą i walutę, i link
@@ -599,9 +607,11 @@
          */
         PRICE_FALLBACK_ENABLED: true,
         PRICE_FALLBACK_DELAY_MS: 1000,
-        // Ile rynków zapasowych próbować. Więcej — dłużej i drożej w zapytaniach;
-        // w praktyce cena znajduje się w pierwszych dwóch-trzech.
-        PRICE_FALLBACK_MAX_TRIES: 5,
+        // Ile rynków zapasowych próbować. 1.4.0: wszystkie (było 5 wylosowanych) —
+        // patrz wyżej. Liczba zostaje jako hamulec, gdyby lista rynków urosła.
+        PRICE_FALLBACK_MAX_TRIES: Infinity,
+        // Rynki spoza Europy — w przeglądzie na samym końcu (1.4.0).
+        PRICE_FALLBACK_LAST: ['com', 'ca'],
         PRICE_ASIN_FROM_HREF: /\/(?:dp|gp\/product|product)\/([A-Z0-9]{10})/,
         PRICE_ASIN_FROM_TEXT: /\b(B[01][A-Z0-9]{8})\b/,
 
@@ -634,9 +644,16 @@
         // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
         marketplace: CONFIG.DEFAULT_MARKETPLACE,
         // Waluta, w której karta ceny i linia 6 POKAZUJĄ kwoty (1.4.0).
-        // 'native' = bez przeliczania: karta w walucie sklepu, linia 6 w euro,
-        // czyli dokładnie tak jak przed 1.4.0. Sumy liczone są w euro zawsze.
-        displayCurrency: 'native',
+        // Sumy liczone są w euro zawsze; to tylko sposób pokazania.
+        // 'native' = bez przeliczania: karta w walucie sklepu, linia 6 w euro.
+        //
+        // Domyślnie 'EUR' — ŚWIADOMY WYJĄTEK od zasady „nowe domyślnie
+        // wyłączone” (decyzja autora, CHANGELOG 1.4.0): liczy się rynek
+        // europejski, a kwota w funtach czy koronach dla wielu osób nie znaczy
+        // nic. Nie dotyka to sieci ani liczb — przeliczenie idzie na kursach,
+        // które i tak są w pamięci (albo na tablicy wbudowanej), a kartę widać
+        // dopiero po ręcznym włączeniu modułu cen.
+        displayCurrency: 'EUR',
         globalStatsContributionKnown: Object.keys(CONFIG.KNOWN_TAB_TYPES)
             .reduce((acc, key) => ({ ...acc, [key]: true }), {}),
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None' },

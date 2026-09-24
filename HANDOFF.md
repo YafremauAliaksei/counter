@@ -29,7 +29,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                          |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                         |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                                |
-| 32 pliki testów, 453 sprawdzenia                          | **wszystkie zielone**                                                    |
+| 33 pliki testów, 472 sprawdzenia                          | **wszystkie zielone**                                                    |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                                  |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy                   |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |

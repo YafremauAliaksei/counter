@@ -176,13 +176,17 @@
          * WALUTA WYŚWIETLANIA (1.4.0) albo null, czyli „jak w sklepie”.
          *
          * Wartość przychodzi z localStorage, więc może być czymkolwiek:
-         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie klucz własny
-         * CONFIG.DISPLAY_CURRENCIES — wszystko inne to zachowanie domyślne.
+         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie 'native' albo
+         * klucz własny CONFIG.DISPLAY_CURRENCIES — wszystko inne to wartość
+         * domyślna (euro), a nie ciche przejście na waluty sklepów.
          */
         displayCurrency() {
+            const own = (c) => typeof c === 'string'
+                && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, c);
             const cur = store.userConfig && store.userConfig.displayCurrency;
-            return typeof cur === 'string'
-                && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, cur) ? cur : null;
+            if (cur === 'native') return null;
+            if (own(cur)) return cur;
+            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : null;
         },
 
         /**

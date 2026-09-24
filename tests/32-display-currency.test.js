@@ -7,11 +7,13 @@
  *
  * ZASADA, KTÓREJ TEN PLIK PILNUJE: liczy się ZAWSZE w euro. Dziennik trzyma
  * cenę w walucie sklepu, suma idzie w euro, a waluta wyświetlania to jedno
- * mnożenie przy rysowaniu. Stąd trzy obietnice sprawdzane niżej:
+ * mnożenie przy rysowaniu. Stąd obietnice sprawdzane niżej:
  *   - zmiana waluty w trakcie zmiany nie zmienia ani jednej liczby w euro;
- *   - domyślnie („jak w sklepie”) ekran wygląda co do znaku jak przed 1.4.0;
- *   - śmieci w magazynie i brak kursu dają zachowanie domyślne, a nie
- *     „NaN zł” albo zero.
+ *   - domyślnie wszystko w euro (decyzja autora, wyjątek od zasady „nowe
+ *     domyślnie wyłączone” — CHANGELOG 1.4.0), a „jak w sklepie” wygląda
+ *     co do znaku jak przed 1.4.0;
+ *   - śmieci w magazynie dają wartość domyślną, a brak kursu — cenę sklepu
+ *     i euro; nigdy „NaN zł” albo zero.
  *
  * Kursy są w testach podane wprost, okrągłe, żeby wynik dało się sprawdzić
  * w pamięci: 1 EUR = 4 PLN = 0,8 GBP = 1,25 USD = 10 SEK = 1,5 CAD.
@@ -66,20 +68,49 @@ function line6() {
     return L6().textContent;
 }
 
-describe('Domyślnie: ekran jak przed 1.4.0');
+describe('Domyślnie: wszystko w euro');
 
-test('wartość domyślna to „jak w sklepie”', () => {
-    eq(SH.DEFAULT_USER_CONFIG.displayCurrency, 'native');
-    eq(SH.store.userConfig.displayCurrency, 'native');
-    eq(F.displayCurrency(), null, 'native nie jest walutą, tylko brakiem przeliczania');
+test('wartość domyślna to euro — decyzja autora', () => {
+    eq(SH.DEFAULT_USER_CONFIG.displayCurrency, 'EUR');
+    eq(SH.store.userConfig.displayCurrency, 'EUR');
+    eq(F.displayCurrency(), 'EUR');
 });
 
+test('świeża instalacja: cena z co.uk od razu w euro, cena w euro bez ≈', () => {
+    const e = boot();
+    e.SH.FxRates.rates = { ...RATES };
+    eq(e.SH.FxRates.display(12.5, 'GBP'), '≈ 15.63 €');
+    eq(e.SH.FxRates.display(11699, 'EUR'), '11699.00 €');
+});
+
+test('stary zapis bez tego pola dostaje euro, a nie walutę sklepu', () => {
+    // Ktoś z 1.3.x ma w magazynie userConfig bez displayCurrency — po
+    // aktualizacji wczytanie uzupełnia brak wartością domyślną.
+    const first = boot();
+    const saved = JSON.parse(first.sandbox.localStorage.getItem(first.prefix + 'userConfig') || 'null');
+    ok(saved, 'userConfig leży w magazynie');
+    delete saved.displayCurrency;
+    first.sandbox.localStorage.setItem(first.prefix + 'userConfig', JSON.stringify(saved));
+    const again = boot({ storage: first.sandbox.localStorage });
+    eq(again.SH.FxRates.displayCurrency(), 'EUR');
+});
+
+test('linia 6 w euro, ze znakiem €, jak zawsze', () => {
+    mixedLog();
+    eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt');
+});
+
+describe('„Jak w sklepie”: ekran jak przed 1.4.0');
+
 test('karta pokazuje cenę dokładnie tak, jak przyszła ze sklepu', () => {
+    setCurrency('native');
+    eq(F.displayCurrency(), null, 'native nie jest walutą, tylko brakiem przeliczania');
     eq(showCard(price(12.5, 'GBP')), 'GBP 12.50');
     eq(showCard(price(11699, 'EUR')), 'EUR 11699.00');
 });
 
-test('linia 6 w euro, ze znakiem €, jak zawsze', () => {
+test('linia 6 zostaje w euro — bilans z kilku sklepów nie ma „waluty sklepu”', () => {
+    setCurrency('native');
     mixedLog();
     eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt');
 });
@@ -182,13 +213,13 @@ test('nowa pozycja w innej walucie po przełączeniu dolicza się w euro', () =>
 
 describe('Granice: śmieci w magazynie, brak kursu');
 
-test('spreparowana waluta z localStorage to zachowanie domyślne', () => {
+test('spreparowana waluta z localStorage to wartość domyślna — euro', () => {
     mixedLog();
-    for (const junk of ['__proto__', 'constructor', 'XYZ', 'eur', '', 42, null, undefined, NaN, {}, ['PLN']]) {
+    for (const junk of ['__proto__', 'constructor', 'XYZ', 'eur', 'Native', '', 42, null, undefined, NaN, {}, ['PLN']]) {
         setCurrency(junk);
-        eq(F.displayCurrency(), null, `wartość ${String(junk)}`);
+        eq(F.displayCurrency(), 'EUR', `wartość ${String(junk)}`);
         eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt', `linia 6 przy ${String(junk)}`);
-        eq(showCard(price(12.5, 'GBP')), 'GBP 12.50', `karta przy ${String(junk)}`);
+        eq(showCard(price(12.5, 'GBP')), '≈ 15.63 €', `karta przy ${String(junk)}`);
     }
 });
 
@@ -226,6 +257,8 @@ describe('Kod ustawień i kilka kart');
 test('waluta wyświetlania przechodzi przez kod ustawień', () => {
     const source = freshEnv();
     eq(source.SH.configCode(), '0x0101', 'domyślna wartość nie trafia do kodu');
+    source.SH.store.userConfig.displayCurrency = 'native';
+    ok(source.SH.configCode().includes('030a'), '„jak w sklepie” to odstępstwo od domyślnej, więc jedzie w kodzie');
     source.SH.store.userConfig.displayCurrency = 'PLN';
     const code = source.SH.configCode();
     ok(code.includes('030a'), 'numer 0x030a w kodzie: ' + code);
