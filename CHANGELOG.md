@@ -18,6 +18,8 @@ Dla tego projektu SemVer czyta się tak:
 
 - **To samo w całym repozytorium.** Komentarze w testach, w `tests/dom-stub.js`, `tests/harness.js`, `tests/run.js` i w workflow CI i wydania opisują teraz, czego pilnują i dlaczego, bez numerów wersji i odsyłaczy do audytu; nazwy testów też. Nowa zasada 7 w CLAUDE.md: komentarz w kodzie jest neutralny wobec wersji — historia żyje wyłącznie w dokumentacji i w gicie. Pilnuje tego nowy strażnik w `tests/10-language.test.js` dla każdego pliku kodu (źródła, testy, narzędzia, workflow), sprawdzony na próbce z trzema postaciami komentarza.
 
+- **Linter bez szumu i z twardą bramką.** `npm run lint` dawał 43 ostrzeżenia, z czego żadne nie było prawdziwe w skali całości: nazwy z najwyższego poziomu modułu wyglądały na nieużywane, bo czyta je inny moduł. Moduły w `src/` sprawdzają teraz tylko nazwy lokalne, a nieużywane nazwy modułów — nowy blok konfiguracji na sklejonym artefakcie, gdzie widać całość. Nieużyty parametr `catch (e)` nie jest już zgłaszany. `npm run lint` pada przy pierwszym ostrzeżeniu (`--max-warnings 0`), więc w CI ostrzeżenie przestaje być ignorowalne. Z `build.js` zniknęły dwie nieużywane stałe.
+
 ---
 
 ## 1.4.0 — 2026-09-24
