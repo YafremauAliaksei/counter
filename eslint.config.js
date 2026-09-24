@@ -1,5 +1,5 @@
 /**
- * eslint.config.js — nowy „flat config" (ESLint 9+).
+ * eslint.config.js — konfiguracja ESLint w formacie „flat config”.
  *
  * Reguły dobrane pod ten projekt, a nie skopiowane z gotowego presetu.
  * Uzasadnienie przy każdej nieoczywistej.
@@ -18,8 +18,7 @@ const globals = require('globals');
 
 module.exports = [
     {
-        // Artefakt jest generowany — nie ma sensu go linterować.
-        ignores: ['counter.js', 'node_modules/**', 'tests/manual/**'],
+        ignores: ['node_modules/**', 'tests/manual/**'],
     },
 
     // --- Moduły źródłowe: fragmenty jednej IIFE ---
@@ -45,10 +44,17 @@ module.exports = [
 
             // Nieużywana zmienna to prawie zawsze pozostałość po refaktorze.
             // Argumenty pomijamy: obsługi zdarzeń często ich nie używają.
+            // Nazwy z najwyższego poziomu modułu (`vars: 'local'`) czyta
+            // zwykle inny moduł, więc w pojedynczym pliku każda wyglądałaby
+            // na nieużywaną — te sprawdza blok artefaktu niżej, na całości.
+            // Nieużyty parametr `catch (e)` to świadomy zapis „błąd znany,
+            // pomijamy”, a nie pozostałość.
             'no-unused-vars': [
                 'warn',
                 {
                     args: 'none',
+                    vars: 'local',
+                    caughtErrors: 'none',
                     varsIgnorePattern: '^_',
                 },
             ],
@@ -89,11 +95,30 @@ module.exports = [
         },
         rules: {
             ...js.configs.recommended.rules,
-            'no-unused-vars': ['warn', { args: 'none' }],
+            'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }],
             'no-console': 'off',
             eqeqeq: ['error', 'smart'],
             'prefer-const': 'error',
             'no-var': 'error',
+        },
+    },
+
+    // --- Artefakt: jedna reguła, której nie da się sprawdzić na modułach ---
+    // Dopiero w sklejonej IIFE widać, czy nazwa z jednego modułu jest
+    // czytana gdziekolwiek indziej. Pozostałe reguły pilnują modułów w src/,
+    // więc tu ich nie powtarzamy; stąd też brak raportu o komentarzach
+    // `eslint-disable`, które dotyczą reguł spoza tego bloku.
+    {
+        files: ['counter.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'script',
+        },
+        linterOptions: {
+            reportUnusedDisableDirectives: 'off',
+        },
+        rules: {
+            'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }],
         },
     },
 ];

@@ -49,8 +49,6 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = __dirname;
-const MANIFEST = path.join(ROOT, 'build.manifest.json');
-const PKG = path.join(ROOT, 'package.json');
 
 const CHECK_ONLY = process.argv.includes('--check');
 

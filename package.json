@@ -20,7 +20,7 @@
     "build:check": "node build.js --check",
     "test": "node tests/run.js",
     "verify": "npm run build:check && npm test",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md,yml}\"",
     "format:check": "prettier --check \"**/*.{js,json,md,yml}\"",
