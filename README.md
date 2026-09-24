@@ -473,6 +473,13 @@ po bicie. Na 20 prawdziwych towarach: 32 linie z 32, 0,14 ms, zero zależności.
 Dla porównania `tesseract.js` na tych samych danych dał 13 z 20, 140 ms i, co
 gorsza, mylił się **w stronę zawyżenia** (gubił kropkę dziesiętną).
 
+Wszystkie te źródła, razem z adresami, rozbiorem odpowiedzi i źródłami kursów
+walut, stoją w jednym pliku: `src/15-price-sources.js`. Karta ceny, dziennik
+wartości i kursy znają tylko opisany tam kontrakt, a każde zapytanie modułu cen
+idzie przez jedno wyjście (`PriceNet`) ze sprawdzeniem wyłącznika. Inne źródło
+ceny — na przykład usługa wewnętrzna — to przepisanie tego pliku według
+kontraktu; reszta skryptu zostaje bez zmian.
+
 ### Przeglądanie sklepów
 
 Domyślny sklep to `amazon.de`. Jeśli ceny tam nie ma, skrypt przegląda

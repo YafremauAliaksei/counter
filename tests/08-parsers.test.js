@@ -15,6 +15,7 @@ const { boot } = require('./dom-stub');
 const env = boot();
 const K = env.SH.KeepaOCR;
 const P = env.SH.PriceCard;
+const S = env.SH.PriceSources;
 const V = env.SH.ValueLog;
 
 describe('Odczyt ceny z wykresu — separator dziesiętny i tysięczny');
@@ -59,21 +60,21 @@ describe('Odczyt ceny z tekstu strony');
 
 test('parseJina nie bierze „UTF 8.00” z adresu za cenę', () => {
     // Szeroki wzorzec waluty wyciągnąłby „UTF 8.00” z ?ie=UTF8&nodeId=...
-    const r = P.parseJina('Markdown Content:\nhttps://x/?ie=UTF8&nodeId=505048 UTF 8.00', true);
+    const r = S.parseJina('Markdown Content:\nhttps://x/?ie=UTF8&nodeId=505048 UTF 8.00', true);
     eq(r, null, 'waluta musi pochodzić ze ścisłej listy');
 });
 
 test('parseJina czyta cenę adresowaną i katalogową', () => {
-    const r = P.parseJina('Markdown Content:\nEUR 15.08\nRRP: EUR 19.99', true);
+    const r = S.parseJina('Markdown Content:\nEUR 15.08\nRRP: EUR 19.99', true);
     eq(r.current.value, 15.08);
     eq(r.rrp.value, 19.99);
 });
 
 test('normalize radzi sobie z formatem polskim i angielskim', () => {
-    eq(P.normalize('EUR', null, '2,991.39').value, 2991.39);
-    eq(P.normalize('EUR', null, '2.991,39').value, 2991.39);
-    eq(P.normalize('EUR', null, '15,08').value, 15.08);
-    eq(P.normalize('EUR', null, 'nie liczba'), null);
+    eq(S.normalize('EUR', null, '2,991.39').value, 2991.39);
+    eq(S.normalize('EUR', null, '2.991,39').value, 2991.39);
+    eq(S.normalize('EUR', null, '15,08').value, 15.08);
+    eq(S.normalize('EUR', null, 'nie liczba'), null);
 });
 
 describe('Waluta ceny musi dać się przeliczyć');
@@ -83,7 +84,7 @@ test('symbol waluty zamienia się na kod z tablicy kursów', () => {
     // toEur oddawał null i kwota wypadała z sumy zmiany.
     const F = env.SH.FxRates;
     for (const [sym, code] of [['€', 'EUR'], ['£', 'GBP'], ['zł', 'PLN'], ['$', 'USD']]) {
-        const n = P.normalize(null, sym, '12,50');
+        const n = S.normalize(null, sym, '12,50');
         eq(n.currency, code, sym);
         ok(F.toEur(n.value, n.currency) > 0, sym + ' przelicza się na euro');
     }
@@ -93,7 +94,7 @@ test('„$” na rynku kanadyjskim to dolar kanadyjski', () => {
     const before = env.SH.store.userConfig.marketplace;
     env.SH.store.userConfig.marketplace = 'ca';
     try {
-        eq(P.normalize(null, '$', '10.00').currency, 'CAD');
+        eq(S.normalize(null, '$', '10.00').currency, 'CAD');
     } finally {
         env.SH.store.userConfig.marketplace = before;
     }
@@ -102,10 +103,10 @@ test('„$” na rynku kanadyjskim to dolar kanadyjski', () => {
 test('każda waluta, którą rozpoznaje wzorzec kwoty, ma kurs w tablicy zapasowej', () => {
     // Wzorzec przyjmował CHF, DKK, NOK, CZK, HUF, RON — bez kursu nigdzie.
     // Kwota rozpoznana, ale nieprzeliczalna, to kwota, która cicho znika.
-    const codes = P.MONEY.match(/\(([A-Z|]+)\)/)[1].split('|');
+    const codes = S.MONEY.match(/\(([A-Z|]+)\)/)[1].split('|');
     const table = env.SH.CONFIG.FX_FALLBACK;
     eq(codes.filter(c => !table[c]), [], 'kody bez kursu');
-    const found = P.parseJina('Markdown Content:\nCHF 15.08 with 10 percent savings', true);
+    const found = S.parseJina('Markdown Content:\nCHF 15.08 with 10 percent savings', true);
     eq(found, null, 'kwota w walucie bez kursu nie jest ceną');
 });
 

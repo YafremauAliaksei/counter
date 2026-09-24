@@ -243,23 +243,7 @@ const SCRIPT_LOGS_ENABLED = false;
         SHARED_ID_PREFIX: 'statsHelper_shared_',
         STORAGE_KEY_VALUE_ARCHIVE: 'valueArchive',
         STORAGE_KEY_FX_RATES: 'fxRates',
-        /**
-         * ŹRÓDŁA KURSÓW WALUT, pytane po kolei do pierwszego sukcesu.
-         * Wszystkie oddają nagłówki CORS i nie wymagają klucza.
-         *
-         * Pytane są dopiero po ręcznym włączeniu modułu cen (FxRates.init,
-         * priceModuleOn). Dokładność co do grosza nie jest potrzebna: to
-         * szacunek wyniku zmiany, a nie księgowość.
-         */
-        FX_PROVIDERS: [
-            { name: 'jsdelivr', url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json',
-              pick: (j) => j && j.eur },
-            { name: 'er-api',   url: 'https://open.er-api.com/v6/latest/EUR',
-              pick: (j) => j && j.rates },
-            // floatrates oddaje kurs łańcuchem („1.15514929”) — stąd Number().
-            { name: 'floatrates', url: 'https://www.floatrates.com/daily/eur.json',
-              pick: (j) => { if (!j) return null; const o = {}; for (const k in j) o[k] = j[k] && Number(j[k].rate); return o; } },
-        ],
+        // Źródła kursów walut: PriceSources.fxProviders (src/15-price-sources.js).
         // Kursy zmieniają się wolno: jedno zapytanie na dobę wystarcza.
         FX_TTL_MS: 24 * 60 * 60 * 1000,
         FX_TIMEOUT_MS: 8000,
@@ -381,11 +365,9 @@ const SCRIPT_LOGS_ENABLED = false;
             { code: 'NumpadAdd', name_key: 'key_NumpadAdd' }, { code: 'F10', name_key: 'key_F10' },
         ],
         // --- KARTA CENY ---
-        // Zapytanie do amazon.* ze strony T-REX jest niemożliwe (Same-Origin
-        // Policy; zablokowane także no-cors, iframe, script src i widżety
-        // partnerskie). Działają dwa źródła:
-        //   r.jina.ai       — tekst strony, oddaje nagłówki CORS;
-        //   graph.keepa.com — obrazek, któremu CORS nie jest potrzebny.
+        // Źródła ceny i ich hosty: src/15-price-sources.js. Tu stoją tylko
+        // ich nastawy (PRICE_KEEPA_*, PRICE_JINA_*, PRICE_OCR_*, pola keepa
+        // w MARKETPLACES) i to, co wspólne dla każdego źródła.
         /**
          * SKLEPY AMAZON. Wybrany sklep rozstrzyga naraz link z ASIN, rynek
          * wykresu Keepa i walutę ceny — rozdzielenie pozwoliłoby otworzyć
@@ -583,9 +565,9 @@ const SCRIPT_LOGS_ENABLED = false;
              *
              * Włącza się wyłącznie ręcznie, w panelu. Kod ustawień tego pola
              * nie niesie (ConfigCode.RETIRED_IDS). Sprawdzają je niezależnie
-             * PriceCard.check(), PriceCard.resolve(), KeepaOCR.loadImage(),
-             * ValueLog.add() i FxRates.init() — jedna zapomniana ścieżka nie
-             * wystarczy, żeby zapytanie wyszło.
+             * PriceCard.check(), PriceCard.resolve(), PriceNet (każde wyjście
+             * do sieci), ValueLog.add() i FxRates.init() — jedna zapomniana
+             * ścieżka nie wystarczy, żeby zapytanie wyszło.
              */
             moduleEnabled: false,
             visible: true,
@@ -757,7 +739,7 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_fallbackHint: 'One item at a time, random order, 1s apart. The default store is not changed.',
             priceCard_searchingOther: 'searching other stores…',
             priceCard_foundIn: 'found on ${host}',
-            priceCard_marketNoKeepa: 'Keepa has no chart for this store — link works, price will not',
+            priceCard_marketNoData: 'Keepa has no chart for this store — link works, price will not',
             priceCard_displayCurrency: 'Show amounts in',
             priceCard_displayNative: 'store currency (no conversion)',
             priceCard_displayCurrencyHint: 'Totals are always counted in euro; the chosen currency is only how they are shown, so switching it mid-shift loses nothing. A converted price is marked with ≈.',
@@ -775,7 +757,7 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_cacheAge: '${days}d ago',
             priceCard_graphMode: 'Chart area', priceCard_mode_legend: 'Prices only (from chart)',
             priceCard_mode_right: 'Right part, actual size', priceCard_mode_full: 'Whole chart',
-            priceCard_jinaOff: 'text lookup off',
+            priceCard_textOff: 'text lookup off',
             priceCard_section: 'Price Card', priceCard_enabled: 'Show price card',
             priceCard_showPrice: 'Show current price', priceCard_showRrp: 'Show list price (RRP)',
             priceCard_showGraph: 'Show Keepa chart',
@@ -885,7 +867,7 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_fallbackHint: 'Tylko dla jednego przedmiotu, losowo, co 1 s. Domyślny sklep nie zmienia się.',
             priceCard_searchingOther: 'szukam w innych sklepach…',
             priceCard_foundIn: 'znaleziono na ${host}',
-            priceCard_marketNoKeepa: 'Keepa nie ma wykresu dla tego sklepu — link działa, ceny nie będzie',
+            priceCard_marketNoData: 'Keepa nie ma wykresu dla tego sklepu — link działa, ceny nie będzie',
             priceCard_displayCurrency: 'Kwoty pokazywać w',
             priceCard_displayNative: 'walucie sklepu (bez przeliczania)',
             priceCard_displayCurrencyHint: 'Sumy liczone są zawsze w euro, a wybrana waluta to tylko sposób pokazania — zmiana w trakcie zmiany niczego nie gubi. Cena przeliczona ma znak ≈.',
@@ -903,7 +885,7 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_cacheAge: '${days}d temu',
             priceCard_graphMode: 'Obszar wykresu', priceCard_mode_legend: 'Tylko ceny (z wykresu)',
             priceCard_mode_right: 'Prawa część, rozmiar oryginalny', priceCard_mode_full: 'Cały wykres',
-            priceCard_jinaOff: 'pobieranie tekstu wyłączone',
+            priceCard_textOff: 'pobieranie tekstu wyłączone',
             priceCard_section: 'Karta ceny', priceCard_enabled: 'Pokaż kartę ceny',
             priceCard_showPrice: 'Pokaż aktualną cenę', priceCard_showRrp: 'Pokaż cenę katalogową (RRP)',
             priceCard_showGraph: 'Pokaż wykres Keepa',
@@ -1013,7 +995,7 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_fallbackHint: 'Только для одного предмета, в случайном порядке, раз в секунду. Магазин по умолчанию не меняется.',
             priceCard_searchingOther: 'ищу в других магазинах…',
             priceCard_foundIn: 'найдено на ${host}',
-            priceCard_marketNoKeepa: 'У Keepa нет графика для этого магазина — ссылка работает, цены не будет',
+            priceCard_marketNoData: 'У Keepa нет графика для этого магазина — ссылка работает, цены не будет',
             priceCard_displayCurrency: 'Показывать суммы в',
             priceCard_displayNative: 'валюте магазина (без пересчёта)',
             priceCard_displayCurrencyHint: 'Суммы всегда считаются в евро, выбранная валюта — только способ показа, поэтому смена посреди смены ничего не теряет. Пересчитанная цена помечена знаком ≈.',
@@ -1031,7 +1013,7 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_cacheAge: '${days} сут. назад',
             priceCard_graphMode: 'Область графика', priceCard_mode_legend: 'Только цены (с графика)',
             priceCard_mode_right: 'Правая часть, натуральный размер', priceCard_mode_full: 'Весь график',
-            priceCard_jinaOff: 'текстовый запрос выключен',
+            priceCard_textOff: 'текстовый запрос выключен',
             priceCard_section: 'Карточка цены', priceCard_enabled: 'Показывать карточку цены',
             priceCard_showPrice: 'Показывать текущую цену', priceCard_showRrp: 'Показывать RRP',
             priceCard_showGraph: 'Показывать график Keepa',
@@ -3082,11 +3064,11 @@ const SCRIPT_LOGS_ENABLED = false;
             const mkKey = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
             secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_marketplace'), UIBuilder.select(
                 Object.entries(CONFIG.MARKETPLACES).map(([k, m]) => ({
-                    value: k, text: m.host.replace(/^www\./, '') + (m.keepa_ok ? '' : '  ⚠'),
+                    value: k, text: m.host.replace(/^www\./, '') + (PriceSources.coversMarket(k) ? '' : '  ⚠'),
                 })), mkKey, v => { store.userConfig.marketplace = v; this.rerender(); })));
-            if (!CONFIG.MARKETPLACES[mkKey].keepa_ok) {
+            if (!PriceSources.coversMarket(mkKey)) {
                 secPrice.appendChild(h('div', {
-                    textContent: '⚠ ' + I18n.get('priceCard_marketNoKeepa'),
+                    textContent: '⚠ ' + I18n.get('priceCard_marketNoData'),
                     style: { fontSize: '0.85em', color: '#b06a00', margin: '-4px 0 10px 0', lineHeight: '1.35' },
                 }));
             }
@@ -3103,12 +3085,10 @@ const SCRIPT_LOGS_ENABLED = false;
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
-            // Źródło ceny — od zalecanego do zapasowych.
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select([
-                { value: 'ocr',   text: I18n.get('priceCard_src_ocr')   },
-                { value: 'graph', text: I18n.get('priceCard_src_graph') },
-                { value: 'jina',  text: I18n.get('priceCard_src_jina')  },
-            ], pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
+            // Źródło ceny — tryby z PriceSources, od zalecanego do zapasowych.
+            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select(
+                PriceSources.modes.map(m => ({ value: m.value, text: I18n.get(m.labelKey) })),
+                pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_fallback'), pc.marketFallback !== false,
@@ -3128,7 +3108,7 @@ const SCRIPT_LOGS_ENABLED = false;
             if (pc.visible) {
                 secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_openHint')));
 
-                if (pc.source === 'graph') {
+                if (PriceSources.showsChart(pc.source)) {
                     secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                         I18n.get('priceCard_showGraph'), pc.showGraph,
                         v => { store.localTabConfig.priceCard.showGraph = v; this.rerender(); })));
@@ -3173,7 +3153,7 @@ const SCRIPT_LOGS_ENABLED = false;
                     v => store.localTabConfig.priceCard.fontFamily = v)));
 
                 // Dolna granica jest celowo niska: w trybie przycięcia wąska
-                // karta nadal jest użyteczna — legenda Keepa nigdzie nie znika.
+                // karta nadal jest użyteczna — legenda wykresu nigdzie nie znika.
                 secPrice.appendChild(UIBuilder.row('', ...UIBuilder.slider(
                     170, 900, pc.width,
                     v => store.localTabConfig.priceCard.width = v,
@@ -3443,11 +3423,103 @@ const SCRIPT_LOGS_ENABLED = false;
         return `https://${marketplace(key).host}/dp/${encodeURIComponent(asin)}`;
     }
 
-    // ─── src/15-price-ocr.js ───
+    // ─── src/15-price-sources.js ───
     // ==========================================
-    // 6c. ODCZYT CENY Z OBRAZKA KEEPA
+    // 6c. ŹRÓDŁA CEN I KURSÓW — JEDYNE MIEJSCE, KTÓRE ZNA SIEĆ ZEWNĘTRZNĄ
     // ==========================================
     /**
+     * Wszystko, co wie, SKĄD przychodzi cena produktu i kurs waluty, stoi
+     * w tym pliku. Karta ceny, dziennik wartości, kursy walut i panel znają
+     * tylko kontrakt opisany niżej — nie znają ani hostów, ani formatów
+     * odpowiedzi. Wymiana źródeł (np. na wewnętrzne API) to przepisanie tego
+     * pliku według kontraktu; reszta skryptu tego nie zauważy.
+     *
+     * Zawartość:
+     *   PriceNet     — jedyne wyjście do sieci modułu cen: zapytanie HTTP
+     *                  i obrazek w tle, każde z twardym priceModuleOn();
+     *   KeepaOCR     — odczyt ceny z pikseli wykresu Keepa;
+     *   PriceSources — źródła ceny i kursów według kontraktu.
+     *
+     * KONTRAKT ŹRÓDŁA CENY — element PriceSources.list():
+     *   name          nazwa w wierszu źródła karty i w logach;
+     *   kind          'image' | 'text' — który licznik i limit zapytań się
+     *                 liczy i która blokada CSP (img-src / connect-src)
+     *                 wyłącza źródło;
+     *   available     czy źródło jest w użyciu przy bieżących ustawieniach
+     *                 karty; false — pomijane;
+     *   marketSearch  czy nadaje się do przeglądu innych sklepów, gdy
+     *                 w wybranym ceny nie ma;
+     *   run(asin, signal, market) → Promise<PriceResult|null>
+     *                 null — źródło odpowiedziało, ceny nie ma;
+     *                 wyjątek — awaria (sieć, HTTP, format odpowiedzi);
+     *                 `signal` przerywa zapytanie po limicie czasu, `market`
+     *                 to klucz z CONFIG.MARKETPLACES (bez niego: wybrany).
+     *
+     *   PriceResult = { current: Money|null, rrp: Money|null, stale: boolean,
+     *                   secondary?: { text }, series?: string, market?: string }
+     *   Money       = { value: number, currency: string, text: string }
+     *                 — waluta musi mieć kurs w CONFIG.FX_FALLBACK, inaczej
+     *                 kwota nie wejdzie do sum w euro (PriceSources.money()).
+     *
+     * Pozostała część kontraktu (opisy przy polach): modes, chart, cspHosts,
+     * coversMarket(), fxProviders, probes().
+     *
+     * Kolejność list jest kolejnością pytania. Limity, przerwy między
+     * zapytaniami, limit czasu, przegląd sklepów i blokady CSP prowadzi karta
+     * ceny (PriceCard) — źródło tylko pyta i rozbiera odpowiedź.
+     */
+    const PriceNet = {
+        /**
+         * Zapytanie HTTP. `init` idzie do fetch bez zmian — tędy wchodzą
+         * `signal`, nagłówki, `cache` i `credentials` (np. 'include' dla
+         * usługi, która rozpoznaje zalogowanego pracownika po ciasteczkach
+         * przeglądarki).
+         *
+         * Najniższy poziom, na którym moduł cen dotyka sieci, więc stoi tu
+         * twarde sprawdzenie modułu: nowa ścieżka wywołania bez sprawdzenia
+         * wyżej i tak nie wyśle zapytania.
+         */
+        request(url, init) {
+            if (!priceModuleOn()) {
+                return Promise.reject(new Error('moduł cen wyłączony — zapytanie nie zostało wysłane'));
+            }
+            return fetch(url, init);
+        },
+
+        /**
+         * Obrazek ładowany w tle, poza dokumentem.
+         *   crossOrigin    — 'anonymous', gdy potrzebne są piksele: bez niego
+         *                    canvas jest skażony i getImageData rzuca
+         *                    SecurityError; null — sam fakt załadowania;
+         *   referrerPolicy — Keepa oddaje obrazek tylko bez nagłówka Referer.
+         * Po limicie czasu ładowanie jest przerywane (`src = ''`).
+         *
+         * Sprawdzenie modułu cen — jak w request().
+         */
+        image(url, { timeoutMs, crossOrigin = 'anonymous', referrerPolicy = 'no-referrer' } = {}) {
+            if (!priceModuleOn()) {
+                return Promise.reject(new Error('moduł cen wyłączony — zapytanie nie zostało wysłane'));
+            }
+            return new Promise((res, rej) => {
+                const im = new Image();
+                if (crossOrigin) im.crossOrigin = crossOrigin;
+                im.referrerPolicy = referrerPolicy;
+                let done = false;
+                const timer = setTimeout(() => {
+                    if (done) return;
+                    done = true; im.src = '';
+                    rej(new Error('przekroczony czas oczekiwania na obrazek'));
+                }, timeoutMs || CONFIG.PRICE_REQUEST_TIMEOUT_MS);
+                im.onload = () => { if (done) return; done = true; clearTimeout(timer); res(im); };
+                im.onerror = () => { if (done) return; done = true; clearTimeout(timer); rej(new Error('obrazek się nie załadował')); };
+                im.src = url;
+            });
+        },
+    };
+
+    /**
+     * ODCZYT CENY Z OBRAZKA KEEPA.
+     *
      * Keepa drukuje aktualne ceny w legendzie wykresu. Obrazek wychodzi
      * z nagłówkami CORS, więc piksele są dostępne przez canvas i cenę da się
      * odczytać jako liczbę — bez klucza API i bez zapytań do Amazona.
@@ -3512,35 +3584,16 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         /**
-         * Obrazek do rozbioru — ładuje się w tle, do dokumentu nie trafia.
-         *   crossOrigin    — bez niego canvas jest skażony i getImageData
-         *                    rzuca SecurityError;
-         *   referrerPolicy — bez niego Keepa nie oddaje obrazka.
-         * Widoczny <img> wykresu (tryb 'graph') jest bez crossOrigin — tam
-         * piksele nie są potrzebne.
+         * Obrazek do rozbioru — przez PriceNet.image(), z crossOrigin, bo
+         * potrzebne są piksele. Widoczny <img> wykresu (tryb 'graph') idzie
+         * bez crossOrigin — tam pikseli się nie czyta.
          *
-         * Najniższy poziom, na którym skrypt dotyka sieci, więc stoi tu twarde
-         * sprawdzenie modułu cen: nowa ścieżka wywołania bez sprawdzenia wyżej
-         * i tak nie wyśle zapytania.
+         * Zły ASIN kończy się odrzuceniem obietnicy, a nie wyjątkiem.
          */
         loadImage(asin, timeoutMs, market) {
-            if (!priceModuleOn()) {
-                return Promise.reject(new Error('moduł cen wyłączony — zapytanie nie zostało wysłane'));
-            }
-            return new Promise((res, rej) => {
-                const im = new Image();
-                im.crossOrigin = 'anonymous';
-                im.referrerPolicy = 'no-referrer';
-                let done = false;
-                const timer = setTimeout(() => {
-                    if (done) return;
-                    done = true; im.src = '';
-                    rej(new Error('przekroczony czas oczekiwania na obrazek'));
-                }, timeoutMs || CONFIG.PRICE_REQUEST_TIMEOUT_MS);
-                im.onload = () => { if (done) return; done = true; clearTimeout(timer); res(im); };
-                im.onerror = () => { if (done) return; done = true; clearTimeout(timer); rej(new Error('obrazek się nie załadował')); };
-                im.src = this.url(asin, market);
-            });
+            let url;
+            try { url = this.url(asin, market); } catch (e) { return Promise.reject(e); }
+            return PriceNet.image(url, { timeoutMs });
         },
 
         pixels(im) {
@@ -3749,6 +3802,306 @@ const SCRIPT_LOGS_ENABLED = false;
                 .filter(r => r.price && r.price !== top.price)
                 .map(r => ({ series: r.series, text: `${r.series} ${r.price}` }))[0] || null;
             return { top, second, rows };
+        },
+    };
+
+    /**
+     * ŹRÓDŁA CENY I KURSÓW według kontraktu z nagłówka pliku.
+     *
+     * Zapytanie do amazon.* ze strony T-REX jest niemożliwe (Same-Origin
+     * Policy: zwykły fetch, XHR, no-cors, iframe, script src i widżety
+     * partnerskie są blokowane; Tampermonkey obchodzi to tylko dlatego, że
+     * GM_xmlhttpRequest działa w kontekście rozszerzenia). Dlatego źródła są
+     * pośrednie:
+     *   graph.keepa.com — obrazek wykresu; cena odczytana z pikseli;
+     *   api.keepa.com   — oficjalne API, tylko z płatnym kluczem;
+     *   r.jina.ai       — tekst strony produktu, oddaje nagłówki CORS.
+     */
+    const PriceSources = {
+        /**
+         * Wartości ustawienia `priceCard.source` w kolejności panelu, od
+         * zalecanej. Wartość siedzi w zapisanych ustawieniach i w kodzie
+         * ustawień, więc nowe źródło dostaje nową wartość, a istniejących się
+         * nie przemianowuje. Nową wartość dopisuje się też NA KONIEC
+         * ConfigCode.ENUMS.source — inaczej kod ustawień jej nie przeniesie.
+         *   showsChart — w tym trybie karta pokazuje obrazek wykresu (chart);
+         *   readsImage — cena pochodzi z obrazka, więc blokada img-src znaczy
+         *                „nie ma skąd przeczytać ceny”, a nie „nie ma wykresu”.
+         */
+        modes: [
+            { value: 'ocr',   labelKey: 'priceCard_src_ocr', readsImage: true },
+            { value: 'graph', labelKey: 'priceCard_src_graph', showsChart: true },
+            { value: 'jina',  labelKey: 'priceCard_src_jina' },
+        ],
+
+        /** Opis trybu po wartości ustawienia albo null. */
+        mode(value) { return this.modes.find(m => m.value === value) || null; },
+
+        /** Czy w tym trybie karta pokazuje obrazek wykresu. */
+        showsChart(value) {
+            const m = this.mode(value);
+            return !!(this.chart && m && m.showsChart);
+        },
+
+        /**
+         * Obrazek wykresu do pokazania na karcie albo null, gdy źródła nie
+         * mają wykresu (karta chowa wtedy ramkę i opcje wykresu w panelu).
+         *   url(asin, market) — adres obrazka;
+         *   width, height     — natywny rozmiar obrazka w pikselach;
+         *   legend            — prostokąt z samymi cenami {x, y, w, h}, do
+         *                       trybu „tylko blok z cenami”.
+         * Wartości czytane w chwili rysowania, więc zmiana CONFIG w locie
+         * działa od razu.
+         */
+        chart: {
+            url(asin, market) { return KeepaOCR.url(asin, market); },
+            get width() { return CONFIG.PRICE_KEEPA_PNG_W; },
+            get height() { return CONFIG.PRICE_KEEPA_PNG_H; },
+            get legend() {
+                return {
+                    x: CONFIG.PRICE_KEEPA_LEGEND_X, y: CONFIG.PRICE_KEEPA_LEGEND_Y,
+                    w: CONFIG.PRICE_KEEPA_LEGEND_W, h: CONFIG.PRICE_KEEPA_LEGEND_H,
+                };
+            },
+        },
+
+        /**
+         * Hosty źródeł ceny z dyrektywą CSP, której potrzebują. Blokada na
+         * którymś z nich wyłącza źródła tego rodzaju (PriceCard.csp), a raport
+         * SH.cspReport() sprawdza je po kolei.
+         */
+        cspHosts: {
+            'graph.keepa.com': 'img-src',
+            'r.jina.ai': 'connect-src',
+            'api.keepa.com': 'connect-src',
+        },
+
+        /**
+         * Czy źródła mają dane dla rynku. Keepa dla Polski oddaje pusty wykres:
+         * link działa, ceny nie będzie — panel ostrzega, a przegląd sklepów
+         * takie rynki pomija.
+         */
+        coversMarket(key) {
+            const m = CONFIG.MARKETPLACES[key];
+            return !!(m && m.keepa_ok);
+        },
+
+        /** Kwota w postaci wspólnej dla wszystkich źródeł (Money). */
+        money(value, currency) {
+            return { value, currency, text: `${currency} ${value.toFixed(2)}` };
+        },
+
+        // ---------------- rozbiór odpowiedzi ----------------
+        /**
+         * Kwota w tekście strony. Waluta ze ścisłej listy, a nie [A-Z]{3}
+         * (szeroki wzorzec łapie „UTF 8.00” z parametru ?ie=UTF8), grosze
+         * obowiązkowe (Amazon drukuje zawsze dwa miejsca). Tekst pochodzi
+         * z obcego serwisu, więc wzorzec przepuszcza wyłącznie to, co wygląda
+         * jak kwota — i wyłącznie waluty, które da się przeliczyć (test pilnuje
+         * zgodności z CONFIG.FX_FALLBACK).
+         */
+        MONEY: String.raw`(?:(EUR|USD|GBP|PLN|SEK|CAD)\s?|(€|\$|£|zł)\s?)(\d{1,3}(?:[., ]\d{3})*[.,]\d{2})`,
+
+        /**
+         * Symbol waluty → kod z tablicy kursów. Symbol przepuszczony dalej
+         * jako „waluta” nie miałby kursu i kwota wypadłaby z sumy zmiany.
+         * „$” zależy od rynku: na amazon.ca to dolar kanadyjski.
+         */
+        symbolCode(symbol) {
+            if (symbol === '$') return store.userConfig.marketplace === 'ca' ? 'CAD' : 'USD';
+            return { '€': 'EUR', '£': 'GBP', 'zł': 'PLN' }[symbol] || '';
+        },
+
+        normalize(currency, symbol, amount) {
+            const cur = currency || this.symbolCode(symbol);
+            let a = String(amount).replace(/[ \s]/g, '');
+            const ld = a.lastIndexOf('.'), lc = a.lastIndexOf(',');
+            if (ld >= 0 && lc >= 0) {
+                a = lc > ld ? a.replace(/\./g, '').replace(',', '.') : a.replace(/,/g, '');
+            } else if (lc >= 0) {
+                a = (a.length - lc - 1) === 2 ? a.replace(',', '.') : a.replace(/,/g, '');
+            }
+            const n = parseFloat(a);
+            return isNaN(n) ? null : this.money(n, cur);
+        },
+
+        /**
+         * Rozbiór odpowiedzi r.jina.ai w dwóch trybach. Odpowiedź adresowana
+         * (x-target-selector) to jeden blok ceny i pierwsza kwota jest ceną.
+         * Cała strona (ok. 200 KB) zawiera kilkanaście kwot — tam cenę bierze
+         * się tylko po kotwicy „… with N percent savings”.
+         */
+        parseJina(text, targeted) {
+            const body = text.split('Markdown Content:').pop() || '';
+            const stale = /cached snapshot/i.test(text);
+            // O trybie mówi dostawca (`targeted`), a nie długość ciała — strona
+            // zgody na ciasteczka też jest krótka, a ceny na niej nie ma.
+            const M = this.MONEY;
+
+            const rrpM = body.match(new RegExp(String.raw`(?:RRP|UVP|Statt|List Price):\s*` + M, 'i'));
+            const rrp = rrpM ? this.normalize(rrpM[1], rrpM[2], rrpM[3]) : null;
+
+            const anchored = body.match(new RegExp(M + String.raw`\s+with\s+[\d.,]+\s+percent savings`, 'i'));
+            let current = anchored ? this.normalize(anchored[1], anchored[2], anchored[3]) : null;
+
+            if (!current && targeted) {
+                const m = (body.split(/RRP:|UVP:|List Price:/i)[0]).match(new RegExp(M));
+                if (m) current = this.normalize(m[1], m[2], m[3]);
+            }
+            if (!current && !rrp) return null;
+            return { current, rrp, stale };
+        },
+
+        /**
+         * Wynik rozbioru obrazka do wspólnej postaci. Waluta pochodzi z rynku,
+         * z którego zdjęto cenę — przy przeglądzie sklepów to nie wybrany sklep.
+         */
+        ocrResult(d, market) {
+            const key = market || marketplaceKey();
+            return {
+                current: this.money(d.top.value, marketplace(key).currency),
+                rrp: null,
+                secondary: d.second ? { text: d.second.text } : null,
+                series: d.top.series,
+                market: key,
+                stale: false,
+            };
+        },
+
+        // ---------------- źródła ceny ----------------
+        /** Źródła ceny w kolejności pytania (kontrakt w nagłówku pliku). */
+        list() {
+            const self = this;
+            const jinaUrl = (asin) => `https://r.jina.ai/https://${marketplace().host}/dp/${encodeURIComponent(asin)}`;
+            return [
+                {
+                    /**
+                     * Cena odczytana z obrazka wykresu — pierwsza i domyślna:
+                     * nie wymaga klucza ani obcego proxy, tylko obrazka
+                     * z graph.keepa.com. Działa też w trybie 'graph' (różnica
+                     * to tylko to, czy obrazek się pokazuje), więc dziennik
+                     * napełnia się niezależnie od widoku.
+                     */
+                    name: 'keepa-ocr',
+                    kind: 'image',
+                    get available() {
+                        const pc = store.localTabConfig.priceCard;
+                        return pc.source === 'ocr' || pc.source === 'graph' || !!pc.logValues;
+                    },
+                    // r.jina.ai rozbiera szablon konkretnej witryny — gonienie
+                    // go po obcych rynkach nie ma sensu, więc w trybie 'jina'
+                    // przeglądu sklepów nie ma.
+                    get marketSearch() { return store.localTabConfig.priceCard.source !== 'jina'; },
+                    async run(asin, signal, market) {
+                        const d = await KeepaOCR.read(asin, market);
+                        return d ? self.ocrResult(d, market) : null;
+                    },
+                },
+                {
+                    // Oficjalne API Keepa: oddaje CORS, wymaga płatnego klucza.
+                    // Z kluczem to najlepsze źródło — dokładna cena bez
+                    // rozbierania szablonu strony.
+                    name: 'keepa-api',
+                    kind: 'text',
+                    get available() { return !!CONFIG.PRICE_KEEPA_API_KEY; },
+                    marketSearch: false,
+                    async run(asin, signal) {
+                        const u = `https://api.keepa.com/product?key=${encodeURIComponent(CONFIG.PRICE_KEEPA_API_KEY)}`
+                                + `&domain=${encodeURIComponent(CONFIG.PRICE_KEEPA_API_DOMAIN)}&asin=${encodeURIComponent(asin)}&stats=1&history=0`;
+                        const r = await PriceNet.request(u, { signal });
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        const j = await r.json();
+                        const p = j.products && j.products[0];
+                        if (!p) throw new Error('produktu nie znaleziono');
+                        const cents = (v) => (typeof v === 'number' && v > 0) ? v / 100 : null;
+                        const st = p.stats || {};
+                        const cur = cents(st.current && st.current[1]) ?? cents(st.current && st.current[0]);
+                        const rrp = cents(p.listPrice);
+                        if (cur == null && rrp == null) throw new Error('w odpowiedzi nie ma cen');
+                        const mk = (v) => v == null ? null : self.money(v, 'EUR');
+                        return { current: mk(cur), rrp: mk(rrp), stale: false };
+                    },
+                },
+                {
+                    name: 'jina/blok',
+                    kind: 'text',
+                    get available() { return store.localTabConfig.priceCard.source === 'jina'; },
+                    marketSearch: false,
+                    async run(asin, signal) {
+                        const r = await PriceNet.request(jinaUrl(asin), {
+                            signal,
+                            headers: {
+                                'x-target-selector': CONFIG.PRICE_JINA_SELECTOR,
+                                'x-cache-tolerance': String(CONFIG.PRICE_JINA_CACHE_TOLERANCE_S),
+                            },
+                        });
+                        // 422 = bloku na stronie nie ma (inny szablon, strona
+                        // zgody na ciasteczka) — próbujemy następnego trybu.
+                        if (r.status === 422) throw new Error('nie ma bloku z ceną');
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return self.parseJina(await r.text(), true);
+                    },
+                },
+                {
+                    name: 'jina/strona',
+                    kind: 'text',
+                    get available() { return store.localTabConfig.priceCard.source === 'jina'; },
+                    marketSearch: false,
+                    async run(asin, signal) {
+                        const r = await PriceNet.request(jinaUrl(asin), {
+                            signal,
+                            headers: { 'x-cache-tolerance': String(CONFIG.PRICE_JINA_CACHE_TOLERANCE_S) },
+                        });
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return self.parseJina(await r.text(), false);
+                    },
+                },
+            ];
+        },
+
+        // ---------------- kursy walut ----------------
+        /**
+         * ŹRÓDŁA KURSÓW WALUT, pytane po kolei do pierwszego sukcesu
+         * (FxRates.init). Wszystkie oddają nagłówki CORS i nie wymagają klucza.
+         *   url  — adres zapytania (odpowiedź JSON);
+         *   pick — z odpowiedzi wyciąga { WALUTA: jednostek za 1 EUR };
+         *          resztę sprawdza FxRates.normalize().
+         * Dokładność co do grosza nie jest potrzebna: to szacunek wyniku
+         * zmiany, a nie księgowość.
+         */
+        fxProviders: [
+            { name: 'jsdelivr', url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json',
+              pick: (j) => j && j.eur },
+            { name: 'er-api',   url: 'https://open.er-api.com/v6/latest/EUR',
+              pick: (j) => j && j.rates },
+            // floatrates oddaje kurs łańcuchem („1.15514929”) — stąd Number().
+            { name: 'floatrates', url: 'https://www.floatrates.com/daily/eur.json',
+              pick: (j) => { if (!j) return null; const o = {}; for (const k in j) o[k] = j[k] && Number(j[k].rate); return o; } },
+        ],
+
+        // ---------------- diagnostyka ----------------
+        /**
+         * Sprawdzenia faktyczne do SH.cspReport(): czy obrazek i zapytanie
+         * źródeł naprawdę przechodzą przez politykę strony. Wołane tylko przy
+         * włączonym module cen (PriceNet i tak by odmówił).
+         * @returns {Array<{label: string, run: () => Promise<string>}>}
+         */
+        probes() {
+            return [
+                {
+                    label: 'obrazek Keepa',
+                    // Sam fakt załadowania — piksele niepotrzebne, więc bez crossOrigin.
+                    run: () => PriceNet.image(KeepaOCR.url('B0915C748N'), { timeoutMs: 8000, crossOrigin: null })
+                        .then(im => (im.naturalWidth > 10 ? 'załadowany' : 'pusty'),
+                              e => (/czas/.test(e.message) ? 'przekroczony czas' : 'ZABLOKOWANY')),
+                },
+                {
+                    label: 'zapytanie r.jina.ai',
+                    run: () => PriceNet.request('https://r.jina.ai/https://example.com', {
+                        headers: { 'x-cache-tolerance': '259200' },
+                    }).then(r => 'przeszedł, HTTP ' + r.status, e => 'ZABLOKOWANY (' + e.message + ')'),
+                },
+            ];
         },
     };
 
@@ -4253,11 +4606,11 @@ const SCRIPT_LOGS_ENABLED = false;
                         + `${Math.round((Date.now() - this.fetchedAt) / 3600000)} h`);
                 return this.rates;
             }
-            for (const p of CONFIG.FX_PROVIDERS) {
+            for (const p of PriceSources.fxProviders) {
                 try {
                     const ctl = new AbortController();
                     const timer = setTimeout(() => ctl.abort(), CONFIG.FX_TIMEOUT_MS);
-                    const r = await fetch(p.url, { signal: ctl.signal, cache: 'no-store' });
+                    const r = await PriceNet.request(p.url, { signal: ctl.signal, cache: 'no-store' });
                     clearTimeout(timer);
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     const norm = this.normalize(p.pick(await r.json()));
@@ -4643,8 +4996,9 @@ const SCRIPT_LOGS_ENABLED = false;
      * ustawień oraz konsola (SH.priceOn() / SH.priceOff()).
      *
      * Pierwsze zapytanie do sieci zewnętrznej wychodzi stąd i znikąd indziej.
-     * Dopóki enable() nie zostanie wywołane, FxRates, KeepaOCR i PriceCard nie
-     * nawiązują połączeń — i każde z nich sprawdza to samodzielnie.
+     * Dopóki enable() nie zostanie wywołane, FxRates i PriceCard nie
+     * nawiązują połączeń, a PriceNet — jedyne wyjście do sieci modułu cen —
+     * odmawia; każde z nich sprawdza to samodzielnie.
      */
     const PriceModule = {
         enable() {
@@ -4678,12 +5032,10 @@ const SCRIPT_LOGS_ENABLED = false;
     /**
      * Pokazuje cenę produktu, który jest właśnie obsługiwany.
      *
-     * Zapytanie do amazon.* ze strony T-REX jest niemożliwe (Same-Origin
-     * Policy: zwykły fetch, XHR, no-cors, iframe, script src i widżety
-     * partnerskie są blokowane; Tampermonkey obchodzi to tylko dlatego, że
-     * GM_xmlhttpRequest działa w kontekście rozszerzenia). Źródła są dwa:
-     *   r.jina.ai       — tekst strony, oddaje nagłówki CORS;
-     *   graph.keepa.com — obrazek, któremu CORS nie jest potrzebny.
+     * Skąd przychodzi cena, karta nie wie: pyta źródła z PriceSources według
+     * kontraktu (src/15-price-sources.js), a sama prowadzi to, co wspólne dla
+     * każdego źródła — limity i przerwy między zapytaniami, limit czasu,
+     * przegląd innych sklepów, blokady CSP i rysowanie.
      *
      * Jedno zapytanie na przedmiot, pytane przy nowym ASIN albo na początku
      * nowego przedmiotu. Nic nie wychodzi, dopóki moduł cen nie zostanie
@@ -4700,8 +5052,8 @@ const SCRIPT_LOGS_ENABLED = false;
         searchingOther: null,
         awaiting: false,         // zaczął się nowy przedmiot, czekamy na ASIN
         requestCount: 0,
-        // Obrazki Keepa liczą się osobno od zapytań tekstowych — mają własny
-        // limit (CONFIG.PRICE_MAX_IMAGE_REQUESTS).
+        // Obrazki liczą się osobno od zapytań tekstowych — mają własny limit
+        // (CONFIG.PRICE_MAX_IMAGE_REQUESTS).
         imageCount: 0,
         nextSlotAt: 0,
         el: null,
@@ -4716,151 +5068,31 @@ const SCRIPT_LOGS_ENABLED = false;
          */
         csp: { img: false, net: false, notified: false },
 
-        // ---------------- rozbiór odpowiedzi ----------------
-        /**
-         * Kwota w tekście strony. Waluta ze ścisłej listy, a nie [A-Z]{3}
-         * (szeroki wzorzec łapie „UTF 8.00” z parametru ?ie=UTF8), grosze
-         * obowiązkowe (Amazon drukuje zawsze dwa miejsca). Tekst pochodzi
-         * z obcego serwisu, więc wzorzec przepuszcza wyłącznie to, co wygląda
-         * jak kwota — i wyłącznie waluty, które da się przeliczyć (test pilnuje
-         * zgodności z CONFIG.FX_FALLBACK).
-         */
-        MONEY: String.raw`(?:(EUR|USD|GBP|PLN|SEK|CAD)\s?|(€|\$|£|zł)\s?)(\d{1,3}(?:[., ]\d{3})*[.,]\d{2})`,
-
-        /**
-         * Symbol waluty → kod z tablicy kursów. Symbol przepuszczony dalej
-         * jako „waluta” nie miałby kursu i kwota wypadłaby z sumy zmiany.
-         * „$” zależy od rynku: na amazon.ca to dolar kanadyjski.
-         */
-        symbolCode(symbol) {
-            if (symbol === '$') return store.userConfig.marketplace === 'ca' ? 'CAD' : 'USD';
-            return { '€': 'EUR', '£': 'GBP', 'zł': 'PLN' }[symbol] || '';
-        },
-
-        normalize(currency, symbol, amount) {
-            const cur = currency || this.symbolCode(symbol);
-            let a = String(amount).replace(/[ \s]/g, '');
-            const ld = a.lastIndexOf('.'), lc = a.lastIndexOf(',');
-            if (ld >= 0 && lc >= 0) {
-                a = lc > ld ? a.replace(/\./g, '').replace(',', '.') : a.replace(/,/g, '');
-            } else if (lc >= 0) {
-                a = (a.length - lc - 1) === 2 ? a.replace(',', '.') : a.replace(/,/g, '');
-            }
-            const n = parseFloat(a);
-            return isNaN(n) ? null : { value: n, currency: cur, text: `${cur} ${n.toFixed(2)}` };
-        },
-
-        /**
-         * Rozbiór odpowiedzi r.jina.ai w dwóch trybach. Odpowiedź adresowana
-         * (x-target-selector) to jeden blok ceny i pierwsza kwota jest ceną.
-         * Cała strona (ok. 200 KB) zawiera kilkanaście kwot — tam cenę bierze
-         * się tylko po kotwicy „… with N percent savings”.
-         */
-        parseJina(text, targeted) {
-            const body = text.split('Markdown Content:').pop() || '';
-            const stale = /cached snapshot/i.test(text);
-            // O trybie mówi dostawca (`targeted`), a nie długość ciała — strona
-            // zgody na ciasteczka też jest krótka, a ceny na niej nie ma.
-            const M = this.MONEY;
-
-            const rrpM = body.match(new RegExp(String.raw`(?:RRP|UVP|Statt|List Price):\s*` + M, 'i'));
-            const rrp = rrpM ? this.normalize(rrpM[1], rrpM[2], rrpM[3]) : null;
-
-            const anchored = body.match(new RegExp(M + String.raw`\s+with\s+[\d.,]+\s+percent savings`, 'i'));
-            let current = anchored ? this.normalize(anchored[1], anchored[2], anchored[3]) : null;
-
-            if (!current && targeted) {
-                const m = (body.split(/RRP:|UVP:|List Price:/i)[0]).match(new RegExp(M));
-                if (m) current = this.normalize(m[1], m[2], m[3]);
-            }
-            if (!current && !rrp) return null;
-            return { current, rrp, stale };
-        },
-
-        keepaUrl(asin, market) { return KeepaOCR.url(asin, market); },
-
         // ---------------- źródła ----------------
-        providers() {
-            const self = this;
-            return [
-                {
-                    /**
-                     * Cena odczytana z obrazka wykresu — pierwsza i domyślna:
-                     * nie wymaga klucza ani obcego proxy, tylko obrazka
-                     * z graph.keepa.com. Działa też w trybie 'graph' (różnica
-                     * to tylko to, czy obrazek się pokazuje), więc dziennik
-                     * napełnia się niezależnie od widoku.
-                     */
-                    name: 'keepa-ocr',
-                    get available() {
-                        const pc = store.localTabConfig.priceCard;
-                        // Obrazek tnie CSP — nie ma czego czytać.
-                        if (self.csp.img) return false;
-                        return pc.source === 'ocr' || pc.source === 'graph' || !!pc.logValues;
-                    },
-                    isImage: true,
-                    // Liczniki zapytań prowadzi pętla w resolve(), nie dostawca.
-                    async run(asin, signal, market) {
-                        const d = await KeepaOCR.read(asin, market);
-                        if (!d) throw new Error('cena na wykresie nierozpoznana');
-                        return self.buildOcrResult(d, market);
-                    },
-                },
-                {
-                    // Oficjalne API Keepa: oddaje CORS, wymaga płatnego klucza.
-                    // Z kluczem to najlepsze źródło — dokładna cena bez
-                    // rozbierania szablonu strony.
-                    name: 'keepa-api',
-                    get available() { return !!CONFIG.PRICE_KEEPA_API_KEY; },
-                    async run(asin, signal) {
-                        const u = `https://api.keepa.com/product?key=${encodeURIComponent(CONFIG.PRICE_KEEPA_API_KEY)}`
-                                + `&domain=${encodeURIComponent(CONFIG.PRICE_KEEPA_API_DOMAIN)}&asin=${encodeURIComponent(asin)}&stats=1&history=0`;
-                        const r = await fetch(u, { signal });
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        const j = await r.json();
-                        const p = j.products && j.products[0];
-                        if (!p) throw new Error('produktu nie znaleziono');
-                        const cents = (v) => (typeof v === 'number' && v > 0) ? v / 100 : null;
-                        const st = p.stats || {};
-                        const cur = cents(st.current && st.current[1]) ?? cents(st.current && st.current[0]);
-                        const rrp = cents(p.listPrice);
-                        if (cur == null && rrp == null) throw new Error('w odpowiedzi nie ma cen');
-                        const mk = (v) => v == null ? null : { value: v, currency: 'EUR', text: `EUR ${v.toFixed(2)}` };
-                        return { current: mk(cur), rrp: mk(rrp), stale: false };
-                    },
-                },
-                {
-                    name: 'jina/blok',
-                    get available() { return store.localTabConfig.priceCard.source === 'jina'; },
-                    async run(asin, signal) {
-                        const r = await fetch(`https://r.jina.ai/https://${marketplace().host}/dp/${encodeURIComponent(asin)}`, {
-                            signal,
-                            headers: {
-                                'x-target-selector': CONFIG.PRICE_JINA_SELECTOR,
-                                'x-cache-tolerance': String(CONFIG.PRICE_JINA_CACHE_TOLERANCE_S),
-                            },
-                        });
-                        // 422 = bloku na stronie nie ma (inny szablon, strona
-                        // zgody na ciasteczka) — próbujemy następnego trybu.
-                        if (r.status === 422) throw new Error('nie ma bloku z ceną');
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return self.parseJina(await r.text(), true);
-                    },
-                },
-                {
-                    name: 'jina/strona',
-                    get available() { return store.localTabConfig.priceCard.source === 'jina'; },
-                    async run(asin, signal) {
-                        const r = await fetch(`https://r.jina.ai/https://${marketplace().host}/dp/${encodeURIComponent(asin)}`, {
-                            signal,
-                            headers: { 'x-cache-tolerance': String(CONFIG.PRICE_JINA_CACHE_TOLERANCE_S) },
-                        });
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return self.parseJina(await r.text(), false);
-                    },
-                },
-            ];
+        /**
+         * Czy źródło można teraz pytać: włączone w ustawieniach i nie
+         * zablokowane przez CSP. Blokada img-src wyłącza źródła obrazkowe;
+         * blokadę connect-src sprawdza pętla w resolve() przy każdym obiegu.
+         */
+        usable(s) {
+            if (s.available === false) return false;
+            return !(s.kind === 'image' && this.csp.img);
         },
+
+        /** Źródło do przeglądu innych sklepów albo null, gdy żadne się nie nadaje. */
+        marketSearcher() {
+            return PriceSources.list().find(s => s.marketSearch && this.usable(s)) || null;
+        },
+
+        /**
+         * Liczniki i limity idą po rodzaju źródła: obrazki i zapytania
+         * tekstowe mają osobne liczniki i osobne limity.
+         */
+        used(kind) { return kind === 'image' ? this.imageCount : this.requestCount; },
+        cap(kind) {
+            return kind === 'image' ? CONFIG.PRICE_MAX_IMAGE_REQUESTS : CONFIG.PRICE_MAX_REQUESTS_PER_SESSION;
+        },
+        count(kind) { if (kind === 'image') this.imageCount++; else this.requestCount++; },
 
         // ---------------- sieć ----------------
         /**
@@ -4893,28 +5125,10 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         /**
-         * Wynik rozbioru obrazka do wspólnej postaci. Waluta pochodzi z rynku,
-         * z którego zdjęto cenę — przy przeglądzie sklepów to nie wybrany sklep.
-         */
-        buildOcrResult(d, market) {
-            const key = market || marketplaceKey();
-            const cur = marketplace(key).currency;
-            const mk = (v) => ({ value: v, currency: cur, text: `${cur} ${v.toFixed(2)}` });
-            return {
-                current: mk(d.top.value),
-                rrp: null,
-                secondary: d.second ? { text: d.second.text } : null,
-                series: d.top.series,
-                market: key,
-                stale: false,
-            };
-        },
-
-        /**
          * Kolejność przeglądu sklepów: rynek z linku na stronie, potem Europa,
          * na końcu PRICE_FALLBACK_LAST — w obrębie grupy losowo. Bez wybranego
-         * rynku (ten już odpowiedział „nie ma”) i bez rynków, dla których Keepa
-         * nie ma danych.
+         * rynku (ten już odpowiedział „nie ma”) i bez rynków, dla których
+         * źródła nie mają danych (PriceSources.coversMarket).
          *
          * @param {string} from       rynek już sprawdzony
          * @param {string|null} hint  rynek z linku do produktu na stronie
@@ -4929,10 +5143,9 @@ const SCRIPT_LOGS_ENABLED = false;
                 return list;
             };
             const pool = Object.keys(CONFIG.MARKETPLACES)
-                .filter(k => k !== from && k !== hint && CONFIG.MARKETPLACES[k].keepa_ok);
+                .filter(k => k !== from && k !== hint && PriceSources.coversMarket(k));
             const late = pool.filter(k => CONFIG.PRICE_FALLBACK_LAST.includes(k));
-            const first = hint && hint !== from && CONFIG.MARKETPLACES[hint]
-                && CONFIG.MARKETPLACES[hint].keepa_ok ? [hint] : [];
+            const first = hint && hint !== from && PriceSources.coversMarket(hint) ? [hint] : [];
             return first
                 .concat(shuffle(pool.filter(k => !late.includes(k))), shuffle(late))
                 .slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
@@ -4940,10 +5153,13 @@ const SCRIPT_LOGS_ENABLED = false;
 
         /**
          * PRZEGLĄD POZOSTAŁYCH SKLEPÓW, gdy wybrany rynek ceny nie dał
-         * (zasady: CONFIG.PRICE_FALLBACK_*). Zwraca pierwszy sukces albo null.
-         * Wybrany sklep się nie zmienia — następny przedmiot zaczyna od niego.
+         * (zasady: CONFIG.PRICE_FALLBACK_*). Pyta źródło z marketSearcher()
+         * rynek po rynku. Zwraca pierwszy sukces albo null. Wybrany sklep się
+         * nie zmienia — następny przedmiot zaczyna od niego.
          */
         async tryOtherMarkets(asin) {
+            const src = this.marketSearcher();
+            if (!src) return null;
             const from = marketplaceKey();
             const hint = this.linkMarket && this.linkMarket.asin === asin ? this.linkMarket.key : null;
             const tries = this.fallbackOrder(from, hint);
@@ -4953,9 +5169,10 @@ const SCRIPT_LOGS_ENABLED = false;
                 // Moduł mógł zostać wyłączony w trakcie przeglądu — przerywamy
                 // natychmiast, zamiast dosyłać resztę zapytań.
                 if (!priceModuleOn()) break;
-                if (this.csp.img) break;
-                if (this.imageCount >= CONFIG.PRICE_MAX_IMAGE_REQUESTS) {
-                    Utils.log('[CENA] przegląd zatrzymany: limit obrazków');
+                // Blokada CSP mogła przyjść w trakcie przeglądu.
+                if (!this.usable(src)) break;
+                if (this.used(src.kind) >= this.cap(src.kind)) {
+                    Utils.log('[CENA] przegląd zatrzymany: limit zapytań');
                     break;
                 }
                 await new Promise(r => setTimeout(r, CONFIG.PRICE_FALLBACK_DELAY_MS));
@@ -4964,15 +5181,14 @@ const SCRIPT_LOGS_ENABLED = false;
                     Utils.log(`[CENA] ${asin}: przegląd przerwany, na ekranie jest już inny przedmiot`);
                     return null;
                 }
-                this.imageCount++;
+                this.count(src.kind);
                 const t0 = Date.now();
                 try {
-                    const d = await this.withTimeout(
-                        () => KeepaOCR.read(asin, key), CONFIG.PRICE_REQUEST_TIMEOUT_MS);
-                    if (d) {
-                        const out = this.buildOcrResult(d, key);
-                        Utils.log(`[CENA] ${asin}: znalezione na ${marketplace(key).host} — ${out.current.text}`);
-                        return { status: 'ok', ...out, source: 'keepa-ocr', fallback: true, ms: Date.now() - t0 };
+                    const out = await this.withTimeout(
+                        (signal) => src.run(asin, signal, key), CONFIG.PRICE_REQUEST_TIMEOUT_MS);
+                    if (out && (out.current || out.rrp)) {
+                        Utils.log(`[CENA] ${asin}: znalezione na ${marketplace(key).host} — ${(out.current || out.rrp).text}`);
+                        return { status: 'ok', ...out, market: key, source: src.name, fallback: true, ms: Date.now() - t0 };
                     }
                     Utils.log(`[CENA] ${asin}: na ${key} ceny też nie ma`);
                 } catch (e) {
@@ -5006,7 +5222,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * wychodzi), a częstotliwość ogranicza cykl obsługi: check() woła
          * resolve() przy zmianie ASIN albo na początku przedmiotu, nie przy
          * każdej mutacji DOM. Pierwszy warunek to moduł cen — ta sama bariera
-         * co w KeepaOCR.loadImage(), celowo na wejściu i na wyjściu.
+         * co w PriceNet, celowo na wejściu i na wyjściu.
          */
         async resolve(asin, { manual = false } = {}) {
             if (!asin) return null;
@@ -5016,7 +5232,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
             // Ani jednego włączonego źródła — do sieci nie idziemy wcale.
             // To normalny stan w trybie 'legend': cenę widać na obrazku.
-            if (!this.providers().some(p => p.available !== false)) {
+            if (!PriceSources.list().some(p => this.usable(p))) {
                 this._remember(asin, { status: 'off' });
                 this.render();
                 return null;
@@ -5028,19 +5244,16 @@ const SCRIPT_LOGS_ENABLED = false;
             let result = { status: 'fail', reason: I18n.get('priceCard_noPrice') };
             try {
                 let limitHit = false;
-                for (const p of this.providers()) {
-                    if (p.available === false) continue;
+                for (const p of PriceSources.list()) {
+                    if (!this.usable(p)) continue;
                     // securitypolicyviolation przychodzi asynchronicznie, po
                     // odmowie fetch — flagę sprawdzamy w każdym obiegu, żeby
                     // następny dostawca nie wchodził w zablokowaną sieć.
                     if (this.csp.net) break;
 
-                    // Limit sprawdza się po typie dostawcy: obrazki i zapytania
-                    // tekstowe mają osobne liczniki i osobne limity.
-                    const isImg = !!p.isImage;
-                    const used = isImg ? this.imageCount : this.requestCount;
-                    const cap  = isImg ? CONFIG.PRICE_MAX_IMAGE_REQUESTS
-                                       : CONFIG.PRICE_MAX_REQUESTS_PER_SESSION;
+                    const isImg = p.kind === 'image';
+                    const used = this.used(p.kind);
+                    const cap = this.cap(p.kind);
                     if (used >= cap) {
                         limitHit = true;
                         Utils.error(`[CENA] osiągnięto limit ${isImg ? 'obrazków' : 'zapytań tekstowych'}: `
@@ -5052,7 +5265,7 @@ const SCRIPT_LOGS_ENABLED = false;
                         await this.respectRateLimit();
                         // Moduł mógł zostać wyłączony, póki czekaliśmy na slot.
                         if (!priceModuleOn()) break;
-                        if (isImg) this.imageCount++; else this.requestCount++;
+                        this.count(p.kind);
                         const t0 = Date.now();
                         const d = await this.withTimeout((signal) => p.run(asin, signal), CONFIG.PRICE_REQUEST_TIMEOUT_MS);
                         if (d && (d.current || d.rrp)) {
@@ -5071,16 +5284,14 @@ const SCRIPT_LOGS_ENABLED = false;
                     result = { status: 'fail', reason: I18n.get('priceCard_limit') };
                 }
 
-                // Ceny na wybranym rynku nie ma — próbujemy pozostałych.
-                // Tylko dla źródła obrazkowego: r.jina.ai rozbiera szablon
-                // konkretnej witryny i gonienie go po obcych rynkach nie ma sensu.
+                // Ceny na wybranym rynku nie ma — próbujemy pozostałych,
+                // o ile któreś źródło nadaje się do przeglądu (marketSearch).
                 const wantsFallback = CONFIG.PRICE_FALLBACK_ENABLED
                     && priceModuleOn()
                     && store.localTabConfig.priceCard.marketFallback !== false
                     && result.status !== 'ok'
                     && !limitHit
-                    && !this.csp.img
-                    && store.localTabConfig.priceCard.source !== 'jina';
+                    && !!this.marketSearcher();
                 if (wantsFallback) {
                     this.searchingOther = asin;
                     this.render();
@@ -5197,7 +5408,7 @@ const SCRIPT_LOGS_ENABLED = false;
          *
          * CSP to imienna lista hostów, a nie wyłącznik: to, że skrypt się
          * załadował, znaczy tylko, że dozwolony jest host, z którego go
-         * pobrano, a nie graph.keepa.com czy r.jina.ai.
+         * pobrano, a nie hosty źródeł ceny (PriceSources.cspHosts).
          *
          * Polityka częściej przychodzi nagłówkiem HTTP niż meta-tagiem, więc
          * nagłówek doczytuje się zapytaniem o własną stronę (własny origin,
@@ -5329,8 +5540,8 @@ const SCRIPT_LOGS_ENABLED = false;
             this.rrpEl = h('div');
             this.srcEl = h('div');
             this.graphWrap = h('div');
-            // no-referrer jest obowiązkowy: Keepa oddaje obrazek tylko bez
-            // nagłówka Referer.
+            // Obrazek wykresu idzie bez nagłówka Referer — adres strony T-REX
+            // nie wychodzi do serwisu wykresu (a Keepa bez tego obrazka nie oddaje).
             this.graphImg = h('img', { referrerPolicy: 'no-referrer' });
             this.graphWrap.appendChild(this.graphImg);
             this.el.append(this.asinEl, this.priceEl, this.rrpEl, this.srcEl, this.graphWrap);
@@ -5354,11 +5565,11 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.applyStyle();   // link włącza się i wyłącza razem z trybem
             });
 
-            // Blokady CSP po naszych hostach. Referencja do obsługi jest
+            // Blokady CSP po hostach źródeł ceny. Referencja do obsługi jest
             // zapamiętana dla Main.teardown().
             this.onCspViolation = (e) => {
                 const uri = String(e.blockedURI || '');
-                if (!/graph\.keepa\.com|r\.jina\.ai|api\.keepa\.com/.test(uri)) return;
+                if (!Object.keys(PriceSources.cspHosts).some(host => uri.includes(host))) return;
 
                 const dir = e.effectiveDirective || e.violatedDirective || '';
                 if (dir.startsWith('img')) this.csp.img = true;
@@ -5480,16 +5691,18 @@ const SCRIPT_LOGS_ENABLED = false;
             // (prawy górny róg) zostaje piksel w piksel. Bez przycięcia: cały
             // wykres wpisany w szerokość karty.
             const inner = Utils.clampNum(pc.width, 120, 1600, 280) - 28;
-            const W = CONFIG.PRICE_KEEPA_PNG_W, H = CONFIG.PRICE_KEEPA_PNG_H;
+            const chart = PriceSources.chart;
+            const W = chart ? chart.width : 0, H = chart ? chart.height : 0;
             const frame = (w, h) => `overflow:hidden;width:${w}px;height:${h}px;margin-top:8px;`
                 + 'border-radius:5px;border:1px solid rgba(255,255,255,.18);background:#fff';
 
-            if (pc.graphMode === 'legend') {
+            if (!chart) {
+                // Źródła bez wykresu — ramki nie ma czym wypełnić.
+            } else if (pc.graphMode === 'legend') {
                 // TYLKO BLOK Z CENAMI. Obrazek wychodzi w całości, ale okienko
                 // pokazuje wyłącznie ramkę legendy, a ujemne marginesy podsuwają
                 // potrzebny fragment pod to okienko.
-                const LX = CONFIG.PRICE_KEEPA_LEGEND_X, LY = CONFIG.PRICE_KEEPA_LEGEND_Y;
-                const LW = CONFIG.PRICE_KEEPA_LEGEND_W, LH = CONFIG.PRICE_KEEPA_LEGEND_H;
+                const { x: LX, y: LY, w: LW, h: LH } = chart.legend;
                 const k = inner / LW;
                 this.graphWrap.style.cssText = frame(inner, Math.round(LH * k));
                 this.graphImg.style.cssText = [
@@ -5511,11 +5724,11 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.graphImg.style.cssText =
                     `width:${inner}px;height:auto;margin-left:0;margin-top:0;display:block;max-width:none`;
             }
-            // Ramka wykresu tylko w trybie 'graph'. W trybie 'ocr' obrazek żyje
-            // poza dokumentem (canvas) i na ekran nie trafia. Przy blokadzie
-            // CSP pustej ramki nie pokazujemy.
+            // Ramka wykresu tylko w trybie, który go pokazuje (showsChart). Przy
+            // odczycie ceny z obrazka ten żyje poza dokumentem (canvas) i na
+            // ekran nie trafia. Przy blokadzie CSP pustej ramki nie pokazujemy.
             this.graphWrap.style.display =
-                (pc.source === 'graph' && pc.showGraph && !this.csp.img && priceModuleOn()) ? 'block' : 'none';
+                (PriceSources.showsChart(pc.source) && pc.showGraph && !this.csp.img && priceModuleOn()) ? 'block' : 'none';
 
             this.render();
         },
@@ -5581,9 +5794,9 @@ const SCRIPT_LOGS_ENABLED = false;
             }
             // !csp.img także tutaj — applyStyle() chowa ramkę, a render()
             // idzie później i przywróciłby ją.
-            if (pc.source === 'graph' && pc.showGraph && !this.csp.img && priceModuleOn()) {
+            if (PriceSources.showsChart(pc.source) && pc.showGraph && !this.csp.img && priceModuleOn()) {
                 this.graphWrap.style.display = 'block';
-                const want = this.keepaUrl(asin, found && found.market);
+                const want = PriceSources.chart.url(asin, found && found.market);
                 if (this.graphImg.getAttribute('src') !== want) this.graphImg.setAttribute('src', want);
             }
 
@@ -5609,7 +5822,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
             // Kolejność gałęzi jest ważna: najpierw „czy cena jest”, dopiero
             // potem „dlaczego jej nie ma”. Blokada samego obrazka (img-src) nie
-            // może wyrzucić ceny otrzymanej z r.jina.ai (connect-src).
+            // może wyrzucić ceny otrzymanej zapytaniem tekstowym (connect-src).
 
             // 1. Cena jest — pokazujemy, cokolwiek blokowałaby polityka.
             if (r && r.status === 'ok') {
@@ -5617,7 +5830,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.priceEl.textContent = pc.showPrice && price ? this.priceText(price) : '';
                 this.priceEl.style.display = pc.showPrice ? 'block' : 'none';
 
-                // Druga linia: RRP (tylko z jina/keepa-api) albo druga seria
+                // Druga linia: RRP (ze źródeł tekstowych) albo druga seria
                 // wykresu („Neu 11.49”). Przekreślenie tylko przy RRP —
                 // przekreślona cena znaczy „stara”, nie żywa oferta.
                 if (pc.showRrp && r.rrp) {
@@ -5659,9 +5872,11 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.priceEl.textContent = '—';
                 this.rrpEl.style.display = 'block';
                 this.rrpEl.style.textDecoration = 'none';
-                // W trybie 'ocr' blokada obrazka znaczy nie „nie ma wykresu”,
-                // tylko „nie ma skąd przeczytać ceny” — dla człowieka to różne rzeczy.
-                const ocrMode = pc.source === 'ocr';
+                // Gdy cena pochodzi z obrazka, jego blokada znaczy nie „nie ma
+                // wykresu”, tylko „nie ma skąd przeczytać ceny” — dla człowieka
+                // to różne rzeczy.
+                const mode = PriceSources.mode(pc.source);
+                const ocrMode = !!(mode && mode.readsImage);
                 this.rrpEl.textContent = I18n.get(
                     both ? 'priceCard_cspBoth'
                          : (this.csp.img ? (ocrMode ? 'priceCard_cspOcr' : 'priceCard_cspImg')
@@ -5676,7 +5891,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.priceEl.style.display = 'none';
                 this.rrpEl.style.display = 'none';
                 this.rrpEl.style.textDecoration = 'none';
-                this.srcEl.textContent = I18n.get('priceCard_jinaOff');
+                this.srcEl.textContent = I18n.get('priceCard_textOff');
                 return;
             }
 
@@ -5705,7 +5920,7 @@ const SCRIPT_LOGS_ENABLED = false;
             return {
                 'moduł cen': priceModuleOn() ? 'włączony' : 'WYŁĄCZONY (sieć nieużywana)',
                 'zapytań tekstowych': `${this.requestCount} / ${cap(CONFIG.PRICE_MAX_REQUESTS_PER_SESSION)}`,
-                'obrazków Keepa': `${this.imageCount} / ${cap(CONFIG.PRICE_MAX_IMAGE_REQUESTS)}`,
+                'obrazków': `${this.imageCount} / ${cap(CONFIG.PRICE_MAX_IMAGE_REQUESTS)}`,
                 'ASIN w pamięci sesji': this.cache.size,
                 'udanych': [...this.cache.values()].filter(r => r.status === 'ok').length,
                 'na ekranie': this.shownAsin,
@@ -6147,7 +6362,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 window[CONFIG.SCRIPT_ID_PREFIX + 'API'] = window.SH = {
                     store, CONFIG, PriceCard, ShiftManager, SessionReset,
                     StorageManager, SettingsPanel, AutoTrigger, I18n,
-                    KeepaOCR, ValueLog, FxRates, Routing,
+                    KeepaOCR, PriceSources, PriceNet, ValueLog, FxRates, Routing,
                     // Potrzebne testom i diagnostyce.
                     Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
                     DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG, DEFAULT_USER_CONFIG,
@@ -6219,17 +6434,15 @@ const SCRIPT_LOGS_ENABLED = false;
                      * naprawdę przechodzi. Asynchroniczna — wołać przez
                      * `await SH.cspReport()` albo `SH.cspReport().then(console.table)`.
                      *
-                     * Część praktyczna (obrazek Keepa, zapytanie do r.jina.ai)
-                     * wychodzi w sieć, więc wymaga włączonego modułu cen. Rozbiór
-                     * polityki działa zawsze — nie wychodzi poza własną domenę.
+                     * Hosty i sprawdzenia faktyczne dają źródła ceny
+                     * (PriceSources.cspHosts, PriceSources.probes). Sprawdzenia
+                     * wychodzą w sieć, więc wymagają włączonego modułu cen.
+                     * Rozbiór polityki działa zawsze — nie wychodzi poza
+                     * własną domenę.
                      */
                     cspReport: async () => {
                         const parsed = await PriceCard.readCsp();
-                        const HOSTS = {
-                            'graph.keepa.com': 'img-src',
-                            'r.jina.ai': 'connect-src',
-                            'api.keepa.com': 'connect-src',
-                        };
+                        const HOSTS = { ...PriceSources.cspHosts };
                         // Host wydania — zakładka pobiera z niego skrypt.
                         // Tylko wtedy, gdy ta kompilacja ma adres wydania.
                         const release = /^https:\/\/([^/:]+)/.exec(CONFIG.RELEASE_URL);
@@ -6239,33 +6452,20 @@ const SCRIPT_LOGS_ENABLED = false;
                             verdict[`${host} (${dir})`] = PriceCard.cspAllows(parsed, dir, host);
                         }
 
-                        let imgTest = 'moduł cen wyłączony — sprawdzenie nie było wykonane';
-                        let netTest = 'moduł cen wyłączony — sprawdzenie nie było wykonane';
-                        if (priceModuleOn()) {
-                            // Praktyczne sprawdzenie: polityka polityką, a ważne
-                            // jest to, co naprawdę przechodzi.
-                            imgTest = await new Promise(res => {
-                                const im = new Image();
-                                im.referrerPolicy = 'no-referrer';
-                                im.onload = () => res(im.naturalWidth > 10 ? 'załadowany' : 'pusty');
-                                im.onerror = () => res('ZABLOKOWANY');
-                                setTimeout(() => res('przekroczony czas'), 8000);
-                                im.src = PriceCard.keepaUrl('B0915C748N');
-                            });
-                            try {
-                                const r = await fetch('https://r.jina.ai/https://example.com', {
-                                    headers: { 'x-cache-tolerance': '259200' },
-                                });
-                                netTest = 'przeszedł, HTTP ' + r.status;
-                            } catch (e) { netTest = 'ZABLOKOWANY (' + e.message + ')'; }
+                        // Praktyczne sprawdzenie: polityka polityką, a ważne
+                        // jest to, co naprawdę przechodzi.
+                        const checks = {};
+                        for (const probe of PriceSources.probes()) {
+                            checks['sprawdzenie faktyczne: ' + probe.label] = priceModuleOn()
+                                ? await probe.run()
+                                : 'moduł cen wyłączony — sprawdzenie nie było wykonane';
                         }
 
                         return {
                             'polityka wzięta z': parsed.source || 'polityki nie znaleziono',
                             'pełny tekst': parsed.raw || '—',
                             'rozbiór po hostach': verdict,
-                            'sprawdzenie faktyczne: obrazek Keepa': imgTest,
-                            'sprawdzenie faktyczne: zapytanie r.jina.ai': netTest,
+                            ...checks,
                             'zarejestrowane blokady': {
                                 obrazek: PriceCard.csp.img,
                                 zapytania: PriceCard.csp.net,

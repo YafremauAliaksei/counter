@@ -436,11 +436,11 @@
             const mkKey = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
             secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_marketplace'), UIBuilder.select(
                 Object.entries(CONFIG.MARKETPLACES).map(([k, m]) => ({
-                    value: k, text: m.host.replace(/^www\./, '') + (m.keepa_ok ? '' : '  ⚠'),
+                    value: k, text: m.host.replace(/^www\./, '') + (PriceSources.coversMarket(k) ? '' : '  ⚠'),
                 })), mkKey, v => { store.userConfig.marketplace = v; this.rerender(); })));
-            if (!CONFIG.MARKETPLACES[mkKey].keepa_ok) {
+            if (!PriceSources.coversMarket(mkKey)) {
                 secPrice.appendChild(h('div', {
-                    textContent: '⚠ ' + I18n.get('priceCard_marketNoKeepa'),
+                    textContent: '⚠ ' + I18n.get('priceCard_marketNoData'),
                     style: { fontSize: '0.85em', color: '#b06a00', margin: '-4px 0 10px 0', lineHeight: '1.35' },
                 }));
             }
@@ -457,12 +457,10 @@
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
-            // Źródło ceny — od zalecanego do zapasowych.
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select([
-                { value: 'ocr',   text: I18n.get('priceCard_src_ocr')   },
-                { value: 'graph', text: I18n.get('priceCard_src_graph') },
-                { value: 'jina',  text: I18n.get('priceCard_src_jina')  },
-            ], pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
+            // Źródło ceny — tryby z PriceSources, od zalecanego do zapasowych.
+            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select(
+                PriceSources.modes.map(m => ({ value: m.value, text: I18n.get(m.labelKey) })),
+                pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_fallback'), pc.marketFallback !== false,
@@ -482,7 +480,7 @@
             if (pc.visible) {
                 secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_openHint')));
 
-                if (pc.source === 'graph') {
+                if (PriceSources.showsChart(pc.source)) {
                     secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                         I18n.get('priceCard_showGraph'), pc.showGraph,
                         v => { store.localTabConfig.priceCard.showGraph = v; this.rerender(); })));
@@ -527,7 +525,7 @@
                     v => store.localTabConfig.priceCard.fontFamily = v)));
 
                 // Dolna granica jest celowo niska: w trybie przycięcia wąska
-                // karta nadal jest użyteczna — legenda Keepa nigdzie nie znika.
+                // karta nadal jest użyteczna — legenda wykresu nigdzie nie znika.
                 secPrice.appendChild(UIBuilder.row('', ...UIBuilder.slider(
                     170, 900, pc.width,
                     v => store.localTabConfig.priceCard.width = v,

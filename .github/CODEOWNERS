@@ -9,6 +9,7 @@
 # osobno, nawet gdy właściciel jest ten sam. To dokumentacja, nie tylko reguła.
 
 /src/01-config.js       @YafremauAliaksei
+/src/15-price-sources.js @YafremauAliaksei
 /src/19-price-module.js @YafremauAliaksei
 /src/20-price-card.js   @YafremauAliaksei
 /build.js               @YafremauAliaksei

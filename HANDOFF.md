@@ -33,7 +33,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 33 pliki testów, 482 sprawdzeń                            | **wszystkie zielone**                                               |
+| 33 pliki testów, 484 sprawdzenia                          | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |
@@ -197,6 +197,72 @@ repozytorium. Przy przeprowadzce:
    opisują GitHuba; do przepisania pod nowe miejsce publikacji.
 5. **`dependabot.yml`** — zastąpić tym, czym wewnętrznie aktualizuje się
    `devDependencies` i wersje narzędzi CI.
+
+### 2.7. Wymiana źródeł ceny na wewnętrzne API
+
+Wszystko, co zna sieć zewnętrzną, stoi w `src/15-price-sources.js`; kontrakt
+źródła jest opisany w nagłówku tego pliku. Karta ceny, kursy, dziennik wartości
+i panel znają tylko kontrakt, a test „poza adapterem źródeł kod nie zna sieci
+zewnętrznej” (`tests/09-artifact.test.js`) pilnuje, żeby tak zostało. Wymiana to
+więc praca w jednym pliku plus kilka wpisów wokół niego:
+
+1. **Źródło według kontraktu** — w `PriceSources.list()`:
+
+   ```js
+   {
+       name: 'intranet',
+       kind: 'text',
+       get available() { return store.localTabConfig.priceCard.source === 'intranet'; },
+       marketSearch: true,             // czy pytać nim inne rynki, gdy w wybranym ceny nie ma
+       async run(asin, signal, market) {
+           const key = market || marketplaceKey();
+           const r = await PriceNet.request(
+               `https://<host>/price?asin=${encodeURIComponent(asin)}&market=${encodeURIComponent(key)}`,
+               { signal, credentials: 'include' });
+           if (!r.ok) throw new Error('HTTP ' + r.status);
+           const j = await r.json();
+           if (!j || typeof j.price !== 'number') return null;   // odpowiedź bez ceny
+           return { current: PriceSources.money(j.price, j.currency), rrp: null, stale: false, market: key };
+       },
+   }
+   ```
+
+   Adres składa się z hosta wpisanego na stałe i z `encodeURIComponent` — nigdy
+   z tekstu strony. Waluta musi mieć kurs w `CONFIG.FX_FALLBACK`.
+
+2. **Uwierzytelnienie.** `credentials: 'include'` każe przeglądarce dołączyć
+   ciasteczka hosta usługi — zalogowany pracownik jest rozpoznany bez żadnego
+   tokenu w kodzie. Serwer musi wtedy odpowiadać
+   `Access-Control-Allow-Origin: https://trex-prod-eu.aka.amazon.com` (dokładny
+   origin, nie `*`) i `Access-Control-Allow-Credentials: true`. Jeśli usługa
+   wydaje jednorazowy token osobnym zapytaniem, pobiera się go w tym samym
+   `run()` przez `PriceNet.request` i dokłada jako nagłówek.
+3. **Tryb w panelu** — `PriceSources.modes`: nowa wartość (`'intranet'`) z kluczem
+   podpisu (tekst w trzech słownikach, `src/02-i18n-strings.js`) i ta sama
+   wartość **na końcu** `ConfigCode.ENUMS.source` (test pilnuje zgodności).
+   Wartość domyślna `priceCard.source` w `src/01-config.js` — z wpisem
+   w README i CHANGELOG.
+4. **CSP** — `PriceSources.cspHosts`: host usługi z `connect-src`. Polityka strony
+   T-REX musi go dopuszczać; `await SH.cspReport()` pokaże to po włączeniu modułu.
+   `PriceSources.probes()` — jedno sprawdzenie faktyczne do nowego hosta.
+5. **Rynki** — `PriceSources.coversMarket(key)`: dla których rynków usługa ma
+   dane (panel ostrzega o pozostałych, przegląd sklepów je pomija).
+6. **Wykres** — `PriceSources.chart = null`, jeśli usługa nie daje obrazka: karta
+   chowa ramkę, a panel opcje wykresu.
+7. **Kursy walut** — `PriceSources.fxProviders`: adres i `pick` (z odpowiedzi
+   `{ WALUTA: jednostek za 1 EUR }`). Resztę sprawdza `FxRates.normalize()`.
+8. **Sprzątanie po Keepa i r.jina.ai**: stare źródła i `KeepaOCR` z pliku
+   adaptera; `PRICE_KEEPA_*`, `PRICE_OCR_*`, `PRICE_JINA_*` i pola `keepa`,
+   `keepa_ok` w `CONFIG.MARKETPLACES`; podpisy trybów w słownikach;
+   `SH.readPrice` i `KeepaOCR` w konsolowym API (`src/22-bootstrap.js`); w testach
+   rozbiór obrazka i r.jina.ai (`08`, `14`), testy `KeepaOCR` w `05` i `06`,
+   podmiana `KeepaOCR.read` w `33` (zastąpić podmianą `run` źródła) oraz lista
+   znanych hostów w `09-artifact`. Wartości trybów w `ConfigCode.ENUMS.source`
+   **zostają** — kolejność to format rozdanych kodów.
+
+Zasada „nowe domyślnie wyłączone” obowiązuje dalej: źródło pyta dopiero po
+ręcznym włączeniu modułu cen, a `PriceNet` odmawia każdemu zapytaniu przy
+wyłączonym module.
 
 ---
 

@@ -181,23 +181,7 @@
         SHARED_ID_PREFIX: 'statsHelper_shared_',
         STORAGE_KEY_VALUE_ARCHIVE: 'valueArchive',
         STORAGE_KEY_FX_RATES: 'fxRates',
-        /**
-         * ŹRÓDŁA KURSÓW WALUT, pytane po kolei do pierwszego sukcesu.
-         * Wszystkie oddają nagłówki CORS i nie wymagają klucza.
-         *
-         * Pytane są dopiero po ręcznym włączeniu modułu cen (FxRates.init,
-         * priceModuleOn). Dokładność co do grosza nie jest potrzebna: to
-         * szacunek wyniku zmiany, a nie księgowość.
-         */
-        FX_PROVIDERS: [
-            { name: 'jsdelivr', url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json',
-              pick: (j) => j && j.eur },
-            { name: 'er-api',   url: 'https://open.er-api.com/v6/latest/EUR',
-              pick: (j) => j && j.rates },
-            // floatrates oddaje kurs łańcuchem („1.15514929”) — stąd Number().
-            { name: 'floatrates', url: 'https://www.floatrates.com/daily/eur.json',
-              pick: (j) => { if (!j) return null; const o = {}; for (const k in j) o[k] = j[k] && Number(j[k].rate); return o; } },
-        ],
+        // Źródła kursów walut: PriceSources.fxProviders (src/15-price-sources.js).
         // Kursy zmieniają się wolno: jedno zapytanie na dobę wystarcza.
         FX_TTL_MS: 24 * 60 * 60 * 1000,
         FX_TIMEOUT_MS: 8000,
@@ -319,11 +303,9 @@
             { code: 'NumpadAdd', name_key: 'key_NumpadAdd' }, { code: 'F10', name_key: 'key_F10' },
         ],
         // --- KARTA CENY ---
-        // Zapytanie do amazon.* ze strony T-REX jest niemożliwe (Same-Origin
-        // Policy; zablokowane także no-cors, iframe, script src i widżety
-        // partnerskie). Działają dwa źródła:
-        //   r.jina.ai       — tekst strony, oddaje nagłówki CORS;
-        //   graph.keepa.com — obrazek, któremu CORS nie jest potrzebny.
+        // Źródła ceny i ich hosty: src/15-price-sources.js. Tu stoją tylko
+        // ich nastawy (PRICE_KEEPA_*, PRICE_JINA_*, PRICE_OCR_*, pola keepa
+        // w MARKETPLACES) i to, co wspólne dla każdego źródła.
         /**
          * SKLEPY AMAZON. Wybrany sklep rozstrzyga naraz link z ASIN, rynek
          * wykresu Keepa i walutę ceny — rozdzielenie pozwoliłoby otworzyć
@@ -521,9 +503,9 @@
              *
              * Włącza się wyłącznie ręcznie, w panelu. Kod ustawień tego pola
              * nie niesie (ConfigCode.RETIRED_IDS). Sprawdzają je niezależnie
-             * PriceCard.check(), PriceCard.resolve(), KeepaOCR.loadImage(),
-             * ValueLog.add() i FxRates.init() — jedna zapomniana ścieżka nie
-             * wystarczy, żeby zapytanie wyszło.
+             * PriceCard.check(), PriceCard.resolve(), PriceNet (każde wyjście
+             * do sieci), ValueLog.add() i FxRates.init() — jedna zapomniana
+             * ścieżka nie wystarczy, żeby zapytanie wyszło.
              */
             moduleEnabled: false,
             visible: true,

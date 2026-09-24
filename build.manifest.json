@@ -92,12 +92,18 @@
       "file": "src/14-marketplace.js",
       "desc": "Wybrany sklep Amazon i budowanie linku do produktu."
     },
-    { "file": "src/15-price-ocr.js", "desc": "Odczyt ceny z pikseli wykresu Keepa." },
+    {
+      "file": "src/15-price-sources.js",
+      "desc": "Źródła cen i kursów za jednym kontraktem: jedyne miejsce, które zna sieć zewnętrzną."
+    },
     { "file": "src/16-value-log.js", "desc": "Dziennik wartości wspólny dla wszystkich kart." },
     { "file": "src/17-fx-rates.js", "desc": "Kursy walut i przeliczanie na euro." },
     { "file": "src/18-routing.js", "desc": "Ustalanie, czy przedmiot poszedł na sprzedaż." },
     { "file": "src/19-price-module.js", "desc": "Główny wyłącznik sieci: enable/disable." },
-    { "file": "src/20-price-card.js", "desc": "Karta ceny wraz z warstwą sieciową." },
+    {
+      "file": "src/20-price-card.js",
+      "desc": "Karta ceny: pytanie źródeł, limity, przegląd sklepów, rysowanie."
+    },
     { "file": "src/21-input.js", "desc": "Klawiatura i obserwator zmian strony." },
     { "file": "src/22-bootstrap.js", "desc": "Main.init, rozbiórka i konsolowe API SH." },
     {
