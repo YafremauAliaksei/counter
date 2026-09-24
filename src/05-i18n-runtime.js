@@ -8,11 +8,10 @@
             const pack = LANG_STRINGS[lang] || LANG_STRINGS[CONFIG.DEFAULT_LANGUAGE];
             let str = pack[key] !== undefined ? pack[key] : LANG_STRINGS[CONFIG.DEFAULT_LANGUAGE][key];
             if (!str) return `[${key}]`;
-            // 8.3.0: podstawianie przez split/join, a nie przez String.replace.
-            // Łańcuch ZASTĘPUJĄCY w replace traktuje $& $` $' $1 jako sekwencje
-            // specjalne, więc nazwa karty typu "Tab ($&)" psuła wynik. To także
-            // kwestia bezpieczeństwa: nazwę karty wpisuje człowiek, a więc jest
-            // to dane wejściowe, nad którym parser nie powinien mieć władzy.
+            // Podstawianie przez split/join, a nie String.replace: w łańcuchu
+            // zastępującym replace traktuje $& $` $' $1 jako sekwencje
+            // specjalne, a nazwę karty wpisuje człowiek — „Tab ($&)” psułaby
+            // wynik.
             const put = (text, name, value) => text.split('${' + name + '}').join(String(value));
             for (const r in replacements) str = put(str, r, replacements[r]);
             return put(put(str, 'version', CONFIG.SCRIPT_VERSION), 'scriptName', CONFIG.SCRIPT_NAME);

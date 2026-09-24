@@ -1,68 +1,54 @@
     // ==========================================
-    // 11. MENEDŻER ZADAŃ (1.3.0)
+    // 11. MENEDŻER ZADAŃ
     // ==========================================
     /**
      * ZADANIA (TASKI): OSOBNY ZEGAR DLA KAŻDEGO PROCESU PRACY.
      *
      * =====================================================================
-     * PROBLEM, KTÓRY TO ROZWIĄZUJE
+     * PO CO
      * =====================================================================
-     * Tempo liczyło się od POCZĄTKU ZMIANY — godziny wpisanej na stałe (6:30
-     * albo 18:30). Kto przyszedł do procesu trzy godziny później i zrobił trzy
-     * paczki w sześć minut, widział „1 paczka na godzinę” zamiast „30 na
-     * godzinę”. Liczba była policzona poprawnie, a jej znaczenie fałszywe —
-     * i to jest gorsze niż brak liczby, bo w liczbę się wierzy.
+     * Tempo zmiany liczy się od jej początku (06:30 albo 18:30). Kto przyszedł
+     * do procesu trzy godziny później i zrobił trzy paczki w sześć minut,
+     * widziałby „1 na godzinę” zamiast „30 na godzinę” — liczba poprawna,
+     * znaczenie fałszywe.
      *
-     * Zadanie ma własny zegar. Tempo zadania to jego paczki przez jego czas,
-     * więc opóźniony start, przerwa na rozmowę z kierownikiem i przejście
-     * z procesu o normie 30/h do procesu o normie 100/h przestają się mieszać
-     * w jedną nieczytelną średnią.
+     * Zadanie ma własny zegar: tempo zadania to jego paczki przez jego czas.
+     * Opóźniony start, przerwa i przejście między procesami o różnych normach
+     * nie mieszają się w jedną średnią.
      *
      * =====================================================================
      * WZNOWIENIE ZAMIAST DRUGIEGO ZADANIA O TEJ SAMEJ NAZWIE
      * =====================================================================
-     * Zadanie ma LISTĘ ODCINKÓW, a nie jeden początek i koniec. Kto pracował
-     * trzy godziny w procesie zwykłym, poszedł na pięć godzin do szybkiego
-     * i wrócił do zwykłego, WZNAWIA to pierwsze zadanie — z tym samym
-     * identyfikatorem. Dzięki temu w podsumowaniu zmiany stoi jedno zadanie
-     * z sensownym tempem, a nie trzy wpisy 30 / 100 / 30, z których nic nie
-     * widać. Odcinek jest też miejscem na pauzę: zamknięty odcinek zatrzymuje
-     * zegar, a pierwsza paczka po pauzie otwiera nowy — bo skoro paczki idą,
-     * to przerwa się skończyła, niezależnie od tego, czy ktoś o tym pamiętał.
+     * Zadanie ma listę odcinków, a nie jeden początek i koniec. Powrót do
+     * procesu wznawia to samo zadanie, więc podsumowanie zmiany ma jedno
+     * zadanie z sensownym tempem zamiast wpisów 30 / 100 / 30. Zamknięty
+     * odcinek to pauza; pierwsza paczka po pauzie otwiera nowy odcinek — skoro
+     * paczki idą, przerwa się skończyła.
      *
      * =====================================================================
      * RĘCZNIE WPISANE PACZKI NIE WCHODZĄ DO MIANOWNIKA PROCENTU
      * =====================================================================
-     * Po awarii maszyny (a komputer stoi na sesji tymczasowej, więc pamięć
-     * przeglądarki znika w całości) człowiek pamięta swoje tempo albo liczbę
-     * paczek, ale nie pamięta, ile z nich poszło na sprzedaż. Wpisana liczba
-     * trafia więc do paczek ORAZ do licznika „poza mianownikiem” — tego samego,
-     * którym od 1.3.0 liczą się audyty. Skutek: procent sprzedaży pokazuje
-     * wyłącznie to, co skrypt naprawdę zobaczył, czyli liczy się od przedmiotu,
-     * przy którym człowiek wrócił do pracy. Gdyby wpisane paczki wchodziły do
-     * mianownika, procent po każdej awarii spadałby do kilku procent i nie
-     * znaczyłby już nic.
+     * Po awarii maszyny (sesja tymczasowa — pamięć przeglądarki znika)
+     * człowiek pamięta tempo albo liczbę paczek, ale nie to, ile poszło na
+     * sprzedaż. Wpisana liczba trafia do paczek oraz do licznika „poza
+     * mianownikiem” (jak audyty), więc procent sprzedaży opisuje tylko to, co
+     * skrypt naprawdę zobaczył, a nie spada po awarii do kilku procent.
      *
      * =====================================================================
      * NIENARUSZALNA RÓWNOŚĆ
      * =====================================================================
-     * Suma paczek wszystkich zadań danej karty ZAWSZE równa się licznikowi tej
-     * karty. Liczniki zmiany zostają jedynym źródłem prawdy dla linii 1, 2 i 7,
-     * a zadania są ich rozbiciem w czasie. Obie strony ruszają się w jednym
-     * miejscu — w metodach niżej — i pilnuje tego osobne sprawdzenie w testach.
+     * Suma paczek wszystkich zadań karty zawsze równa się licznikowi tej
+     * karty. Liczniki zmiany są źródłem prawdy dla linii 1, 2 i 7, a zadania
+     * ich rozbiciem w czasie. Obie strony ruszają się w metodach poniżej;
+     * pilnują tego testy.
      *
      * =====================================================================
      * ZAPIS
      * =====================================================================
-     *   `tasks`                      — wspólny dla wszystkich kart: lista zadań
-     *                                  i identyfikator aktywnego. Zadanie jest
-     *                                  własnością CZŁOWIEKA, nie karty: kto
-     *                                  przechodzi do innego procesu, przechodzi
-     *                                  w nim z wszystkimi otwartymi kartami.
-     *   `taskcnt_<id>_<karta>`       — liczniki, OSOBNY KLUCZ NA KARTĘ. Tak samo
-     *                                  jak liczniki zmiany i z tego samego
-     *                                  powodu: dwie karty piszące jeden klucz
-     *                                  zamazywałyby sobie liczby nawzajem.
+     *   `tasks`                — wspólny dla kart: lista zadań i aktywne.
+     *                            Zadanie należy do człowieka, nie do karty.
+     *   `taskcnt_<id>_<karta>` — liczniki, klucz na kartę: dwie karty
+     *                            piszące jeden klucz zamazywałyby sobie liczby.
      */
     const TaskManager = {
         // ---------------- dostęp ----------------
@@ -78,10 +64,8 @@
 
         /**
          * Zadanie domyślne powstaje przy pierwszym uruchomieniu i zaczyna się
-         * razem ze zmianą — bo dopóki człowiek nie powie inaczej, cała zmiana
-         * jest jednym procesem. To zachowanie sprzed 1.3.0 i po włączeniu
-         * skryptu nic się nie zmienia: jedno zadanie, tempo liczone od początku
-         * zmiany.
+         * razem ze zmianą — dopóki człowiek nie powie inaczej, cała zmiana
+         * jest jednym procesem, a tempo liczy się od jej początku.
          */
         init() {
             if (store.tasks.length) return this.active();
@@ -91,10 +75,9 @@
 
         // ---------------- zmiany listy ----------------
         /**
-         * Zadania siedzą w zwykłej tablicy, a tablice NIE są reaktywne (patrz
-         * createReactive: Utils.isObject odrzuca tablice). Dlatego każda zmiana
-         * podmienia całą tablicę — inaczej linia 8 i panel nie dowiedziałyby się
-         * o niczym, dopóki czegoś innego nie ruszy magistrali.
+         * Tablice nie są reaktywne (createReactive pomija tablice), więc każda
+         * zmiana podmienia całą listę — inaczej linia 8 i panel nie
+         * dowiedziałyby się o niej.
          */
         _commit(list) {
             this._stamp(list);
@@ -103,18 +86,15 @@
         },
 
         /**
-         * ZADANIA W DWÓCH KARTACH NARAZ (1.3.3, audyt D1).
+         * ZADANIA W DWÓCH KARTACH NARAZ.
          *
-         * Lista zadań leży w jednym kluczu na wszystkie karty. Do tej pory
-         * każda karta pisała ją w całości ze swojej pamięci: pauza w karcie B,
-         * zanim B dowiedziała się o zadaniu założonym właśnie w A, wymazywała
-         * je z magazynu — a jego paczki dalej siedziały w liczniku karty.
-         *
-         * Teraz każde zadanie niesie `updated` (kiedy ostatnio się zmieniło),
-         * usunięte zostawiają nagrobek w `_removed`, a przełączenie aktywnego
-         * zadania — `_activeAt`. Zapis scala listę z tym, co jest w magazynie:
-         * z dwóch wersji tego samego zadania wygrywa nowsza, nagrobek wygrywa
-         * z wersją sprzed usunięcia, aktywne zadanie — ostatnie przełączenie.
+         * Lista leży w jednym kluczu na wszystkie karty. Zapis całej listy
+         * z pamięci karty wymazywałby zadanie założone przed chwilą w sąsiedniej
+         * karcie (a jego paczki zostałyby w liczniku). Dlatego zadanie niesie
+         * `updated`, usunięte zostawia nagrobek w `_removed`, a przełączenie
+         * aktywnego — `_activeAt`. Zapis scala z magazynem: wygrywa nowsza
+         * wersja zadania, nagrobek wygrywa z wersją sprzed usunięcia, aktywne
+         * jest ostatnio przełączone.
          */
         _sig: {},
         _removed: {},
@@ -180,12 +160,8 @@
 
         /**
          * Początek odcinka: nie w przyszłości i nie wcześniej niż początek
-         * odcinka, który właśnie zamykamy.
-         *
-         * Drugie ograniczenie nie jest ozdobne: bez niego przestawienie startu
-         * „o dwie minuty wstecz” tuż po przełączeniu dałoby poprzedniemu
-         * zadaniu odcinek o ujemnej długości, a więc tempo z dzieleniem przez
-         * liczbę ujemną.
+         * odcinka, który właśnie zamykamy — inaczej „dwie minuty wstecz” tuż po
+         * przełączeniu dałoby poprzedniemu zadaniu odcinek o ujemnej długości.
          */
         clampStart(ms) {
             const now = Date.now();
@@ -278,37 +254,24 @@
         },
 
         /**
-         * POCZĄTEK CAŁEGO ZADANIA — „zacząłem dwie minuty temu”, „zacząłem razem
-         * ze zmianą”.
+         * POCZĄTEK CAŁEGO ZADANIA — „zacząłem dwie minuty temu”, „zacząłem
+         * razem ze zmianą”.
          *
-         * ===================================================================
-         * DLACZEGO CAŁEGO, A NIE OSTATNIEGO ODCINKA (poprawka z 1.3.2)
-         * ===================================================================
-         * Pierwsza wersja przestawiała początek OSTATNIEGO odcinka, a czas
-         * zadania jest sumą WSZYSTKICH. Wystarczyło raz zatrzymać zegar
-         * i kliknąć „początek zmiany”, żeby ostatni odcinek rozciągnął się na
-         * całą zmianę OBOK odcinków wcześniejszych. Każde powtórzenie dokładało
-         * kolejne pięć godzin: po niespełna pięciu godzinach pracy dało się
-         * naklikać czternaście.
+         * Przestawia się początek zadania, a nie ostatniego odcinka: czas
+         * zadania to suma odcinków, więc rozciąganie ostatniego dokładałoby
+         * godziny obok wcześniejszych przy każdym kliknięciu.
+         *   - wstecz: pierwszy odcinek rozciąga się do nowego początku;
+         *   - w przód: wszystko przed nowym początkiem jest obcinane — odcinki
+         *     zamknięte wcześniej znikają, a ten, w którym wypada początek,
+         *     zaczyna się od niego.
          *
-         * Człowiek ma w głowie jedno zdanie — „to zadanie zaczęło się o X” —
-         * więc kontrolka musi robić dokładnie to:
-         *
-         *   - przesunięcie WSTECZ rozciąga pierwszy odcinek do nowego początku;
-         *   - przesunięcie W PRZÓD obcina wszystko, co leży przed nim: odcinki
-         *     zamknięte wcześniej znikają, a odcinek, w środku którego wypada
-         *     nowy początek, zaczyna się od niego.
-         *
-         * Przerwy zostają nietknięte, a przepracowany czas NIGDY nie przekracza
-         * odstępu od początku zadania do teraz. To jest niezmiennik, który
-         * pilnuje testów — gdyby istniał od początku, tamten błąd nie wyszedłby
-         * dopiero na hali.
+         * Przerwy zostają. Niezmiennik (testy): przepracowany czas nigdy nie
+         * przekracza odstępu od początku zadania do teraz.
          */
         setStart(id, ms) {
             const task = this.byId(id);
             const asked = Number(ms);
-            // 1.3.3 (audyt E5): tekst, który liczbą nie jest, dawał 0, czyli
-            // 1 stycznia 1970. Zero i liczby ujemne tak samo nic nie znaczą.
+            // Tekst, zero i liczby ujemne nie są chwilą (0 to 1 stycznia 1970).
             if (!task || !Number.isFinite(asked) || asked <= 0) return;
             const wanted = Math.min(Math.max(asked, this.previousEnd(task)), Date.now());
             const first = task.segments[0];
@@ -318,9 +281,8 @@
                 const kept = task.segments
                     .filter(seg => seg.to === null || seg.to > wanted)
                     .map(seg => ({ from: Math.max(seg.from, wanted), to: seg.to }));
-                // 1.3.3 (audyt F6): zadanie zatrzymane zostaje zatrzymane.
-                // Wcześniej odcinek zastępczy był otwarty i przestawienie
-                // początku po cichu puszczało zegar.
+                // Zadanie zatrzymane zostaje zatrzymane — przestawienie
+                // początku nie puszcza zegara.
                 const running = this.isRunning(task);
                 task.segments = kept.length ? kept : [{ from: wanted, to: running ? null : wanted }];
             }
@@ -328,14 +290,10 @@
         },
 
         /**
-         * Koniec ostatniego odcinka INNYCH zadań, który leży przed początkiem
-         * tego zadania — granica, poniżej której jego początku cofnąć nie wolno.
-         *
-         * 1.3.3 (audyt E1): „początek zmiany” na drugim zadaniu cofał je na
-         * 06:30, choć pierwsze trwało do 12:00. Dwa zadania liczyły te same
-         * godziny, suma zadań przekraczała czas zmiany, a obiad odejmował się
-         * dwa razy. Ten sam błąd co w 1.3.2, tylko piętro wyżej: tamten był
-         * wewnątrz zadania, ten między zadaniami.
+         * Koniec ostatniego odcinka innych zadań przed początkiem tego zadania —
+         * poniżej tej granicy początku cofnąć nie wolno. Inaczej „początek
+         * zmiany” na drugim zadaniu nałożyłby je na pierwsze: te same godziny
+         * liczone dwa razy, a obiad odjęty podwójnie.
          */
         previousEnd(task) {
             const own = task.segments[0].from;
@@ -353,13 +311,10 @@
             const task = this.byId(id);
             if (!task || store.tasks.length <= 1) return false;
             const list = store.tasks.filter(t => t.id !== id);
-            // Liczniki znikają razem z zadaniem, inaczej suma zadań przestałaby
-            // zgadzać się z licznikiem zmiany. Licznik zmiany schodzi o tyle samo.
-            //
-            // 1.3.3 (audyt D2): liczniki CUDZYCH kart czytają się z magazynu,
-            // a nie z pamięci. Sąsiednia karta mogła właśnie dopisać paczki,
-            // o których ta jeszcze nie wie: odejmowanie z pamięci zostawiało
-            // je w liczniku karty i osierocony klucz zadania.
+            // Liczniki znikają razem z zadaniem, a licznik zmiany schodzi
+            // o tyle samo — suma zadań musi się zgadzać z licznikiem karty.
+            // Liczniki czyta się z magazynu, nie z pamięci: sąsiednia karta
+            // mogła dopisać paczki, o których ta jeszcze nie wie.
             const tabs = new Set([...Object.keys(store.taskCounters[id] || {}), ...StorageManager.storedTaskTabs(id)]);
             for (const tabKey of tabs) {
                 const c = StorageManager.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
@@ -406,20 +361,16 @@
         },
 
         /**
-         * Chwila, od której czas zadań w ogóle się liczy: początek zmiany.
+         * Chwila, od której czas zadań się liczy: początek zmiany.
          *
-         * Sesja wirtualna startuje o 06:20 albo 18:20, a zmiana o 06:30 albo
-         * 18:30 — te dziesięć minut nie jest pracą. Skrypt uruchamia się właśnie
-         * wtedy, więc zadanie domyślne powstawało o 06:20: początku w przyszłości
-         * zapisać się nie da (clampStart). Linia 1 liczyła od 06:30, linia 8 od
-         * 06:20 — przy tych samych paczkach dwa różne tempa, na każdej zmianie.
+         * Sesja startuje o 06:20 albo 18:20, zmiana o 06:30 albo 18:30 — te
+         * dziesięć minut nie jest pracą, a skrypt uruchamia się właśnie wtedy.
+         * Bez przycięcia linia 8 liczyłaby od 06:20, a linia 1 od 06:30.
          *
-         * Przycięcie jest przy ODCZYCIE, a nie przy zapisie, bo odcinek przed
-         * startem zmiany powstaje kilkoma drogami: zadanie domyślne, nowe zadanie
-         * o 06:25, paczka w pauzie, skrypt wklejony w martwej strefie (18:10),
-         * zanim zmiana w ogóle była znana. Jedno miejsce zamiast czterech.
-         *
-         * Bez rozpoznanej zmiany nie przycina niczego — nie ma od czego.
+         * Przycięcie jest przy odczycie, bo odcinek sprzed zmiany powstaje
+         * kilkoma drogami (zadanie domyślne, nowe zadanie o 06:25, paczka
+         * w pauzie, skrypt wklejony w martwej strefie). Bez rozpoznanej zmiany
+         * nie przycina niczego.
          */
         countedFrom() {
             const start = store.sessionConfig.shiftCalculatedStartTime;
@@ -492,9 +443,8 @@
         },
 
         /**
-         * +1 do jednego pola licznika zadania — od wartości w magazynie, a nie
-         * w pamięci (1.3.3, audyt D7): dwie karty tego samego działu dzielą
-         * ten klucz tak samo jak licznik karty.
+         * +1 do jednego pola licznika zadania — od wartości w magazynie, bo dwie
+         * karty tego samego działu dzielą klucz (StorageManager.freshCount).
          */
         _bump(task, tabKey, field) {
             const c = StorageManager.freshTaskCounter(task.id, tabKey, this.counters(task.id, tabKey));
@@ -512,10 +462,8 @@
         adjustManual(tabKey, delta) {
             // Zero to nie poprawka: −1 przy pustym liczniku nie może zdjąć pauzy.
             if (!delta) return;
-            // 1.3.3 (audyt F1): odjęcie idzie drogą wpisania liczby wprost, czyli
-            // od najnowszego zadania wstecz. Wcześniej brało je tylko aktywne
-            // zadanie i przycinało do zera: gdy paczki leżały w poprzednim,
-            // licznik karty spadał, a suma zadań nie.
+            // Odjęcie idzie drogą wpisania liczby wprost — od najnowszego
+            // zadania wstecz, bo paczki mogą leżeć w poprzednim zadaniu.
             if (delta < 0) {
                 this.applyManualTotal(tabKey, this.shiftTotal(tabKey, 'done') + delta);
                 return;
@@ -537,10 +485,8 @@
          *      procentu nie dotykają wcale, więc +1 i −1 to para odwracalna;
          *   2. potem paczki z mianownika, a sprzedane maleją proporcjonalnie.
          *
-         * Do 1.3.2 zdejmowało się z mianownika, a sprzedaż tylko przycinało od
-         * góry (audyt F2, F3): −1 przy 10/5 dawało 55%, a „50” wpisane przy
-         * 100 paczkach i 60 sprzedażach — 100%. Całkowite paczki nie pozwalają
-         * zachować procentu co do joty, więc zostaje z dokładnością do jednej.
+         * Paczki są całkowite, więc procent zostaje z dokładnością do jednej
+         * paczki (np. −1 przy 10/5 daje dalej 50%, a nie 55%).
          */
         _shrink(c, done) {
             const drop = c.done - done;
@@ -648,10 +594,9 @@
         },
 
         /**
-         * Wpisane liczby paczek karty trafiają do liczników zmiany: tyle, ile
-         * mają zadania. Jedno miejsce dla panelu i dla skrótu klawiszowego —
-         * wcześniej skrót przepisywał tylko licznik „poza mianownikiem”, a nie
-         * sprzedane, i przy odjęciu linia 1 rozjeżdżała się z zadaniami.
+         * Liczniki zmiany karty (paczki, sprzedane, poza mianownikiem) dostają
+         * sumy z zadań. Jedno miejsce dla panelu i skrótu klawiszowego, żeby
+         * linia 1 nie rozjechała się z zadaniami.
          */
         syncShift(tabKey) {
             store.tabCounters[tabKey] = this.shiftTotal(tabKey, 'done');
@@ -665,19 +610,12 @@
         /**
          * Godzina wpisana ręcznie („18:32”) na znacznik czasu.
          *
-         * Wynik to NAJBLIŻSZA taka godzina: dzisiejsza albo wczorajsza. Na
-         * nocnej zmianie o 00:40 wpisane „23:30” znaczy pięćdziesiąt minut temu,
-         * a nie prawie dobę naprzód. Bez tego clampStart przyciąłby wartość do
-         * „teraz” i człowiek dostałby zadanie o zerowej długości.
-         *
-         * 1.3.3, dwie poprawki:
-         *   - „wczoraj” liczy się przez setDate(-1), a nie odjęciem 24 h: doba
-         *     zmiany czasu ma 23 albo 25 godzin i „23:30” lądowało o 22:30
-         *     albo o 00:30 (w tym repozytorium już tak robi lunchOverlapMs);
-         *   - wczoraj wybiera się tylko wtedy, gdy jest BLIŻEJ niż dziś.
-         *     Wcześniej każda godzina choćby minutę późniejsza niż teraz szła
-         *     na wczoraj, więc „06:36” wpisane o 06:35:30 cofało zadanie o dobę.
-         *     Godzina z dzisiaj tuż przed nami przycina się w setStart do teraz.
+         * Wynik to najbliższa taka godzina: dzisiejsza albo wczorajsza. Na
+         * nocnej zmianie o 00:40 wpisane „23:30” to pięćdziesiąt minut temu.
+         *   - „wczoraj” przez setDate(-1), nie odjęcie 24 h — doba zmiany czasu
+         *     ma 23 albo 25 godzin;
+         *   - wczoraj tylko wtedy, gdy jest bliżej niż dziś: „06:36” wpisane
+         *     o 06:35:30 to dziś, a setStart przytnie je do teraz.
          *
          * @returns {number|null} null, gdy tekst nie jest godziną.
          */

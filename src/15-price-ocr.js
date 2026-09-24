@@ -1,31 +1,22 @@
     // ==========================================
-    // 6c. ODCZYT CENY Z OBRAZKA KEEPA (8.4.0)
+    // 6c. ODCZYT CENY Z OBRAZKA KEEPA
     // ==========================================
     /**
-     * Keepa drukuje aktualne ceny wprost w legendzie wykresu. Obrazek wychodzi
-     * z nagłówkami CORS, więc piksele są dostępne przez canvas — i cenę da się
-     * dostać LICZBĄ, bez płatnego klucza API i bez zapytań do Amazona.
+     * Keepa drukuje aktualne ceny w legendzie wykresu. Obrazek wychodzi
+     * z nagłówkami CORS, więc piksele są dostępne przez canvas i cenę da się
+     * odczytać jako liczbę — bez klucza API i bez zapytań do Amazona.
      *
-     * DLACZEGO WŁASNY ODCZYT, A NIE GOTOWA BIBLIOTEKA. Rozbiór pikseli 20
-     * prawdziwych produktów (stanowisko ocr_verify.html) pokazał: font legendy
-     * jest RASTROWY i NIEZMIENNY — ten sam znak u różnych produktów zgadza się
-     * piksel w piksel, 166 egzemplarzy glifów sprowadziło się do 16 kształtów.
-     * To nie jest zadanie rozpoznawania, tylko wyszukiwania w tablicy.
-     *
-     * Pomiar na tych samych 20 produktach (32 wiersze legendy):
-     *   ten odczyt    32/32,  0,14 ms,  bez zależności
-     *   tesseract.js  13/20,   140 ms,  +315 ms start, ~2-4 MB pobierania
-     *
-     * Przy czym błędy tesseracta są groźne właśnie dla ewidencji: gubi kropkę
-     * dziesiętną („5.99” -> „599”) i myli rzędy („17.90” -> „175.90”), czyli
-     * kłamie W STRONĘ ZAWYŻENIA i po cichu. Porównanie z wzorcami tak pomylić
-     * się nie może: sprawdza glify bit po bicie, a przy niezgodności nie zgaduje
-     * najbliższego, tylko zwraca null.
+     * Własny odczyt zamiast biblioteki OCR: font legendy jest rastrowy
+     * i niezmienny (166 glifów z 20 produktów to 16 kształtów zgodnych piksel
+     * w piksel), więc to wyszukiwanie w tablicy, a nie rozpoznawanie.
+     * Na 32 wierszach legendy: ten odczyt 32/32 w 0,14 ms, tesseract.js 13/20
+     * w 140 ms plus kilka MB pobierania — i to z błędami zawyżającymi cenę
+     * („5.99” -> „599”). Porównanie wzorców nie zgaduje: przy niezgodności
+     * zwraca null.
      */
     const KeepaOCR = {
         // Znak ma 7 pikseli wysokości. '#' — atrament, '.' — tło.
-        // Alfabet wyuczony automatycznie po znanych cenach, patrz ocr_probe.js
-        // (OCR.learn) — tam też można go dobudować, gdyby Keepa zmieniła font.
+        // Wzorce wyuczone z pikseli obrazków o znanych cenach.
         GLYPHS: {
             '0': ['.####','##..#','##..#','##..#','##..#','##..#','.####'],
             '1': ['###','###','.##','.##','.##','.##','.##'],
@@ -62,13 +53,10 @@
         },
 
         /**
-         * Adres obrazka wykresu.
-         *
-         * ASIN jest tu WYMUSZANY do formatu (dziesięć znaków A-Z0-9), a nie
-         * tylko kodowany. Powód: adres składa się łańcuchem, a ASIN pochodzi ze
-         * strony — czyli z zewnątrz. Kotwiczony wzorzec odcina próbę doklejenia
-         * własnych parametrów albo podmiany ścieżki, a przy niezgodności rzuca
-         * wyjątek, zamiast wysyłać cokolwiek w sieć.
+         * Adres obrazka wykresu. ASIN pochodzi ze strony, więc musi mieć format
+         * (dziesięć znaków A-Z0-9), a nie tylko być zakodowany: zakotwiczony
+         * wzorzec odcina doklejenie parametrów, a przy niezgodności leci
+         * wyjątek zamiast zapytania.
          */
         url(asin, market) {
             const clean = String(asin || '').toUpperCase();
@@ -78,21 +66,16 @@
         },
 
         /**
-         * Obrazek do rozbioru. Ładuje się W TLE i do dokumentu nie trafia.
+         * Obrazek do rozbioru — ładuje się w tle, do dokumentu nie trafia.
+         *   crossOrigin    — bez niego canvas jest skażony i getImageData
+         *                    rzuca SecurityError;
+         *   referrerPolicy — bez niego Keepa nie oddaje obrazka.
+         * Widoczny <img> wykresu (tryb 'graph') jest bez crossOrigin — tam
+         * piksele nie są potrzebne.
          *
-         * Oba atrybuty są obowiązkowe i z różnych powodów:
-         *   crossOrigin    — bez niego canvas jest „skażony” (tainted)
-         *                    i getImageData rzuca SecurityError, czyli pikseli
-         *                    nie widać;
-         *   referrerPolicy — bez niego Keepa nie oddaje obrazka w ogóle.
-         * Widoczny <img> wykresu zostaje BEZ crossOrigin: tam piksele nie są
-         * potrzebne, a zbędnego nagłówka Origin w trybie roboczym nie ma po co
-         * zmieniać.
-         *
-         * 9.2.0 — BEZPIECZNIK SIECIOWY. To jest najniższy poziom, na którym
-         * skrypt dotyka sieci zewnętrznej, więc stoi tu twarde sprawdzenie
-         * modułu cen. Gdyby ktoś dorobił nową ścieżkę wywołania i zapomniał
-         * o sprawdzeniu wyżej, zapytanie i tak nie wyjdzie.
+         * Najniższy poziom, na którym skrypt dotyka sieci, więc stoi tu twarde
+         * sprawdzenie modułu cen: nowa ścieżka wywołania bez sprawdzenia wyżej
+         * i tak nie wyśle zapytania.
          */
         loadImage(asin, timeoutMs, market) {
             if (!priceModuleOn()) {
@@ -122,8 +105,8 @@
             try {
                 return ctx.getImageData(0, 0, c.width, c.height);
             } catch (e) {
-                // cause zachowuje pierwotny SecurityError: bez niego w konsoli zostaje
-                // sam nasz komunikat i nie widać, co dokładnie zablokowała przeglądarka.
+                // cause zachowuje pierwotny SecurityError — widać, co dokładnie
+                // zablokowała przeglądarka.
                 throw new Error('canvas skażony — obrazek bez crossOrigin', { cause: e });
             }
         },
@@ -144,11 +127,8 @@
         },
 
         /**
-         * Czy w pasie jest podpis.
-         *
-         * Produkt może mieć jedną serię zamiast dwóch i wtedy drugi pas jest
-         * pusty — ale nie całkiem: zostaje w nim pionowa oś wykresu. Bez tego
-         * sprawdzenia oś bierze się za tekst.
+         * Czy w pasie jest podpis. Przy jednej serii drugi pas jest pusty poza
+         * pionową osią wykresu — bez tego sprawdzenia oś brałaby się za tekst.
          */
         hasContent(cols) {
             let ink = 0;
@@ -157,24 +137,14 @@
         },
 
         /**
-         * Separator dziesiętny opisuje REGUŁA, a nie bitmapa (8.4.1).
+         * Separator dziesiętny rozpoznaje reguła, a nie bitmapa.
          *
-         * Znalezione na 60 nowych produktach z bestsellerów amazon.de: przy
-         * „€ 12.99” i „€ 12.27” odczyt zwracał „nie przeczytano”, choć wszystkie
-         * cyfry zgadzały się z wzorcami. Przyczyna — kropka szerokości DWÓCH
-         * pikseli zamiast jednego. Keepa rysuje wiersz z subpikselowym
-         * przesunięciem zależnym od jego pełnej szerokości, a wygładzona kropka
-         * raz mieści się w jednej kolumnie, raz rozlewa na dwie. Odczyt czytał
-         * „12..99” i odrzucał wynik jako niepodobny do ceny.
-         *
-         * Wyliczanie bitmap kropki na wszystkie przypadki to ślepa uliczka:
-         * przesunięcie jest ciągłe. Dlatego kropka rozpoznaje się po tym, czym
-         * w tym foncie JEST: kolejne kolumny, w których atrament stoi TYLKO
-         * w dolnym wierszu znaku. Żadna cyfra się pod to nie podszywa — wszystkie
-         * zajmują pełną wysokość — więc reguła nie może przechwycić cudzego glifu.
-         *
-         * Długość ograniczona do dwóch kolumn: dłuższy ogon u dołu to już nie
-         * separator, tylko podkreślenie albo linia siatki.
+         * Keepa rysuje wiersz z przesunięciem subpikselowym, więc wygładzona
+         * kropka ma raz jedną, raz dwie kolumny — wzorzec by jej nie złapał.
+         * Kropka to kolejne kolumny z atramentem wyłącznie w dolnym wierszu
+         * znaku; cyfry zajmują pełną wysokość, więc reguła nie przechwyci
+         * cudzego glifu. Najwyżej dwie kolumny — dłuższy ogon to podkreślenie
+         * albo siatka.
          *
          * @returns {number} ile kolumn zjeść (0 — to nie separator)
          */
@@ -190,19 +160,13 @@
         },
 
         /**
-         * Rozbiór wiersza oknem przesuwnym.
+         * Rozbiór wiersza oknem przesuwnym. Segmentacja po pustych kolumnach
+         * nie działa, bo sąsiednie glify się sklejają („90” to jeden blok).
          *
-         * Dlaczego nie segmentacja po pustych kolumnach: sąsiednie glify SIĘ
-         * SKLEJAJĄ („90” w „17.90” idzie jednym blokiem szerokości 10)
-         * i granic po odstępach nie da się znaleźć. Okno przesuwne od sklejania
-         * nie zależy.
-         *
-         * Dlaczego bierze się najdłuższy pasujący rozbiór: na lewo od ceny stoi
-         * podpis serii i znak „€”, a one nie zgadzają się z żadnym wzorcem cyfry,
-         * więc rozbiór z ich pozycji nie dochodzi do końca wiersza. Przejście po
-         * wszystkich startach i wybór najdłuższego wyniku zdejmuje pytanie
-         * o granicę słowa. To właśnie naprawia utratę najstarszego rzędu: bez
-         * tego „15.51” czytało się jako „5.51”, a „11.89” jako „1.89”.
+         * Wygrywa najdłuższy pełny rozbiór ze wszystkich pozycji startowych:
+         * podpis serii i „€” na lewo od ceny nie pasują do żadnej cyfry, więc
+         * rozbiór od nich nie dochodzi do końca, a start od środka ceny
+         * zgubiłby najstarszy rząd („15.51” jako „5.51”).
          */
         readPrice(cols) {
             const L = cols.length;
@@ -238,41 +202,28 @@
                 const t = parseFrom(s);
                 if (!t) continue;
                 const d = this.toDecimal(t);
-                // Długość porównuje się po SUROWYM rozbiorze, a nie po liczbie:
-                // to właśnie ona odróżnia „2.991.39” od jego własnego kawałka „991.39”.
+                // Długość surowego rozbioru, a nie liczby: odróżnia „2.991.39”
+                // od jego kawałka „991.39”.
                 if (d && t.length > bestRaw.length) { best = d; bestRaw = t; }
             }
             return best;
         },
 
         /**
-         * SEPARATOR TYSIĘCY (9.1.1) — poprawka cichej utraty najstarszego rzędu.
+         * Surowy rozbiór na liczbę dziesiętną, z separatorem tysięcy.
          *
-         * Złapane na B091FXSL4P (FLUKE networks Advanced-Kit): Keepa drukuje
-         * „€ 2,991.39”, a odczyt zwracał „991.39”. Błąd 2000 € na jednym
-         * przedmiocie, po cichu, z pozoru wiarygodną liczbą.
+         * Przecinek w pasie legendy wygląda jak kropka (jego ogon jest pod
+         * pasem), więc „€ 2,991.39” przychodzi jako „2.991.39”. Rozstrzyga
+         * pozycja: separator dziesiętny jest zawsze ostatni, wszystko na lewo
+         * to grupowanie rzędów — tak samo dla „2,991.39” i „2.991,39”. Gdyby
+         * forma z tysiącami była odrzucana, najdłuższym poprawnym rozbiorem
+         * zostałby kawałek „991.39” — cena zaniżona o 2000 €, po cichu.
          *
-         * Mechanizm. Przecinek-separator w pasie legendy wygląda jak kropka
-         * (jego ogon schodzi PONIŻEJ znaku i w pas nie wchodzi), więc dotRun()
-         * uczciwie czytał „2.991.39”. Poprzednie sprawdzenie `^\d{1,5}\.\d{2}$`
-         * taki łańcuch odrzucało — są w nim dwie kropki — po czym reguła
-         * „bierzemy najdłuższy pasujący rozbiór” wybierała „991.39”, bo TEN
-         * kawałek sprawdzenie przechodził. Czyli odrzucenie poprawnej odpowiedzi
-         * prowadziło nie do odmowy, tylko do wydania obciętej.
-         *
-         * Dlaczego rozstrzyga pozycja, a nie rozpoznanie przecinka. Przecinek od
-         * kropki da się odróżnić — ma ogon pod wierszem. Ale to zbędne: cena ma
-         * dokładnie jeden separator dziesiętny i jest on zawsze OSTATNI.
-         * Wszystko na lewo to grupowanie rzędów. Reguła nie zależy od tego, który
-         * znak jest który, więc tak samo poprawnie rozbiera angielskie
-         * „2,991.39” i niemieckie „2.991,39”: oba przyjdą tu jako „2.991.39”
-         * i oba dadzą 2991.39.
-         *
-         * Grupa sztywno po TRZY cyfry — i to jest zabezpieczenie przed śmieciem:
-         * obcinki w rodzaju „.991.39” czy „12.34.56” formy nie przechodzą.
+         * Grupy sztywno po trzy cyfry: obcinki w rodzaju „.991.39” czy
+         * „12.34.56” formy nie przechodzą.
          *
          * @param {string} text — surowy rozbiór, w którym każdy separator to '.'
-         * @returns {string|null} łańcuch typu „2991.39”, nadający się do parseFloat
+         * @returns {string|null} łańcuch typu „2991.39” dla parseFloat
          */
         PRICE_SHAPE: /^\d{1,3}(?:\.\d{3})+\.\d{2}$|^\d{1,5}\.\d{2}$/,
 
@@ -283,18 +234,12 @@
         },
 
         /**
-         * Nazwa serii po kolorze kółka na lewo od podpisu.
-         *
-         * 9.1.1: szukanie zaczyna się od PRICE_OCR_SERIES_FROM_X, a nie od
-         * granicy rozbioru tekstu. Legenda jest wyrównana do prawej i przy
-         * długiej cenie kółko ucieka na lewo od 406 — wtedy seria nie była
-         * rozpoznawana wcale.
-         *
-         * Ceną za szersze okno jest to, że wchodzi w nie kawałek pola wykresu,
-         * więc doszedł warunek NASYCENIA: wypełnienie pod linią ceny to blady
-         * odcień, znacznik to czysty kolor. Pomyłka kosztuje tu tanio: nazwa
-         * serii tylko się pokazuje, a cena wybierana jest PO LICZBIE (patrz
-         * pickHighest), więc na ewidencję nie wpływa.
+         * Nazwa serii po kolorze kółka na lewo od podpisu. Szukanie zaczyna się
+         * od PRICE_OCR_SERIES_FROM_X, bo przy długiej cenie kółko wychodzi na
+         * lewo od granicy tekstu. W szersze okno wchodzi kawałek pola wykresu,
+         * stąd warunek nasycenia (wypełnienie jest blade, znacznik czysty).
+         * Pomyłka jest tania: nazwa serii tylko się pokazuje, a cenę wybiera
+         * pickHighest po liczbie.
          */
         seriesOf(px, y0) {
             const y = y0 + 3;
@@ -328,14 +273,10 @@
         },
 
         /**
-         * NAJWYŻSZA cena z wierszy legendy.
-         *
-         * Do ewidencji potrzebna jest cena przedmiotu, a nie najtańsza oferta:
-         * wiersz Amazon prawie zawsze stoi wyżej niż wiersz Neu (na próbkach —
-         * 15,51 wobec 11,49, 10,95 wobec 9,20, 13,95 wobec 10,93). Wybór idzie
-         * PO LICZBIE, a nie po nazwie serii: jeśli wiersza Amazon nie ma wcale,
-         * zostanie Neu, a gdyby Keepa kiedyś zmieniła kolejność — reguła się nie
-         * zepsuje.
+         * Najwyższa cena z wierszy legendy. Do ewidencji liczy się cena
+         * przedmiotu, a nie najtańsza oferta; wiersz Amazon jest zwykle wyżej
+         * niż Neu. Wybór po liczbie, a nie po nazwie serii — działa także bez
+         * wiersza Amazon i przy innej kolejności wierszy.
          */
         pickHighest(rows) {
             let best = null;

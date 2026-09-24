@@ -1,50 +1,34 @@
     // ==========================================
-    // 6f. KURSY WALUT (9.0.0)
+    // 6f. KURSY WALUT
     // ==========================================
     /**
-     * Sprowadza dowolną walutę do euro.
+     * Przeliczanie walut przez euro.
      *
-     * PO CO. Cena przychodzi w walucie rynku, z którego została zdjęta: funty
-     * z co.uk, dolary z com, korony ze se, złote z pl. Trzymać wyniku zmiany
-     * w pięciu walutach nie ma sensu, dodawać ich wprost to kłamstwo. Dlatego
-     * wszystko sprowadza się do euro.
+     * Cena przychodzi w walucie rynku (funty z co.uk, dolary z com, korony
+     * ze se); dodawać ich wprost nie wolno, więc wszystko sprowadza się do euro.
+     * Kursy pobiera się raz i trzyma dobę we wspólnym magazynie — kurs przez
+     * zmianę nie przesunie się na tyle, żeby było to widać w wyniku (w odróżnieniu
+     * od ceny produktu, pytanej przy każdym przedmiocie).
      *
-     * Kursy brane są raz z otwartego źródła i kładzione do wspólnego
-     * (nieversjonowanego) magazynu na dobę. To NIE jest sprzeczne z rezygnacją
-     * z pamięci cen w 8.5.0: cena produktu zmienia się w ciągu dnia i musi być
-     * czytana na nowo przy każdym przedmiocie, a kurs waluty przez jedną zmianę
-     * nie przesunie się na tyle, żeby było to widać w szacunku „ile wyrobiłem”.
-     *
-     * 9.2.0 — NAJWAŻNIEJSZA ZMIANA W TYM MODULE.
-     *
-     * Przy wyłączonym module cen kursy NIE SĄ POBIERANE. Zamiast tego bierze się
-     * to, co już leży w localStorage, a jeśli nie leży nic — tablicę wpisaną
-     * w plik (CONFIG.FX_FALLBACK). Zero ruchu w sieci.
-     *
-     * Wejście do sieci jest dokładnie w jednym miejscu: init() wywołane po tym,
-     * jak człowiek zaznaczył „Włącz moduł cen”.
+     * Przy wyłączonym module cen kursów się nie pobiera: bierze się te z
+     * localStorage, a gdy ich nie ma — CONFIG.FX_FALLBACK. Do sieci wychodzi
+     * tylko init() po ręcznym włączeniu modułu.
      */
     const FxRates = {
         rates: null,        // { USD: 1.156, GBP: 0.856, ... } — jednostek za 1 EUR
         source: null,       // nazwa źródła albo 'wbudowane'
         fetchedAt: null,
-        offline: false,     // 9.2.0: true = kursy wzięte bez dotykania sieci
+        offline: false,     // true = kursy wzięte bez dotykania sieci
 
         key() { return CONFIG.SHARED_ID_PREFIX + CONFIG.STORAGE_KEY_FX_RATES; },
 
         /**
-         * Normalizuje odpowiedź dostawcy do { WALUTA: liczba }.
+         * Normalizuje odpowiedź dostawcy do { WALUTA: liczba }. Kurs może
+         * przyjść łańcuchem („1.15514929” u floatrates).
          *
-         * 9.1.0: liczba przyjmowana jest też ŁAŃCUCHEM. Poprzednie sprawdzenie
-         * `typeof v === 'number'` po cichu odrzucało floatrates, który oddaje
-         * kurs jako „1.15514929”, — tablica wychodziła pusta, sprawdzenie USD nie
-         * przechodziło i trzecie źródło nie zadziałało ANI RAZU przez cały czas
-         * swojego istnienia.
-         *
-         * To jest zarazem granica zaufania do odpowiedzi z sieci: wchodzi tu
-         * dowolny JSON z cudzego serwera, a wychodzi wyłącznie płaska tablica
-         * dodatnich, skończonych liczb pod kluczami podniesionymi do wielkich
-         * liter. Nic innego dalej nie przejdzie.
+         * Granica zaufania do sieci: wchodzi dowolny JSON z cudzego serwera,
+         * wychodzi wyłącznie płaska tablica dodatnich, skończonych liczb pod
+         * kluczami wielkimi literami.
          */
         normalize(raw) {
             if (!raw || typeof raw !== 'object') return null;
@@ -55,8 +39,8 @@
                 if (typeof v === 'number' && isFinite(v) && v > 0) out[k.toUpperCase()] = v;
             }
             out.EUR = 1;
-            // Minimalne sprawdzenie zdrowego rozsądku: dolar do euro nigdy nie był
-            // ani trzy razy droższy, ani trzy razy tańszy. Krzywą odpowiedź lepiej
+            // Sprawdzenie zdrowego rozsądku: dolar do euro nie jest ani trzy
+            // razy droższy, ani trzy razy tańszy. Krzywą odpowiedź lepiej
             // odrzucić, niż policzyć po niej całą zmianę.
             if (!out.USD || out.USD < 0.3 || out.USD > 3) return null;
             return out;
@@ -90,12 +74,9 @@
         },
 
         /**
-         * TRYB BEZ SIECI (9.2.0) — to właśnie wykonuje się przy starcie skryptu.
-         *
-         * Bierze kursy z localStorage, jeśli tam leżą i nie są przeterminowane,
-         * a w przeciwnym razie tablicę wpisaną w plik. W obu przypadkach ani
-         * jednego zapytania. Braku kursów nie zgłasza jako błędu, bo przy
-         * wyłączonym module cen to jest stan normalny, a nie awaria.
+         * Tryb bez sieci — wykonuje się przy starcie. Kursy z localStorage,
+         * jeśli są świeże, inaczej tablica wbudowana; ani jednego zapytania.
+         * Brak kursów nie jest błędem — przy wyłączonym module to stan normalny.
          */
         initOffline() {
             if (this.loadCached()) {
@@ -112,8 +93,8 @@
         },
 
         /**
-         * Pobranie kursów z sieci. Wywoływane WYŁĄCZNIE po ręcznym włączeniu
-         * modułu cen — sprawdzenie na początku jest ostatnią linią obrony.
+         * Pobranie kursów z sieci — tylko po ręcznym włączeniu modułu cen;
+         * sprawdzenie na początku jest ostatnią linią obrony.
          */
         async init() {
             if (!priceModuleOn()) return this.initOffline();
@@ -173,7 +154,7 @@
         },
 
         /**
-         * WALUTA WYŚWIETLANIA (1.4.0) albo null, czyli „jak w sklepie”.
+         * Waluta wyświetlania albo null, czyli „jak w sklepie”.
          *
          * Wartość przychodzi z localStorage, więc może być czymkolwiek:
          * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie 'native' albo
@@ -192,7 +173,7 @@
         /**
          * Kwota w dowolnej walucie pokazana w walucie wyświetlania.
          *
-         * `≈` stoi wtedy, gdy kwota została PRZELICZONA: kurs jest dzienny,
+         * `≈` stoi wtedy, gdy kwota została przeliczona: kurs jest dzienny,
          * a bez sieci — wbudowany, więc to szacunek, nie cena z Amazonu. Ta
          * sama waluta co w sklepie idzie bez znaku, bo niczego nie liczono.
          *
@@ -208,7 +189,7 @@
             return (from === cur ? '' : '≈ ') + this.money(v, cur);
         },
 
-        /** `12.50 zł` — znak po kwocie, jak w linii 6 od zawsze. */
+        /** `12.50 zł` — znak po kwocie, jak w linii 6. */
         money(value, currency) {
             return `${value.toFixed(2)} ${CONFIG.DISPLAY_CURRENCIES[currency] || currency}`;
         },

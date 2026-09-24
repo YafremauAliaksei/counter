@@ -9,30 +9,17 @@
         getKey(key) { return `${CONFIG.SCRIPT_ID_PREFIX}${key}`; },
 
         /**
-         * Zapis z odnotowaniem wartości — JEDYNE miejsce, z którego skrypt pisze
+         * Zapis z odnotowaniem wartości — jedyne miejsce, z którego skrypt pisze
          * do localStorage poza dziennikiem wartości i kursami.
          *
-         * ZAPIS MA PRAWO NIE DOJŚĆ i to nie jest sytuacja teoretyczna:
-         * localStorage tej domeny dzielimy z samym TREX, więc kwota potrafi się
-         * skończyć nie z naszej winy. Do tego część konfiguracji przeglądarki
-         * (zablokowany magazyn dla witryny) sprawia, że setItem rzuca wyjątek
-         * przy każdym wywołaniu.
+         * Zapis może się nie udać: localStorage dzielimy z T-REX, więc kwota
+         * potrafi się skończyć, a zablokowany magazyn rzuca przy każdym
+         * setItem. Nieudany zapis nie przerywa pracy — wraca `false`, skrypt
+         * liczy dalej w pamięci, traci się tylko przeniesienie stanu przez F5.
+         * Wyjątek puszczony w górę zatrzymałby Main.init() i skrypt nie wstałby.
          *
-         * Wcześniej wyjątek szedł stąd w górę nieprzechwycony. Skutek był
-         * nieproporcjonalny do przyczyny: saveState() woła się w Main.init(),
-         * więc przy pełnym magazynie catch w init() rozbierał całość i skrypt
-         * NIE WSTAWAŁ WCALE. Licznik, który doskonale policzyłby zmianę
-         * w pamięci, nie pokazywał się na ekranie.
-         *
-         * Teraz nieudany zapis jest zdarzeniem zwykłym: wraca `false`, skrypt
-         * pracuje dalej na stanie w pamięci, a człowiek traci tylko przeniesienie
-         * liczników przez F5 — czyli dokładnie tyle, ile naprawdę zepsuł pełny
-         * magazyn.
-         *
-         * Notatka `_lastWritten` stawia się DOPIERO PO UDANYM zapisie i to jest
-         * druga połowa tej poprawki. Gdy stała przed nim, po nieudanym zapisie
-         * pamięć twierdziła, że wartość leży w magazynie, i deduplikacja
-         * odrzucała następną, już możliwą próbę zapisania tego samego.
+         * `_lastWritten` ustawia się dopiero po udanym zapisie; inaczej
+         * deduplikacja odrzuciłaby następną, już możliwą próbę tej samej wartości.
          *
          * @returns {boolean} czy wartość naprawdę trafiła do magazynu.
          */
@@ -51,14 +38,13 @@
             return true;
         },
         /**
-         * Magazyn odmówił zapisu — człowiek ma się o tym dowiedzieć (1.3.3).
+         * Magazyn odmówił zapisu — człowiek ma się o tym dowiedzieć.
          *
-         * Do tej pory odmowa szła wyłącznie do Utils.error, który domyślnie
-         * milczy. Ekran pokazywał poprawne liczby do końca zmiany, a rozjazd
-         * wychodził dopiero po F5 albo w sąsiedniej karcie — cicha utrata jest
+         * Utils.error domyślnie milczy, a ekran do końca zmiany pokazywałby
+         * poprawne liczby; rozjazd wyszedłby dopiero po F5. Cicha utrata jest
          * gorsza niż jedno powiadomienie, więc tu reguła „skrypt milczy”
-         * świadomie ustępuje. Znacznik zostaje w pamięci, bo odmowa zdarza się
-         * i PRZED postawieniem interfejsu; Notifier pokazuje ją raz na stronę.
+         * ustępuje. Znacznik zostaje w pamięci, bo odmowa zdarza się także
+         * przed postawieniem interfejsu; Notifier pokazuje ją raz na stronę.
          */
         writeFailed: false,
         reportWriteFailure() {
@@ -66,19 +52,16 @@
             bus.emit('storage:writeFailed');
         },
         /**
-         * USTAWIENIA WSPÓLNE DLA KART — scalanie trójstronne (1.3.3, audyt D4, D5).
+         * USTAWIENIA WSPÓLNE DLA KART — scalanie trójstronne.
          *
-         * `userConfig` i `sessionConfig` leżą w jednym kluczu na wszystkie karty.
-         * Do tej pory każda karta pisała tam cały obiekt ze swojej pamięci:
-         * zmiana skrótu w karcie A znikała przy najbliższym zapisie karty B,
-         * a wczytanie po zdarzeniu z sąsiedniej karty cofało świeżą, jeszcze
-         * niezapisaną zmianę.
+         * `userConfig` i `sessionConfig` leżą w jednym kluczu na wszystkie
+         * karty. Karta pamięta, co ostatnio leżało w magazynie (`_synced`),
+         * i przy zapisie oraz wczytaniu przenosi tylko swoje zmiany od tamtej
+         * chwili, na wierzch tego, co jest w magazynie teraz. Zapis całego
+         * obiektu z pamięci wymazywałby zmiany sąsiedniej karty.
          *
-         * Teraz karta pamięta, co ostatnio leżało w magazynie (`_synced`),
-         * i przy zapisie oraz wczytaniu przenosi TYLKO SWOJE zmiany od tamtej
-         * chwili — na wierzch tego, co jest w magazynie teraz. Dwie karty
-         * zmieniające różne ustawienia nie przeszkadzają sobie; ta sama
-         * wartość zmieniona w obu wygrywa ostatnim zapisem.
+         * Dwie karty zmieniające różne ustawienia nie przeszkadzają sobie; ta
+         * sama wartość zmieniona w obu wygrywa ostatnim zapisem.
          */
         _synced: {},
         _mergeShared(name, raw) {
@@ -93,16 +76,16 @@
             return { stored, merged, changes };
         },
         /**
-         * Scalony stan staje się stanem w pamięci — DOKŁADNIE, łącznie
-         * z usunięciami. deepMerge umie tylko dopisywać: wpis usunięty
-         * w sąsiedniej karcie zostawał tu i najbliższy zapis go wskrzeszał
-         * (audyt D13). Scalony stan zawiera wszystko, co tu zmieniono, więc
-         * usuwa się tylko to, co zniknęło gdzie indziej.
+         * Scalony stan staje się stanem w pamięci — dokładnie, łącznie
+         * z usunięciami. deepMerge umie tylko dopisywać, więc wpis usunięty
+         * w sąsiedniej karcie zostałby tu i najbliższy zapis by go wskrzesił.
+         * Scalony stan zawiera wszystkie zmiany tej karty, więc usuwa się tylko
+         * to, co zniknęło gdzie indziej.
          */
         _adoptShared(name, merged) {
-            // Brakujące pola (magazyn starszej wersji, ręczna edycja) uzupełniają
-            // wartości domyślne — usunąć da się tylko wpisy bez domyślnej wartości,
-            // czyli dokładnie te dynamiczne (karty nierozpoznane, znaczniki kart).
+            // Brakujące pola (starszy zapis, ręczna edycja) uzupełniają wartości
+            // domyślne — usunąć da się tylko wpisy bez wartości domyślnej, czyli
+            // dynamiczne (karty nierozpoznane, znaczniki kart).
             const defaults = name === 'userConfig' ? DEFAULT_USER_CONFIG : DEFAULT_SESSION_CONFIG;
             const full = Utils.deepMerge(Utils.deepMerge({}, defaults), merged);
             const target = store[name];
@@ -131,18 +114,16 @@
             if (store.currentTabInstanceId) {
                 allLocals[store.currentTabInstanceId] = store.localTabConfig;
             }
-            // Sprzątamy śmieciowy klucz "null", który zapisywała 8.0.0 przez to,
-            // że loadAll() szedł przed identifyTab().
+            // Klucz "null" to zapis konfiguracji sprzed rozpoznania karty —
+            // śmieć, usuwany przy każdym zapisie.
             delete allLocals['null'];
             this.write(allLocalsKey, JSON.stringify(allLocals));
         },
-        // Autozapis: każda zmiana stanu odkłada zapis o sekundę.
-        // W 8.0.0 ustawienia zapisywały się dopiero przy zamykaniu panelu, a F5
-        // w środku zmiany je gubiło.
+        // Autozapis: każda zmiana stanu odkłada zapis o sekundę, więc F5
+        // w środku zmiany nie gubi ustawień.
         scheduleSave: Utils.debounce(function() {
-            // 1.3.3 (audyt D4): zapis wyciszony po wczytaniu stanu sąsiedniej
-            // karty NIE przepada — przesuwa się za koniec ciszy. Wcześniej
-            // zmiana zrobiona w tym oknie nie trafiała do magazynu nigdy.
+            // Zapis w oknie ciszy po wczytaniu stanu sąsiedniej karty nie
+            // przepada — przesuwa się za koniec ciszy.
             const wait = StorageManager.suppressSaveUntil - Date.now();
             if (wait > 0) { setTimeout(() => StorageManager.scheduleSave(), wait); return; }
             StorageManager.saveState();
@@ -152,15 +133,14 @@
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey), String(count));
         },
         /**
-         * Świeża wartość licznika prosto z magazynu (1.3.3, audyt D7).
+         * Świeża wartość licznika prosto z magazynu.
          *
-         * Dwie karty tego samego działu dzielą klucz licznika. Każda zwiększała
-         * go o jeden od wartości ze SWOJEJ pamięci, więc gdy obie zaliczyły
-         * przedmiot, zanim przeglądarka doręczyła zdarzenie, druga nadpisywała
-         * pierwszą i paczka ginęła. Zwiększa się więc od tego, co leży w magazynie.
+         * Dwie karty tego samego działu dzielą klucz licznika. Zwiększanie od
+         * wartości z własnej pamięci gubiłoby paczkę, gdy obie zaliczą
+         * przedmiot, zanim przeglądarka doręczy zdarzenie — dlatego zwiększa
+         * się od tego, co leży w magazynie.
          *
-         * Wyjątek: po odmowie zapisu magazyn stoi w miejscu i liczenie od niego
-         * zatrzymałoby licznik na ekranie — wtedy prawdą jest pamięć.
+         * Po odmowie zapisu magazyn stoi w miejscu — wtedy prawdą jest pamięć.
          * Brak klucza to zero: sąsiednia karta zaczęła nową zmianę.
          */
         freshCount(key, fallback) {
@@ -192,11 +172,10 @@
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL + tabKey), String(count));
         },
         /**
-         * Lista zadań i identyfikator aktywnego — jeden klucz wspólny dla
-         * wszystkich kart. Zapis jest mały (kilka zadań na zmianę), więc idzie
-         * w całości, bez różnicowania.
+         * Lista zadań i aktywne zadanie — jeden klucz wspólny dla kart. Zapis
+         * scala się z tym, co leży w magazynie (TaskManager.merge), żeby
+         * zmiany listy w dwóch kartach naraz nie wymazywały się nawzajem.
          */
-        /** Zapis zadań scalony z magazynem — patrz TaskManager.merge (audyt D1). */
         saveTasks() {
             const key = this.getKey(CONFIG.STORAGE_KEY_TASKS);
             let stored;
@@ -232,18 +211,14 @@
             localStorage.removeItem(key);
         },
         /**
-         * Rozbiór klucza licznika zadania. Identyfikator zadania sam zawiera
-         * podkreślenia (`task_abc_def`), więc dzieli się od PRAWEJ: ostatni
-         * człon to karta, wszystko przed nim to identyfikator.
+         * Rozbiór klucza licznika zadania: `taskcnt_<zadanie>_<karta>`.
          *
-         * 1.3.3: z JEDNYM wyjątkiem. Karta nierozpoznana ma identyfikator
-         * `unknownTabInstance_abc_def` — też z podkreśleniami — i podział po
-         * ostatnim dawał kartę `def` i zadanie, którego nie ma. Po F5 paczki
-         * takiej karty znikały z zadań, a pierwsza poprawka w panelu zerowała
-         * licznik karty (syncTabCounters bierze sumę zadań za prawdę). Dlatego
-         * najpierw szuka się przedrostka karty nierozpoznanej — w identyfikatorze
-         * zadania on nie wystąpi — a dopiero potem ostatniego podkreślenia.
-         * Format klucza się nie zmienia, stare zapisy czytają się tak samo.
+         * Identyfikator zadania sam ma podkreślenia (`task_abc_def`), więc
+         * dzieli się od prawej: ostatni człon to karta. Wyjątkiem jest karta
+         * nierozpoznana (`unknownTabInstance_abc_def`) — też z podkreśleniami;
+         * dla niej dzieli się przed jej przedrostkiem, który w identyfikatorze
+         * zadania nie występuje. Zły podział przypisałby paczki nieistniejącemu
+         * zadaniu, a pierwsza poprawka w panelu wyzerowałaby licznik karty.
          */
         parseTaskCounterKey(localKey) {
             const rest = localKey.substring(CONFIG.STORAGE_PREFIX_TASK_COUNTER.length);
@@ -273,31 +248,24 @@
             localStorage.removeItem(key);
         },
         /**
-         * Wszystkie klucze localStorage należące do skryptu.
+         * Wszystkie klucze localStorage należące do skryptu, łącznie ze
+         * wspólnym prefiksem archiwum. Zwykły reset zmiany archiwum nie rusza,
+         * ale pełny reset usuwa wszystko, co skrypt zapisał.
          *
-         * 8.4.0: wchodzi tu także wspólny, nieversjonowany prefiks — archiwum
-         * podsumowań. Zwykły reset zmiany go nie rusza (w tym cały sens:
-         * archiwum żyje dziesiątki zmian), ale przycisk PEŁNEGO resetu musi
-         * usuwać wszystko, co skrypt kiedykolwiek zapisał.
-         *
-         * Filtr po dwóch prefiksach jest też zabezpieczeniem: localStorage tej
-         * domeny należy w większości do samego TREX i skrypt nie ma prawa
-         * dotknąć ani jednego cudzego klucza.
+         * Filtr po dwóch prefiksach jest też zabezpieczeniem: reszta
+         * localStorage tej domeny należy do T-REX i nie wolno jej dotknąć.
          */
         ownKeys() {
             return Object.keys(localStorage).filter(k =>
                 k.startsWith(CONFIG.SCRIPT_ID_PREFIX) || k.startsWith(CONFIG.SHARED_ID_PREFIX));
         },
         /**
-         * Klucze wspólnego magazynu po możliwościach, których już nie ma.
-         * 8.5.0: trafiła tu pamięć cen na pięć dób — została odwołana i nie ma
-         * po co, żeby wisiała w localStorage.
-         */
-        /**
-         * Sprzątanie to pierwsze wywołania w Main.init() i jedyne, które nie
-         * są potrzebne do liczenia. Własny try (1.3.3): magazyn, który odmawia
-         * nawet odczytu listy kluczy, nie może zatrzymać startu — śmieci po
-         * poprzednich wersjach poczekają do następnego uruchomienia.
+         * Usuwa klucze wspólnego magazynu po funkcjach, których już nie ma
+         * (CONFIG.LEGACY_SHARED_KEYS).
+         *
+         * Sprzątanie to pierwsze wywołania w Main.init() i jedyne, które nie są
+         * potrzebne do liczenia — stąd własny try: magazyn, który odmawia
+         * nawet odczytu listy kluczy, nie może zatrzymać startu.
          */
         purgeLegacySharedKeys() {
             try {
@@ -310,7 +278,7 @@
                 });
             } catch (e) { Utils.error('Sprzątanie kluczy odwołanych funkcji pominięte', e); }
         },
-        /** Czyści klucze poprzednich wersji (ważne na maszynach bez resetu sesji). */
+        /** Czyści klucze poprzednich schematów (ważne na maszynach bez resetu sesji). */
         purgeLegacyKeys() {
             try {
                 const stale = Object.keys(localStorage).filter(k =>
@@ -411,15 +379,14 @@
                 }));
         },
         /**
-         * Odcinki zadania z magazynu (1.3.3, audyt E6, F11). JSON przepuszcza
-         * `1e999`, czyli nieskończoność, a ręczna edycja — zero, liczby ujemne
-         * i daty z przyszłości: na ekranie wychodziło „Infinityg NaNm”.
+         * Odcinki zadania z magazynu. JSON przepuszcza `1e999` (nieskończoność),
+         * a ręczna edycja — zero, liczby ujemne i daty z przyszłości.
          *
          * Odcinek poprawny: początek skończony, dodatni, nie w przyszłości;
          * koniec pusty albo nie wcześniej niż początek. Resztę się pomija.
-         * Zadanie, któremu nie zostało nic, NIE znika — dostaje zamknięty
-         * odcinek zerowej długości. Jego paczki leżą pod osobnymi kluczami
-         * i bez zadania wypadłyby z sumy, a panel wyzerowałby licznik karty.
+         * Zadanie bez poprawnych odcinków nie znika, tylko dostaje zamknięty
+         * odcinek zerowej długości — jego paczki leżą pod osobnymi kluczami
+         * i bez zadania wypadłyby z sumy.
          */
         cleanSegments(raw) {
             const now = Date.now();
@@ -430,45 +397,43 @@
             return ok.length ? ok : [{ from: now, to: now }];
         },
         listen() {
-            // 8.3.0: referencja do obsługi jest zapamiętana — potrzebna w Main.teardown().
+            // Referencja do obsługi jest zapamiętana — potrzebna w Main.teardown().
             this.onStorage = (e) => {
                 if (!e.key || !e.key.startsWith(CONFIG.SCRIPT_ID_PREFIX)) return;
-                // 9.1.0: wartość klucza zmienił KTOŚ INNY, więc nasza notatka
-                // „ostatnie zapisane” nie opisuje już magazynu. Bez tego
-                // deduplikacja mogłaby pominąć nasz następny zapis tej samej
-                // wartości i zostawić w kluczu cudzą.
+                // Klucz zmienił ktoś inny, więc notatka „ostatnio zapisane” nie
+                // opisuje już magazynu — inaczej deduplikacja pominęłaby nasz
+                // następny zapis tej samej wartości i zostawiła w kluczu cudzą.
                 delete this._lastWritten[e.key];
                 const localKey = e.key.substring(CONFIG.SCRIPT_ID_PREFIX.length);
-                // 1.3.3 (audyt D7): wartość bierze się z magazynu TERAZ, a nie
-                // z `e.newValue`. Zdarzenie niesie wartość z chwili cudzego
-                // zapisu — gdy między nim a doręczeniem ta karta sama zapisała
-                // nowszą, stare `newValue` cofało jej pamięć o paczkę.
+                // Wartość z magazynu teraz, a nie `e.newValue`: zdarzenie niesie
+                // wartość z chwili cudzego zapisu, a ta karta mogła od tamtej
+                // pory zapisać nowszą.
                 const current = localStorage.getItem(e.key);
                 if (localKey === CONFIG.STORAGE_KEY_VALUE_LOG) {
-                    // Dziennik wartości jest wspólny na wszystkie karty: sąsiadka
-                    // dopisała przedmiot albo postawiła znak — scalamy, nie zamazujemy.
+                    // Dziennik wartości jest wspólny dla kart: sąsiednia karta
+                    // dopisała przedmiot albo znak — scalamy, nie zamazujemy.
                     ValueLog.adoptRemote();
                     return;
                 }
                 if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_COUNTER)) {
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_COUNTER.length);
-                    // e.newValue === null znaczy, że klucz został usunięty — to
-                    // reset liczników przez sąsiednią kartę przy zmianie zmiany.
+                    // Brak klucza (null) to reset liczników przez sąsiednią kartę
+                    // na początku nowej zmiany — parseCount da zero.
                     const val = this.parseCount(current);
                     if (store.tabCounters[tabKey] !== val) store.tabCounters[tabKey] = val;
                 } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_SOLD)) {
-                    // Licznik sprzedanych sąsiedniej karty — potrzebny liniom 2 i 7,
-                    // które liczą procent po WSZYSTKICH kartach naraz.
+                    // Sprzedane sąsiedniej karty — linie 2 i 7 liczą procent
+                    // po wszystkich kartach.
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_SOLD.length);
                     const val = this.parseCount(current);
                     if (store.tabSold[tabKey] !== val) store.tabSold[tabKey] = val;
                 } else if (localKey === CONFIG.STORAGE_KEY_TASKS) {
-                    // Zadanie jest własnością człowieka, a nie karty: przejście
-                    // do innego procesu w jednej karcie obowiązuje we wszystkich.
+                    // Zadanie należy do człowieka, nie do karty: przejście do
+                    // innego procesu w jednej karcie obowiązuje we wszystkich.
                     this.loadTasks();
                 } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TASK_COUNTER)) {
-                    // Liczniki zadania z sąsiedniej karty — potrzebne panelowi,
-                    // który pokazuje podsumowanie zadania po WSZYSTKICH kartach.
+                    // Liczniki zadania z sąsiedniej karty — panel pokazuje
+                    // podsumowanie zadania po wszystkich kartach.
                     const parsed = this.parseTaskCounterKey(localKey);
                     if (parsed) {
                         const byTab = { ...(store.taskCounters[parsed.taskId] || {}) };
@@ -476,8 +441,8 @@
                         store.taskCounters = { ...store.taskCounters, [parsed.taskId]: byTab };
                     }
                 } else if (localKey.startsWith(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL)) {
-                    // Audyty sąsiedniej karty — z tego samego powodu: bez nich
-                    // linie 2 i 7 policzyłyby procent z za dużego mianownika.
+                    // Przedmioty spoza mianownika sąsiedniej karty — bez nich
+                    // linie 2 i 7 liczyłyby procent ze zbyt dużego mianownika.
                     const tabKey = localKey.substring(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL.length);
                     const val = this.parseCount(current);
                     if (store.tabNeutral[tabKey] !== val) store.tabNeutral[tabKey] = val;

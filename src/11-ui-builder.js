@@ -20,9 +20,7 @@
             const lbl = h('span', { textContent: labelFormatter(value), style: { minWidth: '70px', fontSize: '0.9em' } });
             const inp = h('input', {
                 type: 'range', min, max, value, style: { flexGrow: '1' },
-                // 8.1.0: Number() — input.value to łańcuch, i do konfiguracji szło
-                // fontSize: "14" zamiast 14. Działało na rzutowaniu typów, ale
-                // śmieciło w zapisanym JSON.
+                // Number(): input.value to łańcuch, a konfiguracja trzyma liczby.
                 onInput: (e) => { lbl.textContent = labelFormatter(e.target.value); onChange(Number(e.target.value)); }
             });
             return[inp, lbl];
@@ -51,9 +49,9 @@
             return h('label', { style: { display: 'flex', alignItems: 'center', cursor: 'pointer', flexGrow: '1' } }, chk, h('span', { textContent: label }));
         },
         /**
-         * Pole liczby. Pusty tekst NIE jest zerem (1.3.3, audyt F8): jedno
-         * Backspace i Enter w polu licznika działu kasowało paczki zmiany bez
-         * pytania. Zero trzeba wpisać świadomie.
+         * Pole liczby nieujemnej. Pusty tekst nie jest zerem — jedno Backspace
+         * i Enter w polu licznika działu skasowałoby paczki zmiany bez pytania.
+         * Zero trzeba wpisać świadomie.
          */
         numberInput(val, onChange) {
             return h('input', { type: 'number', min: 0, value: val, onChange: (e) => {

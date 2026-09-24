@@ -113,7 +113,7 @@ Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 472 sprawdzenia
+npm test             # 473 sprawdzenia
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run lint         # ESLint (potrzebny npm ci)
@@ -179,7 +179,9 @@ Szczegóły i listy kontrolne — w `CONTRIBUTING.md`.
   sprawdzić właśnie tę funkcję, i zbędne w pozostałych przypadkach.
 - Nie zmieniać wartości domyślnych bez aktualizacji README i CHANGELOG: dublują
   się celowo, a test się o to upomina.
-- Nie przepisywać komentarzy dla skrótowości. Zapisane są w nich powody decyzji
-  i rozebrane błędy — to najcenniejsza część pliku po samym kodzie.
+- Nie pisać w komentarzach historii zmian („w 8.3.0 było…”, „1.3.3, audyt D7”).
+  Komentarz mówi w czasie teraźniejszym, co robi kod i dlaczego tak — powody
+  decyzji i pułapki zostają, kronika idzie do CHANGELOG i historii gita. Pilnuje
+  tego test w `tests/09-artifact.test.js`.
 - Nie dodawać zależności do `dependencies`. Artefakt musi być samowystarczalny.
   `devDependencies` (linter, formatter) — można.

@@ -2,20 +2,16 @@
     // 5b. SESSION RESET (reset między zmianami)
     // ==========================================
     /**
-     * Na części stacji roboczych (Windows, logowanie na własne konto) sesja
-     * przeglądarki NIE jest resetowana między zmianami, więc localStorage wnosi
-     * do nowej zmiany liczniki poprzedniej. Zmiana trwa 10,5 h, więc wszelkie
-     * dane dotyczące innej zmiany trzeba wyrzucić — inaczej wskaźnik
-     * „przedmiotów na godzinę” liczy się od cudzego czasu startu i kłamie.
+     * Na części stanowisk (Windows, własne konto) sesja przeglądarki nie jest
+     * resetowana między zmianami i localStorage wnosi do nowej zmiany liczniki
+     * poprzedniej. Dane innej zmiany trzeba wyrzucić — inaczej tempo liczy się
+     * od cudzego czasu startu. Ustawienia wyglądu zostają.
      */
     const SessionReset = {
         /**
-         * Ostatni reset: {kind, reason}. Notifier pokazuje go, gdy UI jest gotowy.
-         *
-         * 8.3.0: wcześniej leżał tu tylko łańcuch przyczyny, a Notifier przy
-         * KAŻDYM resecie pokazywał „Wykryto nową zmianę”. W efekcie przycisk
-         * „Zresetuj tylko liczniki” informował człowieka o nieistniejącej zmianie.
-         * Teraz rodzaj resetu przychodzi osobnym polem i tłumaczy się normalnie.
+         * Ostatni reset: {kind, reason}. Notifier pokazuje go, gdy UI jest
+         * gotowy; `kind` decyduje o komunikacie (nowa zmiana, dane
+         * przeterminowane, reset ręczny).
          */
         lastReset: null,
 
@@ -29,15 +25,12 @@
             Utils.log(`[RESET] Kasowanie danych o przedmiotach. Powód: ${reason}`);
             this.lastReset = { kind, reason };
 
-            // Licznik sprzedanych żyje dokładnie tyle samo, co zwykły licznik:
-            // procent sprzedaży opisuje JEDNĄ zmianę, więc zostawienie go przez
-            // granicę zmiany dałoby liczbę z cudzego dnia.
+            // Wszystko, co opisuje jedną zmianę: liczniki paczek, sprzedanych
+            // i spoza mianownika oraz zadania z ich licznikami.
             const prefixes = [
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
-                // Zadania opisują JEDNĄ zmianę, tak samo jak liczniki: zostawione
-                // przez granicę zmiany dałyby tempo liczone od wczoraj.
                 StorageManager.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER),
                 StorageManager.getKey(CONFIG.STORAGE_KEY_TASKS),
             ];
@@ -58,9 +51,8 @@
             store.taskCounters = {};
             TaskManager.init();
 
-            // 8.4.0: dziennik wartości żyje dokładnie tyle samo, co liczniki —
-            // to ta sama ewidencja, tylko w pieniądzach. Podsumowania odchodzącej
-            // zmiany przed czyszczeniem idą do archiwum, więc historia nie ginie.
+            // Dziennik wartości to ta sama ewidencja w pieniądzach. Podsumowanie
+            // odchodzącej zmiany trafia przed czyszczeniem do archiwum.
             ValueLog.reset(reason);
 
             this.pruneTabInstances(true);
@@ -107,19 +99,18 @@
         },
 
         /**
-         * Sprawdzenie asekuracyjne przy starcie: zapisany początek zmiany jest
-         * starszy niż 12 h. Działa nawet w tych przerwach, gdy bieżącej zmiany
-         * jeszcze nie da się rozpoznać (17:55-18:19 i 05:55-06:19) — wtedy
-         * porównać zmian ze sobą się nie da.
+         * Sprawdzenie przy starcie: zapisany początek zmiany starszy niż 12 h
+         * znaczy dane z poprzedniej zmiany. Działa także w martwej strefie
+         * (17:55–18:19 i 05:55–06:19), gdy bieżącej zmiany nie da się
+         * rozpoznać i porównać.
          */
         checkStaleOnBoot() {
             const start = store.sessionConfig.shiftCalculatedStartTime;
             if (!start || Date.now() - start <= CONFIG.STALE_SESSION_MS) return false;
 
-            // Zegar ścienny mówi, że to WCIĄŻ ta sama zmiana — więc dane nie są
-            // przeterminowane, choćby minęło ponad 12 h. Jedyny taki przypadek:
-            // październikowa noc zmiany czasu. 18:30 CEST → 05:55 CET to 12,42 h,
-            // a nie 11,42 — i F5 o 05:35 zerował zmianę 20 minut przed końcem.
+            // Zegar ścienny wskazuje wciąż tę samą zmianę — dane nie są
+            // przeterminowane, choćby minęło ponad 12 h. Tak jest w październikową
+            // noc zmiany czasu: 18:30 CEST → 05:55 CET to 12,42 h.
             const current = ShiftManager.currentShift();
             if (current && current.start === start) return false;
 
@@ -134,12 +125,11 @@
 
     const ShiftManager = {
         /**
-         * Zmiana, która trwa TERAZ według zegara ściennego: `{type, start}`,
+         * Zmiana, która trwa teraz według zegara ściennego: `{type, start}`,
          * albo null w martwej strefie (17:55–18:19 i 05:55–06:19).
          *
-         * Wydzielone z update(), bo to samo pytanie zadaje sprawdzenie
-         * przeterminowanych danych — „czy zapisana zmiana to ta, która trwa?”
-         * — i nie może odpowiadać na nie inaczej niż update().
+         * Wspólne dla update() i checkStaleOnBoot(), żeby oba odpowiadały na
+         * pytanie „która zmiana trwa” tak samo.
          */
         currentShift() {
             const now = new Date();
@@ -171,10 +161,9 @@
         update() {
             const current = this.currentShift();
 
-            // 8.1.0: w „martwej strefie” między zmianami (17:55-18:19 / 05:55-06:19)
-            // NIE zerujemy zapisanej zmiany. Wcześniej kasowało to czas startu
-            // i temu, kto został po 05:00, statystyka nagle się zerowała.
-            // Przy okazji zostaje kotwica do sprawdzenia przeterminowanych danych.
+            // W martwej strefie między zmianami zapisana zmiana zostaje: kto
+            // pracuje po 05:55, nie traci statystyki, a sprawdzenie
+            // przeterminowanych danych ma do czego się odnieść.
             if (!current) return;
 
             const sType = current.type;
@@ -187,15 +176,14 @@
                 && typeof oldStart === 'number'
                 && Math.abs(newStart - oldStart) < CONFIG.SHIFT_IDENTITY_TOLERANCE_MS;
 
-            // Ta sama zmiana — wychodzimy, nie ruszając wybranej przez człowieka
-            // przerwy. (W 8.0.0 wybór przerwy kasował się przy każdym przeliczeniu.)
+            // Ta sama zmiana — wychodzimy, nie ruszając wybranej przez
+            // człowieka przerwy.
             if (sameShift) return;
 
-            // Zmiana RÓŻNI SIĘ od zapisanej, a zapisana istniała — czyli na tej
-            // maszynie zostały dane poprzedniej zmiany. Kluczowy przypadek:
-            // zmiana dzienna zaczęła się o 06:30, a o 18:21 przy tym samym
-            // komputerze siada zmiana nocna. Różnica to ledwie 11 h 51 min,
-            // próg 12 h jej nie złapie, a porównanie czasu startu — łapie.
+            // Zmiana różni się od zapisanej, a zapisana istniała — na maszynie
+            // zostały dane poprzedniej zmiany. Np. dzienna od 06:30, a o 18:21
+            // siada nocna: to 11 h 51 min, próg 12 h tego nie złapie,
+            // porównanie początku zmiany — tak.
             const isShiftRollover = typeof oldStart === 'number' && oldStart !== newStart;
 
             store.sessionConfig.shiftType = sType;
@@ -217,12 +205,10 @@
             StorageManager.saveState();
         },
         /**
-         * Ile z odcinka [from, to] zjadła przerwa obiadowa.
-         *
-         * Wydzielone z getWorkTime() w 1.3.0, bo ten sam rachunek jest potrzebny
-         * zadaniom: kto nie pamiętał o pauzie na obiad, miałby w zadaniu pół
-         * godziny pracy, której nie było. Jedno miejsce prawdy — obie strony
-         * odejmują dokładnie to samo.
+         * Ile z odcinka [from, to] zajęła przerwa obiadowa. Wspólne dla czasu
+         * zmiany i czasu zadań, żeby obie strony odejmowały to samo — kto nie
+         * zatrzymał zadania na obiad, nie dostaje pół godziny pracy, której
+         * nie było.
          */
         lunchOverlapMs(from, to) {
             const idx = store.sessionConfig.selectedLunchIndex;

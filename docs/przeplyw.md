@@ -278,8 +278,7 @@ jest nadmiarowość przez przeoczenie — dolna bariera istnieje po to, żeby no
 też nie wypuściła zapytania.
 
 **Limit liczy się osobno dla obrazków i dla zapytań tekstowych.** Wspólny licznik
-z jednym sprawdzeniem przed pętlą (do 8.6.0) sprawiał, że obrazkowy dostawca
-zjadał limit tekstowy, a własny licznik obrazków nie rozstrzygał niczego.
+sprawiałby, że obrazkowy dostawca zjada limit tekstowy.
 
 **Adres nigdy nie powstaje z danych strony.** Host i schemat są wszyte na stałe,
 ASIN przechodzi przez zakotwiczone wyrażenie `^[A-Z0-9]{10}$`, reszta idzie przez
@@ -358,8 +357,8 @@ flowchart TD
 ### Co tu widać
 
 **`identifyTab()` przed `loadAll()`.** Ustawienia karty czytają się po kluczu
-`currentTabInstanceId`; odwrotna kolejność (do 8.0.0) sprawiała, że wygląd okna
-nie przywracał się po `F5` nigdy, a do magazynu trafiał śmieciowy klucz `null`.
+`currentTabInstanceId`; przy odwrotnej kolejności wygląd okna nie przywracałby się
+po `F5`, a do magazynu trafiałby śmieciowy klucz `null`.
 
 **Kod ustawień z zakładki wchodzi przed pierwszym rysowaniem.** Dzięki temu okno
 od razu jest takie, jakiego człowiek chce — bez mrugnięcia wyglądem domyślnym.
@@ -377,13 +376,13 @@ magazyn — pobranie kursów na żywo robi dopiero `PriceModule.enable()`.
 
 ### Gdzie to się psuje
 
-| Pułapka                                        | Objaw                                                                                            |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| zapis przed `initialized`                      | do magazynu trafia stan w połowie wczytany                                                       |
-| brak `listen()` albo zły filtr klucza          | dwie karty nie widzą się nawzajem, linia 2 pokazuje tylko swoją                                  |
-| `teardown` bez czyszczenia timerów             | zdjęty egzemplarz dalej rysuje i sypie wyjątkami dokładnie wtedy, gdy wkleja się poprawiony plik |
-| skrót `config` zdejmowany bezwarunkowo         | rozbiórka zabiera stronie jej własną funkcję o tej samej nazwie                                  |
-| `localStorage.clear()` zamiast własnych kluczy | kasowanie danych roboczych samego T-REX (usterka sprzed 8.1.0)                                   |
+| Pułapka                                         | Objaw                                                                                            |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| zapis przed `initialized`                       | do magazynu trafia stan w połowie wczytany                                                       |
+| brak `listen()` albo zły filtr klucza           | dwie karty nie widzą się nawzajem, linia 2 pokazuje tylko swoją                                  |
+| `teardown` bez czyszczenia timerów              | zdjęty egzemplarz dalej rysuje i sypie wyjątkami dokładnie wtedy, gdy wkleja się poprawiony plik |
+| skrót `config` zdejmowany bezwarunkowo          | rozbiórka zabiera stronie jej własną funkcję o tej samej nazwie                                  |
+| czyszczenie całego magazynu zamiast `ownKeys()` | kasowanie danych roboczych samego T-REX                                                          |
 
 ### Co tego pilnuje
 

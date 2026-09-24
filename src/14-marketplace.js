@@ -1,6 +1,6 @@
     /**
-     * Bieżący sklep Amazon (8.5.0). Jedno miejsce prawdy dla linku, wykresu
-     * i waluty dziennika — patrz CONFIG.MARKETPLACES.
+     * Bieżący sklep Amazon — jedno miejsce prawdy dla linku, wykresu i waluty
+     * ceny (CONFIG.MARKETPLACES). Nieznany klucz daje sklep domyślny.
      */
     function marketplaceKey() {
         const key = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
@@ -13,16 +13,12 @@
     /**
      * Link do karty produktu.
      *
-     * @param {string} [key] — rynek, NA KTÓRYM ZNALEZIONO CENĘ. Trzeba go
-     *   podawać jawnie: jeśli ceny trzeba było szukać przeglądem sklepów, link
-     *   musi prowadzić właśnie tam, inaczej człowiek otworzy amazon.de i nie
-     *   znajdzie tam ceny, którą widzi na karcie.
+     * @param {string} [key] — rynek, na którym znaleziono cenę; po przeglądzie
+     *   sklepów link musi prowadzić tam, gdzie ta cena jest.
      *
-     * BEZPIECZEŃSTWO: host pochodzi WYŁĄCZNIE z tablicy CONFIG.MARKETPLACES
-     * (marketplace() przy nieznanym kluczu wraca do domyślnego), a ASIN idzie
-     * przez encodeURIComponent. Schemat jest wpisany na sztywno, więc do
-     * atrybutu href nie da się wstawić `javascript:` ani `data:` — nawet gdyby
-     * ASIN przyszedł ze strony w spreparowanej postaci.
+     * Host pochodzi wyłącznie z CONFIG.MARKETPLACES, schemat jest wpisany na
+     * sztywno, a ASIN idzie przez encodeURIComponent — do href nie da się
+     * wstawić `javascript:` ani `data:`, nawet ze spreparowanym ASIN.
      */
     function productUrl(asin, key) {
         return `https://${marketplace(key).host}/dp/${encodeURIComponent(asin)}`;

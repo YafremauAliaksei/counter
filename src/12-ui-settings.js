@@ -13,36 +13,23 @@
             document.body.appendChild(this.el);
 
             /**
-             * PRZYCISK MA POKAZYWAĆ STAN, A NIE PAMIĘTAĆ WŁASNE KLIKNIĘCIE.
+             * Przyciski przeciągania pokazują stan flag `uiFlags.*Dragging`,
+             * a flagi zdejmuje nie tylko kliknięcie, ale też dragger po
+             * puszczeniu myszy i reset pozycji. Panel przerysowuje się więc na
+             * każdą zmianę flagi — inaczej przycisk świeciłby „przeciąganie
+             * włączone” przy wyłączonym trybie.
              *
-             * Wygląd obu przycisków przeciągania wyliczany jest przy rysowaniu
-             * panelu z flag `uiFlags.*Dragging`. Przerysowanie wołała dotąd
-             * WYŁĄCZNIE obsługa kliknięcia — a flagę zdejmuje też ktoś inny:
-             * dragger po puszczeniu myszy (jedno przeciągnięcie = jedno
-             * ustawienie okna) i przycisk resetu pozycji.
-             *
-             * Skutek widoczny dla człowieka: przeciągnął okno, puścił — tryb już
-             * się wyłączył, ale przycisk dalej świeci pomarańczowym i twierdzi
-             * „kliknij, by przypiąć”. Kliknięcie w niego WŁĄCZA przeciąganie
-             * z powrotem, choć wygląda na wyłączające. Klasyczny rozjazd
-             * kontrolki ze stanem.
-             *
-             * Subskrypcja stoi w init(), a nie w render(): render() woła się przy
-             * każdej zmianie ustawienia, więc subskrypcje by się mnożyły.
+             * Subskrypcja w init(), a nie w render(), bo render() woła się przy
+             * każdej zmianie ustawienia i subskrypcje by się mnożyły.
              */
             bus.on('store:changed:uiFlags.isStatsWindowDragging', () => this.rerender());
             bus.on('store:changed:uiFlags.isPriceCardDragging', () => this.rerender());
         },
         /**
-         * Odroczone przerysowanie (8.3.0).
-         *
-         * Obsługi kontrolek wołały this.render() wprost, a render() zaczyna się
-         * od `this.el.innerHTML = ''` — czyli zdejmował element, który akurat
-         * w tym momencie wysyła zdarzenie. Przeglądarki to przeżywają, ale
-         * konstrukcja jest krucha, a przy wywołaniach zagnieżdżonych (checkbox ->
-         * render -> checkbox) zachowanie nie jest już określone. Teraz
-         * przerysowanie wychodzi poza granicę bieżącego zdarzenia i skleja się,
-         * jeśli poproszono o nie kilka razy.
+         * Odroczone przerysowanie. render() zaczyna od `innerHTML = ''`, czyli
+         * zdejmuje także element, który właśnie wysyła zdarzenie — dlatego
+         * obsługi kontrolek wołają rerender(), który wychodzi poza bieżące
+         * zdarzenie i skleja kilka próśb w jedno przerysowanie.
          */
         rerender() {
             clearTimeout(this._rerenderTimer);
@@ -63,15 +50,12 @@
             }
         },
         /**
-         * SEKCJA ZADAŃ — jedyna część panelu otwierana W TRAKCIE pracy.
+         * SEKCJA ZADAŃ — jedyna część panelu otwierana w trakcie pracy, więc
+         * stoi na górze; reszta (wygląd, kolory, skróty) ustawia się raz.
          *
-         * Stąd wzięła się kolejność: zadania i liczniki na samej górze, reszta
-         * (wygląd, kolory, skróty) niżej, bo to ustawia się raz na zmianę.
-         *
-         * Trzy rzeczy, które trzeba zrobić szybko, stoją obok siebie:
-         * przełączyć proces, poprawić jego początek i wpisać liczby po awarii
-         * maszyny. Każda mieści się w dwóch–trzech kliknięciach, bez list
-         * wyboru godziny i minuty.
+         * Obok siebie stoją trzy rzeczy robione szybko: przełączenie procesu,
+         * poprawa jego początku i wpisanie liczb po awarii maszyny — każda
+         * w dwóch-trzech kliknięciach.
          */
         buildTasksSection() {
             const sec = UIBuilder.section(I18n.get('section_tasks'));
@@ -88,14 +72,11 @@
                 })));
 
                 // --- początek bieżącego odcinka ---
-                // Skróty w minutach wstecz zamiast list godzin i minut: o nowym
-                // procesie człowiek dowiaduje się z wyprzedzeniem, zbiera
-                // narzędzia i siada do skryptu kilka minut po faktycznym starcie.
-                // Kontrolki opisują początek CAŁEGO zadania, a nie ostatniego
-                // odcinka: człowiek ma w głowie jedno zdanie „to zadanie zaczęło
-                // się o X”. Pierwsza wersja ruszała ostatni odcinek, przez co
-                // przy zatrzymanym zegarze każde kliknięcie dokładało czas
-                // zamiast go przestawiać (patrz TaskManager.setStart).
+                // Skróty w minutach wstecz zamiast list godzin i minut: człowiek
+                // siada do skryptu zwykle kilka minut po faktycznym starcie.
+                // Kontrolki przestawiają początek całego zadania, a nie
+                // ostatniego odcinka — „to zadanie zaczęło się o X”
+                // (TaskManager.setStart).
                 const startedAt = TaskManager.span(task).from;
                 const quick = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } });
                 CONFIG.TASK_QUICK_OFFSETS_MIN.forEach(min => {
@@ -121,10 +102,9 @@
                     style: { width: '70px', padding: '4px', textAlign: 'center' },
                 })));
 
-                // --- paczki i tempo: dwa pola opisujące TO SAMO ---
-                // Poprawiane jest zawsze to pole, w które człowiek wpisał
-                // liczbę; drugie przelicza się samo. Po wpisaniu tempa pokazuje
-                // się wartość OSIĄGALNA przy całych paczkach, a nie wpisana:
+                // --- paczki i tempo: dwa pola opisujące to samo ---
+                // Wpisuje się jedno, drugie przelicza się samo. Po wpisaniu
+                // tempa pokazuje się wartość osiągalna przy całych paczkach:
                 // przy 1:17 pracy „118” to 151 paczek, czyli 117,7 na godzinę.
                 const totals = TaskManager.totals(task);
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
@@ -229,11 +209,8 @@
         syncTabCounters(tabKey) { TaskManager.syncShift(tabKey); },
 
         /**
-         * LICZNIKI DZIAŁÓW — przeniesione pod zadania (1.3.0).
-         *
-         * Wpisanie liczby wprost („zrobiłem dziś 180”) to sposób na powrót do
-         * pracy po awarii maszyny, więc stoi tam, gdzie się go szuka: obok
-         * zadań, a nie na końcu panelu pod ustawieniami kolorów.
+         * LICZNIKI DZIAŁÓW — obok zadań, bo wpisanie liczby wprost („zrobiłem
+         * dziś 180”) to sposób na powrót do pracy po awarii maszyny.
          */
         buildCountersSection() {
             const sec = UIBuilder.section(I18n.get('section_globalStats'));
@@ -255,25 +232,20 @@
         },
 
         render() {
-            // 8.3.0: panel nadal składa się w całości od nowa, ale przewijanie
-            // nie skacze już na początek — wcześniej było to zapisane w „znanych
-            // ograniczeniach” i przeszkadzało w ustawianiu dolnych sekcji.
+            // Panel składa się od nowa, ale pozycja przewinięcia zostaje.
             const scrollTop = this.el.scrollTop;
             this.el.innerHTML = '';
             this.el.appendChild(h('h2', { textContent: I18n.get('settingsPanelTitle'), style: { textAlign: 'center', marginTop: '0' } }));
 
-            // 0. Zadania i liczniki — na samej górze, bo to jedyna sekcja
-            // otwierana W TRAKCIE pracy. Reszta panelu to ustawienia, które
-            // stawia się raz i nie wraca do nich przez całą zmianę.
+            // 0. Zadania i liczniki — na górze, jedyna sekcja używana w trakcie pracy.
             this.el.appendChild(this.buildTasksSection());
             this.el.appendChild(this.buildCountersSection());
 
             // 1. Ogólne
             const secGen = UIBuilder.section(I18n.get('section_general'));
             secGen.appendChild(UIBuilder.row(I18n.get('language'), UIBuilder.select(CONFIG.AVAILABLE_LANGUAGES.map(l => ({ value: l.code, text: l.name })), store.userConfig.language, v => { store.userConfig.language = v; this.rerender(); })));
-            // 8.1.0: było localStorage.clear() — to kasowało magazyn CAŁEJ domeny,
-            // razem z roboczym stanem samego TREX. Teraz usuwane są wyłącznie
-            // klucze skryptu.
+            // Pełny reset usuwa wyłącznie klucze skryptu (ownKeys) — resztę
+            // localStorage tej domeny trzyma T-REX.
             secGen.appendChild(UIBuilder.button(I18n.get('settings_resetAllDataButton'), () => {
                 if (!confirm(I18n.get('settings_resetConfirm'))) return;
                 StorageManager.ownKeys().forEach(k => localStorage.removeItem(k));
@@ -300,10 +272,7 @@
                     store.userConfig.customTabSettings[store.currentTabInstanceId] = { ...cust, displayName: e.target.value };
                 }, style: { flexGrow: '1', padding: '4px' } })));
                 secCur.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('customTabIncludeInGlobal'), cust.includeInGlobal, v => {
-                    // 8.3.0: piszemy całym obiektem. Wcześniej było tu odwołanie
-                    // do `...[id].includeInGlobal`, choć dwie linie wyżej na ten
-                    // sam przypadek stał już zapasowy `cust`: gdyby wpisu nie było,
-                    // checkbox wywalałby się na TypeError.
+                    // Zapis całym obiektem — wpisu dla karty może jeszcze nie być.
                     store.userConfig.customTabSettings[store.currentTabInstanceId] =
                         { ...store.userConfig.customTabSettings[store.currentTabInstanceId] || cust, includeInGlobal: v };
                 })));
@@ -407,10 +376,9 @@
 
             secWin.appendChild(UIBuilder.button(I18n.get('settings_resetWindowPositionButton'), () => {
                 store.localTabConfig.statsWindowPosition = Utils.clone(DEFAULT_LOCAL_CONFIG.statsWindowPosition);
-                // 9.2.0: pozycję nakłada renderer, bo od tej wersji potrafi ona
-                // być przyklejona do dołu, a nie tylko do góry. Ręczne ustawianie
-                // top/left tutaj zostawiłoby stare `bottom` i okno wylądowałoby
-                // w dwóch miejscach naraz.
+                // Pozycję nakłada renderer (applyPosition): okno bywa
+                // przyklejone do dołu, a ustawienie tu samych top/left
+                // zostawiłoby stare `bottom`.
                 StatsWindowRenderer.applyPosition();
                 if (store.uiFlags.isStatsWindowDragging) {
                     store.uiFlags.isStatsWindowDragging = false;
@@ -432,15 +400,12 @@
             this.el.appendChild(secAuto);
 
             /**
-             * 7a. GŁÓWNY WYŁĄCZNIK MODUŁU CEN (9.2.0).
+             * 7a. GŁÓWNY WYŁĄCZNIK MODUŁU CEN — przed kartą ceny i dziennikiem
+             * wartości, bo rozstrzyga o obu. Póki jest wyłączony, sieć śpi.
              *
-             * Osobna sekcja, postawiona PRZED kartą ceny i dziennikiem wartości,
-             * bo rozstrzyga o obu naraz. Póki jest wyłączony, sieć śpi.
-             *
-             * Włączenie jest tu obsłużone jawnie, a nie zostawione komuś innemu:
-             * dopiero w tym momencie wolno pobrać kursy walut i zapytać o cenę
-             * przedmiotu, który akurat jest na ekranie. To jedyne miejsce
-             * w całym pliku, z którego rusza pierwsze zapytanie do sieci.
+             * Kliknięcie tutaj (PriceModule.enable) to jedyne miejsce w pliku,
+             * z którego rusza pierwsze zapytanie do sieci: kursy walut i cena
+             * przedmiotu na ekranie.
              */
             const secModule = UIBuilder.section(I18n.get('priceModule_section'));
             const moduleOn = priceModuleOn();
@@ -456,16 +421,14 @@
             this.el.appendChild(secModule);
 
             if (!moduleOn) {
-                // Dalszych sekcji nie rysujemy wcale. To nie jest kosmetyka:
-                // ustawienia karty ceny sterują zachowaniem, którego przy
-                // wyłączonym module nie ma, a pokazywanie ich sugerowałoby, że
-                // coś się jednak dzieje w tle.
+                // Dalszych sekcji nie ma: pokazane ustawienia karty sugerowałyby,
+                // że przy wyłączonym module coś dzieje się w tle.
                 const off = UIBuilder.section(I18n.get('priceCard_section'));
                 off.appendChild(UIBuilder.hint(I18n.get('priceModule_offNotice')));
                 this.el.appendChild(off);
             } else {
 
-            // 7b. Karta ceny (8.2.0)
+            // 7b. Karta ceny
             const secPrice = UIBuilder.section(I18n.get('priceCard_section'));
             const pc = store.localTabConfig.priceCard;
 
@@ -482,9 +445,9 @@
                 }));
             }
 
-            // 1.4.0: waluta, w której kwoty się POKAZUJE. Liczy się zawsze
-            // w euro, więc przełączenie w trakcie zmiany niczego nie gubi.
-            // Ustawienie wspólne jak sklep: wszystkie karty mówią jedną walutą.
+            // Waluta, w której kwoty się pokazuje. Liczy się zawsze w euro,
+            // więc przełączenie w trakcie zmiany niczego nie gubi. Ustawienie
+            // wspólne jak sklep: wszystkie karty mówią jedną walutą.
             secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_displayCurrency'), UIBuilder.select(
                 [{ value: 'native', text: I18n.get('priceCard_displayNative') }]
                     .concat(Object.entries(CONFIG.DISPLAY_CURRENCIES).map(([code, sign]) => ({
@@ -494,8 +457,7 @@
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
-            // 8.4.0: trzy pozycje zamiast checkboxa „ciągnij tekstem”.
-            // Kolejność na liście — od zalecanej do zapasowych.
+            // Źródło ceny — od zalecanego do zapasowych.
             secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select([
                 { value: 'ocr',   text: I18n.get('priceCard_src_ocr')   },
                 { value: 'graph', text: I18n.get('priceCard_src_graph') },
@@ -571,8 +533,7 @@
                     v => store.localTabConfig.priceCard.width = v,
                     v => I18n.get('priceCard_width', { value: v }))));
 
-                // Dolna granica zeszła z 14 na 11: karta ma dać się zrównać
-                // z liniami okna statystyk, a te schodzą niżej.
+                // Od 11: karta ma dać się zrównać z liniami okna statystyk.
                 secPrice.appendChild(UIBuilder.row('', ...UIBuilder.slider(
                     11, 48, pc.fontSize,
                     v => store.localTabConfig.priceCard.fontSize = v,
@@ -607,7 +568,7 @@
             }
             this.el.appendChild(secPrice);
 
-            // 7c. Dziennik wartości (8.4.0)
+            // 7c. Dziennik wartości
             const secVal = UIBuilder.section(I18n.get('valueLog_section'));
             secVal.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('valueLog_enabled'), pc.logValues,

@@ -1,23 +1,17 @@
     // ==========================================
-    // 6e. DZIENNIK WARTOŚCI (8.4.0)
+    // 6e. DZIENNIK WARTOŚCI
     // ==========================================
     /**
-     * Łączna wartość przedmiotów przetworzonych przez zmianę.
+     * Wartość przedmiotów przetworzonych w ciągu zmiany.
      *
-     * CO SIĘ LICZY. Wyłącznie przedmiot, który przeszedł PEŁNĄ ścieżkę: ten,
-     * na którym zadziałał automatyczny przyrost licznika (pojawiło się
-     * `Przypisz nowy` przy wzniesionej fladze początku). Ani skróty klawiszowe,
-     * ani ręczna poprawka licznika do dziennika nie piszą — ręcznie poprawia się
-     * zwykle właśnie to, czego program nie zobaczył, a ceny do tego i tak nie ma.
+     * Wpis powstaje tylko przy automatycznym zaliczeniu przedmiotu (wyzwalacz
+     * końcowy przy podniesionej fladze). Skróty klawiszowe i ręczne poprawki
+     * licznika do dziennika nie piszą — poprawia się zwykle to, czego program
+     * nie widział, więc i ceny nie ma. Przedmiot przerwany się nie liczy.
      *
-     * Przedmioty przerwane nie liczą się z tego samego powodu, co w liczniku:
-     * `Przypisz nowy` nie zadziałał, nie ma czego liczyć.
-     *
-     * CYKL ŻYCIA — jak u liczników: dziennik żyje jedną zmianę i zeruje się
-     * razem z nimi przy przejściu na nową. Podsumowania idą przy tym do
-     * archiwum (wspólny, nieversjonowany klucz), więc historia nie ginie.
-     *
-     * 9.2.0: dziennik napełnia się TYLKO przy włączonym module cen — patrz add().
+     * Dziennik żyje jedną zmianę i zeruje się razem z licznikami;
+     * podsumowanie trafia do archiwum (klucz wspólny, niezależny od schematu).
+     * Działa tylko z włączonym modułem cen (add()).
      */
     const ValueLog = {
         entries: [],
@@ -28,45 +22,34 @@
         key() { return StorageManager.getKey(CONFIG.STORAGE_KEY_VALUE_LOG); },
         archiveKey() { return CONFIG.SHARED_ID_PREFIX + CONFIG.STORAGE_KEY_VALUE_ARCHIVE; },
 
-        // ---------------- wspólny dziennik na wszystkie karty (9.1.0) ----------------
+        // ---------------- wspólny dziennik na wszystkie karty ----------------
         /**
-         * DZIENNIK JEST JEDEN NA WSZYSTKIE KARTY I TO GŁÓWNA WŁASNOŚĆ WERSJI 9.1.0.
+         * DZIENNIK JEST JEDEN NA WSZYSTKIE KARTY.
          *
-         * Co było zepsute wcześniej. Dziennik czytało się z localStorage DOKŁADNIE
-         * RAZ, przy starcie, a save() pisała do wspólnego klucza CAŁĄ swoją
-         * tablicę. Dwie otwarte karty (CRET i WHD — normalny tryb pracy) trzymały
-         * dwie niezależne kopie i zamazywały się nawzajem: w kluczu zostawały
-         * wpisy tej karty, która zapisała ostatnia.
+         * Ewidencja idzie po przedmiocie, nie po karcie: ta sama rzecz jedzie
+         * z CRET do WHD (znak minus, −150 €), a potem z karty WHD na sprzedaż
+         * (plus, +150 €). Poprawny wynik — zero — wychodzi tylko wtedy, gdy oba
+         * wpisy leżą w jednym dzienniku.
          *
-         * Dlaczego to ważne właśnie tutaj. Ewidencja jest przekrojowa po
-         * przedmiocie, a nie po karcie: ta sama rzecz jedzie z CRET do WHD (kod
-         * `WHD`, znak minus, −150 €), a potem jest obsługiwana na karcie WHD
-         * i idzie na sprzedaż (znak plus, +150 €). Poprawny wynik to zero i widać
-         * go TYLKO wtedy, gdy oba wpisy leżą w jednym dzienniku.
+         * Klucz localStorage jest źródłem prawdy, pamięć karty — kopią roboczą:
+         *   1. każdy wpis ma niezmienne `id` i znacznik `updated`;
+         *   2. save() czyta wspólny dziennik, scala z nim swoją kopię po id
+         *      (wygrywa świeższy `updated`) i zapisuje scalenie — cudzych
+         *      wpisów nie da się zamazać;
+         *   3. zdarzenie `storage` z sąsiedniej karty woła adoptRemote():
+         *      to samo scalanie w drugą stronę;
+         *   4. gdy po scaleniu mamy coś, czego we wspólnym dzienniku nie ma,
+         *      idzie jeden dopisujący save(); scalanie jest monotoniczne, więc
+         *      wymiana się zbiega;
+         *   5. usunięcie klucza przez sąsiada to reset zmiany — czyścimy kopię.
          *
-         * Jak to zrobiono. Klucz localStorage jest jedynym źródłem prawdy,
-         * a pamięć karty jego kopią roboczą:
-         *
-         *   1. każdy wpis ma NIEZMIENNE `id` i znacznik `updated`;
-         *   2. save() PRZECZYTUJE wspólny dziennik, scala z nim swoją kopię po id
-         *      (przy konflikcie wygrywa świeższy `updated`) i pisze scalenie —
-         *      czyli cudzych wpisów nie da się fizycznie zamazać;
-         *   3. zdarzenie `storage` z sąsiedniej karty wywołuje adoptRemote():
-         *      to samo scalanie, tylko w drugą stronę;
-         *   4. jeśli po scaleniu mamy wpisy, których we wspólnym dzienniku nie ma,
-         *      robi się jeden dopisujący save(). Scalanie jest monotoniczne, więc
-         *      wymiana zbiega się i nie zapętla;
-         *   5. usunięcie klucza przez sąsiada traktuje się jako reset zmiany
-         *      i czyści naszą kopię — nie ma czego wskrzeszać.
-         *
-         * Kolejność pozycji w scaleniu — po czasie (`ts`), a nie po tym, kto
-         * zdążył zapisać: dziennik czyta się oczami.
+         * Pozycje są uporządkowane po czasie (`ts`), nie po kolejności zapisu.
          */
         _migrate(e) {
             if (!e || typeof e !== 'object') return null;
-            // Wpisy sprzed 9.1.0 nie mają id. Nadajemy stabilne, wyprowadzone
-            // z samego wpisu: dwa odczyty tego samego starego dziennika muszą dać
-            // to samo id, inaczej scalanie rozmnoży pozycję.
+            // Wpis bez id (starszy zapis) dostaje id wyprowadzone z samego
+            // wpisu: dwa odczyty tego samego dziennika muszą dać to samo id,
+            // inaczej scalanie rozmnoży pozycję.
             if (!e.id) e.id = `v90_${e.ts || 0}_${e.asin || 'noasin'}_${e.dept || '?'}`;
             if (typeof e.updated !== 'number') e.updated = e.ts || 0;
             return e;
@@ -87,27 +70,13 @@
         },
 
         /**
-         * Czy po scaleniu mamy coś, czego we wspólnym dzienniku nie ma.
+         * Czy po scaleniu mamy coś, czego we wspólnym dzienniku nie ma —
+         * nowy wpis albo świeższą wersję istniejącego.
          *
-         * Wcześniej rozstrzygała o tym sama DŁUGOŚĆ: `merged.length >
-         * shared.entries.length`. Gubiło to przypadek, w którym liczba pozycji
-         * się zgadza, a różni się ich TREŚĆ — czyli dokładnie skutek wyścigu
-         * przy odczycie i zapisie wspólnego klucza (localStorage nie daje tu
-         * żadnej atomowości):
-         *
-         *   1. stawiamy kierunek przedmiotu, save() czyta wspólny dziennik;
-         *   2. sąsiednia karta zdążyła w tej szparze zapisać swoją, starszą
-         *      wersję tej samej pozycji;
-         *   3. dostajemy zdarzenie `storage`, scalamy — nasza wersja wygrywa
-         *      po `updated`, ale długość się zgadza, więc dopisanie się nie
-         *      planowało i we wspólnym kluczu zostawała wersja starsza.
-         *
-         * Naprawiało się to samo przy następnym przedmiocie (save() scala),
-         * więc realnie zagrożony był wyłącznie OSTATNI przedmiot zmiany — ten,
-         * po którym nic już nie zapisywało. Cicho i akurat na podsumowaniu.
-         *
-         * Teraz porównanie idzie po id i po `updated`: to ta sama miara, którą
-         * rozstrzyga _merge(), więc obie strony wymiany widzą tak samo.
+         * Porównanie po id i `updated` (ta sama miara co w _merge), a nie po
+         * długości: przy wyścigu zapisów liczba pozycji się zgadza, a różni się
+         * treść — wtedy we wspólnym kluczu zostałaby starsza wersja, np.
+         * ostatniego przedmiotu zmiany bez kierunku.
          */
         _aheadOfShared(merged, sharedEntries) {
             const theirs = new Map();
@@ -147,9 +116,8 @@
                 localStorage.setItem(this.key(), JSON.stringify({
                     shiftStart: this.shiftStart, entries: merged,
                 }));
-                // Pamięć „nie pisz tego samego” żyje w StorageManager i o tym
-                // kluczu nic nie wie — zdejmujemy notatkę, żeby nie przeszkodziła
-                // sąsiedniej karcie przy następnym zapisie.
+                // Ten klucz pisze się z pominięciem StorageManager.write —
+                // notatka deduplikacji dla niego byłaby nieaktualna.
                 delete StorageManager._lastWritten[this.key()];
             } catch (e) {
                 Utils.error('Dziennik wartości nie został zapisany', e);
@@ -188,9 +156,8 @@
 
         /**
          * Dopisać do wspólnego dziennika nasze wpisy, których sąsiad nie widział.
-         * Przerwa jest potrzebna tylko po to, żeby skleić paczkę zdarzeń
-         * `storage`; sam zapis jest bezpieczny w dowolnym momencie, bo save()
-         * scala.
+         * Przerwa tylko skleja paczkę zdarzeń `storage` — sam zapis jest
+         * bezpieczny zawsze, bo save() scala.
          */
         _scheduleWriteBack() {
             clearTimeout(this._writeBackTimer);
@@ -206,14 +173,10 @@
 
         // ---------------- archiwum ----------------
         /**
-         * Archiwum trzyma tylko PODSUMOWANIA zmian, nie pozycje: pełna lista
-         * z dziesiątek zmian nie zmieściłaby się w localStorage dzielonym
-         * z samą aplikacją TREX. Dla bieżącej zmiany pozycje są w entries.
-         *
-         * 9.1.0: zapis jest odroczony. Wcześniej writeArchive() szła przy KAŻDYM
-         * wywołaniu save(), czyli dwa razy na przedmiot (utworzenie wpisu
-         * i postawienie znaku), a za każdym razem był to rozbiór i złożenie
-         * całego archiwum na 60 zmian.
+         * Archiwum trzyma same podsumowania zmian — pełne listy nie
+         * zmieściłyby się w localStorage dzielonym z T-REX. Zapis jest
+         * odroczony: save() idzie dwa razy na przedmiot, a każdy zapis archiwum
+         * to rozbiór i złożenie 60 zmian.
          */
         scheduleArchive() {
             clearTimeout(this._archiveTimer);
@@ -268,14 +231,11 @@
 
         // ---------------- wpisy ----------------
         /**
-         * Zapisuje zrobiony przedmiot. price może być null — dopisze się później.
+         * Zapisuje zrobiony przedmiot; price może być null — dopisze się później.
+         * Bez modułu cen nic nie zapisuje: wszystkie pozycje byłyby bez ceny.
          *
-         * 9.2.0: pierwszy warunek to moduł cen. Przy wyłączonym module wszystkie
-         * pozycje i tak byłyby bez ceny, a dziennik pełen pustych wpisów tylko
-         * zaśmiecałby localStorage i mylił w podsumowaniu.
-         *
-         * @returns {string|null} id wpisu (nie indeks: po scaleniu z cudzymi
-         *   wpisami kolejność w tablicy się zmienia i indeks przestaje być adresem).
+         * @returns {string|null} id wpisu (nie indeks — scalanie z cudzymi
+         *   wpisami zmienia kolejność w tablicy).
          */
         add(asin, priceObj, dept) {
             if (!priceModuleOn()) return null;
@@ -297,20 +257,16 @@
                 dept: dept || store.currentTabInstanceId || '?',
                 ts: now,
                 /**
-                 * ZNAK KIERUNKU (9.0.0):
-                 *    +1 — przedmiot poszedł na sprzedaż, wartość idzie na plus;
-                 *    -1 — poszedł do utylizacji, wartość idzie na minus;
-                 *     0 — kierunek TAK I NIE ZOSTAŁ USTALONY.
-                 *
-                 * Zero nie jest błędem ani „jeszcze nie policzyliśmy”: to uczciwe
-                 * „kod sortowania nie pojawił się do początku następnego
-                 * przedmiotu”. Taki wpis nie idzie ani na plus, ani na minus, ale
-                 * widać go osobnym licznikiem, żeby było jasne, że ustalono 112
-                 * ze 113, a nie że suma jest zaniżona nie wiadomo czemu.
+                 * Znak kierunku:
+                 *    +1 — sprzedaż, wartość na plus;
+                 *    -1 — utylizacja, wartość na minus;
+                 *     0 — kierunek nieustalony (kod nie przyszedł przed
+                 *         następnym przedmiotem albo audyt). Nie wchodzi do
+                 *         sum, ale jest liczony osobno (`?N` w linii 6).
                  */
                 sign: 0,
                 route: null,      // sam kod sortowania, do analizy po fakcie
-                updated: now,     // 9.1.0: po nim rozstrzyga się konflikt kart
+                updated: now,     // po nim rozstrzyga się konflikt kart
             };
             this.entries.push(entry);
             this.save();
@@ -344,10 +300,8 @@
         },
 
         /**
-         * Dopisuje cenę przedmiotowi, który skończył się wcześniej, niż ona
-         * przyjechała. W praktyce rzadkość — obrazek Keepa odpowiada w dziesiątki
-         * milisekund, a przedmiot obsługuje się minutami — ale jeśli sieć zwalnia,
-         * pozycji tracić nie wolno.
+         * Dopisuje cenę przedmiotom, które skończyły się, zanim ona przyszła
+         * (wolna sieć, przegląd sklepów).
          */
         fillPending(asin, priceObj) {
             if (!asin || !priceObj || typeof priceObj.value !== 'number') return 0;
@@ -367,22 +321,16 @@
         },
 
         /**
-         * Podsumowanie zmiany — trzy liczby w EURO, po WSZYSTKICH kartach naraz.
+         * Podsumowanie zmiany w euro, po wszystkich kartach. Każda cena
+         * przechodzi przez FxRates.toEur — funtów i dolarów nie dodaje się
+         * do euro.
          *
-         * Wszystko sprowadza się do euro (FxRates): funtów z co.uk i dolarów
-         * z com nie wolno dodawać do euro, a trzymać wyniku w pięciu walutach dla
-         * wskaźnika „ile wyrobiłem na zmianie” nie ma sensu.
-         *
-         * Liczy się oddzielnie:
          *   sold   — wartość sprzedanego (znak +1);
-         *   unsold — wartość tego, co poszło do utylizacji (znak -1), jako liczba
-         *            DODATNIA: znak dopisuje się przy pokazywaniu, tak wygodniej
-         *            liczyć;
-         *   net    — różnica, i to jest wynik zmiany.
+         *   unsold — wartość utylizacji (znak -1), jako liczba dodatnia;
+         *   net    — różnica, czyli wynik zmiany.
          *
-         * Wpisy bez ceny i bez kursu do sum nie wchodzą i liczone są osobno:
-         * po cichu zaniżać wyniku nie wolno, to to samo kłamstwo, tylko w drugą
-         * stronę.
+         * Wpisy bez ceny i bez kursu nie wchodzą do sum i są liczone osobno,
+         * żeby zaniżona suma miała widoczną przyczynę.
          */
         totals() {
             let sold = 0, unsold = 0, soldN = 0, unsoldN = 0;

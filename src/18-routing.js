@@ -1,18 +1,16 @@
     // ==========================================
-    // 6g. DOKĄD POJECHAŁ PRZEDMIOT (9.0.0)
+    // 6g. DOKĄD POJECHAŁ PRZEDMIOT
     // ==========================================
     /**
      * Ustala, czy przedmiot został sprzedany, czy wysłany do utylizacji,
      * po kodzie sortowania.
      *
-     * DLACZEGO TO OSOBNY AUTOMAT, A NIE SPRAWDZENIE W MOMENCIE ZAKOŃCZENIA.
-     * Kod pojawia się na ekranie kiedy chce: przed wyzwalaczem końcowym, razem
-     * z nim albo już po — byle przed początkiem następnego przedmiotu. Znaczy to,
-     * że moment „poznaliśmy kierunek” i moment „przedmiot zaliczony” są
-     * niezależne, a ich kolejność dowolna. Stąd dwie połowy stanu — zakończenie
-     * i kierunek — oraz wpis do dziennika dopisywany wstecz.
+     * Osobny automat, a nie sprawdzenie w chwili zakończenia: kod przychodzi
+     * przed wyzwalaczem końcowym, razem z nim albo po nim — byle przed
+     * następnym przedmiotem. „Kierunek znany” i „przedmiot zaliczony” to dwie
+     * niezależne połowy stanu, a wpis do dziennika uzupełnia się wstecz.
      *
-     * CZTERY SCENARIUSZE, KTÓRE TO POKRYWA:
+     * Scenariusze:
      *   1. kod przyszedł PO +1  -> dopisujemy znak istniejącemu już wpisowi;
      *   2. kod przyszedł PRZED +1 -> czekamy, znak stawiamy przy tworzeniu wpisu;
      *   3. kod i +1 w jednej klatce -> kolejność wewnątrz scan() gwarantuje, że
@@ -20,25 +18,18 @@
      *   4. kodu nie było wcale -> wpis zostaje neutralny (sign 0), do sumy nie
      *      wchodzi, ale widać go w linii 6 jako „?N”.
      *
-     * DLACZEGO LICZY SIĘ WYSTĄPIENIA, A NIE ZWYKŁE `test()`.
-     * Na ekranie jest dziennik, w którym kod wisi dalej po tym, jak zadziałał.
-     * Proste sprawdzenie „czy kod jest w tekście” doczepiałoby stary kod do
-     * następnego przedmiotu. Dlatego zapamiętuje się LICZBĘ wystąpień każdego
-     * kodu, a zadziałanie liczy się dopiero wtedy, gdy ona WZROSŁA — czyli kod
-     * pojawił się na nowo. Ta sama sztuczka przeżywa dwa jednakowe kody pod rząd,
-     * czego nie wytrzymałoby proste „było/nie było”.
+     * Liczy się wystąpienia kodów, a nie samo „jest w tekście”: na ekranie
+     * wisi dziennik, w którym stary kod zostaje, i doczepiłby się do
+     * następnego przedmiotu. Kod zadziałał, gdy liczba jego wystąpień wzrosła —
+     * to działa także dla dwóch jednakowych kodów pod rząd.
      */
     const Routing = {
         state: null,        // { completed, entryId, code, direction, pending }
         _prev: null,        // liczniki poprzedniego skanu
         /**
-         * Niezamknięty Secondary-Sorting (9.1.0).
-         *
-         * Odwołanie do stanu przedmiotu, który dostał niejednoznaczny kod i nie
-         * doczekał się jeszcze uściślenia. Żyje ODDZIELNIE od this.state
-         * i przeżywa początek następnego przedmiotu: linia uściślająca czasem
-         * przychodzi już po tym, jak na ekranie zmienił się ASIN, i tracić jej
-         * nie wolno.
+         * Niezamknięty Secondary-Sorting: stan przedmiotu, który dostał kod
+         * niejednoznaczny i czeka na uściślenie. Żyje oddzielnie od this.state
+         * i przeżywa zmianę ASIN — linia uściślająca bywa spóźniona.
          */
         _ambiguous: null,
 
@@ -66,9 +57,8 @@
 
         codeRegex() {
             if (this._re) return this._re;
-            // Ucieczka znaków specjalnych jest tu obowiązkowa, a nie ozdobna:
-            // kody trafiają do wzorca jako tekst, a wzorzec powstaje z łańcucha.
-            // Bez tego kod z kropką albo nawiasem zmieniłby znaczenie wyrażenia.
+            // Ucieczka znaków specjalnych: wzorzec powstaje z łańcucha, a kod
+            // z kropką albo nawiasem zmieniłby znaczenie wyrażenia.
             const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             // Malejąco po długości: inaczej krótki kod przechwyciłby dłuższy,
             // którego jest początkiem.
@@ -122,14 +112,10 @@
         },
 
         /**
-         * SECONDARY-SORTING BEZ UŚCIŚLENIA = NIESPRZEDAŻ (9.1.0).
-         *
-         * Reguła jest niesymetryczna i nie jest to uproszczenie, tylko własność
-         * samego systemu: potwierdzenie sprzedażowe `Przedmiot wysłano do
-         * Transfer - Sellable` przychodzi ZAWSZE, a niesprzedażowe `Przedmiot
-         * wysłano do FBATransfer` pojawia się nie za każdym razem. Znaczy to, że
-         * „uściślenia nie było” może znaczyć dokładnie jedno — przedmiot pojechał
-         * nie na sprzedaż.
+         * Secondary-Sorting bez uściślenia to niesprzedaż. Reguła jest
+         * niesymetryczna, bo taki jest system: potwierdzenie sprzedaży
+         * (`Transfer - Sellable`) przychodzi zawsze, a niesprzedaży
+         * (`FBATransfer`) — nie zawsze.
          */
         closeAmbiguous(reason) {
             const a = this._ambiguous;
@@ -190,13 +176,10 @@
         },
 
         onConfirm(dir) {
-            // Uściślenie ma sens TYLKO po niejednoznacznym kodzie: linia
-            // „Przedmiot wysłano do ...” występuje też sama z siebie.
-            //
-            // 9.1.0: cel wybiera się jawnie. Zwykle jest to bieżący przedmiot,
-            // ale jeśli już się zmienił, a wisi niezamknięty Secondary-Sorting,
-            // uściślenie dotyczy jego — inaczej linia, która przyszła o pół
-            // sekundy po zmianie ASIN, przepadałaby na darmo.
+            // Uściślenie ma sens tylko po niejednoznacznym kodzie — linia
+            // „Przedmiot wysłano do ...” występuje też sama z siebie. Celem
+            // jest bieżący przedmiot, a gdy ten już się zmienił — wiszący
+            // Secondary-Sorting poprzedniego.
             const target = (this.state && this.state.pending) ? this.state
                          : (this._ambiguous && this._ambiguous.pending) ? this._ambiguous
                          : null;
@@ -211,11 +194,9 @@
 
         /**
          * Przedmiot zaliczony przez licznik: od tego momentu wolno zastosować sumę.
-         * @param {string|null} entryId — id wpisu dziennika (nie indeks: dziennik
-         *   jest wspólny na wszystkie karty i po scaleniu kolejność się zmienia).
-         *   Przy wyłączonym module cen wpisu nie ma i przychodzi tu `null` —
-         *   kierunek i tak trzeba zaliczyć, bo procent sprzedaży dziennika nie
-         *   potrzebuje.
+         * @param {string|null} entryId — id wpisu dziennika (nie indeks:
+         *   scalanie zmienia kolejność). Bez modułu cen to `null` — kierunek
+         *   i tak się zalicza, bo procent sprzedaży dziennika nie potrzebuje.
          */
         onCompleted(entryId) {
             if (!this.state) this.startItem('zakończenie bez początku');
@@ -225,45 +206,30 @@
         },
 
         /**
-         * PROCENT SPRZEDAŻY — dwa liczniki, licznik ułamka i odjęcie z mianownika.
+         * PROCENT SPRZEDAŻY — licznik sprzedanych i odjęcie z mianownika.
          *
-         * Liczy się DOKŁADNIE RAZ na przedmiot i dokładnie wtedy, gdy znane są oba
-         * warunki: przedmiot zaliczony przez licznik i kierunek ustalony. Oba
-         * przychodzą niezależnie i w dowolnej kolejności, a `applyTo` woła się po
-         * każdym z nich — bez znacznika `counted` ten sam przedmiot policzyłby
-         * się dwa razy.
+         * Liczy się dokładnie raz na przedmiot, gdy znane są oba warunki:
+         * przedmiot zaliczony i kierunek ustalony. Przychodzą w dowolnej
+         * kolejności, a applyTo woła się po każdym — stąd znacznik `counted`.
          *
-         * MIANOWNIK = zwykły licznik przedmiotów MINUS przedmioty nierozstrzygalne
-         * (1.3.0). Stąd drugi klucz: `tabNeutral`. Skutek widoczny gołym okiem —
-         * zrobionych paczek bywa więcej niż paczek, z których liczy się procent.
+         * Mianownik = licznik przedmiotów minus przedmioty spoza mianownika
+         * (`tabNeutral`). Różnica między audytem a brakiem kodu jest celowa:
+         *   - audyt wypada z mianownika — decyzja zapadnie później i gdzie indziej;
+         *   - brak kodu zostaje w mianowniku — przedmiot gdzieś pojechał, tylko
+         *     skrypt tego nie zobaczył; wyrzucenie go podnosiłoby procent przy
+         *     każdym przeoczeniu.
          *
-         * RÓŻNICA MIĘDZY AUDYTEM A BRAKIEM KODU JEST CELOWA:
-         *   - audyt (`ROUTE_NEUTRAL_CODES`) wypada z mianownika, bo odpowiedź
-         *     „sprzedaż czy nie” zapadnie godziny później, u kogoś innego, i nie
-         *     wróci na ten ekran nigdy;
-         *   - kod, który się nie pojawił, ZOSTAJE w mianowniku, bo to zwykle
-         *     przedmiot, który jednak gdzieś pojechał — tylko my tego nie
-         *     zobaczyliśmy. Wyrzucenie go podnosiłoby procent za każdym razem,
-         *     gdy skrypt coś przeoczy, czyli nagradzałoby własne błędy.
-         *
-         * Dzięki temu „trzy pierwsze przedmioty na niesprzedaż” nadal daje
-         * uczciwe 0%, a nie brak liczby.
-         *
-         * Ręczna poprawka licznika (skróty klawiszowe, przyciski) tu nie wchodzi
-         * — tak samo, jak nie wchodzi do dziennika wartości. Poprawia się zwykle
-         * to, czego program nie zobaczył, a kierunku takiego przedmiotu nikt nie
-         * zna.
+         * Ręczne poprawki licznika tu nie wchodzą — kierunku takiego przedmiotu
+         * nikt nie zna.
          */
         countDirection(st) {
             if (!st || st.counted || !st.completed || !st.direction) return;
             st.counted = true;
             const cid = store.currentTabInstanceId;
-            // Kierunek trafia do dwóch miejsc naraz: do liczników zmiany (linie
-            // 1, 2 i 7) i do bieżącego zadania (linia 8, podsumowanie w panelu).
-            // Jedno wywołanie, dwa zapisy — dzięki temu suma zadań nie ma jak
-            // rozjechać się z licznikiem karty.
-            // +1 od wartości w magazynie, a nie w pamięci — dwie karty tego
-            // samego działu dzielą klucz (patrz StorageManager.freshCount).
+            // Kierunek trafia do liczników zmiany (linie 1, 2, 7) i do
+            // bieżącego zadania (linia 8) w jednym wywołaniu, żeby suma zadań
+            // nie rozjechała się z licznikiem karty. +1 od wartości
+            // w magazynie — dwie karty działu dzielą klucz (freshCount).
             if (st.direction === 'sell') {
                 StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
                 TaskManager.addSold(cid);
@@ -274,12 +240,9 @@
         },
 
         /**
-         * Zapisuje znak, gdy znane są OBA warunki: przedmiot zaliczony i kierunek
-         * ustalony. Kolejność ich wystąpienia nie ma znaczenia.
-         *
-         * Procent sprzedaży liczy się PRZED sprawdzeniem wpisu dziennika i to
-         * jest sedno: przy wyłączonym module cen wpisu nie ma wcale, a procent
-         * ma działać i wtedy.
+         * Zapisuje znak, gdy znane są oba warunki: przedmiot zaliczony i kierunek
+         * ustalony, w dowolnej kolejności. Procent liczy się przed sprawdzeniem
+         * wpisu dziennika — bez modułu cen wpisu nie ma, a procent ma działać.
          */
         applyTo(st) {
             this.countDirection(st);

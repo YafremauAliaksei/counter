@@ -26,23 +26,16 @@
             });
             document.body.appendChild(this.el);
             this.applyPosition();
-            // 8.3.0: uiFlags tu nie wchodzą — okno statystyk od nich nie zależy,
-            // a ruszane są przy każdym przedmiocie. Raz na sekundę linia i tak
-            // przerysowuje się z timera poniżej.
-            // tabSold obok tabCounters, bo zmienia się NIEZALEŻNIE od niego:
-            // przedmiot zalicza się w jednym skanie, a kod sortowania potrafi
-            // przyjść w następnym. Bez tej ścieżki procent czekałby na takt
-            // timera, czyli do sekundy — widać by to było jako liczbę, która
-            // „nie nadąża” za ekranem.
+            // Bez uiFlags — okno od nich nie zależy, a zmieniają się przy każdym
+            // przedmiocie. tabSold osobno od tabCounters, bo kod sortowania
+            // potrafi przyjść w następnym skanie niż zaliczenie przedmiotu;
+            // bez tej ścieżki procent czekałby na takt timera.
             onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'tasks', 'activeTaskId',
                           'taskCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
                          () => this.renderContent());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
             bus.on('valueLog:changed', () => this.renderContent());
-            // 8.1.0: było na sztywno 10000 ms, przez co zegar w linii 5 spóźniał
-            // się do dziesięciu sekund, a licznik przepracowanego czasu szedł
-            // skokami. Teraz używa się CONFIG.UI_UPDATE_INTERVAL_MS (1000 ms),
-            // zadeklarowanego jeszcze w 8.0.0, ale nigdzie niestosowanego.
+            // Takt raz na sekundę: zegar w linii 5 i czas pracy idą płynnie.
             this.tickTimer = setInterval(() => this.renderContent(), CONFIG.UI_UPDATE_INTERVAL_MS);
 
 
@@ -66,14 +59,11 @@
         },
 
         /**
-         * Ustawia okno wg konfiguracji (9.2.0).
+         * Ustawia okno wg konfiguracji. Puste `top` znaczy „trzymaj się dołu”
+         * i wtedy liczy się `bottom` (domyślny lewy dolny róg). Po przeciągnięciu
+         * `top` dostaje współrzędną i przyklejenie znika.
          *
-         * Puste `top` znaczy „trzymaj się dołu” i wtedy liczy się `bottom` —
-         * tak wygląda domyślny lewy dolny róg z odstępem 20 px. Po przeciągnięciu
-         * myszą `top` dostaje konkretną wartość i przyklejenie znika samo.
-         *
-         * Wydzielone w osobną metodę, bo wywołują ją trzy miejsca: start,
-         * przycisk resetu pozycji i reakcja na zmianę stanu.
+         * Wołane przy starcie, przez przycisk resetu pozycji i przy zmianie stanu.
          */
         applyPosition() {
             if (!this.el) return;
@@ -89,13 +79,20 @@
         },
 
         /**
-         * Składanie linii 6 — bilansu zmiany.
+         * LINIA 6 — bilans zmiany:
          *
-         * Wyniesione z renderContent() RAZEM z wywołaniem ValueLog.totals():
-         * przy wyłączonej linii nie ma po co przechodzić po całym dzienniku
-         * i przeliczać każdej pozycji po kursie, skoro wynik nie trafi na ekran.
-         * Linia 6 jest jedynym odbiorcą totals(), więc nic innego tego przebiegu
-         * nie potrzebuje.
+         *     +6000.00 -1500.00 = 4500.00 €  113 szt ?1
+         *
+         * Sprzedaż, utylizacja i różnica, czyli wynik zmiany. Kolory niosą
+         * znak (plus zielony, minus czerwony, wynik według znaku), dlatego
+         * linia składa się ze spanów. Kolor z ustawień dotyczy tylko części
+         * neutralnej (liczby sztuk); przezroczystość — całej linii.
+         *
+         * `?N` to przedmioty bez kierunku, bez ceny albo bez kursu: nie wchodzą
+         * do sum, ale przemilczenie ich tłumaczyłoby zaniżoną sumę.
+         *
+         * ValueLog.totals() woła się tylko tutaj — przy wyłączonej linii
+         * dziennik nie jest przeliczany wcale.
          */
         renderValueSum() {
             const vt = ValueLog.totals();
@@ -112,10 +109,9 @@
                 if (bold) sp.style.fontWeight = '700';
                 return sp;
             };
-            // 1.4.0: sumy są w euro zawsze; waluta wyświetlania to jedno
-            // mnożenie tutaj, na samym końcu. „Jak w sklepie” zostaje przy euro —
-            // bilans z kilku sklepów nie ma jednej „waluty sklepu”. Bez kursu
-            // do wybranej waluty zostaje euro: pokazać zero byłoby kłamstwem.
+            // Sumy są zawsze w euro; waluta wyświetlania to jedno mnożenie
+            // tutaj. „Jak w sklepie” zostaje przy euro — bilans z kilku sklepów
+            // nie ma jednej waluty. Bez kursu do wybranej waluty zostaje euro.
             let cur = FxRates.displayCurrency() || 'EUR';
             if (FxRates.fromEur(0, cur) == null) cur = 'EUR';
             const money = (v) => FxRates.fromEur(v, cur).toFixed(2);
@@ -136,20 +132,13 @@
         },
 
         /**
-         * Czy linia jest w ogóle widoczna.
+         * Czy linia jest widoczna. Widocznością steruje CSS, ale kosztowne
+         * składanie węzłów (linie 2 i 6) idzie tylko dla linii widocznych —
+         * domyślnie widoczna jest jedna.
          *
-         * Widocznością steruje wyłącznie CSS (zmienna `--sh-<klucz>-display`),
-         * więc do tej poprawki render szedł bezwarunkowo: raz na sekundę składały
-         * się linie, których nikt nie ogląda. Przy ustawieniach domyślnych
-         * widoczna jest JEDNA linia z siedmiu, a każdy takt i tak tworzył komplet
-         * węzłów i przechodził po całym dzienniku wartości.
-         *
-         * Brak wpisu w konfiguracji znaczy „pokaż”, a nie „ukryj”: nowa linia
-         * dodana bez wartości domyślnej ma się pojawić, a nie zniknąć po cichu.
-         *
-         * Zmiana `visible` idzie przez onStorePaths(['localTabConfig']), czyli
-         * przez tę samą subskrypcję, która wywołuje renderContent() — włączona
-         * linia zapełnia się natychmiast, a nie dopiero przy następnym takcie.
+         * Brak wpisu w konfiguracji znaczy „pokaż”: nowa linia bez wartości
+         * domyślnej ma się pojawić, a nie zniknąć po cichu. Zmiana `visible`
+         * przerysowuje okno od razu (subskrypcja localTabConfig).
          */
         isLineVisible(key) {
             const cfg = store.localTabConfig.linesConfig[key];
@@ -161,31 +150,22 @@
             const hWorked = workedMs / 3600000;
             const cid = store.currentTabInstanceId;
             const cCount = store.tabCounters[cid] || 0;
-            // 8.1.0: wcześniej przy zbyt krótkim czasie podstawiało się tu całe
-            // zdanie, zawierające już „/h”, i w linii wychodziło „~0.0/h (...)/h”.
-            // Teraz funkcja zwraca zawsze samą liczbę.
-            // Granica „tempo jeszcze nie istnieje” stoi w jednym miejscu dla
-            // zmiany i dla zadania — inaczej linia 1 i linia 8 mówiłyby co
-            // innego o tej samej pierwszej minucie pracy.
+            // Zawsze sama liczba. Granica „tempo jeszcze nie istnieje”
+            // (RATE_MIN_WORKED_MS) jest ta sama dla zmiany i zadania, żeby
+            // linie 1 i 8 mówiły to samo o pierwszej minucie pracy.
             const getIph = (c) => workedMs >= CONFIG.RATE_MIN_WORKED_MS ? (c / hWorked).toFixed(1) : '0.0';
 
             /**
-             * PROCENT SPRZEDAŻY (koniec każdej z linii 1, 2 i 7).
+             * PROCENT SPRZEDAŻY — na końcu linii 1, 2 i 7.
              *
-             * Liczba od 0 do 100 ze znakiem procentu, zawsze na samym końcu linii.
-             * Mianownikiem jest licznik przedmiotów MINUS przedmioty
-             * nierozstrzygalne (audyt) — a nie suma sprzedanych i niesprzedanych.
-             * Dzięki temu przedmiot, przy którym kod się nie pojawił, obniża
-             * procent zamiast znikać z rachunku (trzy niesprzedaże na początku
-             * zmiany dają uczciwe 0%, a nie puste miejsce), a przedmiot oddany
-             * do audytu z rachunku wypada, bo jego kierunek rozstrzygnie się
-             * godziny później i nie na tym ekranie.
+             * Mianownik to licznik przedmiotów minus przedmioty spoza
+             * mianownika (audyt, wpisy ręczne), a nie suma sprzedanych
+             * i niesprzedanych. Przedmiot bez kodu obniża więc procent zamiast
+             * znikać z rachunku, a oddany do audytu wypada, bo jego kierunek
+             * rozstrzygnie się później i gdzie indziej. Liczba sztuk może być
+             * przez to większa niż mianownik — to poprawne.
              *
-             * Stąd druga liczba w nawiasie w linii 1 i liczba sztuk w linii 7
-             * mogą być WIĘKSZE niż mianownik procentu. To jest poprawne.
-             *
-             * Tekstu nie ma w słownikach celowo: to liczba i znak, identyczne we
-             * wszystkich trzech językach.
+             * Bez tekstu w słownikach: liczba i znak są takie same w każdym języku.
              */
             const cSold = store.tabSold[cid] || 0;
             const cRated = Math.max(0, cCount - (store.tabNeutral[cid] || 0));
@@ -198,24 +178,20 @@
             }) + ` ${Utils.percentFloor(cSold, cRated)}%`;
 
             /**
-             * Linia 2: podsumowanie globalne.
+             * Linia 2: podsumowanie wszystkich kart.
              *
-             * Pętla po kartach chodzi ZAWSZE, bo `gTotal` potrzebuje go także
-             * linia 7, a obie muszą pokazywać tę samą liczbę: dwa niezależne
-             * przebiegi prędzej czy później by się rozjechały. Pod warunkiem
-             * widoczności stoi natomiast SKŁADANIE WĘZŁÓW — to ono kosztuje,
-             * a nie przejście po trzech kluczach.
+             * Pętla po kartach chodzi zawsze, bo te same sumy pokazuje linia 7
+             * i muszą pochodzić z jednego przebiegu. Pod warunkiem widoczności
+             * stoi tylko składanie węzłów — to ono kosztuje.
              */
             const showLine2 = this.isLineVisible('line2_globalSummary');
-            // Czyścimy ZAWSZE, także przy wyłączonej linii: inaczej po jej
-            // schowaniu w węźle zostawałaby ostatnia treść — niewidoczna,
-            // ale wciąż wisząca w DOM i myląca przy diagnostyce.
+            // Czyszczenie zawsze, także przy wyłączonej linii — inaczej w DOM
+            // wisiałaby ostatnia, niewidoczna treść.
             this.lines.line2_globalSummary.innerHTML = '';
             let gTotal = 0;
             let gSold = 0;
-            // Mianownik procentu zbiera się w tej samej pętli, co suma sztuk:
-            // liczby muszą pochodzić z jednego przebiegu, inaczej rozjadą się
-            // przy karcie, która akurat doszła albo odpadła.
+            // Mianownik procentu zbiera się w tej samej pętli co suma sztuk,
+            // żeby obie liczby pochodziły z jednego przebiegu.
             let gRated = 0;
             const allKeys =[...Object.keys(CONFIG.KNOWN_TAB_TYPES), ...Object.keys(store.userConfig.customTabSettings)];
             const fragments =[];
@@ -230,9 +206,9 @@
                 if (included && active) {
                     gTotal += count;
                     gSold += store.tabSold[k] || 0;
-                    // Nieujemny wkład karty (1.3.3, audyt F5): „poza mianownikiem”
-                    // większe od paczek bierze się tylko ze śmieci albo wyścigu
-                    // kart, a wtedy ujemny wkład zawyżał procent całości.
+                    // Wkład karty nieujemny: „poza mianownikiem” większe od
+                    // paczek to śmieć albo wyścig kart i nie może zawyżać
+                    // procentu całości.
                     gRated += Math.max(0, count - (store.tabNeutral[k] || 0));
                     if (!showLine2) return;
                     const text = I18n.get('statsLine2_global_tab_format', {
@@ -245,7 +221,7 @@
                     if (isKnown && line2Cfg.multicolor) {
                         const hex = line2Cfg.customColors[k] || CONFIG.KNOWN_TAB_TYPES[k].baseColorHex;
                         const rgb = Utils.hexToRgb(hex);
-                        // Mieszamy własny kolor działu z ustawieniem alfy linii 2
+                        // Kolor działu z przezroczystością linii 2.
                         span.style.color = `rgba(${rgb}, ${line2Cfg.alpha / 100})`;
                         span.style.fontWeight = 'bold';
 
@@ -294,81 +270,31 @@
             // Linia 5: zegar
             this.lines.line5_realTimeClock.textContent = I18n.get('statsLine5_clock', { currentTime: Utils.formatTime(new Date(), true, ':') });
 
-            /**
-             * Line 6 — BILANS ZMIANY (9.0.0): trzy liczby w jednej linii.
-             *
-             *     +6000.00  -1500.00  = 4500.00 €  113szt ?1
-             *
-             * Pierwsza to ile wyrobiono na sprzedaży, druga ile poszło do
-             * utylizacji, trzecia (po „=”) to różnica, czyli wynik zmiany.
-             * Wszystko w euro: ceny z różnych rynków są przeliczone po kursie,
-             * inaczej funty i dolary po cichu zmieszałyby się z euro.
-             *
-             * Kolory niosą treść, a nie zdobią: plus zielony, minus czerwony,
-             * wynik pokolorowany wg własnego znaku — od razu widać, czy zmiana
-             * jest na plusie. Dlatego linia składa się ze spanów, jak linia 2
-             * z wielokolorowością, a nie pisze się jednym textContent.
-             *
-             * „?N” na końcu to przedmioty, dla których kod sortowania się nie
-             * pojawił. Nie idą ani na plus, ani na minus, ale milczeć o nich
-             * nie wolno: bez tego licznika nie wiadomo, czemu suma jest niższa
-             * od oczekiwanej.
-             *
-             * KOLOR I PRZEZROCZYSTOŚĆ (9.1.0): przezroczystość działa na całą
-             * linię, kolor z pickera tylko na część NEUTRALNĄ (liczbę sztuk).
-             * Zielony/czerwony/pomarańczowy nie są oddane pickerowi, bo to nie
-             * ozdoba, tylko jedyny sposób odczytania znaku jednym spojrzeniem.
-             *
-             * 9.2.0: linia domyślnie wyłączona — przy wyłączonym module cen nie
-             * ma czego sumować.
-             */
-            // Linia 6: przy wyłączonej nie ma po co przechodzić po całym
-            // dzienniku i przeliczać pozycji po kursie — wynik i tak nie trafi
-            // na ekran. Czyszczenie zostaje bezwarunkowe, z tego samego powodu
-            // co w linii 2.
+            // Linia 6 (renderValueSum): przy wyłączonej dziennik nie jest
+            // przeliczany; czyszczenie bezwarunkowe, jak w linii 2.
             if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
             else this.lines.line6_valueSum.innerHTML = '';
 
             /**
-             * Line 7 — TRYB ZWIĘZŁY (9.2.0).
+             * LINIA 7 — trzy liczby bez jednostek i nazw:
              *
-             *     17.4 28
+             *     17.4 28 14%
              *
-             * Dwie liczby oddzielone pojedynczą spacją, nic więcej: żadnych
-             * jednostek, nazw działów ani nawiasów.
-             *
-             *   pierwsza — paczki na godzinę, suma ze WSZYSTKICH wliczanych kart.
-             *              To dokładnie ta liczba, która w linii 2 stoi po „=”;
-             *   druga    — łączna liczba zrobionych sztuk, czyli to, co w linii 2
-             *              jest w nawiasie na samym końcu;
-             *   trzecia  — od 1.1.0 procent sprzedaży (`17.4 28 14%`), ten sam,
-             *              który stoi na końcu linii 2.
-             *
-             * `gTotal` liczy się wyżej, przy składaniu linii 2, i to jest
-             * świadome: obie linie MUSZĄ pokazywać tę samą liczbę, a dwa
-             * niezależne przebiegi po kartach prędzej czy później by się
-             * rozjechały. Linia 2 może być wyłączona — pętla i tak chodzi, bo
-             * kosztuje tyle, co przejście po trzech kluczach.
-             *
-             * Cały tekst idzie przez textContent, więc nie ma tu żadnego
-             * składania HTML — kolor i rozmiar ustawia CSS ze zmiennych
-             * --sh-line7_compact-*.
+             * tempo (paczki na godzinę, wszystkie wliczane karty), liczba
+             * zrobionych sztuk i procent sprzedaży — te same, które stoją na
+             * końcu linii 2, z tego samego przebiegu pętli.
              */
             this.lines.line7_compact.textContent =
                 `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gRated)}%`;
 
             /**
-             * LINIA 8 — BIEŻĄCE ZADANIE (1.3.0).
+             * LINIA 8 — bieżące zadanie i jego własne liczby, z własnym
+             * zegarem (opóźniony start nie psuje tempa):
              *
-             * Nazwa procesu i JEGO własne liczby. Linie wyżej opisują całą
-             * zmianę i po to są; tutaj stoi proces, przy którym człowiek siedzi
-             * w tej chwili — z własnym zegarem, więc opóźniony start nie psuje
-             * tempa. Format jest ten sam, co w podsumowaniu zadania w panelu:
+             *     fast_process 12 34.3/h 58% 21m 00s
              *
-             *     fast_process 12 34.3/h 58% 0:21
-             *
-             * Pauza (zamknięty odcinek) dokleja na końcu znak, bo inaczej
-             * stojące tempo wygląda jak zepsuty licznik.
+             * Zatrzymane zadanie dostaje na końcu znak pauzy — inaczej stojące
+             * tempo wyglądałoby jak zepsuty licznik.
              */
             const task = TaskManager.active();
             if (!task) {

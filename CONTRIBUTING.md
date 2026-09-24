@@ -122,7 +122,18 @@ diakrytyczne do identyfikatorów, na których potrafią się wyłożyć narzędz
 
 **Komentarz jest wyjaśnieniem.** Czyta go zespół, a zespół jest polskojęzyczny.
 Tu polski jest szybszy i dokładniejszy — i to w komentarzach siedzi najcenniejsza
-część tego repozytorium: powody decyzji i rozebrane błędy.
+część tego repozytorium: powody decyzji i pułapki, w które łatwo wpaść.
+
+### Co pisać w komentarzu
+
+Komentarz opisuje kod **taki, jaki jest teraz**: co robi fragment i dlaczego
+właśnie tak. Pułapka, przed którą chroni warunek, to dobry komentarz („bez
+`hasOwnProperty` wartość `'__proto__'` z magazynu przeszłaby jako waluta”).
+Kronika — „w 8.3.0 było X, w 1.3.3 poprawione” — to zły komentarz: rozrasta
+plik, przesłania wyjaśnienie, a po kilku wydaniach nikt nie pamięta, czym były
+tamte wersje. Historia należy do CHANGELOG i do gita. Test w
+`tests/09-artifact.test.js` nie przepuści numeru wersji ani odsyłacza do audytu
+w komentarzu artefaktu.
 
 Praktycznie: jeśli to stoi po lewej stronie znaku `=`, po słowie `function` albo
 w kluczu obiektu — angielski. Jeśli to zdanie dla człowieka — polski. Dotyczy to
@@ -207,7 +218,7 @@ dokładnie.
 | Bramka    | Polecenie              | Co łapie                                                    |
 | --------- | ---------------------- | ----------------------------------------------------------- |
 | Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                          |
-| Testy     | `npm test`             | 472 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
+| Testy     | `npm test`             | 473 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
 | Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                   |
 | Format    | `npm run format:check` | rozjazdy w stylu                                            |
 
