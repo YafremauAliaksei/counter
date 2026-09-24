@@ -112,13 +112,19 @@
                 if (bold) sp.style.fontWeight = '700';
                 return sp;
             };
-            const money = (v) => v.toFixed(2);
+            // 1.4.0: sumy są w euro zawsze; waluta wyświetlania to jedno
+            // mnożenie tutaj, na samym końcu. „Jak w sklepie” zostaje przy euro —
+            // bilans z kilku sklepów nie ma jednej „waluty sklepu”. Bez kursu
+            // do wybranej waluty zostaje euro: pokazać zero byłoby kłamstwem.
+            let cur = FxRates.displayCurrency() || 'EUR';
+            if (FxRates.fromEur(0, cur) == null) cur = 'EUR';
+            const money = (v) => FxRates.fromEur(v, cur).toFixed(2);
 
             l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
             l6.appendChild(document.createTextNode(' '));
             l6.appendChild(piece(`-${money(vt.unsold)}`, RED));
             l6.appendChild(document.createTextNode(' = '));
-            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} €`,
+            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} ${CONFIG.DISPLAY_CURRENCIES[cur]}`,
                                  vt.net >= 0 ? GREEN : RED, true));
             l6.appendChild(document.createTextNode('  '));
             l6.appendChild(piece(I18n.get('statsLine6_items', { n: vt.count }), DIM));

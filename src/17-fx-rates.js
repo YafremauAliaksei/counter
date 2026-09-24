@@ -156,6 +156,63 @@
             return value / rate;      // w tablicy — jednostek waluty za 1 EUR
         },
 
+        /**
+         * Euro na walutę wyświetlania — odwrotność toEur, ta sama tablica.
+         *
+         * @returns {number|null} kwota albo null, jeśli kursu nie ma (wtedy
+         *   wywołujący zostaje przy euro, a nie pokazuje zera).
+         */
+        fromEur(eur, currency) {
+            if (typeof eur !== 'number' || !isFinite(eur)) return null;
+            const cur = String(currency || 'EUR').toUpperCase();
+            if (cur === 'EUR') return eur;
+            const table = this.rates || CONFIG.FX_FALLBACK;
+            const rate = Object.prototype.hasOwnProperty.call(table, cur) ? table[cur] : null;
+            if (!rate || !isFinite(rate) || rate <= 0) return null;
+            return eur * rate;
+        },
+
+        /**
+         * WALUTA WYŚWIETLANIA (1.4.0) albo null, czyli „jak w sklepie”.
+         *
+         * Wartość przychodzi z localStorage, więc może być czymkolwiek:
+         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie 'native' albo
+         * klucz własny CONFIG.DISPLAY_CURRENCIES — wszystko inne to wartość
+         * domyślna (euro), a nie ciche przejście na waluty sklepów.
+         */
+        displayCurrency() {
+            const own = (c) => typeof c === 'string'
+                && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, c);
+            const cur = store.userConfig && store.userConfig.displayCurrency;
+            if (cur === 'native') return null;
+            if (own(cur)) return cur;
+            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : null;
+        },
+
+        /**
+         * Kwota w dowolnej walucie pokazana w walucie wyświetlania.
+         *
+         * `≈` stoi wtedy, gdy kwota została PRZELICZONA: kurs jest dzienny,
+         * a bez sieci — wbudowany, więc to szacunek, nie cena z Amazonu. Ta
+         * sama waluta co w sklepie idzie bez znaku, bo niczego nie liczono.
+         *
+         * @returns {string|null} tekst albo null, gdy wybrano „jak w sklepie”
+         *   lub nie ma kursu — wtedy wywołujący pokazuje cenę tak, jak przyszła.
+         */
+        display(value, currency) {
+            const cur = this.displayCurrency();
+            if (!cur) return null;
+            const from = String(currency || 'EUR').toUpperCase();
+            const v = from === cur ? value : this.fromEur(this.toEur(value, from), cur);
+            if (typeof v !== 'number' || !isFinite(v)) return null;
+            return (from === cur ? '' : '≈ ') + this.money(v, cur);
+        },
+
+        /** `12.50 zł` — znak po kwocie, jak w linii 6 od zawsze. */
+        money(value, currency) {
+            return `${value.toFixed(2)} ${CONFIG.DISPLAY_CURRENCIES[currency] || currency}`;
+        },
+
         brief() {
             const t = this.rates || CONFIG.FX_FALLBACK;
             return ['USD', 'GBP', 'PLN', 'SEK', 'CAD']

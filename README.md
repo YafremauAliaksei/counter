@@ -201,7 +201,8 @@ Mówi, ile ze zrobionych przedmiotów pojechało na sprzedaż.
 
 ### Linia 6 dokładniej
 
-Działa tylko przy włączonym module cen. Pokazuje trzy liczby w euro: ile
+Działa tylko przy włączonym module cen. Pokazuje trzy liczby w euro (albo
+w walucie wyświetlania, jeśli ją wybrano — patrz „Waluta wyświetlania”): ile
 zarobiono na sprzedaży, ile poszło do utylizacji, różnicę. Kolory niosą treść:
 plus zielony, minus czerwony, wynik pokolorowany według własnego znaku. `?N`
 na końcu to przedmioty, dla których kod sortowania tak i nie przyszedł; nie idą
@@ -415,6 +416,45 @@ aktualizacja skryptu nie kasuje.
 żeby dodać do siebie ceny z różnych rynków: funty z `co.uk`, dolary z `com`,
 korony ze `se` sprowadza się do euro.
 
+### Waluta wyświetlania
+
+Panel → „Karta ceny” → **Kwoty pokazywać w**. Do wyboru jedna stała waluta —
+`EUR` (**domyślnie**), `PLN`, `GBP`, `SEK`, `USD`, `CAD` — albo waluta sklepu,
+bez przeliczania. Po co: kwota w funtach czy koronach wielu osobom nie mówi nic,
+a decyzję o przedmiocie podejmuje się w sekundę. Liczy się rynek europejski,
+więc od razu po włączeniu modułu cen wszystko jest w euro; kto myśli
+w złotych, przełącza na `PLN`.
+
+Euro domyślnie to świadomy wyjątek od zasady „nowe jest domyślnie wyłączone”
+(decyzja autora): nie dotyka sieci ani liczb, zmienia tylko to, jak cena
+wygląda na karcie, którą i tak widać dopiero po ręcznym włączeniu modułu cen.
+
+**Liczy się zawsze w euro**, niezależnie od wyboru:
+
+1. dziennik zapisuje cenę tak, jak przyszła ze sklepu (`GBP 12.50`);
+2. do sumy zmiany wchodzi ona przeliczona na euro;
+3. dopiero na ekranie euro mnoży się przez kurs wybranej waluty.
+
+Dlatego zmiana waluty w środku zmiany niczego nie gubi i niczego nie przelicza
+wstecz — zmienia się tylko to, jak liczby wyglądają. Przykład, kurs 1 € = 4 zł:
+
+| Na karcie przy wyborze | `GBP 12.50` ze sklepu | `EUR 999.99` ze sklepu |
+| ---------------------- | --------------------- | ---------------------- |
+| EUR (domyślnie)        | `≈ 15.63 €`           | `999.99 €`             |
+| waluta sklepu          | `GBP 12.50`           | `EUR 999.99`           |
+| PLN                    | `≈ 62.50 zł`          | `≈ 3999.96 zł`         |
+
+`≈` znaczy „przeliczone”: kurs jest dzienny (a przy braku sieci — wbudowany
+w plik), więc to szacunek, nie cena z Amazonu. Cena w tej samej walucie idzie
+bez znaku. Kto chce porównać kartę ze stroną sklepu, włącza wiersz źródła —
+przy przeliczonej cenie stoi tam kwota oryginalna.
+
+Linia 6 idzie za tym samym wyborem: przy walucie sklepu zostaje w euro (bilans
+z kilku sklepów nie ma jednej „waluty sklepu”), przy wybranej — pokazuje się
+w niej. Ustawienie jest wspólne dla wszystkich kart, jak wybór sklepu, więc
+CRET i WHD mówią jedną walutą. Jeśli kursu do wybranej waluty nie ma, karta
+pokazuje cenę sklepu, a linia 6 — euro; nigdy zero ani `NaN`.
+
 ### Skąd bierze się cena
 
 Bezpośrednie zapytanie na `amazon.*` ze strony T-REX jest niemożliwe — Same-Origin
@@ -435,10 +475,25 @@ gorsza, mylił się **w stronę zawyżenia** (gubił kropkę dziesiętną).
 
 ### Przeglądanie sklepów
 
-Jeśli na wybranym rynku ceny nie ma, skrypt próbuje pozostałych rynków Keepa
-w losowej kolejności, z sekundową przerwą, najwyżej pięć sztuk. Ustawienie sklepu
-przy tym się nie zmienia — to jednorazowa próba dla jednego przedmiotu. Cena
-znaleziona na obcym rynku jest oznaczona na karcie, a link prowadzi właśnie tam.
+Domyślny sklep to `amazon.de`. Jeśli ceny tam nie ma, skrypt przegląda
+**wszystkie** pozostałe rynki Keepa (do 1.3.x — pięć wylosowanych, przez co
+rynek, na którym cena jedynie była, potrafił wypadać kilka razy z rzędu),
+z sekundową przerwą, w tej kolejności:
+
+1. **rynek z linku na stronie** — jeśli T-REX pokazuje link w rodzaju
+   `amazon.it/dp/B0…`, to produkt był wystawiony właśnie tam i zwykle jedno
+   zapytanie wystarcza zamiast przeglądu w ciemno;
+2. pozostałe rynki europejskie, w losowej kolejności (żeby nie dobijać ciągle
+   tego samego);
+3. na końcu rynki spoza Europy: `com` i `ca`.
+
+Link decyduje tylko o kolejności — adres zapytania składa się zawsze z listy
+znanych rynków, więc spreparowany link (`amazon.it.evil.example`) jest po prostu
+ignorowany. Przegląd przerywa się, gdy na ekranie pojawi się następny
+przedmiot; cena znaleziona wcześniej trafia do dziennika, nawet jeśli przedmiot
+zdążył się już zakończyć. Ustawienie sklepu przy tym się nie zmienia — to
+jednorazowa próba dla jednego przedmiotu. Cena znaleziona na obcym rynku jest
+oznaczona na karcie, a link prowadzi właśnie tam.
 
 ### Kodowanie kierunku
 
@@ -832,7 +887,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 31 plików, 432 sprawdzenia
+├── tests/                  ← 33 pliki, 472 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -852,7 +907,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 432 sprawdzenia
+npm test             # 472 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)

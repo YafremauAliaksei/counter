@@ -67,6 +67,11 @@ język, ale tylko świadomą decyzją autora, osobnym commitem i razem ze zmian�
 Nowa linia — `visible: false`. Nowe źródło danych — za wyłącznikiem. Człowiek
 po wklejeniu pliku nie może dostać niczego, o co nie prosił.
 
+Świadomy wyjątek: waluta wyświetlania ma domyślnie `EUR` (1.4.0, decyzja
+autora). Nie dotyka sieci ani liczb, zmienia tylko wygląd ceny na karcie,
+którą widać dopiero po ręcznym włączeniu modułu cen. Następny wyjątek — tylko
+decyzją autora i z wpisem w CHANGELOG.
+
 ### 4. Zmiana `SCRIPT_ID_PREFIX` to MAJOR
 
 Prefiks koduje schemat danych. Zmienia się prefiks — ludziom zerują się
@@ -108,7 +113,7 @@ Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 432 sprawdzenia
+npm test             # 472 sprawdzenia
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run lint         # ESLint (potrzebny npm ci)

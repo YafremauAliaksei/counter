@@ -29,7 +29,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                          |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                         |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                                |
-| 31 plików testów, 432 sprawdzenia                         | **wszystkie zielone**                                                    |
+| 33 pliki testów, 472 sprawdzenia                          | **wszystkie zielone**                                                    |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                                  |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy                   |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |
@@ -135,10 +135,12 @@ Jeśli `matrix` pada na Windowsie z powodu końców linii — sprawdzić, czy
 
 ### 2.4. Ustawić ochronę gałęzi
 
-> **Stan na 1.3.3: NIEUSTAWIONE** (audyt A1). Pliki w repozytorium tego nie
-> załatwią — to ustawienie w interfejsie GitHuba, które może zrobić tylko
-> właściciel. Do tego czasu czerwone CI jest ostrzeżeniem, a nie blokadą:
-> PR da się scalić mimo niego, a na `main` da się wypchnąć wprost.
+> **Stan na 24.09.2026** (sprawdzone przez `GET /repos/…/rules/branches/<gałąź>`):
+> `main` — **ustawione**: PR obowiązkowy (tylko squash), oba sprawdzenia
+> wymagane, gałąź musi być aktualna, bez force-push i bez usuwania.
+> `release` — **bez reguł**: da się ją przepisać albo usunąć, a z nią zakładkę
+> wszystkich ludzi. Do dopisania drugi zestaw niżej. Listy Bypass to API bez
+> uprawnień nie pokazuje — sprawdzić w ustawieniach, że jest pusta.
 
 Settings → Rules → Rulesets → New branch ruleset, dwa zestawy:
 

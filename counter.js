@@ -419,6 +419,16 @@ const SCRIPT_LOGS_ENABLED = false;
          * cen. Nie ma tu żadnego zapytania — tablica jest wpisana w plik.
          */
         FX_FALLBACK: { EUR: 1, USD: 1.156, GBP: 0.856, PLN: 4.33, SEK: 11.27, CAD: 1.605 },
+        /**
+         * WALUTY WYŚWIETLANIA (1.4.0) i znak, który stoi po kwocie.
+         *
+         * Wyłącznie waluty, dla których FX_FALLBACK ma kurs: przeliczenie musi
+         * działać także przy wyłączonej sieci, na samej tablicy wbudowanej.
+         * Liczy się zawsze w euro — waluta wyświetlania to tylko ostatni krok,
+         * mnożenie przez kurs przy rysowaniu. Dlatego zmiana waluty w środku
+         * zmiany niczego nie gubi i niczego nie przelicza wstecz.
+         */
+        DISPLAY_CURRENCIES: { EUR: '€', PLN: 'zł', GBP: '£', SEK: 'kr', USD: '$', CAD: 'CA$' },
         // 8.5.0: klucz pamięci cen został wyłącznie do jednorazowego sprzątania —
         // sama pamięć została usunięta.
         LEGACY_SHARED_KEYS: ['asinPrices'],
@@ -696,9 +706,17 @@ const SCRIPT_LOGS_ENABLED = false;
          *
          *   - tylko dla JEDNEGO przedmiotu: ustawienie sklepu się nie zmienia,
          *     następny przedmiot znów zaczyna od wybranego domyślnie;
-         *   - kolejność LOSOWA, żeby nie dobijać tego samego rynku zapasowego
-         *     tysiąc razy na zmianę;
+         *   - 1.4.0: WSZYSTKIE rynki, a nie pięć wylosowanych. Cena bywa tylko na
+         *     jednym rynku z całej listy i losowanie pięciu z dziewięciu omijało
+         *     go przy każdej próbie z prawdopodobieństwem 4/9;
+         *   - 1.4.0: najpierw rynek z LINKU na stronie (np. amazon.it/dp/…),
+         *     jeśli to nie wybrany — tam produkt na pewno był wystawiony, więc
+         *     to najlepszy kandydat i zwykle jedyne potrzebne zapytanie;
+         *   - potem rynki europejskie, na końcu PRICE_FALLBACK_LAST (poza
+         *     Europą); w obrębie grupy kolejność LOSOWA, żeby nie dobijać
+         *     jednego rynku zapasowego tysiąc razy na zmianę;
          *   - między próbami sekunda przerwy — to tło, nie ma po co się spieszyć;
+         *     przegląd przerywa się, gdy na ekranie pojawi się inny przedmiot;
          *   - tylko rynki, dla których Keepa w ogóle ma dane (keepa_ok).
          *
          * Cena znaleziona na innym rynku ciągnie za sobą i walutę, i link
@@ -707,9 +725,11 @@ const SCRIPT_LOGS_ENABLED = false;
          */
         PRICE_FALLBACK_ENABLED: true,
         PRICE_FALLBACK_DELAY_MS: 1000,
-        // Ile rynków zapasowych próbować. Więcej — dłużej i drożej w zapytaniach;
-        // w praktyce cena znajduje się w pierwszych dwóch-trzech.
-        PRICE_FALLBACK_MAX_TRIES: 5,
+        // Ile rynków zapasowych próbować. 1.4.0: wszystkie (było 5 wylosowanych) —
+        // patrz wyżej. Liczba zostaje jako hamulec, gdyby lista rynków urosła.
+        PRICE_FALLBACK_MAX_TRIES: Infinity,
+        // Rynki spoza Europy — w przeglądzie na samym końcu (1.4.0).
+        PRICE_FALLBACK_LAST: ['com', 'ca'],
         PRICE_ASIN_FROM_HREF: /\/(?:dp|gp\/product|product)\/([A-Z0-9]{10})/,
         PRICE_ASIN_FROM_TEXT: /\b(B[01][A-Z0-9]{8})\b/,
 
@@ -741,6 +761,17 @@ const SCRIPT_LOGS_ENABLED = false;
         language: CONFIG.DEFAULT_LANGUAGE,
         // Sklep Amazon: link z ASIN, rynek wykresu Keepa i waluta dziennika.
         marketplace: CONFIG.DEFAULT_MARKETPLACE,
+        // Waluta, w której karta ceny i linia 6 POKAZUJĄ kwoty (1.4.0).
+        // Sumy liczone są w euro zawsze; to tylko sposób pokazania.
+        // 'native' = bez przeliczania: karta w walucie sklepu, linia 6 w euro.
+        //
+        // Domyślnie 'EUR' — ŚWIADOMY WYJĄTEK od zasady „nowe domyślnie
+        // wyłączone” (decyzja autora, CHANGELOG 1.4.0): liczy się rynek
+        // europejski, a kwota w funtach czy koronach dla wielu osób nie znaczy
+        // nic. Nie dotyka to sieci ani liczb — przeliczenie idzie na kursach,
+        // które i tak są w pamięci (albo na tablicy wbudowanej), a kartę widać
+        // dopiero po ręcznym włączeniu modułu cen.
+        displayCurrency: 'EUR',
         globalStatsContributionKnown: Object.keys(CONFIG.KNOWN_TAB_TYPES)
             .reduce((acc, key) => ({ ...acc, [key]: true }), {}),
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None' },
@@ -1056,6 +1087,9 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_searchingOther: 'searching other stores…',
             priceCard_foundIn: 'found on ${host}',
             priceCard_marketNoKeepa: 'Keepa has no chart for this store — link works, price will not',
+            priceCard_displayCurrency: 'Show amounts in',
+            priceCard_displayNative: 'store currency (no conversion)',
+            priceCard_displayCurrencyHint: 'Totals are always counted in euro; the chosen currency is only how they are shown, so switching it mid-shift loses nothing. A converted price is marked with ≈.',
             priceCard_openHint: 'Click the ASIN to open the product page',
             priceCard_hiddenHint: 'Card hidden — price is still read and added to the sum',
             priceCard_showCard: 'Show the card on screen',
@@ -1180,6 +1214,9 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_searchingOther: 'szukam w innych sklepach…',
             priceCard_foundIn: 'znaleziono na ${host}',
             priceCard_marketNoKeepa: 'Keepa nie ma wykresu dla tego sklepu — link działa, ceny nie będzie',
+            priceCard_displayCurrency: 'Kwoty pokazywać w',
+            priceCard_displayNative: 'walucie sklepu (bez przeliczania)',
+            priceCard_displayCurrencyHint: 'Sumy liczone są zawsze w euro, a wybrana waluta to tylko sposób pokazania — zmiana w trakcie zmiany niczego nie gubi. Cena przeliczona ma znak ≈.',
             priceCard_openHint: 'Kliknij ASIN, aby otworzyć stronę produktu',
             priceCard_hiddenHint: 'Karta ukryta — cena nadal jest odczytywana i wliczana do sumy',
             priceCard_showCard: 'Pokazuj kartę na ekranie',
@@ -1304,6 +1341,9 @@ const SCRIPT_LOGS_ENABLED = false;
             priceCard_searchingOther: 'ищу в других магазинах…',
             priceCard_foundIn: 'найдено на ${host}',
             priceCard_marketNoKeepa: 'У Keepa нет графика для этого магазина — ссылка работает, цены не будет',
+            priceCard_displayCurrency: 'Показывать суммы в',
+            priceCard_displayNative: 'валюте магазина (без пересчёта)',
+            priceCard_displayCurrencyHint: 'Суммы всегда считаются в евро, выбранная валюта — только способ показа, поэтому смена посреди смены ничего не теряет. Пересчитанная цена помечена знаком ≈.',
             priceCard_openHint: 'Клик по ASIN открывает страницу товара',
             priceCard_hiddenHint: 'Карточка скрыта — цена всё равно читается и идёт в сумму',
             priceCard_showCard: 'Показывать карточку на экране',
@@ -2784,13 +2824,19 @@ const SCRIPT_LOGS_ENABLED = false;
                 if (bold) sp.style.fontWeight = '700';
                 return sp;
             };
-            const money = (v) => v.toFixed(2);
+            // 1.4.0: sumy są w euro zawsze; waluta wyświetlania to jedno
+            // mnożenie tutaj, na samym końcu. „Jak w sklepie” zostaje przy euro —
+            // bilans z kilku sklepów nie ma jednej „waluty sklepu”. Bez kursu
+            // do wybranej waluty zostaje euro: pokazać zero byłoby kłamstwem.
+            let cur = FxRates.displayCurrency() || 'EUR';
+            if (FxRates.fromEur(0, cur) == null) cur = 'EUR';
+            const money = (v) => FxRates.fromEur(v, cur).toFixed(2);
 
             l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
             l6.appendChild(document.createTextNode(' '));
             l6.appendChild(piece(`-${money(vt.unsold)}`, RED));
             l6.appendChild(document.createTextNode(' = '));
-            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} €`,
+            l6.appendChild(piece(`${vt.net >= 0 ? '' : '-'}${money(Math.abs(vt.net))} ${CONFIG.DISPLAY_CURRENCIES[cur]}`,
                                  vt.net >= 0 ? GREEN : RED, true));
             l6.appendChild(document.createTextNode('  '));
             l6.appendChild(piece(I18n.get('statsLine6_items', { n: vt.count }), DIM));
@@ -3600,6 +3646,18 @@ const SCRIPT_LOGS_ENABLED = false;
                     style: { fontSize: '0.85em', color: '#b06a00', margin: '-4px 0 10px 0', lineHeight: '1.35' },
                 }));
             }
+
+            // 1.4.0: waluta, w której kwoty się POKAZUJE. Liczy się zawsze
+            // w euro, więc przełączenie w trakcie zmiany niczego nie gubi.
+            // Ustawienie wspólne jak sklep: wszystkie karty mówią jedną walutą.
+            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_displayCurrency'), UIBuilder.select(
+                [{ value: 'native', text: I18n.get('priceCard_displayNative') }]
+                    .concat(Object.entries(CONFIG.DISPLAY_CURRENCIES).map(([code, sign]) => ({
+                        value: code, text: `${code} (${sign})`,
+                    }))),
+                FxRates.displayCurrency() || 'native',
+                v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
+            secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
             // 8.4.0: trzy pozycje zamiast checkboxa „ciągnij tekstem”.
             // Kolejność na liście — od zalecanej do zapasowych.
@@ -4919,6 +4977,63 @@ const SCRIPT_LOGS_ENABLED = false;
             return value / rate;      // w tablicy — jednostek waluty za 1 EUR
         },
 
+        /**
+         * Euro na walutę wyświetlania — odwrotność toEur, ta sama tablica.
+         *
+         * @returns {number|null} kwota albo null, jeśli kursu nie ma (wtedy
+         *   wywołujący zostaje przy euro, a nie pokazuje zera).
+         */
+        fromEur(eur, currency) {
+            if (typeof eur !== 'number' || !isFinite(eur)) return null;
+            const cur = String(currency || 'EUR').toUpperCase();
+            if (cur === 'EUR') return eur;
+            const table = this.rates || CONFIG.FX_FALLBACK;
+            const rate = Object.prototype.hasOwnProperty.call(table, cur) ? table[cur] : null;
+            if (!rate || !isFinite(rate) || rate <= 0) return null;
+            return eur * rate;
+        },
+
+        /**
+         * WALUTA WYŚWIETLANIA (1.4.0) albo null, czyli „jak w sklepie”.
+         *
+         * Wartość przychodzi z localStorage, więc może być czymkolwiek:
+         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie 'native' albo
+         * klucz własny CONFIG.DISPLAY_CURRENCIES — wszystko inne to wartość
+         * domyślna (euro), a nie ciche przejście na waluty sklepów.
+         */
+        displayCurrency() {
+            const own = (c) => typeof c === 'string'
+                && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, c);
+            const cur = store.userConfig && store.userConfig.displayCurrency;
+            if (cur === 'native') return null;
+            if (own(cur)) return cur;
+            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : null;
+        },
+
+        /**
+         * Kwota w dowolnej walucie pokazana w walucie wyświetlania.
+         *
+         * `≈` stoi wtedy, gdy kwota została PRZELICZONA: kurs jest dzienny,
+         * a bez sieci — wbudowany, więc to szacunek, nie cena z Amazonu. Ta
+         * sama waluta co w sklepie idzie bez znaku, bo niczego nie liczono.
+         *
+         * @returns {string|null} tekst albo null, gdy wybrano „jak w sklepie”
+         *   lub nie ma kursu — wtedy wywołujący pokazuje cenę tak, jak przyszła.
+         */
+        display(value, currency) {
+            const cur = this.displayCurrency();
+            if (!cur) return null;
+            const from = String(currency || 'EUR').toUpperCase();
+            const v = from === cur ? value : this.fromEur(this.toEur(value, from), cur);
+            if (typeof v !== 'number' || !isFinite(v)) return null;
+            return (from === cur ? '' : '≈ ') + this.money(v, cur);
+        },
+
+        /** `12.50 zł` — znak po kwocie, jak w linii 6 od zawsze. */
+        money(value, currency) {
+            return `${value.toFixed(2)} ${CONFIG.DISPLAY_CURRENCIES[currency] || currency}`;
+        },
+
         brief() {
             const t = this.rates || CONFIG.FX_FALLBACK;
             return ['USD', 'GBP', 'PLN', 'SEK', 'CAD']
@@ -5594,15 +5709,38 @@ const SCRIPT_LOGS_ENABLED = false;
          * Losowa kolejność nie jest tu ozdobą: przy stałej kolejności całe
          * pudło zmiany szłoby w jeden i ten sam rynek zapasowy.
          */
+        /**
+         * KOLEJNOŚĆ PRZEGLĄDU (1.4.0): rynek z linku na stronie, potem Europa,
+         * na końcu PRICE_FALLBACK_LAST — w obrębie grupy losowo. Bez wybranego
+         * rynku (ten już odpowiedział „nie ma”) i bez rynków, dla których Keepa
+         * nie ma danych.
+         *
+         * @param {string} from       rynek już sprawdzony
+         * @param {string|null} hint  rynek z linku do produktu na stronie
+         * @param {function} [random] źródło losowości (testy podają własne)
+         */
+        fallbackOrder(from, hint, random = Math.random) {
+            const shuffle = (list) => {
+                for (let i = list.length - 1; i > 0; i--) {     // tasowanie Fishera-Yatesa
+                    const j = Math.floor(random() * (i + 1));
+                    [list[i], list[j]] = [list[j], list[i]];
+                }
+                return list;
+            };
+            const pool = Object.keys(CONFIG.MARKETPLACES)
+                .filter(k => k !== from && k !== hint && CONFIG.MARKETPLACES[k].keepa_ok);
+            const late = pool.filter(k => CONFIG.PRICE_FALLBACK_LAST.includes(k));
+            const first = hint && hint !== from && CONFIG.MARKETPLACES[hint]
+                && CONFIG.MARKETPLACES[hint].keepa_ok ? [hint] : [];
+            return first
+                .concat(shuffle(pool.filter(k => !late.includes(k))), shuffle(late))
+                .slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
+        },
+
         async tryOtherMarkets(asin) {
             const from = marketplaceKey();
-            const pool = Object.keys(CONFIG.MARKETPLACES)
-                .filter(k => k !== from && CONFIG.MARKETPLACES[k].keepa_ok);
-            for (let i = pool.length - 1; i > 0; i--) {         // tasowanie Fishera-Yatesa
-                const j = Math.floor(Math.random() * (i + 1));
-                [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
-            const tries = pool.slice(0, CONFIG.PRICE_FALLBACK_MAX_TRIES);
+            const hint = this.linkMarket && this.linkMarket.asin === asin ? this.linkMarket.key : null;
+            const tries = this.fallbackOrder(from, hint);
             Utils.log(`[CENA] ${asin}: na ${from} ceny nie ma, próbuję ${tries.join(', ')}`);
 
             for (const key of tries) {
@@ -5806,12 +5944,41 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         // ---------------- szukanie ASIN ----------------
+        /**
+         * Rynek z linku do produktu (1.4.0): `https://www.amazon.it/dp/…` → 'it'.
+         *
+         * Tylko hosty z CONFIG.MARKETPLACES, porównane w całości — link
+         * względny, obcy host albo `amazon.it.evil.example` dają null. Wynik
+         * decyduje wyłącznie o KOLEJNOŚCI przeglądu rynków; adres zapytania
+         * dalej składa się z tablicy, a nie z tekstu strony.
+         */
+        marketFromHref(href) {
+            const m = /^(?:https?:)?\/\/([^/?#:]+)/i.exec(String(href || ''));
+            if (!m) return null;
+            const host = m[1].toLowerCase().replace(/^www\./, '');
+            return Object.keys(CONFIG.MARKETPLACES)
+                .find(k => CONFIG.MARKETPLACES[k].host.replace(/^www\./, '') === host) || null;
+        },
+
+        /**
+         * Rynek linku, z którego wzięto ostatni ASIN: { asin, key } albo null.
+         * ASIN z samego tekstu strony rynku nie ma — wtedy przegląd idzie
+         * zwykłą kolejnością.
+         */
+        linkMarket: null,
+
         detectAsin() {
             for (const a of document.querySelectorAll('a[href*="/dp/"], a[href*="/gp/product/"]')) {
                 if (a.closest('#' + CONFIG.SCRIPT_ID_PREFIX + 'priceCard')) continue;
-                const m = (a.getAttribute('href') || '').match(CONFIG.PRICE_ASIN_FROM_HREF);
-                if (m) return m[1];
+                const href = a.getAttribute('href') || '';
+                const m = href.match(CONFIG.PRICE_ASIN_FROM_HREF);
+                if (m) {
+                    const key = this.marketFromHref(href);
+                    this.linkMarket = key ? { asin: m[1], key } : null;
+                    return m[1];
+                }
             }
+            this.linkMarket = null;
             // Rezerwa po tekście — gdy linku na stronie nie ma wcale.
             //
             // Przyjmujemy ASIN TYLKO WTEDY, gdy jest na stronie jeden. Jeśli jest
@@ -6269,6 +6436,15 @@ const SCRIPT_LOGS_ENABLED = false;
          * @param {HTMLElement} el   wiersz do zapisania
          * @param {string} text      treść; pusta chowa wiersz
          */
+        /**
+         * Tekst ceny na karcie: w walucie wyświetlania, jeśli ją wybrano,
+         * inaczej tak, jak przyszła ze sklepu (1.4.0). Sam obiekt ceny się nie
+         * zmienia — do dziennika idzie kwota i waluta sklepu, a do sumy euro.
+         */
+        priceText(p) {
+            return FxRates.display(p.value, p.currency) || p.text;
+        },
+
         setLine(el, text) {
             el.textContent = text || '';
             el.style.display = text ? 'block' : 'none';
@@ -6324,7 +6500,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 this.priceEl.style.display = 'block';
                 this.priceEl.textContent =
                     (prev && prev.status === 'ok' && prev.current && pc.showPrice)
-                        ? prev.current.text : '…';
+                        ? this.priceText(prev.current) : '…';
                 this.rrpEl.style.textDecoration = 'none';
                 // Stan przejściowy, nie awaria — idzie pod wyłącznikami.
                 const hunting = this.searchingOther === asin;
@@ -6353,7 +6529,7 @@ const SCRIPT_LOGS_ENABLED = false;
             // 1. Cena jest — pokazujemy, cokolwiek blokowałaby polityka.
             if (r && r.status === 'ok') {
                 const price = r.current || r.rrp;
-                this.priceEl.textContent = pc.showPrice && price ? price.text : '';
+                this.priceEl.textContent = pc.showPrice && price ? this.priceText(price) : '';
                 this.priceEl.style.display = pc.showPrice ? 'block' : 'none';
 
                 // Druga linia: albo prawdziwa RRP (daje ją tylko jina/keepa-api),
@@ -6361,7 +6537,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // TYLKO przy RRP: przekreślona cena znaczy „stara”, a wieszanie
                 // tego na żywej ofercie byłoby wprost dezinformacją.
                 if (pc.showRrp && r.rrp) {
-                    this.rrpEl.textContent = `${I18n.get('priceCard_rrp')} ${r.rrp.text}`;
+                    this.rrpEl.textContent = `${I18n.get('priceCard_rrp')} ${this.priceText(r.rrp)}`;
                     this.rrpEl.style.textDecoration = 'line-through';
                     this.rrpEl.style.display = 'block';
                 } else if (pc.showRrp && r.secondary) {
@@ -6385,6 +6561,9 @@ const SCRIPT_LOGS_ENABLED = false;
                     : '';
                 const bits = [];
                 if (pc.showSource) bits.push(r.source);
+                // Przy przeliczeniu cena ze sklepu zostaje do wglądu w wierszu
+                // źródła — dla kogoś, kto porównuje kartę ze stroną Amazonu.
+                if (pc.showSource && price && this.priceText(price).startsWith('≈')) bits.push(price.text);
                 if (fromOther) bits.push(fromOther);
                 // Czas ma własny wyłącznik i działa niezależnie od nazwy źródła:
                 // przełącznik, który nic nie robi, dopóki nie włączy się innego,
@@ -7275,6 +7454,7 @@ const SCRIPT_LOGS_ENABLED = false;
             graphMode: ['legend', 'right', 'full'],
             language: ['pl', 'en', 'ru'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
+            displayCurrency: ['native', 'EUR', 'PLN', 'GBP', 'SEK', 'USD', 'CAD'],
         },
 
         /**
@@ -7384,6 +7564,7 @@ const SCRIPT_LOGS_ENABLED = false;
             { id: 0x0309, root: 'user', path: 'globalStatsContributionKnown.OTHER', type: 'bool' },
             { id: 0x0307, root: 'user', path: 'keyboardShortcuts.INCREMENT', type: 'text' },
             { id: 0x0308, root: 'user', path: 'keyboardShortcuts.DECREMENT', type: 'text' },
+            { id: 0x030a, root: 'user', path: 'displayCurrency', type: 'enum', list: 'displayCurrency' },
         ],
 
         // ---------------- pomocnicze ----------------
@@ -8601,6 +8782,9 @@ const SCRIPT_LOGS_ENABLED = false;
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)
+   displayCurrency = 'EUR'     'native' | 'EUR' | 'PLN' | 'GBP' | 'SEK' | 'USD' | 'CAD'
+                              'native' = karta w walucie sklepu, linia 6 w euro;
+                              sumy zawsze w euro, to tylko waluta pokazywania
    globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true, OTHER: true }
                               które działy wliczają się do sumy w liniach 2 i 7
    keyboardShortcuts = { INCREMENT: 'None', DECREMENT: 'None' }
@@ -8632,7 +8816,8 @@ const SCRIPT_LOGS_ENABLED = false;
    AUTO_TRIGGER_REGEX                 co oznacza KONIEC przedmiotu (+1 do licznika)
    ROUTE_SELL_CODES / ROUTE_UNSELL_CODES   kody sortowania: sprzedaż / utylizacja
    PRICE_MIN_REQUEST_GAP_MS = 3000    minimalna przerwa między zapytaniami
-   PRICE_FALLBACK_MAX_TRIES = 5       ile sklepów zapasowych sprawdzać
+   PRICE_FALLBACK_MAX_TRIES = Infinity  ile sklepów zapasowych sprawdzać (1.4.0: wszystkie)
+   PRICE_FALLBACK_LAST = ['com', 'ca']  rynki spoza Europy — w przeglądzie na końcu
    FX_FALLBACK                        kursy wbudowane, używane bez sieci
    PRICE_KEEPA_API_KEY = ''           płatny klucz Keepa (opcjonalny)
 
