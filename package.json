@@ -1,6 +1,6 @@
 {
   "name": "statshelper-counter",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "Licznik przetworzonych przedmiotów dla T-REX: cichy tryb domyślny, opcjonalny moduł cen, dziennik wartości zmiany.",
   "private": true,
   "license": "MIT",
