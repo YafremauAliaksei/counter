@@ -129,11 +129,20 @@ część tego repozytorium: powody decyzji i pułapki, w które łatwo wpaść.
 Komentarz opisuje kod **taki, jaki jest teraz**: co robi fragment i dlaczego
 właśnie tak. Pułapka, przed którą chroni warunek, to dobry komentarz („bez
 `hasOwnProperty` wartość `'__proto__'` z magazynu przeszłaby jako waluta”).
-Kronika — „w 8.3.0 było X, w 1.3.3 poprawione” — to zły komentarz: rozrasta
-plik, przesłania wyjaśnienie, a po kilku wydaniach nikt nie pamięta, czym były
-tamte wersje. Historia należy do CHANGELOG i do gita. Test w
-`tests/09-artifact.test.js` nie przepuści numeru wersji ani odsyłacza do audytu
-w komentarzu artefaktu.
+Kronika — „w 8.3.0 było X, w 1.3.3 poprawione” — to zły komentarz: działa
+zawsze tylko bieżąca wersja, więc taki opis rozrasta plik, przesłania
+wyjaśnienie, a po kilku wydaniach nikt nie pamięta, czym były tamte wersje.
+
+Zasada obejmuje każdy plik kodu: `src/`, `tests/` (także nazwy testów
+i komunikaty asercji), `build.js`, workflow w `.github/`. Historia żyje
+wyłącznie poza kodem — w CHANGELOG, README, HANDOFF, `docs/` i w gicie.
+Komentarz test uzasadnia tym, czego pilnuje („bez tego X zaniżyłoby sumę”),
+a nie tym, kiedy X się zepsuło.
+
+`tests/09-artifact.test.js` (artefakt) i `tests/10-language.test.js` (każdy
+plik kodu) nie przepuszczą numeru wersji ani odsyłacza do audytu
+w komentarzu. Wyjątki: `@version` w nagłówku userscriptu i komentarz wersji
+przy akcji przypiętej do SHA.
 
 Praktycznie: jeśli to stoi po lewej stronie znaku `=`, po słowie `function` albo
 w kluczu obiektu — angielski. Jeśli to zdanie dla człowieka — polski. Dotyczy to
@@ -215,12 +224,12 @@ dokładnie.
 
 ## 4. Bramki, które muszą być zielone
 
-| Bramka    | Polecenie              | Co łapie                                                    |
-| --------- | ---------------------- | ----------------------------------------------------------- |
-| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                          |
-| Testy     | `npm test`             | 473 sprawdzenia: zachowanie, bezpieczeństwo, skan statyczny |
-| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                   |
-| Format    | `npm run format:check` | rozjazdy w stylu                                            |
+| Bramka    | Polecenie              | Co łapie                                                  |
+| --------- | ---------------------- | --------------------------------------------------------- |
+| Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
+| Testy     | `npm test`             | 476 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
+| Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
+| Format    | `npm run format:check` | rozjazdy w stylu                                          |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 

@@ -6,11 +6,11 @@
  * przypisane do działu — trzyma liczniki OSOBNO DLA KAŻDEGO z nich, bo jeden
  * proces pracy potrafi iść w dwóch kartach naraz.
  *
- * DZIAŁ RĘCZNY (1.3.2). `OTHER` nie ma `urlKeyword`, więc nie zostanie nigdy
+ * DZIAŁ RĘCZNY. `OTHER` nie ma `urlKeyword`, więc nie zostanie nigdy
  * rozpoznany jako karta i licznik nie zwiększy go sam. Liczby wpisuje się
- * w panelu. Po co: paczki bywają robione poza trzema znanymi procesami, a do
- * tej pory nie było ich gdzie zapisać — wpisywano je do cudzego działu albo
- * przepadały, przez co tempo zmiany kłamało w dół.
+ * w panelu. Po co: paczki bywają robione poza trzema znanymi procesami —
+ * bez własnego działu trafiałyby do cudzego albo przepadały, a tempo zmiany
+ * kłamałoby w dół.
  *
  * DOPISANIE KOLEJNEGO DZIAŁU to jedna linia w `KNOWN_TAB_TYPES` plus nazwa
  * w trzech słownikach. Ten plik pilnuje, że tak zostanie: panel i linia 2

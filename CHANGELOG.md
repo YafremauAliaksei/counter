@@ -16,6 +16,8 @@ Dla tego projektu SemVer czyta się tak:
 
 - **Komentarze w kodzie opisują kod, a nie jego historię.** Wszystkie moduły `src/` i `build.js` przepisane: komentarz mówi w czasie teraźniejszym, co robi fragment i dlaczego tak — powody decyzji i pułapki zostały, kronika wersji („w 8.3.0 było…”, „1.3.3, audyt D7”) i spis zmian 8.x–9.x w nagłówku pliku zniknęły. Kod nie zmienił się ani o jeden token (sprawdzone porównaniem tokenów artefaktu przed i po); artefakt jest krótszy o ok. 1100 linii. Nowy test w `tests/09-artifact.test.js` nie przepuści numeru wersji ani odsyłacza do audytu w komentarzu, a zasada jest zapisana w CLAUDE.md i CONTRIBUTING.md.
 
+- **To samo w całym repozytorium.** Komentarze w testach, w `tests/dom-stub.js`, `tests/harness.js`, `tests/run.js` i w workflow CI i wydania opisują teraz, czego pilnują i dlaczego, bez numerów wersji i odsyłaczy do audytu; nazwy testów też. Nowa zasada 7 w CLAUDE.md: komentarz w kodzie jest neutralny wobec wersji — historia żyje wyłącznie w dokumentacji i w gicie. Pilnuje tego nowy strażnik w `tests/10-language.test.js` dla każdego pliku kodu (źródła, testy, narzędzia, workflow), sprawdzony na próbce z trzema postaciami komentarza.
+
 ---
 
 ## 1.4.0 — 2026-09-24

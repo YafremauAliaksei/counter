@@ -60,10 +60,10 @@ function reset(startMs) {
     SH.store.tabSold[cid] = 0;
     SH.store.tabNeutral[cid] = 0;
     // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
-    // zapis zadań scala się z magazynem (audyt D1), a ten opisywałby
+    // zapis zadań scala się z magazynem, a ten opisywałby
     // poprzedni test — często z innym początkiem zmiany.
     env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
-    // Zera także w magazynie — licznik rośnie od wartości zapisanej (D7).
+    // Zera także w magazynie — licznik rośnie od wartości zapisanej.
     SH.TaskManager.syncShift(cid);
     TM.create('Default', startMs == null ? clock.now() - HOUR : startMs);
     return cid;
@@ -83,7 +83,7 @@ describe('Zadanie domyślne');
 
 test('po starcie jest dokładnie jedno zadanie i zaczyna się razem ze zmianą', () => {
     // Dopóki człowiek nie powie inaczej, cała zmiana jest jednym procesem —
-    // czyli zachowanie sprzed 1.3.0 zostaje nietknięte.
+    // a tempo liczy się od jej początku.
     eq(SH.store.tasks.length, 1, 'jedno zadanie');
     const task = TM.active();
     eq(task.name, SH.CONFIG.DEFAULT_TASK_NAME);
@@ -257,20 +257,19 @@ test('pauza zatrzymuje zegar, a paczka po pauzie otwiera nowy odcinek', () => {
     eq(drift(cid), { done: 0, sold: 0, neutral: 0 });
 });
 
-describe('Początek zadania — poprawka z 1.3.2');
+describe('Początek zadania przestawia się, a nie dokłada');
 
 /**
- * BŁĄD, KTÓRY WYSZEDŁ DOPIERO NA HALI.
+ * POCZĄTEK ZADANIA PRZESTAWIA SIĘ, A NIE DOKŁADA.
  *
- * Kontrolka „Początek” przestawiała początek OSTATNIEGO odcinka, a czas zadania
- * jest sumą WSZYSTKICH. Wystarczyło raz zatrzymać zegar i kliknąć „początek
- * zmiany”, żeby ostatni odcinek rozciągnął się na całą zmianę OBOK odcinków
- * wcześniejszych — każde powtórzenie dokładało kolejne godziny. Po niespełna
- * pięciu godzinach pracy dało się naklikać czternaście.
+ * Czas zadania jest sumą wszystkich odcinków. Gdyby kontrolka „Początek”
+ * przestawiała początek ostatniego odcinka, to po zatrzymaniu zegara każde
+ * kliknięcie „początek zmiany” dokładałoby godziny obok wcześniejszych
+ * odcinków — z pięciu godzin pracy dałoby się naklikać czternaście.
  *
- * Sprawdzenie niżej odtwarza dokładnie tamtą sekwencję klikania. Zaraz po nim
- * stoi NIEZMIENNIK, który by ten błąd złapał od razu: przepracowany czas nie ma
- * prawa przekroczyć odstępu od początku zadania do teraz.
+ * Sprawdzenie niżej odtwarza taką sekwencję klikania. Zaraz po nim stoi
+ * NIEZMIENNIK: przepracowany czas nie ma prawa przekroczyć odstępu od
+ * początku zadania do teraz.
  */
 test('klikanie „początek zmiany” przy zatrzymanym zegarze nie dokłada godzin', () => {
     const now = clock.now();
@@ -415,9 +414,8 @@ test('przerwa pokrywająca się z odcinkiem jest odjęta', () => {
     // Kto nie pamiętał o pauzie na obiad, miałby w zadaniu pół godziny pracy,
     // której nie było. Rachunek jest ten sam, co w linii 1 — jedno miejsce.
     //
-    // Obiad włącza się tylko na czas tego testu i wyłącza w `finally`: przed
-    // tą poprawką sprzątanie stało linijkę za asercją, więc porażka zostawiała
-    // obiad włączony i czerwień rozlewała się na kolejne testy pliku.
+    // Obiad włącza się tylko na czas tego testu i wyłącza w `finally` —
+    // porażka nie może zostawić obiadu włączonego dla kolejnych testów.
     const S = SH.store;
     const shiftStart = new clock.Date();
     shiftStart.setHours(6, 30, 0, 0);
@@ -462,7 +460,7 @@ test('ostatniego zadania usunąć się nie da', () => {
 test('usunięte zadanie zabiera swoje paczki z licznika karty', () => {
     const cid = reset(clock.now() - 2 * HOUR);
     // Tak jak panel: wpisana liczba, potem liczniki zmiany z zadań — także
-    // w magazynie, bo usunięcie czyta liczniki kart stamtąd (audyt D2).
+    // w magazynie, bo usunięcie czyta liczniki kart stamtąd.
     TM.applyManualTotal(cid, 40);
     TM.syncShift(cid);
     const doomed = TM.create('do usunięcia', clock.now() - HOUR);
@@ -495,10 +493,9 @@ test('zadania i ich liczniki przeżywają F5', () => {
 
 test('karta nierozpoznana: liczniki zadań przeżywają F5', () => {
     // Identyfikator karty nierozpoznanej sam ma podkreślenia
-    // („unknownTabInstance_abc_def”), a klucz licznika zadania dzielił się po
-    // OSTATNIM podkreśleniu. Po F5 paczki trafiały do nieistniejącego zadania,
-    // suma zadań spadała do zera, a pierwsza poprawka w panelu zerowała licznik
-    // karty — cicha utrata zmiany po zwykłym przeładowaniu.
+    // („unknownTabInstance_abc_def”). Klucz licznika zadania podzielony po
+    // ostatnim podkreśleniu przypisałby po F5 paczki nieistniejącemu zadaniu,
+    // a pierwsza poprawka w panelu wyzerowałaby licznik karty.
     const shared = makeStorage();
     const href = 'https://trex-prod-eu.aka.amazon.com/some/other/page';
     const sessionStore = makeStorage();
@@ -571,8 +568,8 @@ test('linia 8 pokazuje nazwę zadania i jego własne liczby', () => {
 });
 
 test('przykład linii 8 w README ma ten sam kształt co ekran', () => {
-    // README pokazywało czas jako „0:21”, a ekran — „1h 00m” / „21m 00s”
-    // (audyt J4). Porównuje się kształt: nazwa, paczki, tempo, procent, czas.
+    // Przykład w README ma pokazywać czas tak jak ekran („21m 00s”, a nie
+    // „0:21”). Porównuje się kształt: nazwa, paczki, tempo, procent, czas.
     const readme = require('fs').readFileSync(require('path').join(__dirname, '..', 'README.md'), 'utf8');
     const example = readme.split('\n').find(l => l.startsWith('fast_process '));
     ok(example, 'przykład linii 8 w README');

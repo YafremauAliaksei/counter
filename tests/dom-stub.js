@@ -50,11 +50,9 @@ const ARTIFACT = fs.readFileSync(ARTIFACT_PATH, 'utf8');
  *
  * PO CO. Skrypt odejmuje od czasu pracy przerwę obiadową, która leży o stałej
  * godzinie ściennej, a zmianę rozpoznaje po godzinie ściennej. Test, który
- * buduje odcinki od prawdziwego „teraz”, trafia więc albo nie trafia w obiad
- * zależnie od tego, o której go uruchomiono: przed tą poprawką zestaw był
- * zielony 7 godzin na dobę, a CI zawsze trafiał w zielone okno, bo pushe szły
- * wieczorem. Czerwień o 09:40 na tym samym commicie była nie do odróżnienia
- * od własnej usterki.
+ * buduje odcinki od prawdziwego „teraz”, trafiałby albo nie w obiad zależnie
+ * od pory uruchomienia — zielony o 21:00, czerwony o 09:40 na tym samym
+ * commicie, nie do odróżnienia od prawdziwej usterki.
  *
  * JAK. `makeClock(wallMs)` ustawia „teraz” na podany moment i od tej chwili
  * płynie razem z prawdziwym czasem (debounce i timery działają dalej, tylko
@@ -349,12 +347,11 @@ function boot(opts = {}) {
 
 /**
  * Kilka kart na jednym localStorage — z semantyką zdarzenia `storage` taką,
- * jak w przeglądarce (audyt D8).
+ * jak w przeglądarce.
  *
- * PO CO. Dotychczasowe testy wielu kart były ściśle po kolei: jedna karta
- * zapisuje, test ręcznie doręcza zdarzenie, druga czyta. Między zapisami
- * zawsze stało doręczenie, więc okno wyścigu nie istniało ani razu — a to
- * w nim ginęły zadania, liczniki i ustawienia (audyt D1, D2, D4, D5, D7).
+ * PO CO. Test „jedna karta zapisuje, test doręcza zdarzenie, druga czyta”
+ * nigdy nie otwiera okna wyścigu, bo doręczenie stoi zawsze między zapisami.
+ * A to w tym oknie mogą ginąć zadania, liczniki i ustawienia.
  *
  * JAK W PRZEGLĄDARCE:
  *   - zapis jest widoczny w magazynie OD RAZU, dla wszystkich kart;

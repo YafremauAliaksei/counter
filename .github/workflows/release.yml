@@ -25,11 +25,9 @@ name: Release
 # Actions -> Release -> Run workflow -> podać tag. Przebieg powtórzy się dla
 # istniejącego tagu i uzupełni wydanie.
 #
-# Poprzednia wersja tej instrukcji mówiła „npm version, potem build, potem
-# commit --amend”. To nie mogło zadziałać: amend tworzy NOWY commit, a tag
-# zostaje na starym — czyli na kodzie, w którym artefakt ma jeszcze poprzednią
-# wersję. Sprawdzenie „wersja w artefakcie zgadza się z tagiem” poniżej zapaliłoby
-# się na czerwono przy pierwszym wydaniu.
+# Nie `commit --amend` po `npm version`: amend tworzy nowy commit, a tag
+# zostaje na starym, z artefaktem w poprzedniej wersji — sprawdzenie zgodności
+# wersji poniżej padłoby.
 #
 # Reszta dzieje się tutaj.
 
@@ -148,10 +146,9 @@ jobs:
           fi
           cat RELEASE_NOTES.md
 
-      # Dopisek jest CELOWO krótki i bez długich ciągów. Adres zakładki ma ponad
-      # 200 znaków w jednej linii, więc w bloku kodu wychodził poza szerokość
-      # strony wydania i trzeba go było przewijać w bok. Miejsce na niego jest
-      # w README — tam stoi też wyjaśnienie, dlaczego wygląda tak, a nie inaczej.
+      # Dopisek jest celowo krótki i bez długich ciągów: adres zakładki ma ponad
+      # 200 znaków w jednej linii i w bloku kodu wychodziłby poza szerokość
+      # strony wydania. Jego miejsce jest w README, razem z wyjaśnieniem.
       - name: Dopisz do opisu sposób uruchomienia i sumę kontrolną
         run: |
           VERSION=$(node -p "require('./package.json').version")

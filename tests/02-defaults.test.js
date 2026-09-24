@@ -48,9 +48,9 @@ test('linia 7 jest jedyną włączoną i ma zadane parametry', () => {
 });
 
 test('kolejność okna kończy się linią 8, a linia 7 stoi tuż przed nią', () => {
-    // Do 1.2.1 ostatnia była linia 7. Linia 8 (bieżące zadanie) dostawia się
-    // POD nią i to jest zamierzone: okno rośnie w górę od dolnej krawędzi, więc
-    // zadanie ląduje najbliżej rogu ekranu, tuż przy liczbach zmiany.
+    // Linia 8 (bieżące zadanie) stoi pod linią 7: okno rośnie w górę od
+    // dolnej krawędzi, więc zadanie ląduje najbliżej rogu ekranu, tuż przy
+    // liczbach zmiany.
     const keys = env.SH.LINE_KEYS;
     eq(keys[keys.length - 1], 'line8_taskInfo');
     eq(keys[keys.length - 2], 'line7_compact');
@@ -106,9 +106,8 @@ test('wersja została podstawiona przy budowaniu', () => {
  * Każdy prefiks magazynu, jaki kiedykolwiek wyszedł do ludzi — w kolejności.
  *
  * Przy zmianie SCRIPT_ID_PREFIX nowy dopisuje się TUTAJ na końcu. Wtedy test
- * niżej wymusi, żeby poprzedni trafił do LEGACY_ID_PREFIXES — dokładnie ten
- * krok przegapiono przy przejściu na v1_3_0_ i klucze schematu 1.0–1.2
- * zostałyby na stanowiskach bez resetu sesji na zawsze.
+ * niżej wymusi, żeby poprzedni trafił do LEGACY_ID_PREFIXES — inaczej klucze
+ * starego schematu zostałyby na stanowiskach bez resetu sesji na zawsze.
  */
 const PREFIX_HISTORY = [
     'statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_', 'statsHelper_v8_3_0_',
@@ -153,7 +152,7 @@ test('język domyślny to polski, sklep domyślny to amazon.de', () => {
     eq(env.SH.CONFIG.DEFAULT_MARKETPLACE, 'de');
 });
 
-describe('Ściąga na końcu pliku mówi prawdę (audyt H5)');
+describe('Ściąga na końcu pliku mówi prawdę');
 
 /**
  * Ściąga konfiguracyjna w src/99-footer.js jedzie w artefakcie do każdego

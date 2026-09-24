@@ -23,9 +23,8 @@ test('bez przepracowanego czasu pokazuje „0.0 0”', () => {
 });
 
 test('trzy człony oddzielone spacjami, bez jednostek i nawiasów', () => {
-    // Do 1.0.0 człony były dwa. Procent sprzedaży dołożył trzeci i stoi ZAWSZE
-    // na końcu — reszta formatu jest nienaruszona: żadnych jednostek, nawiasów
-    // ani przecinków, bo linia ma czytać się jednym spojrzeniem.
+    // Procent sprzedaży stoi zawsze na końcu; żadnych jednostek, nawiasów
+    // ani przecinków — linia ma czytać się jednym spojrzeniem.
     setShift(env, 2);
     env.SH.store.tabCounters.CRET = 20;
     env.SH.store.tabCounters.WHD = 15;
@@ -56,8 +55,8 @@ test('liczba w linii 7 zgadza się z sumą linii 2', () => {
 });
 
 test('wyłączona linia 2 nie jest składana, a linia 7 liczy dalej', () => {
-    // Sedno poprawki wydajnościowej: przy ustawieniach domyślnych widoczna jest
-    // jedna linia z siedmiu i tylko ona ma powstawać raz na sekundę. Liczba
+    // Wydajność: przy ustawieniach domyślnych widoczna jest jedna linia
+    // i tylko ona ma powstawać raz na sekundę. Liczba
     // w linii 7 nie ma prawa się przez to zmienić — obie linie liczą z tej samej
     // pętli po kartach.
     const l2 = env.SH.StatsWindowRenderer.lines.line2_globalSummary;

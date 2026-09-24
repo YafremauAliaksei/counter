@@ -3,7 +3,7 @@ name: CI
 # Bramki jakości. Zielone mają być wszystkie — ale WYMUSZA to dopiero reguła
 # ochrony gałęzi main (Settings -> Rules -> Rulesets), której plik nie ustawi.
 # Bez niej czerwony przebieg jest tylko ostrzeżeniem i PR da się scalić mimo
-# niego (audyt A1). Stan i instrukcja: HANDOFF.md, rozdział 2.4.
+# niego. Stan i instrukcja: HANDOFF.md, rozdział 2.4.
 #
 # Podział na trzy zadania jest celowy:
 #   verify  — zero zależności, musi działać zawsze i wszędzie; to jest
@@ -47,10 +47,9 @@ jobs:
         run: npm test
 
       # Skrypt liczy czas od godzin ściennych (zmiana, obiad), więc test może
-      # zależeć od pory, o której go uruchomiono. Tak było do 1.3.2: zestaw był
-      # zielony ok. 7 godzin na dobę, a CI trafiał w zielone okno, bo pushe szły
-      # wieczorem. Dwie dodatkowe strefy (UTC+14 i UTC-11) sprawiają, że każdy
-      # przebieg sprawdza trzy różne pory dnia naraz, za cenę dwóch sekund.
+      # zależeć od pory uruchomienia. Dwie dodatkowe strefy (UTC+14 i UTC-11)
+      # sprawiają, że każdy przebieg sprawdza trzy różne pory dnia naraz,
+      # za cenę dwóch sekund.
       - name: Testy o innych porach dnia
         run: |
           TZ=Pacific/Kiritimati npm test
@@ -101,10 +100,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        # Node 18 wypadł w 1.3.3 (audyt K7): od kwietnia 2025 bez poprawek
-        # bezpieczeństwa, a narzędzia repozytorium i tak go nie obsługują.
-        # 20 zostaje jako dolna granica z `engines`, choć też jest już po
-        # końcu wsparcia — pilnuje, żeby build i testy nie sięgnęły po nowsze API.
+        # 20 to dolna granica z `engines` (choć już po końcu wsparcia) —
+        # pilnuje, żeby build i testy nie sięgnęły po nowsze API. Starszych
+        # wersji narzędzia repozytorium nie obsługują.
         node: [20, 22, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

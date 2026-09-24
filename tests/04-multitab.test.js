@@ -92,8 +92,8 @@ test('wyłączenie działu z sumy działa lokalnie, nie zmienia sąsiada', () =>
 
 test('reset liczników przez jedną kartę dociera do drugiej', () => {
     // Najpierw sąsiednia karta usuwa klucz, potem przeglądarka doręcza
-    // zdarzenie — w tej kolejności, bo od 1.3.3 wartość czyta się z magazynu,
-    // a nie z `newValue` (patrz 30-multitab-races, audyt D7).
+    // zdarzenie — w tej kolejności, bo wartość czyta się z magazynu, a nie
+    // z `newValue` (patrz 30-multitab-races).
     shared.removeItem(key('WHD'));
     cret.window._emit('storage', { key: key('WHD'), newValue: null });
     eq(cret.SH.store.tabCounters.WHD, 0);

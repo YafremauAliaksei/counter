@@ -106,6 +106,23 @@ Poprawka podana jako „szybsza” przychodzi z pomiarem, nie z przekonaniem.
 
 Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
 
+### 7. Komentarz w kodzie jest neutralny wobec wersji
+
+Działa zawsze tylko bieżąca wersja, więc komentarz w kodzie — w `src/`,
+`tests/`, `build.js`, workflow `.github/` — opisuje kod taki, jaki jest teraz:
+co robi fragment i dlaczego tak. Bez numerów wersji, bez „wcześniej było…”, bez
+odsyłaczy do audytów i bez kroniki poprawek. Pułapka, przed którą chroni
+warunek, to dobry komentarz; opis tego, jak kiedyś było źle, — zły.
+
+Historia zmian żyje **wyłącznie poza kodem**: CHANGELOG, README, HANDOFF,
+dokumentacja w `docs/` i historia gita. Reguły językowe z punktu 2 obowiązują
+bez zmian: komentarz po polsku, bez cyrylicy poza wymienionymi wyjątkami.
+
+Pilnują tego `tests/09-artifact.test.js` (artefakt) i
+`tests/10-language.test.js` (każdy plik kodu repozytorium). Jedyne dozwolone
+numery wersji w komentarzach: `@version` w nagłówku userscriptu i komentarz
+wersji przy akcji przypiętej do SHA w workflow.
+
 ---
 
 ## Polecenia
@@ -113,7 +130,7 @@ Pełna lista granic i uzasadnienie — `CONTRIBUTING.md`, rozdział 6.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 473 sprawdzenia
+npm test             # 476 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run lint         # ESLint (potrzebny npm ci)
@@ -179,9 +196,7 @@ Szczegóły i listy kontrolne — w `CONTRIBUTING.md`.
   sprawdzić właśnie tę funkcję, i zbędne w pozostałych przypadkach.
 - Nie zmieniać wartości domyślnych bez aktualizacji README i CHANGELOG: dublują
   się celowo, a test się o to upomina.
-- Nie pisać w komentarzach historii zmian („w 8.3.0 było…”, „1.3.3, audyt D7”).
-  Komentarz mówi w czasie teraźniejszym, co robi kod i dlaczego tak — powody
-  decyzji i pułapki zostają, kronika idzie do CHANGELOG i historii gita. Pilnuje
-  tego test w `tests/09-artifact.test.js`.
+- Nie pisać w komentarzach historii zmian — patrz zasada 7. Powody decyzji
+  i pułapki zostają, kronika idzie do CHANGELOG i historii gita.
 - Nie dodawać zależności do `dependencies`. Artefakt musi być samowystarczalny.
   `devDependencies` (linter, formatter) — można.

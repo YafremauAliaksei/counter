@@ -1,12 +1,11 @@
 /**
- * 33-market-fallback.test.js — przegląd sklepów, gdy na wybranym ceny nie ma (1.4.0).
+ * 33-market-fallback.test.js — przegląd sklepów, gdy na wybranym ceny nie ma.
  *
- * DWIE ZMIANY, KTÓRYCH TEN PLIK PILNUJE.
+ * DWIE ZASADY, KTÓRYCH TEN PLIK PILNUJE.
  *
- * 1. Wszystkie rynki, a nie pięć wylosowanych. Cena bywa tylko na jednym
- *    rynku z całej listy; losowanie pięciu z dziewięciu omijało go przy każdej
- *    próbie z prawdopodobieństwem 4/9 — kilka przedmiotów z rzędu bez ceny,
- *    choć była do znalezienia.
+ * 1. Wszystkie rynki, a nie część wylosowanych. Cena bywa tylko na jednym
+ *    rynku z całej listy; losowanie pięciu z dziewięciu omijałoby go przy
+ *    każdej próbie z prawdopodobieństwem 4/9.
  *
  * 2. Rynek z linku na stronie idzie pierwszy. Jeśli T-REX pokazuje link
  *    amazon.it/dp/…, to produkt był wystawiony właśnie tam — to najlepszy

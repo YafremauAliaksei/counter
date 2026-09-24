@@ -1,5 +1,5 @@
 /**
- * 30-multitab-races.test.js — dwie karty w oknie wyścigu (audyt D1, D2, D4, D5, D7).
+ * 30-multitab-races.test.js — dwie karty w oknie wyścigu.
  *
  * Każdy scenariusz idzie tak samo: karty zapisują coś, ZANIM przeglądarka
  * doręczy im nawzajem zdarzenia `storage` (makeTabNetwork w dom-stub.js), a po
@@ -53,12 +53,12 @@ function drift(env, tabKey) {
     return (S.tabCounters[tabKey] || 0) - env.SH.TaskManager.shiftTotal(tabKey, 'done');
 }
 
-describe('Zadania: dwie karty zmieniają listę naraz (D1)');
+describe('Zadania: dwie karty zmieniają listę naraz');
 
 test('nowe zadanie w jednej karcie i pauza w drugiej — oba zmiany przeżywają', () => {
-    // Klucz zadań był pisany w całości z pamięci karty: pauza w B, zanim
-    // B dowiedziała się o „Sorter” z A, wymazywała „Sorter” z magazynu razem
-    // z tym, że jego paczki dalej leżały w liczniku karty.
+    // Zapis całego klucza zadań z pamięci karty: pauza w B, zanim B dowie
+    // się o „Sorter” z A, wymazałaby „Sorter” z magazynu, choć jego paczki
+    // leżą w liczniku karty.
     const { net, clock, a, b } = twoTabs(URL_CRET, URL_WHD);
     a.SH.TaskManager.create('Sorter');
     b.SH.TaskManager.pause();
@@ -74,7 +74,7 @@ test('nowe zadanie w jednej karcie i pauza w drugiej — oba zmiany przeżywają
     eq(fresh.SH.TaskManager.shiftTotal('CRET', 'done'), 5);
 });
 
-describe('Usunięcie zadania z paczkami sąsiedniej karty (D2)');
+describe('Usunięcie zadania z paczkami sąsiedniej karty');
 
 test('usunięcie w A zdejmuje paczki, które B zapisała przed doręczeniem', () => {
     // A odejmowała od licznika cudzej karty to, co widziała w SWOJEJ pamięci:
@@ -98,7 +98,7 @@ test('usunięcie w A zdejmuje paczki, które B zapisała przed doręczeniem', ()
     ok(!Object.keys(a.sandbox.localStorage).some(k => k.startsWith(prefix)), 'żadnego osieroconego klucza');
 });
 
-describe('Ustawienia wspólne dla kart (D4, D5)');
+describe('Ustawienia wspólne dla kart');
 
 test('zmiany dwóch różnych ustawień w dwóch kartach naraz — obie zostają', () => {
     // userConfig pisał się w całości z pamięci: kto zapisał drugi, wymazywał
@@ -134,9 +134,8 @@ test('świeża zmiana nie cofa się sama po zapisie sąsiedniej karty', () => {
 
 test('ustawienie usunięte w jednej karcie nie wraca z pamięci drugiej', () => {
     // Scalanie przez deepMerge nie umie usuwać: wpis wyrzucony w A (np. karta
-    // nierozpoznana, której już nie ma) zostawał w pamięci B, a najbliższy
-    // zapis B wskrzeszał go w magazynie — sprzątanie nie kończyło się nigdy
-    // (audyt D13).
+    // nierozpoznana, której już nie ma) zostałby w pamięci B, a najbliższy
+    // zapis B wskrzeszałby go w magazynie — sprzątanie nie kończyłoby się nigdy.
     const { net, clock, a, b } = twoTabs(URL_CRET, URL_WHD);
     a.SH.store.userConfig.customTabSettings.unknownTabInstance_x_y = { displayName: 'stara', includeInGlobal: true };
     settleAll(net, clock, [a, b]);
@@ -153,7 +152,7 @@ test('ustawienie usunięte w jednej karcie nie wraca z pamięci drugiej', () => 
     eq(b.SH.store.userConfig.language, 'en');
 });
 
-describe('Dwie karty tego samego działu (D7)');
+describe('Dwie karty tego samego działu');
 
 test('paczki zaliczone w dwóch kartach CRET naraz sumują się, a nie nadpisują', () => {
     // Obie karty piszą ten sam klucz licznika z własnej pamięci: druga

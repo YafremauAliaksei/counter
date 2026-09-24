@@ -1,8 +1,8 @@
 /**
  * 18-passwords.test.js — hasła dostępu do panelu ustawień.
  *
- * Od 1.1.0 hasło nie jest jedno, tylko jest ich lista. Zmieniło to trzy rzeczy
- * naraz i każda ma tu swoje sprawdzenia:
+ * Haseł jest lista, a nie jedno. Z tego wynikają trzy rzeczy i każda ma tu
+ * swoje sprawdzenia:
  *
  *   1. LISTA JEST EDYTOWANA RĘCZNIE na górze pliku, więc może przyjść z niej
  *      dosłownie cokolwiek — pustki, powtórzenia, obiekty, pojedynczy łańcuch

@@ -4,12 +4,12 @@
  * Dziennik jest jeden na wszystkie karty, a localStorage nie daje żadnej
  * atomowości: między odczytem a zapisem sąsiednia karta może wcisnąć swoją
  * wersję tej samej pozycji. Scalanie po `updated` rozstrzyga to poprawnie
- * W PAMIĘCI, ale o tym, czy wynik trafi z powrotem do wspólnego klucza,
- * decydowała sama DŁUGOŚĆ listy — a przy nadpisanej (nie dołożonej) pozycji
- * długość się nie zmienia.
+ * w pamięci; o tym, czy wynik wraca do wspólnego klucza, nie może decydować
+ * sama długość listy — przy nadpisanej (nie dołożonej) pozycji długość się
+ * nie zmienia.
  *
- * Realnie zagrożony był ostatni przedmiot zmiany: przy każdym następnym save()
- * scala i naprawia sam. Czyli błąd wychodził dokładnie na podsumowaniu.
+ * Najbardziej zagrożony jest ostatni przedmiot zmiany: każdy następny save()
+ * scala i naprawia sam, więc błąd wyszedłby dokładnie na podsumowaniu.
  */
 
 'use strict';

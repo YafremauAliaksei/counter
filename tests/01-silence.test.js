@@ -77,11 +77,9 @@ test('praca licznika przy wyłączonych logach nic nie wypisuje', () => {
 
 test('SH.logsOn() włącza wypisywanie, SH.logsOff() wycisza z powrotem', () => {
     // Sprawdza się linię, którą wypisał Utils.log — a nie potwierdzenie
-    // samego logsOn(). Do 1.3.3 wystarczała dowolna linia, a logsOn() pisze
-    // swoją prostym console.log, więc test przechodził nawet wtedy, gdy
-    // Utils.log nie wypisywał NIGDY (audyt G1.3: mutant M88 przeżył). Dla
-    // stanowiska, na którym SH.logsOn() to jedyne narzędzie diagnostyki,
-    // to jest dokładnie ta własność, która ma działać.
+    // samego logsOn(), które idzie zwykłym console.log i pojawiłoby się
+    // nawet wtedy, gdy Utils.log nie wypisuje nic. Na stanowisku
+    // SH.logsOn() to jedyne narzędzie diagnostyki.
     //
     // Wyłącznik wraca w `finally`: porażka w środku nie może zostawić logów
     // włączonych następnym testom tego pliku.

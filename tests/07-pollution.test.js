@@ -12,9 +12,8 @@
  *   2. WYNIK scalania nie dostaje cudzego prototypu. Przypisanie
  *      `out['__proto__'] = v` nie zatruwa Object.prototype — podmienia
  *      prototyp jednego obiektu, a wtedy każde pole, którego w nim nie ma,
- *      czyta się z danych napastnika. Do 1.3.3 testy sprawdzały tylko punkt 1
- *      i przechodziły także przy zdjętym strażniku (audyt G1.1: mutanty M05
- *      i M06 przeżyły). Punkt 2 pada bez strażnika — to jest cały sens.
+ *      czyta się z danych napastnika. Sam punkt 1 przechodzi także przy
+ *      zdjętym strażniku; punkt 2 bez strażnika pada — to jest cały sens.
  */
 
 'use strict';
@@ -59,7 +58,7 @@ test('nie przepuszcza constructor ani prototype', () => {
 });
 
 test('diffPaths i applyPaths też pomijają te klucze', () => {
-    // Scalanie ustawień między kartami (1.3.3) chodzi po ścieżkach — to druga
+    // Scalanie ustawień między kartami chodzi po ścieżkach — to druga
     // droga, którą dane z magazynu trafiają do obiektów konfiguracji.
     const evil = JSON.parse('{"__proto__": {"pwned4": 1}, "a": {"constructor": {"x": 1}}}');
     const changes = U.diffPaths({}, evil);
@@ -86,8 +85,8 @@ test('scalanie kopiuje w głąb, nie zostawia wspólnych referencji', () => {
 describe('Dane z localStorage');
 
 test('zatruta konfiguracja nie psuje obiektów', () => {
-    // Klucze pod BIEŻĄCYM prefiksem. Do 1.3.3 test pisał pod v1_0_0_, którego
-    // skrypt 1.3.x w ogóle nie czyta — zatruty zapis nigdy do niego nie trafiał.
+    // Klucze pod bieżącym prefiksem — zapis pod prefiksem, którego skrypt nie
+    // czyta, nigdy by do niego nie trafił i test niczego by nie dowodził.
     const P = env.prefix;
     const e = makeEnv();
     e.sandbox.localStorage.setItem(P + 'userConfig', '{"__proto__":{"pwnedCfg":1},"language":"en"}');

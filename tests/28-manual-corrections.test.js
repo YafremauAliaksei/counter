@@ -3,12 +3,11 @@
  *
  * NIENARUSZALNA RÓWNOŚĆ: suma paczek zadań karty = licznik tej karty. Na niej
  * stoi całe rozliczenie, a ręczna poprawka (skrót −1, pole działu, pole
- * zadania, pole tempa) była drogą, którą dało się ją złamać (audyt F1).
+ * zadania, pole tempa) nie może jej złamać.
  *
- * PROCENT a zmniejszenie licznika (audyt F2, F3). Paczka zdjęta ręcznie ma
- * nieznany kierunek, więc zdjęcie nie może przesunąć procentu. Do 1.3.2
- * zdejmowało się ją z mianownika, a sprzedaż tylko przycinało od góry: −1 przy
- * 10/5 dawało 55%, a „50” wpisane przy 100/60 — 100%. Teraz zdejmują się
+ * PROCENT a zmniejszenie licznika. Paczka zdjęta ręcznie ma nieznany
+ * kierunek, więc zdjęcie nie może przesunąć procentu (−1 przy 10/5 ma dać
+ * dalej 50%, nie 55%; „50” przy 100/60 — 60%, nie 100%). Zdejmują się
  * najpierw paczki spoza mianownika (wpisane ręcznie, audyty), a potem
  * procentowe — proporcjonalnie. Procent zostaje z dokładnością do jednej paczki.
  *
@@ -49,10 +48,10 @@ function fresh(sold, unsold) {
     S.tasks = []; S.activeTaskId = null; S.taskCounters = {};
     S.tabCounters[cid] = 0; S.tabSold[cid] = 0; S.tabNeutral[cid] = 0;
     // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
-    // zapis zadań scala się z magazynem (audyt D1), a ten opisywałby
+    // zapis zadań scala się z magazynem, a ten opisywałby
     // poprzedni test — często z innym początkiem zmiany.
     env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
-    // Zera także w magazynie — licznik rośnie od wartości zapisanej (D7).
+    // Zera także w magazynie — licznik rośnie od wartości zapisanej.
     TM.syncShift(cid);
     TM.create('Default', clock.now() - 2 * HOUR);
     for (let i = 0; i < sold; i++) item(SELL);
@@ -76,7 +75,7 @@ function invariants(cid, label) {
     }
 }
 
-describe('Równość sum przy ręcznym odjęciu (F1)');
+describe('Równość sum przy ręcznym odjęciu');
 
 test('−1, gdy paczki leżą w poprzednim zadaniu, a aktywne jest puste', () => {
     // Odjęcie szło tylko do aktywnego zadania i przycinało się tam do zera:
@@ -88,7 +87,7 @@ test('−1, gdy paczki leżą w poprzednim zadaniu, a aktywne jest puste', () =>
     invariants(cid, 'po −1');
 });
 
-describe('Zmniejszenie licznika nie przesuwa procentu (F2, F3)');
+describe('Zmniejszenie licznika nie przesuwa procentu');
 
 test('skrót −1, potem +1, potem −5: procent zmiany zostaje 50%', () => {
     const cid = fresh(100, 100);
@@ -142,7 +141,7 @@ test('pole paczek zadania i pole tempa w dół też trzymają procent', () => {
     invariants(cid, 'pole tempa');
 });
 
-describe('Początek zadania (E1, E5, F6)');
+describe('Początek zadania');
 
 test('„początek zmiany” na drugim zadaniu nie nakłada go na pierwsze', () => {
     // Zadanie A 07:00–12:00, potem B. „Początek zmiany” na B dawał B od 06:30:
@@ -176,7 +175,7 @@ test('przestawienie początku zatrzymanego zadania nie puszcza zegara', () => {
     notOk(TM.isRunning(TM.active()), 'nadal zatrzymane');
 });
 
-describe('Śmieci w magazynie (F9, F11, E6)');
+describe('Śmieci w magazynie');
 
 test('liczniki z magazynu: zawsze liczba całkowita od zera w górę, z górną granicą', () => {
     const storage = makeStorage();
@@ -218,11 +217,11 @@ test('odcinki zadań z magazynu: bez 1970, bez przyszłości, bez nieskończono�
     loaded.SH.Main.teardown();
 });
 
-describe('Ekran (F5, F8)');
+describe('Ekran');
 
 test('karta z licznikiem „poza mianownikiem” większym od paczek nie zaniża procentu całości', () => {
-    // Taki stan bierze się tylko ze śmieci albo wyścigu kart, ale wtedy wkład
-    // karty do wspólnego mianownika był ujemny i procent linii 7 rósł.
+    // Taki stan bierze się tylko ze śmieci albo wyścigu kart; ujemny wkład
+    // karty do wspólnego mianownika zawyżałby procent linii 7.
     const cid = fresh(5, 5);
     S.tabCounters.WHD = 3; S.tabSold.WHD = 0; S.tabNeutral.WHD = 5;
     S.sessionConfig.activeTabInstances.WHD = clock.now();

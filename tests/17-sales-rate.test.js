@@ -8,11 +8,10 @@
  * a trzy niesprzedaże na początku zmiany dają uczciwe 0%.
  *
  * NAJWAŻNIEJSZE, CZEGO TU PILNUJEMY: procent liczy się przy WYŁĄCZONYM module
- * cen. Kierunek ustala się z samego tekstu strony, więc sieci nie potrzebuje —
- * ale do 1.0.0 `Routing.onCompleted()` wołane było tylko wtedy, gdy dziennik
- * wartości wydał id wpisu, a dziennik napełnia się dopiero po ręcznym włączeniu
- * modułu cen. Gdyby ten warunek wrócił, procent stałby na zero przez całą zmianę
- * i nikt by tego nie zauważył, bo zero jest poprawną wartością.
+ * cen. Kierunek ustala się z samego tekstu strony, więc sieci nie potrzebuje.
+ * Gdyby `Routing.onCompleted()` zależało od wpisu dziennika (który powstaje
+ * tylko z modułem cen), procent stałby na zero przez całą zmianę i nikt by
+ * tego nie zauważył, bo zero jest poprawną wartością.
  */
 
 'use strict';
