@@ -232,53 +232,54 @@ flowchart TD
     G1 -->|"WYŁĄCZONY"| STOP1["koniec — to jest stan domyślny"]
     G1 -->|"włączony"| G2{"inFlight ma ten asin?"}
     G2 -->|"tak"| STOP2["koniec: pytanie już leci"]
-    G2 -->|"nie"| G3{"jakikolwiek dostawca<br/>available?"}
+    G2 -->|"nie"| G3{"jakiekolwiek źródło usable?<br/>włączone i nie zablokowane przez CSP"}
     G3 -->|"nie"| STOP3["status off<br/>tryb legend: cenę widać na obrazku"]
-    G3 -->|"tak"| LOOP["pętla po dostawcach<br/>keepa-ocr, keepa-api, jina/blok, jina/strona"]
+    G3 -->|"tak"| LOOP["pętla po PriceSources.list<br/>keepa-ocr, keepa-api, jina/blok, jina/strona"]
 
     LOOP --> C1{"csp.net<br/>polityka strony już odmówiła?"}
     C1 -->|"tak"| BREAK1["przerywamy całą pętlę"]
-    C1 -->|"nie"| C2{"limit dla TYPU dostawcy<br/>obrazki: PRICE_MAX_IMAGE_REQUESTS<br/>tekst: PRICE_MAX_REQUESTS_PER_SESSION"}
-    C2 -->|"osiągnięty"| NEXT["następny dostawca<br/>limitHit = true"]
+    C1 -->|"nie"| C2{"limit dla RODZAJU źródła<br/>obrazki: PRICE_MAX_IMAGE_REQUESTS<br/>tekst: PRICE_MAX_REQUESTS_PER_SESSION"}
+    C2 -->|"osiągnięty"| NEXT["następne źródło<br/>limitHit = true"]
     C2 -->|"jest zapas"| C3["respectRateLimit<br/>odstęp między zapytaniami"]
     C3 --> C4{"priceModuleOn PONOWNIE<br/>moduł mógł zgasnąć, póki czekaliśmy"}
     C4 -->|"WYŁĄCZONY"| BREAK2["przerywamy"]
     C4 -->|"włączony"| BUMP["licznik zapytań + 1"]
     BUMP --> RUN["p.run asin, signal<br/>withTimeout PRICE_REQUEST_TIMEOUT_MS"]
 
-    RUN --> IMG{"dostawca obrazkowy?"}
-    IMG -->|"tak"| OCR["KeepaOCR.read → loadImage"]
-    IMG -->|"nie"| FETCH["fetch do api.keepa.com<br/>albo r.jina.ai"]
-
-    OCR --> O1{"priceModuleOn<br/>TRZECI raz, najniżej"}
-    O1 -->|"WYŁĄCZONY"| REJ["odrzucone: zapytanie nie wyszło"]
-    O1 -->|"włączony"| O2{"KeepaOCR.url<br/>asin pasuje do ^A-Z0-9 dokładnie 10?"}
+    RUN --> SRC["źródło składa adres i pyta przez PriceNet<br/>keepa-ocr: KeepaOCR.read → loadImage → PriceNet.image<br/>keepa-api, jina: PriceNet.request"]
+    SRC --> O2{"adres z danych strony?<br/>ASIN pasuje do ^A-Z0-9 dokładnie 10"}
     O2 -->|"nie"| THROW["wyjątek: niedozwolony ASIN<br/>host i schemat wszyte na stałe"]
-    O2 -->|"tak"| NET["new Image → graph.keepa.com<br/>crossOrigin, referrerPolicy no-referrer"]
+    O2 -->|"tak"| O1{"priceModuleOn<br/>TRZECI raz, najniżej: w PriceNet"}
+    O1 -->|"WYŁĄCZONY"| REJ["odrzucone: zapytanie nie wyszło"]
+    O1 -->|"włączony"| NET["fetch albo obrazek w tle"]
 
-    FETCH --> RES
     NET --> RES["wynik albo błąd"]
     RES --> OK{"jest cena?"}
     OK -->|"tak"| SAVE["_remember: zapamiętujemy wynik<br/>render karty"]
-    OK -->|"nie"| FB{"warto sprawdzić inne rynki?<br/>PRICE_FALLBACK_ENABLED ORAZ priceModuleOn<br/>ORAZ marketFallback ORAZ nie limitHit<br/>ORAZ nie csp.img ORAZ źródło nie jina"}
+    OK -->|"nie"| FB{"warto sprawdzić inne rynki?<br/>PRICE_FALLBACK_ENABLED ORAZ priceModuleOn<br/>ORAZ marketFallback ORAZ nie limitHit<br/>ORAZ jest źródło z marketSearch"}
     FB -->|"nie"| SAVE
-    FB -->|"tak"| TRY["tryOtherMarkets<br/>losowo, najwyżej PRICE_FALLBACK_MAX_TRIES<br/>z przerwą PRICE_FALLBACK_DELAY_MS"]
-    TRY --> T1{"w każdym obiegu:<br/>priceModuleOn, csp.img, limit obrazków,<br/>czy shownAsin to nadal ten przedmiot"}
+    FB -->|"tak"| TRY["tryOtherMarkets<br/>rynek z linku, Europa, na końcu com i ca<br/>z przerwą PRICE_FALLBACK_DELAY_MS"]
+    TRY --> T1{"w każdym obiegu:<br/>priceModuleOn, źródło usable, limit jego rodzaju,<br/>czy shownAsin to nadal ten przedmiot"}
     T1 -->|"któreś nie"| SAVE
-    T1 -->|"wszystkie tak"| NET2["kolejny obrazek Keepa"]
+    T1 -->|"wszystkie tak"| NET2["źródło pyta kolejny rynek"]
     NET2 --> SAVE
 ```
 
 ### Co tu widać
 
 **Bramka modułu cen stoi na trzech poziomach:** na wejściu do `resolve()`,
-w pętli po oczekiwaniu na slot i na samym dole, w `KeepaOCR.loadImage()`. To nie
+w pętli po oczekiwaniu na slot i na samym dole, w `PriceNet` — przez niego idzie
+każde zapytanie i każdy obrazek modułu cen, także kursy i diagnostyka. To nie
 jest nadmiarowość przez przeoczenie — dolna bariera istnieje po to, żeby nowa
 ścieżka wywołania, dopisana kiedyś przez kogoś, kto zapomni o sprawdzeniu wyżej,
 też nie wypuściła zapytania.
 
-**Limit liczy się osobno dla obrazków i dla zapytań tekstowych.** Wspólny licznik
-sprawiałby, że obrazkowy dostawca zjada limit tekstowy.
+**Limit liczy się osobno dla obrazków i dla zapytań tekstowych** (`kind` źródła).
+Wspólny licznik sprawiałby, że obrazkowe źródło zjada limit tekstowy.
+
+**Karta nie wie, skąd jest cena.** Hosty, adresy i rozbiór odpowiedzi żyją
+w `src/15-price-sources.js`; karta zna tylko kontrakt źródła (`run`, `kind`,
+`available`, `marketSearch`).
 
 **Adres nigdy nie powstaje z danych strony.** Host i schemat są wszyte na stałe,
 ASIN przechodzi przez zakotwiczone wyrażenie `^[A-Z0-9]{10}$`, reszta idzie przez
@@ -288,9 +289,9 @@ ASIN przechodzi przez zakotwiczone wyrażenie `^[A-Z0-9]{10}$`, reszta idzie prz
 (stąd flagi `csp.net` i `csp.img` sprawdzane w KAŻDYM obiegu pętli) oraz zmiana
 przedmiotu na ekranie (stąd sprawdzenie `shownAsin` w przeglądzie rynków).
 
-Poza tą ścieżką do sieci wychodzą jeszcze dwa miejsca i oba wymagają świadomego
-kliknięcia: `FxRates.refresh()` przy włączaniu modułu cen i `SH.cspReport()`
-wywołany ręcznie z konsoli.
+Poza tą ścieżką do sieci wychodzą jeszcze dwa miejsca, oba przez `PriceNet`
+i oba po świadomym kliknięciu: `FxRates.refresh()` przy włączaniu modułu cen
+i `SH.cspReport()` wywołany ręcznie z konsoli.
 
 ### Gdzie to się psuje
 

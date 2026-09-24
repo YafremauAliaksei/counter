@@ -6,8 +6,9 @@
      * ustawień oraz konsola (SH.priceOn() / SH.priceOff()).
      *
      * Pierwsze zapytanie do sieci zewnętrznej wychodzi stąd i znikąd indziej.
-     * Dopóki enable() nie zostanie wywołane, FxRates, KeepaOCR i PriceCard nie
-     * nawiązują połączeń — i każde z nich sprawdza to samodzielnie.
+     * Dopóki enable() nie zostanie wywołane, FxRates i PriceCard nie
+     * nawiązują połączeń, a PriceNet — jedyne wyjście do sieci modułu cen —
+     * odmawia; każde z nich sprawdza to samodzielnie.
      */
     const PriceModule = {
         enable() {

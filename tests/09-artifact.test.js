@@ -199,7 +199,7 @@ test('build.js przepuszcza wyłącznie bezpieczny adres wydania', () => {
  * INWENTARZ WYJŚĆ DO SIECI.
  *
  * Porównanie dwóch liczb z całego pliku (ile `fetch(`, ile `priceModuleOn()`)
- * niczego nie dowodzi: strażnik zdjęty z KeepaOCR.loadImage i zastąpiony
+ * niczego nie dowodzi: strażnik zdjęty z PriceNet.image i zastąpiony
  * komentarzem z wzmiankami przeszedłby bez problemu. Wykrywacz musi też
  * widzieć `.src =` i `setAttribute('src', …)` — tędy idzie wykres.
  *
@@ -216,14 +216,66 @@ test('build.js przepuszcza wyłącznie bezpieczny adres wydania', () => {
  * nie dało się dodać po cichu.
  */
 const NETWORK_SITES = {
-    loadImage: { guard: 'self' },                       // KeepaOCR: obrazek wykresu do odczytu
-    init: { guard: 'self' },                            // FxRates: kursy walut
+    request: { guard: 'self' },                         // PriceNet: każde zapytanie HTTP modułu cen
+    image: { guard: 'self' },                           // PriceNet: każdy obrazek w tle (odczyt ceny, diagnostyka)
     render: { guard: 'self' },                          // PriceCard: obrazek wykresu na karcie
-    cspReport: { guard: 'self' },                       // SH.cspReport(): próby do Keepa i r.jina.ai
-    run: { guard: 'caller', caller: 'resolve' },        // dostawcy ceny, wołani tylko z PriceCard.resolve
     readCsp: { guard: 'none', why: 'własna domena strony, tylko z SH.cspReport() wpisanego ręcznie' },
     link: { guard: 'none', why: 'tekst zakładki do skopiowania — łańcuch znaków, a nie wywołanie' },
 };
+
+/**
+ * GRANICA ADAPTERA ŹRÓDEŁ.
+ *
+ * Wiedza o tym, SKĄD przychodzi cena i kurs, stoi w src/15-price-sources.js
+ * (plus nastawy w konfiguracji i podpisy w słownikach). Karta ceny, kursy,
+ * panel i start skryptu znają tylko kontrakt — dzięki temu wymiana źródeł
+ * na inne to przepisanie jednego pliku. Poza tymi trzema modułami kod (bez
+ * komentarzy) nie może:
+ *   - wymieniać hostów ani nazw serwisów (keepa, jina);
+ *   - sięgać po nastawy źródeł (PRICE_OCR_*, keepa_ok, PRICE_KEEPA_*);
+ *   - wychodzić do sieci inaczej niż przez PriceNet — `new Image(` wcale,
+ *     `fetch(` tylko do własnej strony (readCsp) i w tekście zakładki.
+ * Nazwa obiektu KeepaOCR w konsolowym API (SH) jest dozwolona — to narzędzie
+ * diagnostyczne, a nie logika. Dozwolona jest też lista trybów źródła
+ * w ConfigCode.ENUMS: to format kodu ustawień (kolejność = indeks), więc
+ * wartości stoją tam dosłownie.
+ */
+const ADAPTER_MODULES = ['src/01-config.js', 'src/02-i18n-strings.js', 'src/15-price-sources.js'];
+
+/** Moduł źródłowy każdego wiersza artefaktu — po znacznikach `// ─── src/… ───`. */
+function moduleOfLines() {
+    let current = null;
+    return LINES.map(l => {
+        const m = /^\s*\/\/ ─── (src\/[\w.-]+) ───$/.exec(l);
+        if (m) current = m[1];
+        return current;
+    });
+}
+
+function adapterLeaks() {
+    const owner = moduleOfLines();
+    const bad = [];
+    LINES.forEach((l, i) => {
+        if (IS_COMMENT[i] || !owner[i] || ADAPTER_MODULES.includes(owner[i])) return;
+        if (owner[i] === 'src/23-config-code.js' && /^\s*source:\s*\[/.test(l)) return;
+        const code = l.replace(/\bKeepaOCR\b/g, '');
+        const why = /keepa|jina/i.test(code) ? 'nazwa serwisu'
+            : /PRICE_OCR_/.test(code) ? 'nastawa źródła'
+            : /https?:\/\/[A-Za-z]/.test(code) ? 'adres hosta'
+            : /new\s+Image\s*\(/.test(code) ? 'obrazek poza PriceNet'
+            : (/\bfetch\s*\(/.test(code) && !/location\.href/.test(code) && owner[i] !== 'src/23-config-code.js')
+                ? 'fetch poza PriceNet' : null;
+        if (why) bad.push(`${owner[i]} (${why}): ${l.trim().slice(0, 70)}`);
+    });
+    return bad;
+}
+
+test('poza adapterem źródeł kod nie zna sieci zewnętrznej', () => {
+    const owner = moduleOfLines();
+    ok(owner.includes('src/20-price-card.js') && owner.includes('src/15-price-sources.js'),
+       'znaczniki modułów muszą być widoczne — inaczej sprawdzenie jest puste');
+    eq(adapterLeaks(), []);
+});
 
 const KEYWORDS = /^(if|for|while|switch|catch|function|return)$/;
 /** Nazwa funkcji, jeśli wiersz ją otwiera: `name(…) {` albo `name: (…) =>`. */
@@ -257,7 +309,9 @@ const guardedBetween = (from, to) => LINES.slice(from, to)
 
 test('każde wyjście do sieci stoi w inwentarzu, a jego ochrona jest w kodzie', () => {
     const sites = networkSites();
-    ok(sites.length >= 8, 'wyjść do sieci jest kilka — inaczej wykrywacz przestał działać: ' + sites.length);
+    // Siedem wierszy: fetch i obrazek w PriceNet (z przerwaniem po czasie),
+    // wykres na karcie, readCsp i tekst zakładki.
+    ok(sites.length >= 7, 'wyjść do sieci jest kilka — inaczej wykrywacz przestał działać: ' + sites.length);
     const bad = [];
     for (const s of sites) {
         const entry = NETWORK_SITES[s.fn];

@@ -258,7 +258,7 @@
                 window[CONFIG.SCRIPT_ID_PREFIX + 'API'] = window.SH = {
                     store, CONFIG, PriceCard, ShiftManager, SessionReset,
                     StorageManager, SettingsPanel, AutoTrigger, I18n,
-                    KeepaOCR, ValueLog, FxRates, Routing,
+                    KeepaOCR, PriceSources, PriceNet, ValueLog, FxRates, Routing,
                     // Potrzebne testom i diagnostyce.
                     Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
                     DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG, DEFAULT_USER_CONFIG,
@@ -330,17 +330,15 @@
                      * naprawdę przechodzi. Asynchroniczna — wołać przez
                      * `await SH.cspReport()` albo `SH.cspReport().then(console.table)`.
                      *
-                     * Część praktyczna (obrazek Keepa, zapytanie do r.jina.ai)
-                     * wychodzi w sieć, więc wymaga włączonego modułu cen. Rozbiór
-                     * polityki działa zawsze — nie wychodzi poza własną domenę.
+                     * Hosty i sprawdzenia faktyczne dają źródła ceny
+                     * (PriceSources.cspHosts, PriceSources.probes). Sprawdzenia
+                     * wychodzą w sieć, więc wymagają włączonego modułu cen.
+                     * Rozbiór polityki działa zawsze — nie wychodzi poza
+                     * własną domenę.
                      */
                     cspReport: async () => {
                         const parsed = await PriceCard.readCsp();
-                        const HOSTS = {
-                            'graph.keepa.com': 'img-src',
-                            'r.jina.ai': 'connect-src',
-                            'api.keepa.com': 'connect-src',
-                        };
+                        const HOSTS = { ...PriceSources.cspHosts };
                         // Host wydania — zakładka pobiera z niego skrypt.
                         // Tylko wtedy, gdy ta kompilacja ma adres wydania.
                         const release = /^https:\/\/([^/:]+)/.exec(CONFIG.RELEASE_URL);
@@ -350,33 +348,20 @@
                             verdict[`${host} (${dir})`] = PriceCard.cspAllows(parsed, dir, host);
                         }
 
-                        let imgTest = 'moduł cen wyłączony — sprawdzenie nie było wykonane';
-                        let netTest = 'moduł cen wyłączony — sprawdzenie nie było wykonane';
-                        if (priceModuleOn()) {
-                            // Praktyczne sprawdzenie: polityka polityką, a ważne
-                            // jest to, co naprawdę przechodzi.
-                            imgTest = await new Promise(res => {
-                                const im = new Image();
-                                im.referrerPolicy = 'no-referrer';
-                                im.onload = () => res(im.naturalWidth > 10 ? 'załadowany' : 'pusty');
-                                im.onerror = () => res('ZABLOKOWANY');
-                                setTimeout(() => res('przekroczony czas'), 8000);
-                                im.src = PriceCard.keepaUrl('B0915C748N');
-                            });
-                            try {
-                                const r = await fetch('https://r.jina.ai/https://example.com', {
-                                    headers: { 'x-cache-tolerance': '259200' },
-                                });
-                                netTest = 'przeszedł, HTTP ' + r.status;
-                            } catch (e) { netTest = 'ZABLOKOWANY (' + e.message + ')'; }
+                        // Praktyczne sprawdzenie: polityka polityką, a ważne
+                        // jest to, co naprawdę przechodzi.
+                        const checks = {};
+                        for (const probe of PriceSources.probes()) {
+                            checks['sprawdzenie faktyczne: ' + probe.label] = priceModuleOn()
+                                ? await probe.run()
+                                : 'moduł cen wyłączony — sprawdzenie nie było wykonane';
                         }
 
                         return {
                             'polityka wzięta z': parsed.source || 'polityki nie znaleziono',
                             'pełny tekst': parsed.raw || '—',
                             'rozbiór po hostach': verdict,
-                            'sprawdzenie faktyczne: obrazek Keepa': imgTest,
-                            'sprawdzenie faktyczne: zapytanie r.jina.ai': netTest,
+                            ...checks,
                             'zarejestrowane blokady': {
                                 obrazek: PriceCard.csp.img,
                                 zapytania: PriceCard.csp.net,

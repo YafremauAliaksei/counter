@@ -104,11 +104,11 @@
                         + `${Math.round((Date.now() - this.fetchedAt) / 3600000)} h`);
                 return this.rates;
             }
-            for (const p of CONFIG.FX_PROVIDERS) {
+            for (const p of PriceSources.fxProviders) {
                 try {
                     const ctl = new AbortController();
                     const timer = setTimeout(() => ctl.abort(), CONFIG.FX_TIMEOUT_MS);
-                    const r = await fetch(p.url, { signal: ctl.signal, cache: 'no-store' });
+                    const r = await PriceNet.request(p.url, { signal: ctl.signal, cache: 'no-store' });
                     clearTimeout(timer);
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     const norm = this.normalize(p.pick(await r.json()));

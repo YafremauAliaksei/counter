@@ -33,7 +33,7 @@ const { boot } = require('./dom-stub');
 
 const env = boot();
 const K = env.SH.KeepaOCR;
-const P = env.SH.PriceCard;
+const S = env.SH.PriceSources;
 const FX = env.SH.FxRates;
 const U = env.SH.Utils;
 
@@ -42,7 +42,7 @@ const ocr = (t) => K.toDecimal(t);
 
 /** Cena w odpowiedzi tekstowej, zakotwiczona jak na stronie produktu. */
 function jina(kwota) {
-    const r = P.parseJina('Markdown Content:\n' + kwota + ' with 5 percent savings\n', false);
+    const r = S.parseJina('Markdown Content:\n' + kwota + ' with 5 percent savings\n', false);
     return r && r.current ? r.current.value : null;
 }
 

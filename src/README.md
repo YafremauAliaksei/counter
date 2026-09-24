@@ -12,7 +12,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | # | Moduł | Odpowiada za | Linii |
 |---|---|---|---|
 | — | `00-banner.js` | nagłówek `==UserScript==`, hasło, wyłącznik logów | ~55 |
-| 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~605 |
+| 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~585 |
 | 02 | `02-i18n-strings.js` | trzy słowniki tłumaczeń (pl, en, ru) | ~390 |
 | 03 | `03-utils.js` | `deepMerge`, `clampNum`, `hexToRgb`, generator DOM `h()` | ~215 |
 | 04 | `04-core-state.js` | `EventBus`, reaktywny `store`, `priceModuleOn()` | ~135 |
@@ -26,12 +26,12 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 12 | `12-ui-settings.js` | panel ustawień | ~680 |
 | 13 | `13-ui-visuals.js` | przyciemnienie strony, wskaźnik działu, powiadomienia | ~85 |
 | 14 | `14-marketplace.js` | wybrany sklep i budowa linku do towaru | ~25 |
-| 15 | `15-price-ocr.js` | odczyt ceny z pikseli wykresu Keepa | ~305 |
+| 15 | `15-price-sources.js` | **adapter źródeł**: jedyne wyjście do sieci (`PriceNet`), odczyt z wykresu Keepa, źródła ceny i kursów (`PriceSources`) | ~680 |
 | 16 | `16-value-log.js` | dziennik wartości, wspólny dla wszystkich zakładek | ~390 |
 | 17 | `17-fx-rates.js` | kursy walut i przeliczanie na euro | ~225 |
 | 18 | `18-routing.js` | ustalenie, dokąd pojechał przedmiot | ~260 |
 | 19 | `19-price-module.js` | główny wyłącznik sieci: `enable` / `disable` | ~35 |
-| 20 | `20-price-card.js` | karta ceny i warstwa sieciowa | ~1040 |
+| 20 | `20-price-card.js` | karta ceny: pytanie źródeł, limity, przegląd sklepów, CSP, rysowanie | ~900 |
 | 21 | `21-input.js` | klawiatura i `MutationObserver` | ~170 |
 | 22 | `22-bootstrap.js` | `Main.init`, rozbiórka, konsolowe API `SH` | ~410 |
 | 23 | `23-config-code.js` | kod ustawień: jeden ciąg szesnastkowy zamiast panelu | ~435 |
@@ -91,7 +91,7 @@ odwoływać się tylko „w górę”, ciała funkcji — dokądkolwiek.
    │                                            │
    └──────────────┬─────────────────────────────┘
                   │
-      15-price-ocr ── 16-value-log ── 17-fx-rates ── 18-routing
+   15-price-sources ── 16-value-log ── 17-fx-rates ── 18-routing
                   │
             19-price-module ── 20-price-card
                   │
@@ -104,16 +104,24 @@ z `16-value-log`, a `22-bootstrap` szarpie wszystkich.
 
 ---
 
-## Co warto kiedyś rozdzielić
+## Granica źródeł ceny
 
-`20-price-card.js` — 1045 linii i jest to jedyny moduł, który wyraźnie odstaje.
-Mieszkają w nim trzy różne rzeczy:
+Wszystko, co wie, **skąd** przychodzi cena produktu i kurs waluty, stoi
+w `15-price-sources.js`:
 
-1. lista źródeł ceny i pętla sieciowa (`providers`, `resolve`, `tryOtherMarkets`);
-2. rozbiór odpowiedzi (`parseJina`, `normalize`, `MONEY`);
-3. interfejs karty (`init`, `applyStyle`, `render`).
+- `PriceNet` — jedyne wyjście do sieci modułu cen: `request(url, init)` (fetch)
+  i `image(url, opts)` (obrazek w tle), każde z twardym `priceModuleOn()`;
+- `KeepaOCR` — odczyt ceny z pikseli wykresu Keepa;
+- `PriceSources` — źródła ceny (`list()`), tryby w panelu (`modes`), wykres
+  (`chart`), hosty dla CSP (`cspHosts`), rynki z danymi (`coversMarket()`),
+  źródła kursów (`fxProviders`) i sprawdzenia do `SH.cspReport()` (`probes()`).
 
-Na razie nie dzielono: to wszystko metody jednego obiektu `PriceCard`, a rozrzucenie
-literału obiektowego po plikach czyta się gorzej niż jeden długi plik. Rozsądny moment
-na podział nadejdzie, gdy pojawi się drugie źródło ceny z własnym układem karty;
-wtedy punkt 2 naturalnie przeniesie się do `price-parsers.js`.
+Kontrakt źródła jest opisany w nagłówku tego pliku. `20-price-card.js`,
+`17-fx-rates.js`, panel i `22-bootstrap.js` znają tylko kontrakt: nie wymieniają
+hostów, nie sięgają po nastawy Keepa ani r.jina.ai i nie wołają `fetch` ani
+`new Image` poza `PriceNet`. Pilnuje tego test „poza adapterem źródeł kod nie zna
+sieci zewnętrznej” w `tests/09-artifact.test.js`.
+
+Wymiana źródeł (np. na wewnętrzne API) to więc przepisanie jednego pliku według
+kontraktu — limity, przerwy, limit czasu, przegląd sklepów, blokady CSP, dziennik
+wartości i przeliczanie walut zostają bez zmian. Lista kroków: `HANDOFF.md`.

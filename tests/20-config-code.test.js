@@ -386,6 +386,16 @@ test('powtórne kliknięcie zakładki nakłada nowy kod na działający egzempla
     notOk(BOOT_NAME in e.sandbox.window, 'zmienna posprzątana także tą drogą');
 });
 
+describe('Tryby źródła ceny');
+
+test('każdy tryb z PriceSources.modes ma miejsce w ConfigCode.ENUMS.source', () => {
+    // Tryb spoza listy kod ustawień zgubiłby po cichu: w kodzie leci indeks.
+    const values = SH.PriceSources.modes.map(m => m.value);
+    ok(values.length > 0, 'lista trybów nie może być pusta');
+    for (const v of values) ok(CC.ENUMS.source.includes(v), 'tryb bez miejsca w kodzie ustawień: ' + v);
+    ok(values.includes(SH.DEFAULT_LOCAL_CONFIG.priceCard.source), 'tryb domyślny jest na liście');
+});
+
 describe('Gotowa zakładka');
 
 /**
