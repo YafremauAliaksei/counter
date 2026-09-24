@@ -54,7 +54,7 @@
     "     przeskoczyć nieznany numer. Numery z REGISTRY są przydzielane raz",
     "     i nigdy nie wracają do obiegu — nawet gdy ustawienie znika ze skryptu.",
     "",
-    "Wydanie powstaje z tagu vX.Y.Z (patrz .github/workflows/release.yml",
+    "Wydanie powstaje z tagu vX.Y.Z (patrz workflow wydania release.yml",
     "i rozdział 'Wydania' w README). Tagu raz wydanego nie przestawia się na inny",
     "commit — kto zdążył pobrać plik, miałby wtedy co innego niż następny."
   ],

@@ -12,6 +12,9 @@
     "CHANGELOG.md",
     "LICENSE"
   ],
+  "config": {
+    "releaseUrl": ""
+  },
   "engines": {
     "node": ">=20.19"
   },

@@ -521,9 +521,9 @@
         /**
          * Czyta i rozbiera Content-Security-Policy strony.
          *
-         * CSP to imienna lista hostów, a nie wyłącznik: to, że skrypt
-         * z githuba się załadował, znaczy tylko, że dozwolony jest tamten host,
-         * a nie graph.keepa.com czy r.jina.ai.
+         * CSP to imienna lista hostów, a nie wyłącznik: to, że skrypt się
+         * załadował, znaczy tylko, że dozwolony jest host, z którego go
+         * pobrano, a nie graph.keepa.com czy r.jina.ai.
          *
          * Polityka częściej przychodzi nagłówkiem HTTP niż meta-tagiem, więc
          * nagłówek doczytuje się zapytaniem o własną stronę (własny origin,

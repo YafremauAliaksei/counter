@@ -71,19 +71,17 @@
         SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
         /**
          * Adres, spod którego zakładka pobiera skrypt. Z niego ConfigCode.link()
-         * składa gotową zakładkę z kodem ustawień.
+         * składa gotową zakładkę z kodem ustawień. Pusty adres znaczy „zakładki
+         * nie ma”: panel pokazuje podpowiedź, a kod ustawień działa bez zmian.
          *
-         * Musi to być raw.githubusercontent.com: zakładka pobiera plik przez
-         * `fetch` z cudzej strony, a to przechodzi tylko przy nagłówku
-         * `Access-Control-Allow-Origin`. raw go wystawia (`*`); pobranie
-         * wydania z github.com odpowiada przekierowaniem bez tego nagłówka
-         * i przeglądarka zrywa zapytanie („blocked by CORS policy”).
-         *
-         * Gałąź `release` wskazuje ostatnie wydanie — przesuwa ją tylko
-         * workflow wydania, więc uruchamia się wyłącznie kod świadomie wydany.
-         * Przypięcie do wersji: ta sama ścieżka z tagiem zamiast `release`.
+         * Wartość podstawia build.js z pola `config.releaseUrl` w package.json,
+         * więc w źródłach adresu nie ma — każde miejsce publikacji ustawia
+         * własny. Serwer musi odpowiadać nagłówkiem
+         * `Access-Control-Allow-Origin`: zakładka pobiera plik przez `fetch`
+         * ze strony T-REX, a bez nagłówka (także po przekierowaniu, które go
+         * gubi) przeglądarka zrywa zapytanie („blocked by CORS policy”).
          */
-        RELEASE_URL: 'https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',
+        RELEASE_URL: '__RELEASE_URL__',
         /**
          * Hasła z nagłówka w jednej postaci (normalizeAccessPasswords).
          * Porównuje je z buforem klawiatury InputManager. Pusta lista znaczy

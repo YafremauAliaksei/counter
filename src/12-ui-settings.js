@@ -638,9 +638,11 @@
             });
 
             const codeBox = readOnlyBox(ConfigCode.encode());
-            const linkBox = readOnlyBox(ConfigCode.link());
             secCode.appendChild(UIBuilder.row(I18n.get('configCode_yours'), codeBox));
-            secCode.appendChild(UIBuilder.row(I18n.get('configCode_link'), linkBox));
+            const link = ConfigCode.link();
+            secCode.appendChild(link
+                ? UIBuilder.row(I18n.get('configCode_link'), readOnlyBox(link))
+                : UIBuilder.hint(I18n.get('configCode_linkMissing')));
 
             secCode.appendChild(UIBuilder.button(I18n.get('configCode_select'), () => {
                 codeBox.focus();

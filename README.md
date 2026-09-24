@@ -595,7 +595,7 @@ w konsoli:
 ```js
 SH.config('0x0101000101010103ff8800020e0201a4030001014c'); // wielkość liter bez znaczenia
 SH.configCode(); // kod bieżących ustawień
-SH.configLink(); // gotowa zakładka z tym kodem w środku
+SH.configLink(); // gotowa zakładka z tym kodem w środku (null bez adresu wydania)
 ```
 
 Dla wygody działa też krótkie `config('0x…')`, bez `SH.` — ale tylko wtedy, gdy
@@ -610,6 +610,14 @@ dla **siebie** — na drugi komputer albo po wyczyszczeniu przeglądarki — kt�
 od pierwszego kliknięcia stawia własny wygląd, bez przeklikiwania panelu.
 Innej osobie wysyła się kod, a nie zakładkę (patrz ostrzeżenie w „Szybkim
 starcie”).
+
+Adres pliku w środku zakładki nie jest wpisany w kod: podstawia go `npm run build`
+z pola `config.releaseUrl` w `package.json`, więc każde miejsce publikacji
+ustawia własny. Pole jest domyślnie **puste** — wtedy `SH.configLink()` zwraca
+`null`, a panel zamiast pola „Gotowa zakładka” pokazuje podpowiedź; kod ustawień
+działa bez zmian. Adres musi być adresem `https` bez apostrofów, cudzysłowów,
+spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
+`Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
 javascript:(async()=>{try{window['statsHelper_v1_3_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
@@ -963,7 +971,8 @@ Podnosi `package.json`, przebudowuje artefakt i zamyka sekcję w CHANGELOG:
 sprawdza je workflow: wersja w `package.json`, `SCRIPT_VERSION` w artefakcie
 i nagłówek `@version` w bloku `==UserScript==`. Artefakt składa się poleceniem
 `npm run build`, które bierze numer prosto z `package.json` — ręcznie nie wpisuje
-się go nigdzie.
+się go nigdzie. Tą samą drogą, z pola `config.releaseUrl`, wchodzi adres pliku
+dla gotowej zakładki w panelu (patrz „Zakładka, która sama stawia ustawienia”).
 
 ### 2. Tag i wydanie — z interfejsu GitHuba
 

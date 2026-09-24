@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
-// @namespace    bomba.stats.helper
+// @namespace    statshelper.counter
 // @version      __VERSION__
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*

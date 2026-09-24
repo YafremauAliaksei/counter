@@ -422,8 +422,14 @@
          * tutaj nie wywołuje — stąd wyłączona reguła lintera, która widzi samo
          * słowo `javascript:` w ciągu znaków. Test artefaktu pilnuje, że jest to
          * jedyne miejsce w całym pliku ze słowem `eval`.
+         *
+         * @returns {string|null} zakładka albo null, gdy w tej kompilacji nie
+         *   ma adresu wydania (CONFIG.RELEASE_URL).
          */
         link() {
+            // Bez adresu wydania zakładka nie miałaby czego pobrać — null
+            // zamiast tekstu, który po kliknięciu kończy się błędem.
+            if (!CONFIG.RELEASE_URL) return null;
             // Kolejność jest mechanizmem: najpierw kod trafia do okna, potem
             // rusza pobieranie pliku, który zastaje go gotowego (BOOT_VAR).
             // `r.ok` nie puszcza strony błędu 404/503 do wykonania, a `catch`

@@ -138,7 +138,8 @@ describe('Komentarze w kodzie bez historii wersji');
  * którą podnosi Dependabot).
  */
 const VERSION_IN_COMMENT = /\b[0-9]\.[0-9]{1,2}\.[0-9]\b/;
-const AUDIT_IN_COMMENT = /\baudyt(u|em)?\s+[A-Z][0-9]/;
+// Wielka litera na początku zdania też się liczy (próbka niżej, wiersz 6).
+const AUDIT_IN_COMMENT = /\b[Aa]udyt(u|em)?\s+[A-Z][0-9]/;
 
 /** Komentarze pliku: [numer linii, tekst]. JS/HTML — `//`, `/* */`, `<!-- -->`; YAML — `#`. */
 function commentsOf(rel) {
@@ -200,13 +201,13 @@ test('strażnik łapie wersję w każdej z trzech postaci komentarza', () => {
     // komentarza z wersją w oczach strażnika.
     const v = ['1', '3', '3'].join('.');
     const probe = ['// w ' + v + ' było inaczej', 'const x = 1; ' + '//' + ' aud' + 'yt D7',
-                   '/*', ' * od ' + v, ' */', ''].join('\n');
+                   '/*', ' * od ' + v, ' */', '// ' + 'Aud' + 'yt I3: zdanie', ''].join('\n');
     fs.writeFileSync(tmp, probe);
     try {
         const found = commentsOf('tests/.guard-probe.js')
             .filter(([, t]) => VERSION_IN_COMMENT.test(t) || AUDIT_IN_COMMENT.test(t))
             .map(([n]) => n);
-        eq(found, [1, 2, 4]);
+        eq(found, [1, 2, 4, 6]);
     } finally {
         fs.unlinkSync(tmp);
     }

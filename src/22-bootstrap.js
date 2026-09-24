@@ -340,8 +340,11 @@
                             'graph.keepa.com': 'img-src',
                             'r.jina.ai': 'connect-src',
                             'api.keepa.com': 'connect-src',
-                            'raw.githubusercontent.com': 'connect-src',
                         };
+                        // Host wydania — zakładka pobiera z niego skrypt.
+                        // Tylko wtedy, gdy ta kompilacja ma adres wydania.
+                        const release = /^https:\/\/([^/:]+)/.exec(CONFIG.RELEASE_URL);
+                        if (release) HOSTS[release[1]] = 'connect-src';
                         const verdict = {};
                         for (const [host, dir] of Object.entries(HOSTS)) {
                             verdict[`${host} (${dir})`] = PriceCard.cspAllows(parsed, dir, host);

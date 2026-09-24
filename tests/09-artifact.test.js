@@ -52,7 +52,7 @@ describe('Komentarze opisują kod, a nie jego historię');
  */
 test('w komentarzach nie ma numerów wersji ani odsyłaczy do audytu', () => {
     const VERSION = /\b[0-9]\.[0-9]{1,2}\.[0-9]\b/;
-    const AUDIT = /\baudyt(u|em)?\s+[A-Z][0-9]/;
+    const AUDIT = /\b[Aa]udyt(u|em)?\s+[A-Z][0-9]/;
     const bad = [];
     LINES.forEach((l, i) => {
         let text = null;
@@ -125,13 +125,6 @@ test('wszystkie adresy zewnętrzne należą do znanej listy', () => {
         'graph.keepa.com', 'api.keepa.com', 'r.jina.ai',
         'cdn.jsdelivr.net', 'open.er-api.com', 'www.floatrates.com',
         'example.com',                  // wyłącznie w diagnostyce CSP
-        // Adres wydania (CONFIG.RELEASE_URL) i nazwa w raporcie CSP. Skrypt
-        // stąd NIE pobiera — wkleja adres do tekstu gotowej zakładki, a pobiera
-        // dopiero przeglądarka po kliknięciu. Pilnuje tego sprawdzenie niżej:
-        // „każde wejście do sieci jest osłonięte sprawdzeniem modułu” liczy
-        // wywołania fetch i new Image, a tu nie ma ani jednego.
-        'raw.githubusercontent.com',
-        'github.com',                   // wyłącznie w komentarzu przy RELEASE_URL
     ];
     const amazon = /^www\.amazon\.(de|co\.uk|com|it|fr|es|nl|ca|se|com\.be|pl)$/;
     const hosts = new Set();
@@ -145,28 +138,61 @@ test('wszystkie adresy zewnętrzne należą do znanej listy', () => {
 });
 
 /**
- * ADRES WYDANIA MUSI STAĆ NA HOŚCIE, KTÓRY PRZEPUSZCZA ZAPYTANIA MIĘDZYDOMENOWE.
+ * ADRES WYDANIA NIE JEST CZĘŚCIĄ KODU.
  *
- * Adres `github.com/…/releases/latest/download/…` nie działa w zakładce:
- * pobranie pliku wydania kończy się przekierowaniem BEZ nagłówka
- * `Access-Control-Allow-Origin`, więc przeglądarka zrywa zapytanie („blocked
- * by CORS policy”). Kliknięcie takiego adresu działa, `fetch` z cudzej strony
- * — nie, i to jest różnica, której nie widać z kodu.
- *
- * Sprawdzenie jest listą hostów, o których WIADOMO, że nagłówek wystawiają.
- * Nowy host dopisuje się tutaj dopiero po sprawdzeniu nagłówków odpowiedzi,
- * a nie z przekonania.
+ * Skrypt ma działać tak samo niezależnie od tego, gdzie leży: adres, spod
+ * którego zakładka pobiera plik, podstawia build.js z `config.releaseUrl`
+ * w package.json. W źródłach nie ma ani adresu, ani nazwy repozytorium czy
+ * jego właściciela — kod przekazuje się dalej bez danych osobowych.
+ * Właściciela bierze się z CODEOWNERS, żeby nie powtarzać go w teście.
  */
-test('adres wydania stoi na hoście z nagłówkiem CORS', () => {
-    const CORS_OK = ['raw.githubusercontent.com', 'cdn.jsdelivr.net'];
-    const found = /RELEASE_URL:\s*'([^']+)'/.exec(ARTIFACT);
+const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const { releaseUrlProblem } = require('../build.js');
+
+test('adres wydania w artefakcie to dokładnie ten z package.json', () => {
+    const found = /RELEASE_URL:\s*'([^']*)'/.exec(ARTIFACT);
     ok(found, 'RELEASE_URL musi być w artefakcie');
-    const url = found[1];
-    const host = /^https:\/\/([A-Za-z0-9.-]+)\//.exec(url);
-    ok(host, 'adres wydania musi być pełnym adresem https, jest: ' + url);
-    ok(CORS_OK.includes(host[1]),
-       'host bez CORS w adresie zakładki: ' + host[1] + ' (znane: ' + CORS_OK.join(', ') + ')');
-    ok(url.endsWith('/counter.js'), 'adres ma wskazywać na sam plik');
+    eq(found[1], (PKG.config && PKG.config.releaseUrl) ?? '');
+});
+
+test('w artefakcie i źródłach nie ma adresu repozytorium ani nazwy właściciela', () => {
+    // Tylko wiersze reguł: komentarz CODEOWNERS opisuje format („@użytkownik”).
+    const owners = fs.readFileSync(path.join(ROOT, '.github', 'CODEOWNERS'), 'utf8')
+        .split('\n').filter(l => !l.trim().startsWith('#'))
+        .join('\n').match(/@[A-Za-z0-9-]+/g) || [];
+    ok(owners.length > 0, 'CODEOWNERS musi kogoś wskazywać — inaczej sprawdzenie jest puste');
+    const names = [...new Set(owners.map(o => o.slice(1).toLowerCase()))];
+    const sources = ['counter.js', 'build.js', 'build.manifest.json']
+        .concat(fs.readdirSync(path.join(ROOT, 'src')).map(f => 'src/' + f));
+    const bad = [];
+    for (const rel of sources) {
+        const text = fs.readFileSync(path.join(ROOT, rel), 'utf8').toLowerCase();
+        if (text.includes('github')) bad.push(rel + ': github');
+        for (const n of names) if (text.includes(n)) bad.push(rel + ': ' + n);
+    }
+    eq(bad, [], 'dane repozytorium w kodzie');
+});
+
+test('build.js przepuszcza wyłącznie bezpieczny adres wydania', () => {
+    // Adres trafia bez kodowania do literału w apostrofach i do tekstu
+    // zakładki, więc każdy znak spoza wąskiego zestawu to rozerwany kod.
+    for (const good of ['', 'https://intranet.example/counter.js',
+                        'https://files.intranet.example:8443/tools/statshelper/counter.js',
+                        'https://intranet.example']) {
+        eq(releaseUrlProblem(good), null, 'dozwolony: ' + JSON.stringify(good));
+    }
+    for (const bad of ['http://intranet.example/counter.js',   // mieszana treść na stronie https
+                       "https://intranet.example/a'b.js",      // zamyka literał
+                       'https://intranet.example/a"b.js',
+                       'https://intranet.example/a\\b.js',
+                       'https://intranet.example/a b.js',
+                       'https://intranet.example/c.js?x=1',     // parametry — poza zestawem
+                       'javascript:alert(1)',
+                       'https://',
+                       ' https://intranet.example/counter.js',
+                       null, 42]) {
+        ok(releaseUrlProblem(bad), 'odrzucony: ' + JSON.stringify(bad));
+    }
 });
 
 /**
@@ -416,9 +442,9 @@ test('mapa modułów w src/README.md zna każdy moduł i nie kłamie o jego rozm
 });
 
 test('sam build odmawia, gdy w src/ leży moduł spoza manifestu', () => {
-    // Audyt I3: test wyżej łapał sierotę tylko w `npm test`, a `npm run build`
-    // zgłaszał sukces z artefaktem bez nowego kodu. Kopia repozytorium
-    // w katalogu tymczasowym, żeby nie dotykać prawdziwego src/.
+    // Test wyżej łapie sierotę tylko w `npm test`. Tu sprawdza się sam build:
+    // ma odmówić, zamiast zgłosić sukces z artefaktem bez nowego kodu. Kopia
+    // repozytorium w katalogu tymczasowym, żeby nie dotykać prawdziwego src/.
     const os = require('os');
     const { spawnSync } = require('child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sh-build-'));

@@ -388,12 +388,59 @@ test('powtórne kliknięcie zakładki nakłada nowy kod na działający egzempla
 
 describe('Gotowa zakładka');
 
-test('odnośnik zawiera adres wydania i kod bieżących ustawień', () => {
+/**
+ * Adres wydania podstawia build.js z package.json i domyślnie jest pusty,
+ * więc środowisko z zakładką dostaje adres w teście. Host `.example` jest
+ * zarezerwowany (RFC 2606) — nie należy do nikogo i nigdzie nie prowadzi.
+ */
+const TEST_RELEASE_URL = 'https://intranet.example/statshelper/counter.js';
+function linkEnv() {
     const e = freshEnv();
+    e.SH.CONFIG.RELEASE_URL = TEST_RELEASE_URL;
+    return e;
+}
+
+test('bez adresu wydania zakładki nie ma: null zamiast tekstu, który by nie zadziałał', () => {
+    const e = freshEnv();
+    eq(e.SH.CONFIG.RELEASE_URL, '', 'domyślna kompilacja nie ma adresu wydania');
+    eq(e.SH.configLink(), null);
+});
+
+test('bez adresu wydania panel pokazuje podpowiedź, a kod ustawień zostaje', () => {
+    const e = freshEnv();
+    e.SH.store.uiFlags.isSettingsPanelVisible = true;
+    e.SH.SettingsPanel.render();
+    const txt = e.el('settingsPanel').textContent;
+    ok(txt.includes(e.SH.I18n.get('configCode_linkMissing')), 'podpowiedź zamiast zakładki');
+    notOk(txt.includes(e.SH.I18n.get('configCode_link')), 'wiersza „Gotowa zakładka” nie ma');
+    ok(txt.includes(e.SH.I18n.get('configCode_yours')), 'kod ustawień dalej jest');
+});
+
+test('z adresem wydania panel pokazuje zakładkę, bez podpowiedzi', () => {
+    const e = linkEnv();
+    e.SH.store.uiFlags.isSettingsPanelVisible = true;
+    e.SH.SettingsPanel.render();
+    const txt = e.el('settingsPanel').textContent;
+    ok(txt.includes(e.SH.I18n.get('configCode_link')), 'wiersz „Gotowa zakładka”');
+    notOk(txt.includes(e.SH.I18n.get('configCode_linkMissing')), 'podpowiedzi nie ma');
+});
+
+test('raport CSP sprawdza host wydania tylko wtedy, gdy adres jest ustawiony', () => {
+    // Zakładka pobiera plik z hosta wydania, więc raport ma pokazać, czy CSP
+    // strony go dopuszcza. Bez adresu wydania takiego hosta nie ma.
+    const hosts = (r) => Object.keys(r['rozbiór po hostach']);
+    return linkEnv().SH.cspReport()
+        .then(r => ok(hosts(r).includes('intranet.example (connect-src)'), hosts(r).join(', ')))
+        .then(() => freshEnv().SH.cspReport())
+        .then(r => eq(hosts(r).filter(h => h.includes('intranet')), [], 'bez adresu — bez hosta wydania'));
+});
+
+test('odnośnik zawiera adres wydania i kod bieżących ustawień', () => {
+    const e = linkEnv();
     e.SH.store.localTabConfig.linesConfig.line7_compact.alpha = 90;
     const link = e.SH.configLink();
     ok(link.startsWith('javascript:'), 'ma być zakładką');
-    ok(link.includes(e.SH.CONFIG.RELEASE_URL), 'adres wydania z jednego miejsca');
+    ok(link.includes(TEST_RELEASE_URL), 'adres wydania z CONFIG.RELEASE_URL');
     ok(link.includes(e.SH.configCode()), 'kod bieżących ustawień');
     ok(link.includes(CC.BOOT_GLOBAL), 'kod idzie przez zmienną startową');
     ok(link.trim().endsWith('void 0;'), 'bez tego zakładka potrafi zastąpić stronę');
@@ -403,7 +450,7 @@ test('kod stoi w odnośniku PRZED pobraniem pliku', () => {
     // Odwrotna kolejność to cały błąd, przed którym stoi ten mechanizm: skrypt
     // czyta zmienną w trakcie uruchamiania, więc podstawiona po pobraniu pliku
     // nie zdążyłaby na nic.
-    const link = freshEnv().SH.configLink();
+    const link = linkEnv().SH.configLink();
     ok(link.indexOf(CC.BOOT_GLOBAL) < link.indexOf('fetch('),
        'zmienna startowa musi być ustawiona przed fetch');
 });
@@ -423,9 +470,9 @@ function runBookmarklet(link, fetchImpl) {
 }
 
 test('odpowiedź 404 nie idzie do wykonania, a człowiek dostaje komunikat', () => {
-    // raw.githubusercontent przy 404 odpowiada tekstem „404: Not Found”:
-    // wykonany dawał SyntaxError w odrzuconej obietnicy — i ciszę.
-    const link = freshEnv().SH.configLink();
+    // Serwer przy 404 odpowiada zwykle tekstem w rodzaju „404: Not Found”:
+    // wykonany dałby SyntaxError w odrzuconej obietnicy — i ciszę.
+    const link = linkEnv().SH.configLink();
     return runBookmarklet(link, () => Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('markRan()') }))
         .then(seen => {
             eq(seen.ran, false, 'treść odpowiedzi błędu nie została wykonana');
@@ -435,7 +482,7 @@ test('odpowiedź 404 nie idzie do wykonania, a człowiek dostaje komunikat', () 
 });
 
 test('brak sieci też kończy się komunikatem, a nie ciszą', () => {
-    const link = freshEnv().SH.configLink();
+    const link = linkEnv().SH.configLink();
     return runBookmarklet(link, () => Promise.reject(new Error('Failed to fetch')))
         .then(seen => {
             eq(seen.alerts.length, 1);
@@ -444,7 +491,7 @@ test('brak sieci też kończy się komunikatem, a nie ciszą', () => {
 });
 
 test('poprawna odpowiedź wykonuje się bez żadnego komunikatu', () => {
-    const link = freshEnv().SH.configLink();
+    const link = linkEnv().SH.configLink();
     return runBookmarklet(link, () => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('markRan()') }))
         .then(seen => {
             eq(seen.ran, true, 'plik wykonany');
@@ -464,7 +511,6 @@ test('zakładki w README mają te same bezpieczniki co generowana, i bieżący p
     }
     const withCode = links.find(l => l.includes('_CONFIG_CODE'));
     ok(withCode && withCode.includes(CC.BOOT_GLOBAL), 'przykład z kodem ustawień niesie bieżącą nazwę zmiennej');
-    ok(links.some(l => l.includes(freshEnv().SH.CONFIG.RELEASE_URL)), 'zakładka główna prowadzi pod RELEASE_URL');
 });
 
 describe('Cisza po starcie zostaje nienaruszona');
