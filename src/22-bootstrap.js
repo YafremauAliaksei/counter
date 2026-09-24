@@ -40,7 +40,7 @@
                 // Identyfikator karty nierozpoznanej leży w sessionStorage, żeby
                 // przeżył F5. Gdy magazyn odmawia, identyfikator żyje w pamięci
                 // do końca strony — własny try, bo wyjątek zatrzymałby start.
-                const idKey = StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY);
+                const idKey = Persistence.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY);
                 let saved = null;
                 try { saved = sessionStorage.getItem(idKey); } catch (e) { Utils.error('sessionStorage niedostępny', e); }
                 store.currentTabInstanceId = saved || Utils.generateId(CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
@@ -84,7 +84,7 @@
             if (StatsWindowRenderer.tickTimer) { clearInterval(StatsWindowRenderer.tickTimer); StatsWindowRenderer.tickTimer = null; }
             if (this.shiftWatchTimer) { clearInterval(this.shiftWatchTimer); this.shiftWatchTimer = null; }
             if (InputManager.onKeyDown) document.removeEventListener('keydown', InputManager.onKeyDown, true);
-            if (StorageManager.onStorage) window.removeEventListener('storage', StorageManager.onStorage);
+            if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
             if (PriceCard.onCspViolation) document.removeEventListener('securitypolicyviolation', PriceCard.onCspViolation);
             if (this.onPageHide) { window.removeEventListener('pagehide', this.onPageHide); this.onPageHide = null; }
             // Jednorazowe timery też — inaczej po chwili ruszyłyby render()
@@ -97,8 +97,8 @@
             // Odłożone wywołania debounce — po rozbiórce autozapis nadpisałby
             // magazyn starym stanem, a skan dopisałby paczkę do klucza nowego
             // egzemplarza (test w 27-pending-writes).
-            StorageManager.scheduleSave.cancel();
-            StorageManager.debouncedLoad.cancel();
+            Persistence.scheduleSave.cancel();
+            Persistence.debouncedLoad.cancel();
             if (AutoTrigger.debouncedScan) AutoTrigger.debouncedScan.cancel();
             if (AutoTrigger.debouncedAttach) AutoTrigger.debouncedAttach.cancel();
             document.querySelectorAll(`[id^="${CONFIG.SCRIPT_ID_PREFIX}"]`).forEach(el => el.remove());
@@ -139,14 +139,14 @@
             window[CONFIG.SCRIPT_ID_PREFIX + 'INIT'] = true;
 
             try {
-                StorageManager.purgeLegacyKeys();
-                StorageManager.purgeLegacySharedKeys();
+                Persistence.purgeLegacyKeys();
+                Persistence.purgeLegacySharedKeys();
 
                 // Kolejność jest ważna: loadAll() czyta ustawienia karty po
                 // store.currentTabInstanceId, więc karta musi być rozpoznana
                 // wcześniej.
                 this.identifyTab();
-                StorageManager.loadAll();
+                Persistence.loadAll();
 
                 /**
                  * Kod ustawień z zakładki — po wczytaniu magazynu (inaczej
@@ -178,7 +178,7 @@
                 TaskManager.init();
 
                 store.initialized = true;
-                StorageManager.saveState();
+                Persistence.saveState();
 
                 CSSManager.init();
                 StatsWindowRenderer.init();
@@ -190,7 +190,7 @@
                 Notifier.init();
                 InputManager.init();
                 AutoTrigger.init();
-                StorageManager.listen();
+                Persistence.listen();
 
                 // Przedmiot przeszedł pełną ścieżkę — wpis do dziennika. Cena
                 // z pamięci karty; jeśli jeszcze nie przyszła, dopisze ją
@@ -226,7 +226,7 @@
                 // (400 ms). Bez dokończenia tutaj ostatnie zmiany ginęłyby przy F5.
                 this.onPageHide = () => {
                     try {
-                        StorageManager.scheduleSave.flush();
+                        Persistence.scheduleSave.flush();
                         ValueLog.flushWriteBack();
                         ValueLog.flushArchive();
                     } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ }
@@ -236,7 +236,7 @@
                 // Autozapis tylko dla gałęzi, które saveState() naprawdę pisze:
                 // uiFlags nie są trwałe, a liczniki mają własne klucze.
                 onStorePaths(['userConfig', 'sessionConfig', 'localTabConfig'],
-                             () => StorageManager.scheduleSave());
+                             () => Persistence.scheduleSave());
 
                 /**
                  * Skrót `config("0x…")` bez przedrostka SH. Nazwa jest pospolita,
@@ -257,7 +257,7 @@
                 // jest narzędziem roboczym, a nie pozostałością po debugowaniu.
                 window[CONFIG.SCRIPT_ID_PREFIX + 'API'] = window.SH = {
                     store, CONFIG, PriceCard, ShiftManager, SessionReset,
-                    StorageManager, SettingsPanel, AutoTrigger, I18n,
+                    Persistence, SettingsPanel, AutoTrigger, I18n,
                     KeepaOCR, PriceSources, PriceNet, ValueLog, FxRates, Routing,
                     // Potrzebne testom i diagnostyce.
                     Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
@@ -308,6 +308,8 @@
                     /**
                      * Zmiana limitów zapytań bez przeładowania strony:
                      *   SH.setLimits({ images: 3000 })
+                     *
+                     * @param {{images?: number, text?: number}} [limits]
                      */
                     setLimits: ({ images, text } = {}) => {
                         if (typeof images === 'number') CONFIG.PRICE_MAX_IMAGE_REQUESTS = images;
@@ -378,7 +380,7 @@
                             Utils.error('Moduł cen wyłączony. Włącz go: SH.priceOn()');
                             return Promise.resolve(null);
                         }
-                        return PriceCard.resolve(target, { manual: true });
+                        return PriceCard.resolve(target);
                     },
                 };
 

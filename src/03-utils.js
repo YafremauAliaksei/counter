@@ -98,6 +98,7 @@
                 timeout = pending = null;
                 if (call) func.apply(call.self, call.args);
             };
+            /** @this {unknown} — wywołujący; przekazywany dalej do func. */
             const debounced = function(...args) {
                 clearTimeout(timeout);
                 pending = { self: this, args };

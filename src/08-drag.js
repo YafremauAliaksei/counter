@@ -54,7 +54,7 @@
                 // to liczy się `top`, a domyślne przyklejenie do dołu ma zniknąć.
                 savePosition({ left: this.el.style.left, top: this.el.style.top, bottom: '' });
                 setFlag(false);
-                StorageManager.saveState();
+                Persistence.saveState();
             },
         };
     }

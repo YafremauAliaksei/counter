@@ -140,7 +140,7 @@ for (const [label, h] of [['dzienna', 6], ['nocna', 18]]) {
         clock.set(at(17, h + 3, 0));
         for (let i = 0; i < 12; i++) item(thursday);
         thursday.SH.TaskManager.create('sorter');
-        thursday.SH.StorageManager.saveState();
+        thursday.SH.Persistence.saveState();
         eq(thursday.SH.store.tabCounters[cid], 12, 'czwartek: 12 paczek');
         // Czwartkowa strona już nie istnieje — tak jak po wylogowaniu.
         thursday.SH.Main.teardown();

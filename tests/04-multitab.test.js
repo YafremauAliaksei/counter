@@ -44,7 +44,7 @@ test('licznik jednej karty trafia do localStorage', () => {
     setShift(cret, 2);
     setShift(whd, 2);
     cret.SH.store.tabCounters.CRET = 12;
-    cret.SH.StorageManager.saveCounter('CRET', 12);
+    cret.SH.Persistence.saveCounter('CRET', 12);
     eq(shared.getItem(key('CRET')), '12');
 });
 
@@ -55,7 +55,7 @@ test('druga karta widzi licznik pierwszej po zdarzeniu storage', () => {
 
 test('linia 7 sumuje OBIE karty, a nie tylko swoją', () => {
     whd.SH.store.tabCounters.WHD = 8;
-    whd.SH.StorageManager.saveCounter('WHD', 8);
+    whd.SH.Persistence.saveCounter('WHD', 8);
     whd.SH.StatsWindowRenderer.renderContent();
     // 12 + 8 = 20 sztuk przez 2 h = 10.0/h
     eq(whd.SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20 0%');

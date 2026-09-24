@@ -30,7 +30,7 @@ describe('Zamknięcie karty dopisuje to, co czekało');
 test('zmiana ustawienia sprzed chwili trafia do magazynu przy pagehide', () => {
     const storage = makeStorage();
     const env = boot({ storage });
-    const key = env.SH.StorageManager.getKey(env.SH.CONFIG.STORAGE_KEY_USER_CONFIG);
+    const key = env.SH.Persistence.getKey(env.SH.CONFIG.STORAGE_KEY_USER_CONFIG);
     env.SH.store.userConfig.language = 'en';          // autozapis za sekundę
     eq(JSON.parse(storage.getItem(key)).language === 'en', false, 'jeszcze nie zapisane');
 
@@ -44,7 +44,7 @@ describe('Zdjęty egzemplarz nie pisze po rozbiórce');
 test('odłożony autozapis zdjętego egzemplarza nie nadpisuje magazynu', () => {
     const storage = makeStorage();
     const env = boot({ storage });
-    const key = env.SH.StorageManager.getKey(env.SH.CONFIG.STORAGE_KEY_USER_CONFIG);
+    const key = env.SH.Persistence.getKey(env.SH.CONFIG.STORAGE_KEY_USER_CONFIG);
     env.SH.store.userConfig.language = 'en';          // autozapis za sekundę
     env.SH.Main.teardown();
 
@@ -60,7 +60,7 @@ test('odłożony skan zdjętego egzemplarza nie dopisuje paczki', () => {
     const env = boot({ storage });
     const SH = env.SH;
     const cid = SH.store.currentTabInstanceId;
-    const counterKey = SH.StorageManager.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_COUNTER + cid);
+    const counterKey = SH.Persistence.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_COUNTER + cid);
     const body = env.sandbox.document.body;
     const show = (t) => Object.defineProperty(body, 'innerText', { configurable: true, get: () => t });
 

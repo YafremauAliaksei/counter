@@ -37,6 +37,7 @@ const SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA'];
 //  Awaria startu (Utils.fatal) jest wypisywana zawsze, niezależnie od
 //  tego ustawienia — nieudany start nie może wyglądać jak cisza.
 // =====================================================================
+/** @type {boolean} */
 const SCRIPT_LOGS_ENABLED = false;
 
 // ---------------------------------------------------------------------

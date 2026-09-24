@@ -327,7 +327,7 @@ flowchart TD
 
     INIT["Main.init"] --> P1["purgeLegacyKeys<br/>sprzątanie po starych prefiksach"]
     P1 --> P2["identifyTab<br/>gradingMode z adresu → CRET / REFURB / WHD<br/>dział bez urlKeyword nie bierze udziału"]
-    P2 --> P3["StorageManager.loadAll<br/>czyta: userConfig, sessionConfig,<br/>allLocalTabConfigs, counter_*, sold_*,<br/>neutral_*, tasks, taskcnt_*"]
+    P2 --> P3["Persistence.loadAll<br/>czyta: userConfig, sessionConfig,<br/>allLocalTabConfigs, counter_*, sold_*,<br/>neutral_*, tasks, taskcnt_*"]
     P3 --> P4["ConfigCode.applyBoot<br/>kod z zakładki, PRZED pierwszym rysowaniem"]
     P4 --> P5["ValueLog.load → valueLog"]
     P5 --> P6["FxRates.initOffline<br/>kursy TYLKO z magazynu, zero sieci"]
@@ -338,7 +338,7 @@ flowchart TD
     P10 --> P11["CSSManager, StatsWindowRenderer,<br/>SettingsPanel, PriceCard, Notifier"]
     P11 --> P12["InputManager.init<br/>klawiatura i bufor haseł"]
     P12 --> P13["AutoTrigger.init<br/>PO zadaniach: paczka musi mieć<br/>gdzie się zapisać"]
-    P13 --> P14["StorageManager.listen<br/>zdarzenie storage z sąsiednich kart"]
+    P13 --> P14["Persistence.listen<br/>zdarzenie storage z sąsiednich kart"]
     P14 --> P15["window.SH = API konsolowe"]
     P15 --> RUN["skrypt działa: jedna szara linia,<br/>zero zapytań, zero linii w konsoli"]
 

@@ -94,7 +94,7 @@
          * Nowy przedmiot: zapominamy wszystko, co wiedzieliśmy o poprzednim.
          *
          * @param {string} reason — do konsoli.
-         * @param {{closeAmbiguous?: boolean}} [opts] — closeAmbiguous mówi, że
+         * @param {{closeAmbiguous?: boolean}} [opts] - closeAmbiguous mówi, że
          *   granica przedmiotu jest PRAWDZIWA (pojawiło się `poniżej`) i wiszący
          *   Secondary-Sorting pora zamknąć domyślnie. Zmiana ASIN taką granicą
          *   NIE jest: linia uściślająca może przyjść i po niej.
@@ -231,10 +231,10 @@
             // nie rozjechała się z licznikiem karty. +1 od wartości
             // w magazynie — dwie karty działu dzielą klucz (freshCount).
             if (st.direction === 'sell') {
-                StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
+                Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
                 TaskManager.addSold(cid);
             } else if (st.direction === 'neutral') {
-                StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
+                Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
                 TaskManager.addNeutral(cid);
             }
         },

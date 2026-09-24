@@ -315,19 +315,19 @@
             // o tyle samo — suma zadań musi się zgadzać z licznikiem karty.
             // Liczniki czyta się z magazynu, nie z pamięci: sąsiednia karta
             // mogła dopisać paczki, o których ta jeszcze nie wie.
-            const tabs = new Set([...Object.keys(store.taskCounters[id] || {}), ...StorageManager.storedTaskTabs(id)]);
+            const tabs = new Set([...Object.keys(store.taskCounters[id] || {}), ...Persistence.storedTaskTabs(id)]);
             for (const tabKey of tabs) {
-                const c = StorageManager.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
+                const c = Persistence.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
                 for (const [prefix, memory, value] of [
                     [CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, c.done],
                     [CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, c.sold],
                     [CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, c.neutral],
                 ]) {
-                    const key = StorageManager.getKey(prefix + tabKey);
-                    memory[tabKey] = Math.max(0, StorageManager.freshCount(key, memory[tabKey] || 0) - value);
-                    StorageManager.write(key, String(memory[tabKey]));
+                    const key = Persistence.getKey(prefix + tabKey);
+                    memory[tabKey] = Math.max(0, Persistence.freshCount(key, memory[tabKey] || 0) - value);
+                    Persistence.write(key, String(memory[tabKey]));
                 }
-                StorageManager.removeTaskCounter(id, tabKey);
+                Persistence.removeTaskCounter(id, tabKey);
             }
             const counters = { ...store.taskCounters };
             delete counters[id];
@@ -419,7 +419,7 @@
                 neutral: Math.max(0, next.neutral | 0),
             };
             store.taskCounters = { ...store.taskCounters, [id]: byTab };
-            StorageManager.saveTaskCounter(id, tabKey, byTab[tabKey]);
+            Persistence.saveTaskCounter(id, tabKey, byTab[tabKey]);
         },
 
         /**
@@ -444,10 +444,10 @@
 
         /**
          * +1 do jednego pola licznika zadania — od wartości w magazynie, bo dwie
-         * karty tego samego działu dzielą klucz (StorageManager.freshCount).
+         * karty tego samego działu dzielą klucz (Persistence.freshCount).
          */
         _bump(task, tabKey, field) {
-            const c = StorageManager.freshTaskCounter(task.id, tabKey, this.counters(task.id, tabKey));
+            const c = Persistence.freshTaskCounter(task.id, tabKey, this.counters(task.id, tabKey));
             this._write(task.id, tabKey, { ...c, [field]: c[field] + 1 });
         },
 
@@ -602,9 +602,9 @@
             store.tabCounters[tabKey] = this.shiftTotal(tabKey, 'done');
             store.tabSold[tabKey] = this.shiftTotal(tabKey, 'sold');
             store.tabNeutral[tabKey] = this.shiftTotal(tabKey, 'neutral');
-            StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
-            StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
-            StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
+            Persistence.saveCounter(tabKey, store.tabCounters[tabKey]);
+            Persistence.saveSold(tabKey, store.tabSold[tabKey]);
+            Persistence.saveNeutral(tabKey, store.tabNeutral[tabKey]);
         },
 
         /**
@@ -657,7 +657,7 @@
 
         // ---------------- zapis ----------------
         save() {
-            StorageManager.saveTasks();
+            Persistence.saveTasks();
         },
 
         /** Sprawozdanie do konsoli: SH.tasks() */

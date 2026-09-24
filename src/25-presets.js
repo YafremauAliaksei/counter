@@ -64,7 +64,7 @@
         }
 
         // 4. Utrwalenie stanu (gwarantuje zapis do localStorage i render)
-        StorageManager.saveState();
+        Persistence.saveState();
     };
 
 */

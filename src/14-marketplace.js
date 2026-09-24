@@ -6,14 +6,14 @@
         const key = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
         return CONFIG.MARKETPLACES[key] ? key : CONFIG.DEFAULT_MARKETPLACE;
     }
-    /** @param {string} [key] — konkretny rynek; bez niego bierze się wybrany. */
+    /** @param {string} [key] - konkretny rynek; bez niego bierze się wybrany. */
     function marketplace(key) {
         return CONFIG.MARKETPLACES[key] || CONFIG.MARKETPLACES[marketplaceKey()];
     }
     /**
      * Link do karty produktu.
      *
-     * @param {string} [key] — rynek, na którym znaleziono cenę; po przeglądzie
+     * @param {string} [key] - rynek, na którym znaleziono cenę; po przeglądzie
      *   sklepów link musi prowadzić tam, gdzie ta cena jest.
      *
      * Host pochodzi wyłącznie z CONFIG.MARKETPLACES, schemat jest wpisany na

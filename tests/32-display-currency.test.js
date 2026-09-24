@@ -278,10 +278,10 @@ test('wybór w jednej karcie przeglądarki obowiązuje we wszystkich', () => {
     const b = net.open({ href: 'https://trex-prod-eu.aka.amazon.com/?gradingMode=WAREHOUSE_DEALS', clock });
     a.SH.store.userConfig.displayCurrency = 'PLN';
     for (let i = 0; i < 3; i++) {
-        a.SH.StorageManager.scheduleSave.flush();
+        a.SH.Persistence.scheduleSave.flush();
         net.flush();
         clock.set(clock.now() + 3000);
-        b.SH.StorageManager.debouncedLoad.flush();
+        b.SH.Persistence.debouncedLoad.flush();
     }
     eq(b.SH.FxRates.displayCurrency(), 'PLN');
 });

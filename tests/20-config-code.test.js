@@ -128,7 +128,7 @@ test('kod trafia do magazynu, więc przeżywa F5', () => {
     const e = freshEnv();
     e.SH.config('0x010160010063');   // linia 7 niewidoczna
     eq(e.SH.store.localTabConfig.linesConfig.line7_compact.visible, false);
-    const key = e.SH.StorageManager.getKey(e.SH.CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
+    const key = e.SH.Persistence.getKey(e.SH.CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
     ok(String(e.sandbox.localStorage.getItem(key)).includes('"visible":false'),
        'zapis do localStorage po nałożeniu kodu');
 });
@@ -358,7 +358,7 @@ test('kod z zakładki trafia do magazynu, więc przeżywa F5', () => {
     const src = freshEnv();
     src.SH.store.localTabConfig.statsWindowPosition.left = '42px';
     const e = bootWithCode(src.SH.configCode());
-    const key = e.SH.StorageManager.getKey(e.SH.CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
+    const key = e.SH.Persistence.getKey(e.SH.CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
     ok(String(e.sandbox.localStorage.getItem(key)).includes('"left":"42px"'),
        'bez zapisu człowiek po odświeżeniu wróciłby do poprzednich ustawień');
 });

@@ -144,13 +144,13 @@ test('kody sortowania z metaznakami są uciekane', () => {
 
 describe('Granice magazynu');
 
-test('StorageManager.ownKeys nie dotyka cudzych kluczy', () => {
+test('Persistence.ownKeys nie dotyka cudzych kluczy', () => {
     const LS = env.sandbox.localStorage;
     LS.setItem('trex_app_state', 'ważne dane aplikacji');
     LS.setItem(env.prefix + 'userConfig', '{}');
     LS.setItem('statsHelper_shared_valueArchive', '{}');
 
-    const keys = env.SH.StorageManager.ownKeys();
+    const keys = env.SH.Persistence.ownKeys();
     ok(keys.includes(env.prefix + 'userConfig'));
     ok(keys.includes('statsHelper_shared_valueArchive'));
     notOk(keys.includes('trex_app_state'), 'klucz TREX musi zostać nietknięty');

@@ -51,10 +51,10 @@ function resetCounters() {
     SH.store.tabSold[cid] = 0;
     SH.store.tabNeutral[cid] = 0;
     // Zera także w magazynie: licznik rośnie od wartości zapisanej, a nie od
-    // tej w pamięci (StorageManager.freshCount).
-    SH.StorageManager.saveCounter(cid, 0);
-    SH.StorageManager.saveSold(cid, 0);
-    SH.StorageManager.saveNeutral(cid, 0);
+    // tej w pamięci (Persistence.freshCount).
+    SH.Persistence.saveCounter(cid, 0);
+    SH.Persistence.saveSold(cid, 0);
+    SH.Persistence.saveNeutral(cid, 0);
     return cid;
 }
 
@@ -214,7 +214,7 @@ test('ten sam audyt nie policzy się dwa razy', () => {
 
 test('licznik audytów trafia do magazynu, więc przeżywa F5', () => {
     const cid = SH.store.currentTabInstanceId;
-    const key = SH.StorageManager.getKey(C.STORAGE_PREFIX_TAB_NEUTRAL + cid);
+    const key = SH.Persistence.getKey(C.STORAGE_PREFIX_TAB_NEUTRAL + cid);
     eq(env.sandbox.localStorage.getItem(key), String(SH.store.tabNeutral[cid]));
 });
 
@@ -239,7 +239,7 @@ test('reset zmiany kasuje licznik audytów razem z pozostałymi', () => {
     ok(SH.store.tabNeutral[cid] > 0, 'warunek wstępny');
     SH.SessionReset.resetItemData('test', 'manual');
     eq(SH.store.tabNeutral[cid], 0, 'w pamięci');
-    const key = SH.StorageManager.getKey(C.STORAGE_PREFIX_TAB_NEUTRAL + cid);
+    const key = SH.Persistence.getKey(C.STORAGE_PREFIX_TAB_NEUTRAL + cid);
     eq(env.sandbox.localStorage.getItem(key), null, 'w magazynie');
 });
 

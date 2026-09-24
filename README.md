@@ -875,7 +875,7 @@ odpowiedzi zewnętrznych serwisów. Dlatego:
 | Host linku wyłącznie z białej listy, schemat wszyty na stałe                 | `productUrl`             |
 | Kody sortowania są ekranowane przed złożeniem wyrażenia                      | `Routing.codeRegex`      |
 | Kursy walut sprawdzane pod kątem sensu, także przy odczycie z pamięci        | `FxRates.normalize`      |
-| Skrypt rusza wyłącznie własne klucze `localStorage`                          | `StorageManager.ownKeys` |
+| Skrypt rusza wyłącznie własne klucze `localStorage`                          | `Persistence.ownKeys`    |
 | Każde wyjście do sieci spisane w teście: za `priceModuleOn()` albo z powodem | `priceModuleOn()`        |
 
 > Poza komentarzami słowo `eval` pada w pliku dokładnie raz: wewnątrz **tekstu** gotowej zakładki,
@@ -902,7 +902,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 33 pliki, 484 sprawdzenia
+├── tests/                  ← 33 pliki, 485 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -922,7 +922,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 484 sprawdzenia
+npm test             # 485 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)

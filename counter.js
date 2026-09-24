@@ -37,6 +37,7 @@ const SETTINGS_ACCESS_PASSWORDS = ['GORDONPAULE', 'BOMBA'];
 //  Awaria startu (Utils.fatal) jest wypisywana zawsze, niezależnie od
 //  tego ustawienia — nieudany start nie może wyglądać jak cisza.
 // =====================================================================
+/** @type {boolean} */
 const SCRIPT_LOGS_ENABLED = false;
 
 // ---------------------------------------------------------------------
@@ -1144,6 +1145,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 timeout = pending = null;
                 if (call) func.apply(call.self, call.args);
             };
+            /** @this {unknown} — wywołujący; przekazywany dalej do func. */
             const debounced = function(...args) {
                 clearTimeout(timeout);
                 pending = { self: this, args };
@@ -1319,6 +1321,10 @@ const SCRIPT_LOGS_ENABLED = false;
                 return obj[prop];
             },
             set(obj, prop, value) {
+                // Klucz symboliczny (np. Symbol.toStringTag dopisany przez
+                // bibliotekę) nie jest ścieżką stanu: zapis bez zdarzeń.
+                // Wstawiony do napisu ścieżki rzuciłby TypeError.
+                if (typeof prop === 'symbol') { obj[prop] = value; return true; }
                 const fullPath = path ? `${path}.${prop}` : prop;
                 const oldValue = obj[prop];
 
@@ -1337,6 +1343,7 @@ const SCRIPT_LOGS_ENABLED = false;
             // Usunięcie klucza też jest reaktywne — na nim stoi sprzątanie
             // wpisów po kartach (SessionReset.pruneTabInstances).
             deleteProperty(obj, prop) {
+                if (typeof prop === 'symbol') return delete obj[prop];
                 if (!(prop in obj)) return true;
                 const fullPath = path ? `${path}.${prop}` : prop;
                 const oldValue = obj[prop];
@@ -1351,7 +1358,7 @@ const SCRIPT_LOGS_ENABLED = false;
     /**
      * Stan zmiany — wspólny dla wszystkich kart. Osobny obiekt, bo scalanie
      * ustawień między kartami uzupełnia nim pola, których brakuje w magazynie
-     * (StorageManager._adoptShared).
+     * (Persistence._adoptShared).
      */
     const DEFAULT_SESSION_CONFIG = {
         shiftType: null, shiftCalculatedStartTime: null, selectedLunchIndex: null, activeTabInstances: {},
@@ -1428,7 +1435,14 @@ const SCRIPT_LOGS_ENABLED = false;
     };
 
     // ─── src/06-storage.js ───
-    const StorageManager = {
+    /**
+     * Zapis i odczyt stanu skryptu w localStorage.
+     *
+     * Nazwa nie może brzmieć StorageManager: tak nazywa się globalny typ
+     * przeglądarki (navigator.storage), a sprawdzanie typów widzi wszystkie
+     * moduły w jednym zakresie razem z typami DOM.
+     */
+    const Persistence = {
         // Pamięć ostatniej zapisanej wartości dla każdego klucza. Potrzebna, żeby
         // nie pisać do localStorage tego samego: zbędny zapis rodzi zdarzenie
         // 'storage' w sąsiednich kartach i zmusza je do przeliczania stanu.
@@ -1554,9 +1568,9 @@ const SCRIPT_LOGS_ENABLED = false;
         scheduleSave: Utils.debounce(function() {
             // Zapis w oknie ciszy po wczytaniu stanu sąsiedniej karty nie
             // przepada — przesuwa się za koniec ciszy.
-            const wait = StorageManager.suppressSaveUntil - Date.now();
-            if (wait > 0) { setTimeout(() => StorageManager.scheduleSave(), wait); return; }
-            StorageManager.saveState();
+            const wait = Persistence.suppressSaveUntil - Date.now();
+            if (wait > 0) { setTimeout(() => Persistence.scheduleSave(), wait); return; }
+            Persistence.saveState();
         }, CONFIG.AUTOSAVE_DEBOUNCE_MS),
 
         saveCounter(tabKey, count) {
@@ -1882,7 +1896,7 @@ const SCRIPT_LOGS_ENABLED = false;
             };
             window.addEventListener('storage', this.onStorage);
         },
-        debouncedLoad: Utils.debounce(function() { StorageManager.loadAll(true); }, 300)
+        debouncedLoad: Utils.debounce(function() { Persistence.loadAll(true); }, 300)
     };
 
     // ─── src/07-session-shift.js ───
@@ -1916,16 +1930,16 @@ const SCRIPT_LOGS_ENABLED = false;
             // Wszystko, co opisuje jedną zmianę: liczniki paczek, sprzedanych
             // i spoza mianownika oraz zadania z ich licznikami.
             const prefixes = [
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER),
-                StorageManager.getKey(CONFIG.STORAGE_KEY_TASKS),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER),
+                Persistence.getKey(CONFIG.STORAGE_KEY_TASKS),
             ];
             Object.keys(localStorage)
                 .filter(k => prefixes.some(p => k.startsWith(p)))
                 .forEach(k => {
-                    delete StorageManager._lastWritten[k];
+                    delete Persistence._lastWritten[k];
                     localStorage.removeItem(k);
                 });
 
@@ -1944,7 +1958,7 @@ const SCRIPT_LOGS_ENABLED = false;
             ValueLog.reset(reason);
 
             this.pruneTabInstances(true);
-            StorageManager.saveState();
+            Persistence.saveState();
             bus.emit('session:reset', { reason, kind });
         },
 
@@ -1975,14 +1989,14 @@ const SCRIPT_LOGS_ENABLED = false;
                 if (isOrphan(id)) delete store.userConfig.customTabSettings[id];
             });
 
-            const allLocalsKey = StorageManager.getKey(CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
+            const allLocalsKey = Persistence.getKey(CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
             try {
                 const allLocals = JSON.parse(localStorage.getItem(allLocalsKey) || "{}");
                 let changed = false;
                 Object.keys(allLocals).forEach(id => {
                     if (id === 'null' || isOrphan(id)) { delete allLocals[id]; changed = true; }
                 });
-                if (changed) StorageManager.write(allLocalsKey, JSON.stringify(allLocals));
+                if (changed) Persistence.write(allLocalsKey, JSON.stringify(allLocals));
             } catch (e) { Utils.error('pruneTabInstances: nie udało się rozebrać allLocalTabConfigs', e); }
         },
 
@@ -2090,7 +2104,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 SessionReset.pruneTabInstances(false);
             }
 
-            StorageManager.saveState();
+            Persistence.saveState();
         },
         /**
          * Ile z odcinka [from, to] zajęła przerwa obiadowa. Wspólne dla czasu
@@ -2179,7 +2193,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // to liczy się `top`, a domyślne przyklejenie do dołu ma zniknąć.
                 savePosition({ left: this.el.style.left, top: this.el.style.top, bottom: '' });
                 setFlag(false);
-                StorageManager.saveState();
+                Persistence.saveState();
             },
         };
     }
@@ -2673,7 +2687,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 setTimeout(() => this.el.style.transform = 'translateX(0)', 10);
             } else {
                 this.el.style.transform = 'translateX(110%)';
-                StorageManager.saveState();
+                Persistence.saveState();
                 setTimeout(() => this.el.style.display = 'none', 200);
             }
         },
@@ -2876,11 +2890,11 @@ const SCRIPT_LOGS_ENABLED = false;
             // localStorage tej domeny trzyma T-REX.
             secGen.appendChild(UIBuilder.button(I18n.get('settings_resetAllDataButton'), () => {
                 if (!confirm(I18n.get('settings_resetConfirm'))) return;
-                StorageManager.ownKeys().forEach(k => localStorage.removeItem(k));
+                Persistence.ownKeys().forEach(k => localStorage.removeItem(k));
                 CONFIG.LEGACY_ID_PREFIXES.forEach(p => {
                     Object.keys(localStorage).filter(k => k.startsWith(p)).forEach(k => localStorage.removeItem(k));
                 });
-                sessionStorage.removeItem(StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY));
+                sessionStorage.removeItem(Persistence.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY));
                 location.reload();
             }, { background: '#d9534f', width: '100%', marginTop: '10px' }));
 
@@ -3369,7 +3383,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 SessionReset.lastReset = null;
             }
             bus.on('storage:writeFailed', () => this.warnStorageFull());
-            if (StorageManager.writeFailed) this.warnStorageFull();
+            if (Persistence.writeFailed) this.warnStorageFull();
         },
         /**
          * Pełny magazyn — raz na stronę. Zapisów jest kilka na przedmiot, więc
@@ -3405,14 +3419,14 @@ const SCRIPT_LOGS_ENABLED = false;
         const key = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
         return CONFIG.MARKETPLACES[key] ? key : CONFIG.DEFAULT_MARKETPLACE;
     }
-    /** @param {string} [key] — konkretny rynek; bez niego bierze się wybrany. */
+    /** @param {string} [key] - konkretny rynek; bez niego bierze się wybrany. */
     function marketplace(key) {
         return CONFIG.MARKETPLACES[key] || CONFIG.MARKETPLACES[marketplaceKey()];
     }
     /**
      * Link do karty produktu.
      *
-     * @param {string} [key] — rynek, na którym znaleziono cenę; po przeglądzie
+     * @param {string} [key] - rynek, na którym znaleziono cenę; po przeglądzie
      *   sklepów link musi prowadzić tam, gdzie ta cena jest.
      *
      * Host pochodzi wyłącznie z CONFIG.MARKETPLACES, schemat jest wpisany na
@@ -3495,6 +3509,10 @@ const SCRIPT_LOGS_ENABLED = false;
          * Po limicie czasu ładowanie jest przerywane (`src = ''`).
          *
          * Sprawdzenie modułu cen — jak w request().
+         *
+         * @param {string} url
+         * @param {{timeoutMs?: number, crossOrigin?: string|null, referrerPolicy?: string}} [opts]
+         * @returns {Promise<HTMLImageElement>}
          */
         image(url, { timeoutMs, crossOrigin = 'anonymous', referrerPolicy = 'no-referrer' } = {}) {
             if (!priceModuleOn()) {
@@ -3790,7 +3808,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
         /**
          * Pełny cykl: wczytać obrazek, rozebrać, zwrócić ceny.
-         * @param {string} [market] — rynek; bez niego bierze się wybrany.
+         * @param {string} [market] - rynek; bez niego bierze się wybrany.
          */
         async read(asin, market) {
             const im = await this.loadImage(asin, undefined, market);
@@ -3992,7 +4010,9 @@ const SCRIPT_LOGS_ENABLED = false;
                     // go po obcych rynkach nie ma sensu, więc w trybie 'jina'
                     // przeglądu sklepów nie ma.
                     get marketSearch() { return store.localTabConfig.priceCard.source !== 'jina'; },
-                    async run(asin, signal, market) {
+                    // Obrazka nie przerywa się sygnałem: limit czasu ma sam
+                    // PriceNet.image(), stąd `_signal` bez użycia.
+                    async run(asin, _signal, market) {
                         const d = await KeepaOCR.read(asin, market);
                         return d ? self.ocrResult(d, market) : null;
                     },
@@ -4127,7 +4147,7 @@ const SCRIPT_LOGS_ENABLED = false;
         _archiveTimer: null,
         _writeBackTimer: null,
 
-        key() { return StorageManager.getKey(CONFIG.STORAGE_KEY_VALUE_LOG); },
+        key() { return Persistence.getKey(CONFIG.STORAGE_KEY_VALUE_LOG); },
         archiveKey() { return CONFIG.SHARED_ID_PREFIX + CONFIG.STORAGE_KEY_VALUE_ARCHIVE; },
 
         // ---------------- wspólny dziennik na wszystkie karty ----------------
@@ -4224,12 +4244,12 @@ const SCRIPT_LOGS_ENABLED = false;
                 localStorage.setItem(this.key(), JSON.stringify({
                     shiftStart: this.shiftStart, entries: merged,
                 }));
-                // Ten klucz pisze się z pominięciem StorageManager.write —
+                // Ten klucz pisze się z pominięciem Persistence.write —
                 // notatka deduplikacji dla niego byłaby nieaktualna.
-                delete StorageManager._lastWritten[this.key()];
+                delete Persistence._lastWritten[this.key()];
             } catch (e) {
                 Utils.error('Dziennik wartości nie został zapisany', e);
-                StorageManager.reportWriteFailure();
+                Persistence.reportWriteFailure();
             }
             this.scheduleArchive();
             bus.emit('valueLog:changed');
@@ -4466,7 +4486,7 @@ const SCRIPT_LOGS_ENABLED = false;
             this.entries = [];
             this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
             try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
-            delete StorageManager._lastWritten[this.key()];
+            delete Persistence._lastWritten[this.key()];
             Utils.log(`[DZIENNIK] wyczyszczony: ${reason}`);
             bus.emit('valueLog:changed');
         },
@@ -4821,7 +4841,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * Nowy przedmiot: zapominamy wszystko, co wiedzieliśmy o poprzednim.
          *
          * @param {string} reason — do konsoli.
-         * @param {{closeAmbiguous?: boolean}} [opts] — closeAmbiguous mówi, że
+         * @param {{closeAmbiguous?: boolean}} [opts] - closeAmbiguous mówi, że
          *   granica przedmiotu jest PRAWDZIWA (pojawiło się `poniżej`) i wiszący
          *   Secondary-Sorting pora zamknąć domyślnie. Zmiana ASIN taką granicą
          *   NIE jest: linia uściślająca może przyjść i po niej.
@@ -4958,10 +4978,10 @@ const SCRIPT_LOGS_ENABLED = false;
             // nie rozjechała się z licznikiem karty. +1 od wartości
             // w magazynie — dwie karty działu dzielą klucz (freshCount).
             if (st.direction === 'sell') {
-                StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
+                Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
                 TaskManager.addSold(cid);
             } else if (st.direction === 'neutral') {
-                StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
+                Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
                 TaskManager.addNeutral(cid);
             }
         },
@@ -5003,7 +5023,7 @@ const SCRIPT_LOGS_ENABLED = false;
     const PriceModule = {
         enable() {
             store.localTabConfig.priceCard.moduleEnabled = true;
-            StorageManager.saveState();
+            Persistence.saveState();
             Utils.log('[MODUŁ CEN] włączony ręcznie — od tej chwili zapytania sieciowe są dozwolone.');
             // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę.
             FxRates.init().then(() => bus.emit('valueLog:changed'));
@@ -5014,7 +5034,7 @@ const SCRIPT_LOGS_ENABLED = false;
         },
         disable() {
             store.localTabConfig.priceCard.moduleEnabled = false;
-            StorageManager.saveState();
+            Persistence.saveState();
             // Zapytania, które już lecą, dokończą się same — przerwać ich nie
             // ma czym, a nowe już nie wyjdą, bo wszystkie wejścia sprawdzają
             // priceModuleOn(). Pamięć wyników czyścimy, żeby po ponownym
@@ -5210,7 +5230,7 @@ const SCRIPT_LOGS_ENABLED = false;
             if (!asin) { this.render(); return; }
             if (this.inFlight.has(asin)) { this._refreshPending = asin; return; }
             this._refreshPending = null;
-            this.resolve(asin, { manual: true });
+            this.resolve(asin);
         },
 
         /**
@@ -5224,7 +5244,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * każdej mutacji DOM. Pierwszy warunek to moduł cen — ta sama bariera
          * co w PriceNet, celowo na wejściu i na wyjściu.
          */
-        async resolve(asin, { manual = false } = {}) {
+        async resolve(asin) {
             if (!asin) return null;
             if (!priceModuleOn()) return null;
             if (this.inFlight.has(asin)) return null;
@@ -5417,7 +5437,8 @@ const SCRIPT_LOGS_ENABLED = false;
          * po ręcznym SH.cspReport().
          */
         async readCsp() {
-            const meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+            const meta = /** @type {HTMLMetaElement|null} */ (
+                document.querySelector('meta[http-equiv="Content-Security-Policy"]'));
             let header = null, headerError = null;
             try {
                 const r = await fetch(location.href, { method: 'GET', cache: 'no-store' });
@@ -6007,7 +6028,7 @@ const SCRIPT_LOGS_ENABLED = false;
         },
         /**
          * @param {number} delta
-         * @param {{manual?: boolean}} [opts] — `manual` znaczy „człowiek poprawia
+         * @param {{manual?: boolean}} [opts] - `manual` znaczy „człowiek poprawia
          *   to, czego program nie zobaczył”. Taka paczka wchodzi do zadania
          *   inaczej niż zaliczona automatycznie: razem z licznikiem „poza
          *   mianownikiem”, bo jej kierunku nikt nie zna (patrz TaskManager).
@@ -6024,7 +6045,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 return;
             }
             TaskManager.addItem(cid);
-            StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
+            Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
             // 'tabCounters') — jawne renderContent() dałoby drugi render.
         }
@@ -6144,7 +6165,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // Identyfikator karty nierozpoznanej leży w sessionStorage, żeby
                 // przeżył F5. Gdy magazyn odmawia, identyfikator żyje w pamięci
                 // do końca strony — własny try, bo wyjątek zatrzymałby start.
-                const idKey = StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY);
+                const idKey = Persistence.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY);
                 let saved = null;
                 try { saved = sessionStorage.getItem(idKey); } catch (e) { Utils.error('sessionStorage niedostępny', e); }
                 store.currentTabInstanceId = saved || Utils.generateId(CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX);
@@ -6188,7 +6209,7 @@ const SCRIPT_LOGS_ENABLED = false;
             if (StatsWindowRenderer.tickTimer) { clearInterval(StatsWindowRenderer.tickTimer); StatsWindowRenderer.tickTimer = null; }
             if (this.shiftWatchTimer) { clearInterval(this.shiftWatchTimer); this.shiftWatchTimer = null; }
             if (InputManager.onKeyDown) document.removeEventListener('keydown', InputManager.onKeyDown, true);
-            if (StorageManager.onStorage) window.removeEventListener('storage', StorageManager.onStorage);
+            if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
             if (PriceCard.onCspViolation) document.removeEventListener('securitypolicyviolation', PriceCard.onCspViolation);
             if (this.onPageHide) { window.removeEventListener('pagehide', this.onPageHide); this.onPageHide = null; }
             // Jednorazowe timery też — inaczej po chwili ruszyłyby render()
@@ -6201,8 +6222,8 @@ const SCRIPT_LOGS_ENABLED = false;
             // Odłożone wywołania debounce — po rozbiórce autozapis nadpisałby
             // magazyn starym stanem, a skan dopisałby paczkę do klucza nowego
             // egzemplarza (test w 27-pending-writes).
-            StorageManager.scheduleSave.cancel();
-            StorageManager.debouncedLoad.cancel();
+            Persistence.scheduleSave.cancel();
+            Persistence.debouncedLoad.cancel();
             if (AutoTrigger.debouncedScan) AutoTrigger.debouncedScan.cancel();
             if (AutoTrigger.debouncedAttach) AutoTrigger.debouncedAttach.cancel();
             document.querySelectorAll(`[id^="${CONFIG.SCRIPT_ID_PREFIX}"]`).forEach(el => el.remove());
@@ -6243,14 +6264,14 @@ const SCRIPT_LOGS_ENABLED = false;
             window[CONFIG.SCRIPT_ID_PREFIX + 'INIT'] = true;
 
             try {
-                StorageManager.purgeLegacyKeys();
-                StorageManager.purgeLegacySharedKeys();
+                Persistence.purgeLegacyKeys();
+                Persistence.purgeLegacySharedKeys();
 
                 // Kolejność jest ważna: loadAll() czyta ustawienia karty po
                 // store.currentTabInstanceId, więc karta musi być rozpoznana
                 // wcześniej.
                 this.identifyTab();
-                StorageManager.loadAll();
+                Persistence.loadAll();
 
                 /**
                  * Kod ustawień z zakładki — po wczytaniu magazynu (inaczej
@@ -6282,7 +6303,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 TaskManager.init();
 
                 store.initialized = true;
-                StorageManager.saveState();
+                Persistence.saveState();
 
                 CSSManager.init();
                 StatsWindowRenderer.init();
@@ -6294,7 +6315,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 Notifier.init();
                 InputManager.init();
                 AutoTrigger.init();
-                StorageManager.listen();
+                Persistence.listen();
 
                 // Przedmiot przeszedł pełną ścieżkę — wpis do dziennika. Cena
                 // z pamięci karty; jeśli jeszcze nie przyszła, dopisze ją
@@ -6330,7 +6351,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // (400 ms). Bez dokończenia tutaj ostatnie zmiany ginęłyby przy F5.
                 this.onPageHide = () => {
                     try {
-                        StorageManager.scheduleSave.flush();
+                        Persistence.scheduleSave.flush();
                         ValueLog.flushWriteBack();
                         ValueLog.flushArchive();
                     } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ }
@@ -6340,7 +6361,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // Autozapis tylko dla gałęzi, które saveState() naprawdę pisze:
                 // uiFlags nie są trwałe, a liczniki mają własne klucze.
                 onStorePaths(['userConfig', 'sessionConfig', 'localTabConfig'],
-                             () => StorageManager.scheduleSave());
+                             () => Persistence.scheduleSave());
 
                 /**
                  * Skrót `config("0x…")` bez przedrostka SH. Nazwa jest pospolita,
@@ -6361,7 +6382,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 // jest narzędziem roboczym, a nie pozostałością po debugowaniu.
                 window[CONFIG.SCRIPT_ID_PREFIX + 'API'] = window.SH = {
                     store, CONFIG, PriceCard, ShiftManager, SessionReset,
-                    StorageManager, SettingsPanel, AutoTrigger, I18n,
+                    Persistence, SettingsPanel, AutoTrigger, I18n,
                     KeepaOCR, PriceSources, PriceNet, ValueLog, FxRates, Routing,
                     // Potrzebne testom i diagnostyce.
                     Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
@@ -6412,6 +6433,8 @@ const SCRIPT_LOGS_ENABLED = false;
                     /**
                      * Zmiana limitów zapytań bez przeładowania strony:
                      *   SH.setLimits({ images: 3000 })
+                     *
+                     * @param {{images?: number, text?: number}} [limits]
                      */
                     setLimits: ({ images, text } = {}) => {
                         if (typeof images === 'number') CONFIG.PRICE_MAX_IMAGE_REQUESTS = images;
@@ -6482,7 +6505,7 @@ const SCRIPT_LOGS_ENABLED = false;
                             Utils.error('Moduł cen wyłączony. Włącz go: SH.priceOn()');
                             return Promise.resolve(null);
                         }
-                        return PriceCard.resolve(target, { manual: true });
+                        return PriceCard.resolve(target);
                     },
                 };
 
@@ -6810,7 +6833,8 @@ const SCRIPT_LOGS_ENABLED = false;
         /**
          * Rozbiera kod na łatkę. NIE dotyka stanu — to robi apply().
          *
-         * @returns {{ok: boolean, error?: string, patch?: object, stats?: object}}
+         * @returns {{ok: boolean, error?: string, patch?: object,
+         *   stats?: {applied: number, unknown: number, invalid: number, retired: number}}}
          *   `stats.unknown` to rekordy o nieznanym numerze: kod z nowszego
          *   wydania wczyta się w starszym skrypcie, tracąc tylko to, czego ten
          *   skrypt i tak nie umie ustawić.
@@ -6878,7 +6902,7 @@ const SCRIPT_LOGS_ENABLED = false;
                     if (this._set(this._root(root), path, value)) written++;
                 }
             }
-            StorageManager.saveState();
+            Persistence.saveState();
             Utils.log(`[KOD] wczytano ustawień: ${written}`);
             return {
                 'kod przyjęty': true,
@@ -7265,19 +7289,19 @@ const SCRIPT_LOGS_ENABLED = false;
             // o tyle samo — suma zadań musi się zgadzać z licznikiem karty.
             // Liczniki czyta się z magazynu, nie z pamięci: sąsiednia karta
             // mogła dopisać paczki, o których ta jeszcze nie wie.
-            const tabs = new Set([...Object.keys(store.taskCounters[id] || {}), ...StorageManager.storedTaskTabs(id)]);
+            const tabs = new Set([...Object.keys(store.taskCounters[id] || {}), ...Persistence.storedTaskTabs(id)]);
             for (const tabKey of tabs) {
-                const c = StorageManager.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
+                const c = Persistence.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
                 for (const [prefix, memory, value] of [
                     [CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, c.done],
                     [CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, c.sold],
                     [CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, c.neutral],
                 ]) {
-                    const key = StorageManager.getKey(prefix + tabKey);
-                    memory[tabKey] = Math.max(0, StorageManager.freshCount(key, memory[tabKey] || 0) - value);
-                    StorageManager.write(key, String(memory[tabKey]));
+                    const key = Persistence.getKey(prefix + tabKey);
+                    memory[tabKey] = Math.max(0, Persistence.freshCount(key, memory[tabKey] || 0) - value);
+                    Persistence.write(key, String(memory[tabKey]));
                 }
-                StorageManager.removeTaskCounter(id, tabKey);
+                Persistence.removeTaskCounter(id, tabKey);
             }
             const counters = { ...store.taskCounters };
             delete counters[id];
@@ -7369,7 +7393,7 @@ const SCRIPT_LOGS_ENABLED = false;
                 neutral: Math.max(0, next.neutral | 0),
             };
             store.taskCounters = { ...store.taskCounters, [id]: byTab };
-            StorageManager.saveTaskCounter(id, tabKey, byTab[tabKey]);
+            Persistence.saveTaskCounter(id, tabKey, byTab[tabKey]);
         },
 
         /**
@@ -7394,10 +7418,10 @@ const SCRIPT_LOGS_ENABLED = false;
 
         /**
          * +1 do jednego pola licznika zadania — od wartości w magazynie, bo dwie
-         * karty tego samego działu dzielą klucz (StorageManager.freshCount).
+         * karty tego samego działu dzielą klucz (Persistence.freshCount).
          */
         _bump(task, tabKey, field) {
-            const c = StorageManager.freshTaskCounter(task.id, tabKey, this.counters(task.id, tabKey));
+            const c = Persistence.freshTaskCounter(task.id, tabKey, this.counters(task.id, tabKey));
             this._write(task.id, tabKey, { ...c, [field]: c[field] + 1 });
         },
 
@@ -7552,9 +7576,9 @@ const SCRIPT_LOGS_ENABLED = false;
             store.tabCounters[tabKey] = this.shiftTotal(tabKey, 'done');
             store.tabSold[tabKey] = this.shiftTotal(tabKey, 'sold');
             store.tabNeutral[tabKey] = this.shiftTotal(tabKey, 'neutral');
-            StorageManager.saveCounter(tabKey, store.tabCounters[tabKey]);
-            StorageManager.saveSold(tabKey, store.tabSold[tabKey]);
-            StorageManager.saveNeutral(tabKey, store.tabNeutral[tabKey]);
+            Persistence.saveCounter(tabKey, store.tabCounters[tabKey]);
+            Persistence.saveSold(tabKey, store.tabSold[tabKey]);
+            Persistence.saveNeutral(tabKey, store.tabNeutral[tabKey]);
         },
 
         /**
@@ -7607,7 +7631,7 @@ const SCRIPT_LOGS_ENABLED = false;
 
         // ---------------- zapis ----------------
         save() {
-            StorageManager.saveTasks();
+            Persistence.saveTasks();
         },
 
         /** Sprawozdanie do konsoli: SH.tasks() */
@@ -7697,7 +7721,7 @@ const SCRIPT_LOGS_ENABLED = false;
         }
 
         // 4. Utrwalenie stanu (gwarantuje zapis do localStorage i render)
-        StorageManager.saveState();
+        Persistence.saveState();
     };
 
 */
@@ -7730,7 +7754,7 @@ const SCRIPT_LOGS_ENABLED = false;
    2. KONSOLA (na próbę, do najbliższego przeładowania strony).
       Po uruchomieniu skryptu dostępny jest obiekt SH, np.:
           SH.store.localTabConfig.linesConfig.line7_compact.fontSize = 16;
-          SH.StorageManager.saveState();      // żeby zapisać na stałe
+          SH.Persistence.saveState();      // żeby zapisać na stałe
           SH.priceOn();                       // włączyć moduł cen (sieć!)
           SH.priceOff();                      // wyłączyć moduł cen
           SH.priceStats();                    // ile zapytań poszło
@@ -7888,12 +7912,12 @@ const SCRIPT_LOGS_ENABLED = false;
    albo w konsoli, bez edycji pliku:
        SH.store.localTabConfig.linesConfig.line7_compact.fontSize = 18;
        SH.store.localTabConfig.linesConfig.line7_compact.alpha = 80;
-       SH.StorageManager.saveState();
+       SH.Persistence.saveState();
 
    PRZYKŁAD: „przenieść okno do prawego dolnego rogu”
        SH.store.localTabConfig.statsWindowPosition = { top: '', left: 'calc(100% - 200px)', bottom: '8px' };
        SH.StatsWindowRenderer.applyPosition();
-       SH.StorageManager.saveState();
+       SH.Persistence.saveState();
 
    PRZYKŁAD: „włączyć ceny na jedną zmianę i potem wyłączyć”
        SH.priceOn();     // pobiera kursy i zaczyna pytać o ceny

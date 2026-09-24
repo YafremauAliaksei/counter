@@ -75,7 +75,7 @@
         },
         /**
          * @param {number} delta
-         * @param {{manual?: boolean}} [opts] — `manual` znaczy „człowiek poprawia
+         * @param {{manual?: boolean}} [opts] - `manual` znaczy „człowiek poprawia
          *   to, czego program nie zobaczył”. Taka paczka wchodzi do zadania
          *   inaczej niż zaliczona automatycznie: razem z licznikiem „poza
          *   mianownikiem”, bo jej kierunku nikt nie zna (patrz TaskManager).
@@ -92,7 +92,7 @@
                 return;
             }
             TaskManager.addItem(cid);
-            StorageManager.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
+            Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
             // 'tabCounters') — jawne renderContent() dałoby drugi render.
         }

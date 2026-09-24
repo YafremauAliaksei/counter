@@ -80,7 +80,7 @@ function reset(minutesAgo) {
     // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
     // zapis zadań scala się z magazynem, a ten opisywałby
     // poprzedni test — często z innym początkiem zmiany.
-    env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
+    env.sandbox.localStorage.removeItem(SH.Persistence.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
     // Zera także w magazynie — licznik rośnie od wartości zapisanej.
     SH.TaskManager.syncShift(cid);
     TM.create('Default', clock.now() - minutesAgo * MIN);

@@ -62,7 +62,7 @@ function reset(startMs) {
     // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
     // zapis zadań scala się z magazynem, a ten opisywałby
     // poprzedni test — często z innym początkiem zmiany.
-    env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
+    env.sandbox.localStorage.removeItem(SH.Persistence.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
     // Zera także w magazynie — licznik rośnie od wartości zapisanej.
     SH.TaskManager.syncShift(cid);
     TM.create('Default', startMs == null ? clock.now() - HOUR : startMs);
@@ -516,7 +516,7 @@ test('karta nierozpoznana: liczniki zadań przeżywają F5', () => {
 test('rozbiór klucza licznika zadania dla każdego rodzaju karty', () => {
     // Granice: karty znane (bez podkreśleń), nierozpoznana (z dwoma),
     // identyfikator zadania z podkreśleniami i klucze, które kluczem nie są.
-    const SM = SH.StorageManager;
+    const SM = SH.Persistence;
     const P = SH.CONFIG.STORAGE_PREFIX_TASK_COUNTER;
     const U = SH.CONFIG.UNKNOWN_TAB_INSTANCE_ID_PREFIX;
     for (const tabKey of ['CRET', 'REFURB', 'WHD', 'OTHER', U + 'mudhjou6_yj0o7uz']) {
@@ -532,7 +532,7 @@ test('zepsuty zapis nie zatrzymuje startu', () => {
     // Magazyn jest wspólny z samym T-REX i bywa czyszczony ręcznie. Śmieć pod
     // kluczem zadań nie może kosztować uruchomienia skryptu.
     const shared = makeStorage();
-    shared.setItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS), '{to nie jest JSON');
+    shared.setItem(SH.Persistence.getKey(SH.CONFIG.STORAGE_KEY_TASKS), '{to nie jest JSON');
     const broken = boot({ storage: shared, clock });
     ok(broken.SH, 'skrypt wstał');
     eq(broken.SH.store.tasks.length, 1, 'zadanie domyślne postawione od nowa');

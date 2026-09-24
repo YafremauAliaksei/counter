@@ -140,3 +140,25 @@ test('kursy z magazynu są walidowane przy odczycie, nie tylko przy zapisie', ()
     const F = e.sandbox.window.SH.FxRates;
     eq(F.rates.USD, 1.156, 'bzdurny kurs z magazynu musi zostać odrzucony');
 });
+
+describe('Stan reaktywny: klucze symboliczne');
+
+/**
+ * Magazyn stanu to Proxy, które z nazwy klucza składa ścieżkę zdarzenia
+ * (`store:changed:userConfig.language`). Klucz symboliczny — dopisany np.
+ * przez bibliotekę strony albo narzędzie deweloperskie — wstawiony do napisu
+ * rzuca TypeError i przerywa zapis w pół drogi. Symbol nie jest ścieżką
+ * stanu: zapis i usunięcie mają przejść bez wyjątku i bez zdarzeń.
+ */
+test('zapis i usunięcie klucza symbolicznego nie rzuca i działa', () => {
+    const e = boot();
+    const sym = e.sandbox.Symbol('narzędzie');
+    const cfg = e.SH.store.userConfig;
+    cfg[sym] = 42;
+    eq(cfg[sym], 42, 'wartość zapisana');
+    ok(delete cfg[sym], 'usunięcie zgłasza sukces');
+    eq(cfg[sym], undefined, 'wartość usunięta');
+    // Zwykłe klucze dalej są reaktywne i trafiają do stanu.
+    cfg.language = 'en';
+    eq(e.SH.store.userConfig.language, 'en');
+});

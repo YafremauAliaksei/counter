@@ -19,7 +19,7 @@
         _archiveTimer: null,
         _writeBackTimer: null,
 
-        key() { return StorageManager.getKey(CONFIG.STORAGE_KEY_VALUE_LOG); },
+        key() { return Persistence.getKey(CONFIG.STORAGE_KEY_VALUE_LOG); },
         archiveKey() { return CONFIG.SHARED_ID_PREFIX + CONFIG.STORAGE_KEY_VALUE_ARCHIVE; },
 
         // ---------------- wspólny dziennik na wszystkie karty ----------------
@@ -116,12 +116,12 @@
                 localStorage.setItem(this.key(), JSON.stringify({
                     shiftStart: this.shiftStart, entries: merged,
                 }));
-                // Ten klucz pisze się z pominięciem StorageManager.write —
+                // Ten klucz pisze się z pominięciem Persistence.write —
                 // notatka deduplikacji dla niego byłaby nieaktualna.
-                delete StorageManager._lastWritten[this.key()];
+                delete Persistence._lastWritten[this.key()];
             } catch (e) {
                 Utils.error('Dziennik wartości nie został zapisany', e);
-                StorageManager.reportWriteFailure();
+                Persistence.reportWriteFailure();
             }
             this.scheduleArchive();
             bus.emit('valueLog:changed');
@@ -358,7 +358,7 @@
             this.entries = [];
             this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
             try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
-            delete StorageManager._lastWritten[this.key()];
+            delete Persistence._lastWritten[this.key()];
             Utils.log(`[DZIENNIK] wyczyszczony: ${reason}`);
             bus.emit('valueLog:changed');
         },

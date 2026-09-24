@@ -54,6 +54,10 @@
                 return obj[prop];
             },
             set(obj, prop, value) {
+                // Klucz symboliczny (np. Symbol.toStringTag dopisany przez
+                // bibliotekę) nie jest ścieżką stanu: zapis bez zdarzeń.
+                // Wstawiony do napisu ścieżki rzuciłby TypeError.
+                if (typeof prop === 'symbol') { obj[prop] = value; return true; }
                 const fullPath = path ? `${path}.${prop}` : prop;
                 const oldValue = obj[prop];
 
@@ -72,6 +76,7 @@
             // Usunięcie klucza też jest reaktywne — na nim stoi sprzątanie
             // wpisów po kartach (SessionReset.pruneTabInstances).
             deleteProperty(obj, prop) {
+                if (typeof prop === 'symbol') return delete obj[prop];
                 if (!(prop in obj)) return true;
                 const fullPath = path ? `${path}.${prop}` : prop;
                 const oldValue = obj[prop];
@@ -86,7 +91,7 @@
     /**
      * Stan zmiany — wspólny dla wszystkich kart. Osobny obiekt, bo scalanie
      * ustawień między kartami uzupełnia nim pola, których brakuje w magazynie
-     * (StorageManager._adoptShared).
+     * (Persistence._adoptShared).
      */
     const DEFAULT_SESSION_CONFIG = {
         shiftType: null, shiftCalculatedStartTime: null, selectedLunchIndex: null, activeTabInstances: {},
