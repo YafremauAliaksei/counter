@@ -5,6 +5,10 @@ Ten plik jest napisany dla agenta, który przejmie pracę **na maszynie z dział
 
 Zacznij od przeczytania [`CLAUDE.md`](CLAUDE.md) — tam są zasady projektu.
 
+> **Stan na 24.09.2026:** ostatnie wydanie to **1.4.1**, gałąź `release` wskazuje
+> na nie. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń
+> nie ma, CI na `main` jest zielone, ESLint nie zgłasza ani jednego ostrzeżenia.
+
 ---
 
 ## 0. Kontekst w dwóch akapitach
@@ -24,19 +28,20 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 
 ## 1. Co jest już gotowe
 
-|                                                           | Stan                                                                     |
-| --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                          |
-| 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                         |
-| `build.js` + `build.manifest.json`                        | działają, zero zależności                                                |
-| 33 pliki testów, 476 sprawdzeń                            | **wszystkie zielone**                                                    |
-| README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                                  |
-| `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy                   |
-| `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                        |
-| ESLint, Prettier                                          | uruchomione, zielone; `src/` i `tests/` poza zasięgiem Prettiera         |
-| `.gitignore`, `.editorconfig`, `.gitattributes`           | są                                                                       |
-| `package-lock.json`, `.claude/settings.json`              | w repozytorium — patrz 2.0                                               |
-| repozytorium git                                          | zainicjowane, `main` wypchnięty na `github.com/YafremauAliaksei/counter` |
+|                                                           | Stan                                                                |
+| --------------------------------------------------------- | ------------------------------------------------------------------- |
+| `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
+| 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                    |
+| `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
+| 33 pliki testów, 476 sprawdzeń                            | **wszystkie zielone**                                               |
+| README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
+| `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
+| `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |
+| ESLint, Prettier                                          | zielone, zero ostrzeżeń; `src/` i `tests/` poza zasięgiem Prettiera |
+| `.gitignore`, `.editorconfig`, `.gitattributes`           | są                                                                  |
+| `package-lock.json`, `.claude/settings.json`              | w repozytorium — patrz 2.0                                          |
+| repozytorium git                                          | `github.com/YafremauAliaksei/counter`, `main` i `release` chronione |
+| wydania                                                   | tag `vX.Y.Z` z interfejsu GitHuba, reszta automatycznie (README)    |
 
 Sprawdzenie, że podstawa jest w porządku:
 
@@ -84,14 +89,6 @@ npm run build:check       # artefakt == przebudowa src/
 npm test                  # wszystkie sprawdzenia zielone
 ```
 
-Dodatkowo warto upewnić się, że cięcie na moduły niczego nie zgubiło.
-Oryginalny monolit 9.2.0 leży **poza** tym katalogiem i do repozytorium nie trafi;
-jeśli jest dostępny, porównanie linii kodu bez komentarzy powinno dać dokładnie
-trzy różnice: numer wersji, `SCRIPT_ID_PREFIX` oraz dopisany element
-w `LEGACY_ID_PREFIXES`.
-
-Jeśli monolitu nie ma — wystarczą zielone testy, pokrywają zachowanie.
-
 ### 2.2. Linter i formatter — co już postanowiono
 
 ```bash
@@ -112,13 +109,13 @@ i tak ma zostać.
 Gdyby kiedyś wciągać `src/` pod Prettiera, to osobnym commitem `style: prettier`
 i przed jakąkolwiek zmianą merytoryczną — inaczej nie da się czytać diffów.
 
-**ESLint**: 11 błędów naprawiono u źródła (`prefer-const` w pięciu miejscach,
-komentarze w pustych blokach `catch`, kolizja nazwy `StorageManager` z globalnym
-typem przeglądarki — wyciszona w `eslint.config.js` z uzasadnieniem).
-Zostało ~40 ostrzeżeń `no-unused-vars` na obiektach modułów (`const ValueLog = …`
-używany dopiero w innym pliku po sklejeniu) — to wynika z budowy projektu i nie
-jest błędem. Reguły nie wyciszać: gdyby zniknęła, prawdziwa pozostałość po
-refaktorze przestałaby być widoczna.
+**ESLint** działa z twardą bramką: `npm run lint` pada przy pierwszym
+ostrzeżeniu (`--max-warnings 0`). `no-unused-vars` jest podzielone na dwa
+miejsca. Moduły w `src/` sprawdzają tylko nazwy lokalne, bo nazwę z najwyższego
+poziomu modułu (`const ValueLog = …`) czyta dopiero inny plik po sklejeniu.
+Nieużyte nazwy modułów sprawdza osobny blok konfiguracji na artefakcie
+`counter.js`, gdzie widać całą IIFE. Kolizja nazwy `StorageManager` z globalnym
+typem przeglądarki jest wyciszona w `eslint.config.js` z uzasadnieniem.
 
 ### 2.3. Upewnić się, że CI jest zielone
 
@@ -135,12 +132,12 @@ Jeśli `matrix` pada na Windowsie z powodu końców linii — sprawdzić, czy
 
 ### 2.4. Ustawić ochronę gałęzi
 
-> **Stan na 24.09.2026** (sprawdzone przez `GET /repos/…/rules/branches/<gałąź>`):
-> `main` — **ustawione**: PR obowiązkowy (tylko squash), oba sprawdzenia
-> wymagane, gałąź musi być aktualna, bez force-push i bez usuwania.
-> `release` — **bez reguł**: da się ją przepisać albo usunąć, a z nią zakładkę
-> wszystkich ludzi. Do dopisania drugi zestaw niżej. Listy Bypass to API bez
-> uprawnień nie pokazuje — sprawdzić w ustawieniach, że jest pusta.
+> **Stan na 24.09.2026 — zrobione** (sprawdzone przez
+> `GET /repos/…/rules/branches/<gałąź>`): `main` — PR obowiązkowy (tylko
+> squash), oba sprawdzenia wymagane, gałąź musi być aktualna, bez force-push
+> i bez usuwania; `release` — bez force-push i bez usuwania. Listy Bypass to
+> API bez uprawnień nie pokazuje — sprawdzić w ustawieniach, że jest pusta.
+> Opis niżej zostaje na wypadek odtwarzania ustawień.
 
 Settings → Rules → Rulesets → New branch ruleset, dwa zestawy:
 
@@ -164,45 +161,15 @@ Nazwy sprawdzeń muszą zgadzać się z polem `name:` z `ci.yml` — są po pols
 i to nie jest literówka. Zadania `matrix` nie warto wymagać: jego nazwa zawiera
 wersję Node i system, więc zmienia się przy każdej zmianie macierzy.
 
-### 2.5. Przeprowadzić jeden prawdziwy cykl przez PR
+### 2.5. Zmiana i wydanie
 
-Pokazowy przebieg, żeby autor zobaczył cały przepływ. Weź dowolne małe, pożyteczne
-zadanie — na przykład to opisane w rozdziale 3 niżej — i przeprowadź je:
-
-```bash
-git switch -c feat/example
-# poprawka w src/
-npm run verify
-git add -A && git commit -m "feat: ..."
-git push -u origin feat/example
-gh pr create --fill
-```
-
-Doczekać zielonego CI, pokazać autorowi, scalić squash-mergem.
-
-### 2.6. Wydać wersję 1.0.0
-
-> **Stan na 1.2.0.** Poniższy opis jest już historyczny: aktualny przebieg
-> wydania — razem z drogą przez interfejs GitHuba, bez konsoli — stoi
-> w README, w rozdziale „Wydania”.
-
-```bash
-git switch main && git pull
-git tag v1.0.0
-git push --follow-tags
-```
-
-Workflow `release.yml` sprawdzi, że wersja w tagu, w `package.json` i w artefakcie
-są zgodne, wyciągnie sekcję `## 1.0.0` z CHANGELOG i utworzy GitHub Release
-z dołączonym `counter.js`.
-
-Potem bezpośredni link do pliku wygląda tak:
-
-```
-https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js
-```
-
-Warto dodać go do README, do rozdziału „Szybki start”.
+Każda zmiana idzie przez PR (porządek pracy w `CLAUDE.md`, listy kontrolne
+w `CONTRIBUTING.md`). Wydanie opisuje README, rozdział „Wydania”: commit
+wydania w PR (`npm version X.Y.Z --no-git-tag-version` podnosi `package.json`
+i `package-lock.json` oraz przebudowuje artefakt; w CHANGELOG `## Niewydane`
+→ `## X.Y.Z — RRRR-MM-DD`; wersja w README), potem tag z interfejsu GitHuba.
+Po wydaniu warto porównać `counter.js` z gałęzi `release`, spod tagu i z załącznika
+wydania — trzy kopie mają mieć ten sam SHA-256.
 
 ---
 
@@ -220,10 +187,9 @@ Malejąco według pożytku:
 
 3. **Pokryć testami to, co zostało niepokryte.** Słabe miejsca:
    `SettingsPanel.render()` jest sprawdzany tylko pod kątem obecności sekcji;
-   `ShiftManager.update()` nie jest testowany wcale (potrzebna podmiana `Date`);
    `PriceCard.render()` — tylko pośrednio.
 
-4. **Pomyśleć o podziale `src/20-price-card.js`** — 1045 linii, największy moduł.
+4. **Pomyśleć o podziale `src/20-price-card.js`** — ok. 1040 linii, największy moduł.
    Uzasadnienie, dlaczego na razie nie jest podzielony, i rozsądny moment na to —
    w `src/README.md`, ostatni rozdział. Bez realnej potrzeby nie ruszać.
 
@@ -240,7 +206,8 @@ Malejąco według pożytku:
 - **Nie pisać komentarzy ani dokumentacji po rosyjsku czy angielsku.** Cały projekt
   jest po polsku, pilnują tego testy 09 i 10.
 - **Nie wyrzucać komentarzy z kodu.** Są w nich rozebrane błędy i powody decyzji;
-  to nagromadzona wiedza projektu.
+  to nagromadzona wiedza projektu. Historia zmian do komentarzy nie wraca
+  (zasada 7 w `CLAUDE.md`) — jej miejsce to CHANGELOG i git.
 
 ---
 
@@ -259,9 +226,7 @@ Malejąco według pożytku:
 
 ## 6. Pytania do autora
 
-Warto zadać je na początku sesji, bo odpowiedzi wpływają na resztę:
-
-1. Czy repozytorium ma zostać publiczne, czy przejść na prywatne? (dziś jest publiczne)
-2. Czy wydawać tag `v1.0.0` od razu, czy najpierw przepuścić pokazowy PR?
-3. Czy ruszać ~40 ostrzeżeń `no-unused-vars`, czy zostawić je jako świadomy szum
-   wynikający z budowy projektu (patrz 2.2)?
+Otwarte zostało jedno: czy repozytorium ma zostać publiczne, czy przejść na
+prywatne (dziś jest publiczne). Uwaga: zakładka pobiera plik z
+`raw.githubusercontent.com` bez logowania, więc przejście na prywatne wyłącza
+ją wszystkim — najpierw trzeba by wybrać inne miejsce publikacji.

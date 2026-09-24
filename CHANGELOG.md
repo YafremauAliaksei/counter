@@ -10,7 +10,9 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.4.1 — 2026-09-24
+
+Wydanie porządkowe: działanie skryptu jest identyczne z 1.4.0 — kod artefaktu nie zmienił się ani o jeden token, zmieniły się tylko komentarze. Plik jest mniejszy o ok. 15% (8847 → 7694 linii, 486 → 412 KB). Prefiks magazynu zostaje `statsHelper_v1_3_0_`, więc aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany.
 
 ### Zmieniono
 
