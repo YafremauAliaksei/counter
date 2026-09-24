@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie robi nic poza
 tym: ani jednego zapytania do internetu, ani jednej linii w konsoli.
 
-**Wersja 1.4.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.4.1** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 17.4 28 14%
@@ -83,7 +83,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.4.0/counter.js`.
+`…/counter/v1.4.1/counter.js`.
 
 ### Wklejenie do konsoli
 
