@@ -227,13 +227,14 @@ dokładnie.
 | Bramka    | Polecenie              | Co łapie                                                  |
 | --------- | ---------------------- | --------------------------------------------------------- |
 | Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 476 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
+| Testy     | `npm test`             | 485 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
 | Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
+| Typy      | `npm run typecheck`    | pomyłki typów w `src/` (TypeScript na JavaScripcie)       |
 | Format    | `npm run format:check` | rozjazdy w stylu                                          |
 
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 
-Linter i formatter wymagają `npm ci` (plik blokady `package-lock.json` leży
+Linter, sprawdzanie typów i formatter wymagają `npm ci` (plik blokady `package-lock.json` leży
 w repozytorium) oraz Node 20.19+, bo tyle wymaga ESLint 10. Same `npm run build`
 i `npm test` nadal działają bez żadnej instalacji.
 

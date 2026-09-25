@@ -50,7 +50,7 @@ function fresh(sold, unsold) {
     // Lista zadań w magazynie znika tak jak przy prawdziwym resecie zmiany:
     // zapis zadań scala się z magazynem, a ten opisywałby
     // poprzedni test — często z innym początkiem zmiany.
-    env.sandbox.localStorage.removeItem(SH.StorageManager.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
+    env.sandbox.localStorage.removeItem(SH.Persistence.getKey(SH.CONFIG.STORAGE_KEY_TASKS));
     // Zera także w magazynie — licznik rośnie od wartości zapisanej.
     TM.syncShift(cid);
     TM.create('Default', clock.now() - 2 * HOUR);
@@ -195,7 +195,7 @@ test('liczniki z magazynu: zawsze liczba całkowita od zera w górę, z górną 
 test('odcinki zadań z magazynu: bez 1970, bez przyszłości, bez nieskończoności', () => {
     const storage = makeStorage();
     const probe = boot({ storage });
-    const key = probe.SH.StorageManager.getKey(probe.SH.CONFIG.STORAGE_KEY_TASKS);
+    const key = probe.SH.Persistence.getKey(probe.SH.CONFIG.STORAGE_KEY_TASKS);
     const now = Date.now();
     const raw = '{"activeId":"t1","list":[' +
         '{"id":"t1","name":"A","segments":[{"from":0,"to":null},{"from":-86400000,"to":5},{"from":1e999,"to":null}]},' +

@@ -45,7 +45,7 @@
                 setTimeout(() => this.el.style.transform = 'translateX(0)', 10);
             } else {
                 this.el.style.transform = 'translateX(110%)';
-                StorageManager.saveState();
+                Persistence.saveState();
                 setTimeout(() => this.el.style.display = 'none', 200);
             }
         },
@@ -248,11 +248,11 @@
             // localStorage tej domeny trzyma T-REX.
             secGen.appendChild(UIBuilder.button(I18n.get('settings_resetAllDataButton'), () => {
                 if (!confirm(I18n.get('settings_resetConfirm'))) return;
-                StorageManager.ownKeys().forEach(k => localStorage.removeItem(k));
+                Persistence.ownKeys().forEach(k => localStorage.removeItem(k));
                 CONFIG.LEGACY_ID_PREFIXES.forEach(p => {
                     Object.keys(localStorage).filter(k => k.startsWith(p)).forEach(k => localStorage.removeItem(k));
                 });
-                sessionStorage.removeItem(StorageManager.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY));
+                sessionStorage.removeItem(Persistence.getKey(CONFIG.SESSION_STORAGE_TAB_INSTANCE_ID_KEY));
                 location.reload();
             }, { background: '#d9534f', width: '100%', marginTop: '10px' }));
 

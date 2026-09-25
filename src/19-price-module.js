@@ -13,7 +13,7 @@
     const PriceModule = {
         enable() {
             store.localTabConfig.priceCard.moduleEnabled = true;
-            StorageManager.saveState();
+            Persistence.saveState();
             Utils.log('[MODUŁ CEN] włączony ręcznie — od tej chwili zapytania sieciowe są dozwolone.');
             // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę.
             FxRates.init().then(() => bus.emit('valueLog:changed'));
@@ -24,7 +24,7 @@
         },
         disable() {
             store.localTabConfig.priceCard.moduleEnabled = false;
-            StorageManager.saveState();
+            Persistence.saveState();
             // Zapytania, które już lecą, dokończą się same — przerwać ich nie
             // ma czym, a nowe już nie wyjdą, bo wszystkie wejścia sprawdzają
             // priceModuleOn(). Pamięć wyników czyścimy, żeby po ponownym

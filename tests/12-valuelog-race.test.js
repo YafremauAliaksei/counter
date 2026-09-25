@@ -29,7 +29,7 @@ function wpis(id, updated, sign) {
 /** Podmienia zawartość wspólnego klucza tak, jakby zapisała ją sąsiednia karta. */
 function wspolny(entries) {
     env.sandbox.localStorage.setItem(VL.key(), JSON.stringify({ shiftStart: 1000, entries }));
-    delete env.SH.StorageManager._lastWritten[VL.key()];
+    delete env.SH.Persistence._lastWritten[VL.key()];
 }
 
 function posprzataj() {

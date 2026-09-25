@@ -69,6 +69,10 @@
          * Po limicie czasu ładowanie jest przerywane (`src = ''`).
          *
          * Sprawdzenie modułu cen — jak w request().
+         *
+         * @param {string} url
+         * @param {{timeoutMs?: number, crossOrigin?: string|null, referrerPolicy?: string}} [opts]
+         * @returns {Promise<HTMLImageElement>}
          */
         image(url, { timeoutMs, crossOrigin = 'anonymous', referrerPolicy = 'no-referrer' } = {}) {
             if (!priceModuleOn()) {
@@ -364,7 +368,7 @@
 
         /**
          * Pełny cykl: wczytać obrazek, rozebrać, zwrócić ceny.
-         * @param {string} [market] — rynek; bez niego bierze się wybrany.
+         * @param {string} [market] - rynek; bez niego bierze się wybrany.
          */
         async read(asin, market) {
             const im = await this.loadImage(asin, undefined, market);
@@ -566,7 +570,9 @@
                     // go po obcych rynkach nie ma sensu, więc w trybie 'jina'
                     // przeglądu sklepów nie ma.
                     get marketSearch() { return store.localTabConfig.priceCard.source !== 'jina'; },
-                    async run(asin, signal, market) {
+                    // Obrazka nie przerywa się sygnałem: limit czasu ma sam
+                    // PriceNet.image(), stąd `_signal` bez użycia.
+                    async run(asin, _signal, market) {
                         const d = await KeepaOCR.read(asin, market);
                         return d ? self.ocrResult(d, market) : null;
                     },

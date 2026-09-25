@@ -28,16 +28,16 @@
             // Wszystko, co opisuje jedną zmianę: liczniki paczek, sprzedanych
             // i spoza mianownika oraz zadania z ich licznikami.
             const prefixes = [
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
-                StorageManager.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER),
-                StorageManager.getKey(CONFIG.STORAGE_KEY_TASKS),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TAB_SOLD),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL),
+                Persistence.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER),
+                Persistence.getKey(CONFIG.STORAGE_KEY_TASKS),
             ];
             Object.keys(localStorage)
                 .filter(k => prefixes.some(p => k.startsWith(p)))
                 .forEach(k => {
-                    delete StorageManager._lastWritten[k];
+                    delete Persistence._lastWritten[k];
                     localStorage.removeItem(k);
                 });
 
@@ -56,7 +56,7 @@
             ValueLog.reset(reason);
 
             this.pruneTabInstances(true);
-            StorageManager.saveState();
+            Persistence.saveState();
             bus.emit('session:reset', { reason, kind });
         },
 
@@ -87,14 +87,14 @@
                 if (isOrphan(id)) delete store.userConfig.customTabSettings[id];
             });
 
-            const allLocalsKey = StorageManager.getKey(CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
+            const allLocalsKey = Persistence.getKey(CONFIG.STORAGE_KEY_ALL_LOCAL_TAB_CONFIGS);
             try {
                 const allLocals = JSON.parse(localStorage.getItem(allLocalsKey) || "{}");
                 let changed = false;
                 Object.keys(allLocals).forEach(id => {
                     if (id === 'null' || isOrphan(id)) { delete allLocals[id]; changed = true; }
                 });
-                if (changed) StorageManager.write(allLocalsKey, JSON.stringify(allLocals));
+                if (changed) Persistence.write(allLocalsKey, JSON.stringify(allLocals));
             } catch (e) { Utils.error('pruneTabInstances: nie udało się rozebrać allLocalTabConfigs', e); }
         },
 
@@ -202,7 +202,7 @@
                 SessionReset.pruneTabInstances(false);
             }
 
-            StorageManager.saveState();
+            Persistence.saveState();
         },
         /**
          * Ile z odcinka [from, to] zajęła przerwa obiadowa. Wspólne dla czasu

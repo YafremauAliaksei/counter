@@ -58,7 +58,7 @@
                 SessionReset.lastReset = null;
             }
             bus.on('storage:writeFailed', () => this.warnStorageFull());
-            if (StorageManager.writeFailed) this.warnStorageFull();
+            if (Persistence.writeFailed) this.warnStorageFull();
         },
         /**
          * Pełny magazyn — raz na stronę. Zapisów jest kilka na przedmiot, więc

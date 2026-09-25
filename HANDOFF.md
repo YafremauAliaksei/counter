@@ -33,7 +33,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 33 pliki testów, 484 sprawdzenia                          | **wszystkie zielone**                                               |
+| 33 pliki testów, 485 sprawdzeń                            | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |
@@ -114,8 +114,7 @@ ostrzeżeniu (`--max-warnings 0`). `no-unused-vars` jest podzielone na dwa
 miejsca. Moduły w `src/` sprawdzają tylko nazwy lokalne, bo nazwę z najwyższego
 poziomu modułu (`const ValueLog = …`) czyta dopiero inny plik po sklejeniu.
 Nieużyte nazwy modułów sprawdza osobny blok konfiguracji na artefakcie
-`counter.js`, gdzie widać całą IIFE. Kolizja nazwy `StorageManager` z globalnym
-typem przeglądarki jest wyciszona w `eslint.config.js` z uzasadnieniem.
+`counter.js`, gdzie widać całą IIFE.
 
 ### 2.3. Upewnić się, że CI jest zielone
 
@@ -263,6 +262,48 @@ więc praca w jednym pliku plus kilka wpisów wokół niego:
 Zasada „nowe domyślnie wyłączone” obowiązuje dalej: źródło pyta dopiero po
 ręcznym włączeniu modułu cen, a `PriceNet` odmawia każdemu zapytaniu przy
 wyłączonym module.
+
+### 2.8. Przejście na TypeScript
+
+**Stan:** `npm run typecheck` sprawdza wszystkie moduły `src/` kompilatorem
+TypeScript bez kompilacji (`checkJs`, `tsconfig.json`) — **0 błędów**, w CI jako
+krok zadania „Lint i format”. Artefakt dalej skleja `build.js`, bajt w bajt.
+Z trybu `strict` włączone są już wszystkie flagi, które nie wymagają dopisywania
+typów: `noImplicitThis`, `strictFunctionTypes`, `strictBindCallApply`,
+`alwaysStrict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`,
+`noUnusedLocals`, `noUnusedParameters`, `noImplicitOverride`, a kod
+nieosiągalny i nieużyte etykiety są błędem. Nazwy, które skrypt kładzie na
+`window` (`SH`, `config`), opisuje `types/globals.d.ts`.
+
+Moduły są skryptami bez `import`/`export`, więc kompilator widzi je tak jak
+build: jeden wspólny zakres. Z tego powodu obiekt zapisu stanu nazywa się
+`Persistence`, a nie `StorageManager` — ta nazwa należy do typu przeglądarki.
+
+**Co zostało do pełnego `strict`** (`npm run typecheck:strict` pokazuje listę):
+
+| Flaga                        | Błędów | Czego wymaga                                               |
+| ---------------------------- | -----: | ---------------------------------------------------------- |
+| `noImplicitAny`              |    776 | typów parametrów i obiektów (`CONFIG`, `store`, kontrakty) |
+| `strictNullChecks`           |    154 | obsługi `null` z `querySelector`, `getItem` i map          |
+| `useUnknownInCatchVariables` |      5 | sprawdzenia typu błędu przed `e.message` / `e.name`        |
+
+Rozsądna kolejność: najpierw typy danych, od których zależy reszta (`CONFIG`,
+stan `store`, `Money` i `PriceResult` z kontraktu źródeł, rekordy
+`ConfigCode.REGISTRY`, klucze słowników), potem moduł po module — każdy
+w osobnym PR, z `npm run ci` i `npm run test:e2e` na zielono. Dopiero na końcu
+pliki `.ts` i kompilacja w `build.js`; wtedy `npm run build` przestaje działać bez
+instalacji — to trzeba świadomie zapisać w CLAUDE.md.
+
+**Czego przy przejściu nie robić:**
+
+- **Nie usuwać sprawdzeń w czasie działania.** Typy znikają po kompilacji. Dane
+  z `localStorage`, z DOM strony T-REX i z sieci są dalej niezaufane:
+  `clampNum`, `UNSAFE_KEYS`, zakotwiczone wyrażenia, `FxRates.normalize` zostają,
+  choćby typ mówił, że wartość „na pewno” jest liczbą.
+- **Nie uciszać kompilatora** `any`, `as` i `!` bez komentarza, dlaczego wolno.
+- **Nie zmieniać działania razem z typami.** Testy (`npm test`) sprawdzają
+  zbudowany `counter.js`, więc zostają bez zmian przez całe przejście — o ile
+  skan statyczny w `09-artifact` dalej rozpoznaje układ artefaktu.
 
 ---
 

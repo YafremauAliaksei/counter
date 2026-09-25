@@ -8,7 +8,8 @@ name: CI
 # Podział na cztery zadania jest celowy:
 #   verify  — zero zależności, musi działać zawsze i wszędzie; to jest
 #             prawdziwa bramka i to ją ustawia się jako "required check";
-#   lint    — wymaga npm install, więc zależy od dostępności rejestru;
+#   lint    — ESLint, sprawdzanie typów i Prettier; wymaga npm install,
+#             więc zależy od dostępności rejestru;
 #   stand   — testy stanowiska w prawdziwym Chromium (npm run test:e2e);
 #             potrzebuje rejestru i pobrania przeglądarki;
 #   matrix  — sprawdza, że artefakt buduje się tak samo na Linuksie,
@@ -91,6 +92,11 @@ jobs:
 
       - name: ESLint
         run: npm run lint
+
+      # Sprawdzanie typów na JavaScripcie (checkJs, tsconfig.json) — bez
+      # kompilacji: artefakt dalej skleja build.js, bajt w bajt.
+      - name: TypeScript
+        run: npm run typecheck
 
       - name: Prettier
         run: npm run format:check

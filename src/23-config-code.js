@@ -305,7 +305,8 @@
         /**
          * Rozbiera kod na łatkę. NIE dotyka stanu — to robi apply().
          *
-         * @returns {{ok: boolean, error?: string, patch?: object, stats?: object}}
+         * @returns {{ok: boolean, error?: string, patch?: object,
+         *   stats?: {applied: number, unknown: number, invalid: number, retired: number}}}
          *   `stats.unknown` to rekordy o nieznanym numerze: kod z nowszego
          *   wydania wczyta się w starszym skrypcie, tracąc tylko to, czego ten
          *   skrypt i tak nie umie ustawić.
@@ -373,7 +374,7 @@
                     if (this._set(this._root(root), path, value)) written++;
                 }
             }
-            StorageManager.saveState();
+            Persistence.saveState();
             Utils.log(`[KOD] wczytano ustawień: ${written}`);
             return {
                 'kod przyjęty': true,

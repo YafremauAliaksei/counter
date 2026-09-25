@@ -16,7 +16,7 @@
    2. KONSOLA (na próbę, do najbliższego przeładowania strony).
       Po uruchomieniu skryptu dostępny jest obiekt SH, np.:
           SH.store.localTabConfig.linesConfig.line7_compact.fontSize = 16;
-          SH.StorageManager.saveState();      // żeby zapisać na stałe
+          SH.Persistence.saveState();      // żeby zapisać na stałe
           SH.priceOn();                       // włączyć moduł cen (sieć!)
           SH.priceOff();                      // wyłączyć moduł cen
           SH.priceStats();                    // ile zapytań poszło
@@ -174,12 +174,12 @@
    albo w konsoli, bez edycji pliku:
        SH.store.localTabConfig.linesConfig.line7_compact.fontSize = 18;
        SH.store.localTabConfig.linesConfig.line7_compact.alpha = 80;
-       SH.StorageManager.saveState();
+       SH.Persistence.saveState();
 
    PRZYKŁAD: „przenieść okno do prawego dolnego rogu”
        SH.store.localTabConfig.statsWindowPosition = { top: '', left: 'calc(100% - 200px)', bottom: '8px' };
        SH.StatsWindowRenderer.applyPosition();
-       SH.StorageManager.saveState();
+       SH.Persistence.saveState();
 
    PRZYKŁAD: „włączyć ceny na jedną zmianę i potem wyłączyć”
        SH.priceOn();     // pobiera kursy i zaczyna pytać o ceny

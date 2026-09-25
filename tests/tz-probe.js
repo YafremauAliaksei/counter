@@ -45,7 +45,7 @@ const scenarios = {
         const first = boot({ storage: shared, clock });
         const cid = first.SH.store.currentTabInstanceId;
         first.SH.store.tabCounters[cid] = 150;
-        first.SH.StorageManager.saveCounter(cid, 150);
+        first.SH.Persistence.saveCounter(cid, 150);
         first.SH.Main.teardown();
         return {
             reloadAt0535: restartAt(shared, clock, at(2026, 10, 25, 5, 35)),

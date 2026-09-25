@@ -29,10 +29,6 @@ module.exports = [
             sourceType: 'script',
             globals: {
                 ...globals.browser,
-                // Przeglądarka ma własny globalny typ StorageManager (navigator.storage),
-                // a projekt ma swój obiekt o tej nazwie. Kolizja jest pozorna: nasz
-                // żyje wewnątrz IIFE i niczego nie przesłania na stronie.
-                StorageManager: 'off',
             },
         },
         rules: {

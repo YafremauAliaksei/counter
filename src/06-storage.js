@@ -1,4 +1,11 @@
-    const StorageManager = {
+    /**
+     * Zapis i odczyt stanu skryptu w localStorage.
+     *
+     * Nazwa nie może brzmieć StorageManager: tak nazywa się globalny typ
+     * przeglądarki (navigator.storage), a sprawdzanie typów widzi wszystkie
+     * moduły w jednym zakresie razem z typami DOM.
+     */
+    const Persistence = {
         // Pamięć ostatniej zapisanej wartości dla każdego klucza. Potrzebna, żeby
         // nie pisać do localStorage tego samego: zbędny zapis rodzi zdarzenie
         // 'storage' w sąsiednich kartach i zmusza je do przeliczania stanu.
@@ -124,9 +131,9 @@
         scheduleSave: Utils.debounce(function() {
             // Zapis w oknie ciszy po wczytaniu stanu sąsiedniej karty nie
             // przepada — przesuwa się za koniec ciszy.
-            const wait = StorageManager.suppressSaveUntil - Date.now();
-            if (wait > 0) { setTimeout(() => StorageManager.scheduleSave(), wait); return; }
-            StorageManager.saveState();
+            const wait = Persistence.suppressSaveUntil - Date.now();
+            if (wait > 0) { setTimeout(() => Persistence.scheduleSave(), wait); return; }
+            Persistence.saveState();
         }, CONFIG.AUTOSAVE_DEBOUNCE_MS),
 
         saveCounter(tabKey, count) {
@@ -452,5 +459,5 @@
             };
             window.addEventListener('storage', this.onStorage);
         },
-        debouncedLoad: Utils.debounce(function() { StorageManager.loadAll(true); }, 300)
+        debouncedLoad: Utils.debounce(function() { Persistence.loadAll(true); }, 300)
     };

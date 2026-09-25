@@ -131,7 +131,7 @@ test('ten sam przedmiot nie policzy się dwa razy', () => {
 
 test('licznik sprzedanych trafił do magazynu, więc przeżyje F5', () => {
     const cid = SH.store.currentTabInstanceId;
-    const klucz = SH.StorageManager.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_SOLD + cid);
+    const klucz = SH.Persistence.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_SOLD + cid);
     eq(env.sandbox.localStorage.getItem(klucz), String(SH.store.tabSold[cid]));
 });
 
@@ -204,7 +204,7 @@ test('reset zmiany zeruje procent razem z licznikami', () => {
     SH.SessionReset.resetItemData('test', 'manual');
     eq(S.tabSold.CRET, 0, 'licznik sprzedanych w pamięci');
     eq(S.tabCounters.CRET, 0, 'licznik przedmiotów w pamięci');
-    const klucz = SH.StorageManager.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_SOLD + 'CRET');
+    const klucz = SH.Persistence.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_SOLD + 'CRET');
     eq(env.sandbox.localStorage.getItem(klucz), null, 'klucz w magazynie usunięty');
     SH.StatsWindowRenderer.renderContent();
     eq(SH.StatsWindowRenderer.lines.line7_compact.textContent, '0.0 0 0%');

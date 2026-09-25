@@ -3,7 +3,7 @@
  *
  * DLACZEGO TEN PLIK ISTNIEJE. localStorage tej domeny dzielimy z samym TREX,
  * więc kwota potrafi się skończyć nie z naszej winy, a `setItem` zaczyna rzucać
- * wyjątek. Wyjątek puszczony z StorageManager.write() w górę zatrzymałby
+ * wyjątek. Wyjątek puszczony z Persistence.write() w górę zatrzymałby
  * Main.init() i skrypt by nie wstał: zamiast stracić przeniesienie liczników
  * przez F5, człowiek straciłby licznik.
  *
@@ -57,7 +57,7 @@ test('okno statystyk jest na stronie', () => {
 test('licznik liczy dalej w pamięci', () => {
     const cid = env.SH.store.currentTabInstanceId;
     const before = env.SH.store.tabCounters[cid] || 0;
-    env.SH.StorageManager.saveCounter(cid, before + 1);
+    env.SH.Persistence.saveCounter(cid, before + 1);
     env.SH.store.tabCounters[cid] = before + 1;
     eq(env.SH.store.tabCounters[cid], before + 1);
 });
@@ -76,7 +76,7 @@ describe('write() zgłasza wynik zapisu i nie kłamie pamięci');
 
 test('udany zapis wraca true, powtórka tej samej wartości — false', () => {
     const ok1 = boot();
-    const SM = ok1.SH.StorageManager;
+    const SM = ok1.SH.Persistence;
     const key = SM.getKey('probaZapisu');
     eq(SM.write(key, 'x'), true, 'pierwszy zapis');
     eq(SM.write(key, 'x'), false, 'ta sama wartość drugi raz');
@@ -87,7 +87,7 @@ test('udany zapis wraca true, powtórka tej samej wartości — false', () => {
 test('nieudany zapis wraca false i NIE zostawia notatki „zapisane”', () => {
     const state = { fails: true };
     const env2 = boot({ storage: brokenStorage(state) });
-    const SM = env2.SH.StorageManager;
+    const SM = env2.SH.Persistence;
     const key = SM.getKey('probaZapisu');
 
     eq(SM.write(key, 'x'), false, 'zapis przy pełnym magazynie');
@@ -104,7 +104,7 @@ test('nieudany zapis wraca false i NIE zostawia notatki „zapisane”', () => {
 test('saveState() przy pełnym magazynie nie rzuca', () => {
     const env3 = boot({ storage: brokenStorage({ fails: true }) });
     let threw = false;
-    try { env3.SH.StorageManager.saveState(); } catch (e) { threw = true; }
+    try { env3.SH.Persistence.saveState(); } catch (e) { threw = true; }
     notOk(threw, 'saveState() nie ma prawa wypuścić wyjątku');
 });
 
@@ -170,12 +170,12 @@ test('magazyn zapełnił się w trakcie zmiany: jedno powiadomienie, choć zapis
     notOk(toast.textContent === env7.SH.I18n.get('notice_storageFull'), 'przed odmową nic nie ostrzega');
 
     state.fails = true;
-    env7.SH.StorageManager.saveCounter(cid, 1);
+    env7.SH.Persistence.saveCounter(cid, 1);
     eq(toast.textContent, env7.SH.I18n.get('notice_storageFull'), 'pierwsza odmowa ostrzega');
 
     toast.textContent = '';
-    env7.SH.StorageManager.saveCounter(cid, 2);
-    env7.SH.StorageManager.saveCounter(cid, 3);
+    env7.SH.Persistence.saveCounter(cid, 2);
+    env7.SH.Persistence.saveCounter(cid, 3);
     eq(toast.textContent, '', 'kolejne odmowy już nie');
     env7.SH.Main.teardown();
 });

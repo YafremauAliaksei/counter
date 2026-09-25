@@ -182,7 +182,7 @@
             if (!asin) { this.render(); return; }
             if (this.inFlight.has(asin)) { this._refreshPending = asin; return; }
             this._refreshPending = null;
-            this.resolve(asin, { manual: true });
+            this.resolve(asin);
         },
 
         /**
@@ -196,7 +196,7 @@
          * każdej mutacji DOM. Pierwszy warunek to moduł cen — ta sama bariera
          * co w PriceNet, celowo na wejściu i na wyjściu.
          */
-        async resolve(asin, { manual = false } = {}) {
+        async resolve(asin) {
             if (!asin) return null;
             if (!priceModuleOn()) return null;
             if (this.inFlight.has(asin)) return null;
@@ -389,7 +389,8 @@
          * po ręcznym SH.cspReport().
          */
         async readCsp() {
-            const meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+            const meta = /** @type {HTMLMetaElement|null} */ (
+                document.querySelector('meta[http-equiv="Content-Security-Policy"]'));
             let header = null, headerError = null;
             try {
                 const r = await fetch(location.href, { method: 'GET', cache: 'no-store' });

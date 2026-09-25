@@ -30,9 +30,9 @@ function settleAll(net, clock, envs) {
         net.flush();
         clock.set(clock.now() + 3000);
         for (const e of envs) {
-            e.SH.StorageManager.debouncedLoad.flush();
-            e.SH.StorageManager.scheduleSave();
-            e.SH.StorageManager.scheduleSave.flush();
+            e.SH.Persistence.debouncedLoad.flush();
+            e.SH.Persistence.scheduleSave();
+            e.SH.Persistence.scheduleSave.flush();
         }
     }
 }
@@ -106,8 +106,8 @@ test('zmiany dwóch różnych ustawień w dwóch kartach naraz — obie zostają
     const { net, clock, a, b } = twoTabs(URL_CRET, URL_WHD);
     a.SH.store.userConfig.keyboardShortcuts.INCREMENT = 'F10';
     b.SH.store.userConfig.marketplace = 'co.uk';
-    a.SH.StorageManager.scheduleSave.flush();
-    b.SH.StorageManager.scheduleSave.flush();
+    a.SH.Persistence.scheduleSave.flush();
+    b.SH.Persistence.scheduleSave.flush();
     settleAll(net, clock, [a, b]);
 
     for (const [name, env] of [['A', a], ['B', b]]) {
@@ -123,9 +123,9 @@ test('świeża zmiana nie cofa się sama po zapisie sąsiedniej karty', () => {
     const { net, clock, a, b } = twoTabs(URL_CRET, URL_WHD);
     b.SH.store.userConfig.language = 'en';                 // czeka na autozapis
     a.SH.store.userConfig.marketplace = 'it';
-    a.SH.StorageManager.scheduleSave.flush();
+    a.SH.Persistence.scheduleSave.flush();
     net.flush();
-    b.SH.StorageManager.debouncedLoad.flush();             // wczytanie po zdarzeniu z A
+    b.SH.Persistence.debouncedLoad.flush();             // wczytanie po zdarzeniu z A
     eq(b.SH.store.userConfig.language, 'en', 'świeża zmiana B nie cofnięta');
     eq(b.SH.store.userConfig.marketplace, 'it', 'zmiana A dotarła do B');
     settleAll(net, clock, [a, b]);
@@ -142,7 +142,7 @@ test('ustawienie usunięte w jednej karcie nie wraca z pamięci drugiej', () => 
     ok(b.SH.store.userConfig.customTabSettings.unknownTabInstance_x_y, 'wpis dotarł do B');
 
     delete a.SH.store.userConfig.customTabSettings.unknownTabInstance_x_y;
-    a.SH.StorageManager.scheduleSave();
+    a.SH.Persistence.scheduleSave();
     settleAll(net, clock, [a, b]);
     b.SH.store.userConfig.language = 'en';                  // B zapisuje coś innego
     settleAll(net, clock, [a, b]);
