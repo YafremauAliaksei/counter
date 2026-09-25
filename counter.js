@@ -81,13 +81,13 @@ const SCRIPT_LOGS_ENABLED = false;
      * i w chwili budowania CONFIG Utils jeszcze nie istnieje.
      */
     function normalizeAccessPasswords(raw) {
-        const lista = Array.isArray(raw) ? raw : [raw];
+        const list = Array.isArray(raw) ? raw : [raw];
         const out = [];
-        for (const poz of lista) {
-            if (typeof poz !== 'string' && typeof poz !== 'number') continue;
-            const h = String(poz).trim().toUpperCase();
-            if (!h) continue;
-            if (out.indexOf(h) === -1) out.push(h);
+        for (const item of list) {
+            if (typeof item !== 'string' && typeof item !== 'number') continue;
+            const password = String(item).trim().toUpperCase();
+            if (!password) continue;
+            if (out.indexOf(password) === -1) out.push(password);
         }
         return out.sort((a, b) => b.length - a.length);
     }
