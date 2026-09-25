@@ -902,12 +902,12 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 33 pliki, 476 sprawdzeń
+├── tests/                  ← 33 pliki, 484 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
 │   ├── *.test.js
-│   └── manual/             ← stanowisko przeglądarkowe do ręcznej próby
+│   └── stand/              ← stanowisko T-REX: ręcznie i testy w Chromium (specs/)
 └── .github/workflows/      ← CI: testy, budowanie, kontrola artefaktu
 ```
 
@@ -922,8 +922,9 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 476 sprawdzeń
+npm test             # 484 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
+npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
 ```

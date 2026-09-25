@@ -285,22 +285,56 @@ Lista kontrolna sprawdzona na linii 7:
    zostaje, bo pliki repozytorium renderują się normalnie.
 6. `npm run verify`, potem PR.
 
-### Ręczne sprawdzenie w przeglądarce
+### Stanowisko i testy w przeglądarce
 
-Testy automatyczne gonią skrypt w atrapie DOM. Przed wydaniem warto przepuścić go
-w żywej przeglądarce na stanowisku testowym:
+Testy jednostkowe gonią skrypt w atrapie DOM. Stanowisko (`tests/stand/`)
+naśladuje ekran T-REX w prawdziwej przeglądarce i sprawdza to, czego atrapa nie
+pokaże: `MutationObserver`, zdarzenia `storage` między kartami, canvas, CSP,
+zegar.
+
+**Ręcznie:**
 
 ```bash
-node tests/manual/serve.js          # podnosi http://localhost:8731
+node tests/stand/serve.js           # http://localhost:8731/
 ```
 
-Otworzyć `http://localhost:8731/tests/manual/test_page.html`, w konsoli wkleić
-`counter.js`, przepuścić kilka przedmiotów. Stanowisko naśladuje pełny cykl
-obsługi i potrafi wstawiać kody sortowania przed / razem z / po finalnym
-wyzwalaczu.
+Skrypt wkleja się do konsoli albo otwiera stronę z `?autoload=1`. Dwie karty naraz:
+`?gradingMode=CRETURN` i `?gradingMode=WAREHOUSE_DEALS`. Strona z polityką CSP
+„tylko własny host”: `?csp=strict`. Przyciski prowadzą przedmiot krok po kroku,
+wstawiają kod sortowania przed, razem albo po finalnym wyzwalaczu, przerywają
+przedmiot w połowie i powtarzają ten sam towar.
 
-Żeby sprawdzić kilka kart naraz, otworzyć stanowisko dwa razy z różnymi
-parametrami: `?gradingMode=CRETURN` i `?gradingMode=WAREHOUSE_DEALS`.
+**Automatycznie:**
+
+```bash
+npm ci
+npx playwright install chromium     # raz na maszynę
+npm run test:e2e
+```
+
+Testy leżą w `tests/stand/specs/`, a wspólne narzędzia w `helpers.js`. Każdy test
+steruje tym samym silnikiem, co przyciski (`window.Stand` w `tests/stand/stand.js`),
+więc automat sprawdza dokładnie to, co widać ręcznie. W CI biegnie osobne zadanie
+„Stanowisko w przeglądarce”.
+
+**Zasady stanowiska** (CLAUDE.md, zasada 8):
+
+1. **Wyzwalacze tylko na ekranie kroku i tylko na czas kroku.** Skrypt czyta cały
+   `document.body.innerText` przy każdej mutacji; stały tekst z `Przypisz nowy`
+   trzymałby flagę przedmiotu podniesioną na zawsze i licznik przestałby liczyć.
+   W stałym tekście strony (elementy z `data-static`) i w dzienniku stanowiska
+   wyzwalacze, kody sortowania i ASIN są rozerwane znakiem U+200B. Sprawdza to
+   `Stand.leaks()` — wyrażeniami wziętymi z samego skryptu — i test `01-silence`.
+2. **Zero prawdziwej sieci.** Każde zapytanie poza stanowisko jest przechwytywane:
+   dostaje odpowiedź z testu (kursy, obrazek wykresu) albo odmowę, a próby są
+   zapisywane, żeby test mógł je policzyć.
+3. **Skrypt wchodzi jak u człowieka** — wklejony (`page.evaluate`), a nie
+   dołączony przez `<script>`: tak omija CSP strony, jak konsola.
+4. **Obrazek wykresu rysuje test** wzorcami cyfr samego skryptu, więc
+   w repozytorium nie ma cudzych obrazków.
+5. **Bez powtórek.** `retries: 0` — test, który pada raz na kilka przebiegów,
+   jest do naprawy. Nowy test sprawdzić przed commitem
+   `npx playwright test --repeat-each=5`.
 
 ---
 

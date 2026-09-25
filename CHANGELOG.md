@@ -12,6 +12,10 @@ Dla tego projektu SemVer czyta się tak:
 
 ## Niewydane
 
+### Dodano
+
+- **Stanowisko T-REX z testami w prawdziwej przeglądarce.** `tests/stand/` zastępuje stanowisko ręczne: ta sama strona służy człowiekowi (przyciski, `?autoload=1`, dwie karty, `?csp=strict`) i testom Playwright (`npm run test:e2e`, 13 testów w Chromium, osobne zadanie CI). Sprawdzają: domyślny start bez żadnego zapytania i bez linii w konsoli przez całą pracę, także pod CSP; kody sortowania przed, razem i po finalnym wyzwalaczu; przedmiot przerwany i powtórzony; dwie karty i F5; granicę zmiany na podstawionym zegarze; moduł cen z odczytem ceny z obrazka aż do dziennika wartości, wyłączenie modułu i blokadę CSP. Do prawdziwej sieci testy nie wychodzą. Wyzwalacze stanowisko pokazuje tylko na ekranie kroku; stały tekst strony sprawdza `Stand.leaks()` — zasada 8 w CLAUDE.md.
+
 ### Zmieniono
 
 - **Kod bez danych repozytorium i właściciela.** Adres, spod którego gotowa zakładka z panelu pobiera skrypt, nie jest już wpisany w kod: podstawia go `npm run build` z pola `config.releaseUrl` w `package.json`, domyślnie pustego. Przy pustym adresie panel zamiast pola „Gotowa zakładka” pokazuje podpowiedź, `SH.configLink()` zwraca `null`, a kod ustawień działa bez zmian. Zakładki, które ludzie już mają, działają dalej — adres pliku siedzi w samej zakładce. Build odrzuca adres inny niż `https` bez znaków specjalnych, bo trafia on bez kodowania do literału i do tekstu zakładki. Nagłówek `@namespace` jest neutralny (`statshelper.counter`), a z komentarzy zniknęły odwołania do konkretnego hostingu. Nowy test w `tests/09-artifact.test.js` nie przepuści w `src/`, `build.js`, manifeście ani artefakcie słowa „github” ani nazwy z CODEOWNERS. Hasła panelu zostają bez zmian.

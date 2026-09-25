@@ -123,6 +123,20 @@ Pilnują tego `tests/09-artifact.test.js` (artefakt) i
 numery wersji w komentarzach: `@version` w nagłówku userscriptu i komentarz
 wersji przy akcji przypiętej do SHA w workflow.
 
+### 8. Stanowisko naśladuje pracę, a nie ją psuje
+
+Skrypt przy każdej mutacji czyta cały `document.body.innerText`. Wyzwalacze
+(`poniżej`, `Przypisz nowy`, `Przedmiot wysłano do …`), kody sortowania i ASIN
+pokazuje więc wyłącznie ekran kroku stanowiska (`#trex`) i tylko na czas kroku.
+W stałym tekście strony i w dzienniku stanowiska takie słowa są rozerwane
+znakiem U+200B — inaczej flaga przedmiotu zostaje podniesiona na zawsze
+i licznik przestaje liczyć. Pilnuje tego `Stand.leaks()` i test
+`tests/stand/specs/01-silence.spec.js`.
+
+Testy stanowiska nie wychodzą do prawdziwej sieci: każde zapytanie poza
+stanowisko jest przechwytywane i dostaje odpowiedź z testu albo odmowę.
+Stanowisko nie trafia do artefaktu.
+
 ---
 
 ## Polecenia
@@ -133,6 +147,7 @@ npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
 npm test             # 484 sprawdzenia
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
+npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)
 npm run lint         # ESLint (potrzebny npm ci)
 npm run format       # Prettier (potrzebny npm ci)
 npm run ci           # wszystko naraz
@@ -145,11 +160,11 @@ oraz Node 20.19+, bo tyle wymaga ESLint 10.
 W `.claude/settings.json` leży lista poleceń, o które nie trzeba dopytywać,
 i hook `Stop`, który po każdej turze sprawdza bramkę językową.
 
-Ręczne sprawdzenie w przeglądarce:
+Stanowisko w przeglądarce (ręcznie; `?autoload=1` ładuje skrypt sam):
 
 ```bash
-node tests/manual/serve.js
-# http://localhost:8731/tests/manual/test_page.html
+node tests/stand/serve.js
+# http://localhost:8731/
 ```
 
 ---

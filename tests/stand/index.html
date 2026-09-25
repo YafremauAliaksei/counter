@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Stanowisko T-REX</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--line:#2a2f3a;--txt:#e6e8ee;--dim:#8b93a7;
+        --acc:#4f8cff;--ok:#5ee88a;--warn:#ffc53d;--screen:#12151b;--logbg:#0c0e13}
+  :root[data-theme="light"]{--bg:#f4f6fa;--panel:#fff;--line:#d8dee9;--txt:#1c2430;--dim:#5d6b82;
+        --acc:#1c6ef2;--ok:#127a3a;--warn:#9a6b00;--screen:#fbfcfe;--logbg:#f0f2f7}
+  :root[data-theme="dim"]{--bg:var(--rnd-bg);--panel:var(--rnd-panel);--line:var(--rnd-line);
+        --txt:#eef1f6;--dim:#aab3c4;--acc:#7aa7ff;--ok:#7fe3a4;--warn:#ffd36b;
+        --screen:var(--rnd-screen);--logbg:var(--rnd-log)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 Segoe UI,Roboto,Arial,sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 3px;font-size:17px}
+  .sub{color:var(--dim);font-size:12px}
+  .wrap{display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px 20px;align-items:start}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
+  .panel h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.7px;color:var(--dim)}
+  #trex{min-height:250px;display:flex;flex-direction:column;gap:12px;justify-content:center;
+        border:1px dashed var(--line);border-radius:8px;padding:22px;background:var(--screen)}
+  #stepName{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--acc)}
+  #stepText{font-size:22px;font-weight:600;line-height:1.3}
+  #itemBox{min-height:24px} #itemBox a{color:#79b0ff}
+  #routeBox{min-height:24px;font-size:16px;font-weight:600;color:var(--warn)}
+  button{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:6px;
+         padding:8px 13px;cursor:pointer;font:13px inherit}
+  button:hover{border-color:var(--acc)}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#08101f;font-weight:600}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:10px}
+  label select,input[type=range]{flex:1}
+  #log{height:260px;overflow:auto;background:var(--logbg);border:1px solid var(--line);border-radius:6px;
+       padding:8px;font:11px/1.55 Consolas,monospace;color:#b9c0d0}
+  #log div{border-bottom:1px solid var(--line);padding:2px 0}
+  .t-pre{color:var(--warn)} .t-post{color:var(--ok)} .t-asin{color:#79b0ff} .t-sys{color:var(--dim)}
+  .stat{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--line)}
+  .stat b{font-family:Consolas,monospace}
+  code{background:var(--logbg);padding:1px 5px;border-radius:3px;font-size:12px}
+  .hint{font-size:12px;color:var(--dim);margin-top:10px;line-height:1.6}
+  #themeBar button[aria-pressed="true"]{border-color:var(--acc)}
+</style>
+</head>
+<body>
+
+<!--
+  STAŁY TEKST STRONY (wszystko z atrybutem data-static) nie może zawierać
+  niczego, co skrypt rozpoznaje: wyzwalaczy, kodów sortowania ani ASIN.
+  Słowa-wyzwalacze są tu rozerwane znakiem &#8203; (U+200B). Wyzwalacze
+  w pełnym brzmieniu pojawia wyłącznie ekran kroku (#trex), na czas kroku.
+  Pilnuje tego Stand.leaks() i test stanowiska.
+-->
+<header id="hdr" data-static>
+  <h1>Stanowisko T-REX</h1>
+  <div class="sub">Cykl przedmiotu: <code>poni&#8203;żej</code> → dwa kroki pośrednie → <code>Przypisz&#8203; nowy</code>.
+    Słowa-wyzwalacze w stałym tekście są rozerwane niewidocznym znakiem.</div>
+  <div id="themeBar" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="sub">Wygląd strony:</span>
+    <button data-theme-set="dark">Ciemny</button>
+    <button data-theme-set="light">Jasny</button>
+    <button data-theme-set="dim">Przyciemniony</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="panel">
+      <h2 id="screenTitle" data-static>Ekran obsługi</h2>
+      <div id="trex">
+        <div id="stepName"></div>
+        <div id="stepText"></div>
+        <div id="itemBox"></div>
+        <div id="routeBox"></div>
+      </div>
+      <div id="controls" data-static>
+        <div class="btns">
+          <button class="primary" id="bNew">Nowy przedmiot</button>
+          <button id="bSame">Ten sam towar jeszcze raz</button>
+          <button id="bStep">Następny krok</button>
+          <button id="bAbort">Przerwij → nowy przedmiot</button>
+          <button id="bAuto">▶ Autocykl</button>
+          <button id="bReset">Reset</button>
+          <button id="bLeaks">Sprawdź stały tekst</button>
+        </div>
+        <label>Tempo kroku: <input type="range" id="speed" min="200" max="4000" step="100" value="1400">
+          <b id="speedVal">1400 ms</b></label>
+        <div class="hint">
+          Skrypt: konsola (F12) → wklej <code>counter.js</code>, albo otwórz stronę z <code>?autoload=1</code>.
+          Dwie karty naraz: <code>?gradingMode=CRETURN</code> i <code>?gradingMode=WAREHOUSE_DEALS</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel" id="stats" data-static>
+      <h2>Stan</h2>
+      <div class="stat"><span>Przedmiotów na stanowisku</span><b id="sItems">0</b></div>
+      <div class="stat"><span>Towar na ekranie</span><b id="sAsin">—</b></div>
+      <div class="stat"><span>Link w DOM</span><b id="sLink">nie</b></div>
+      <div class="stat"><span>Skrypt</span><b id="sScript">nie</b></div>
+      <div class="stat"><span>Licznik tej karty</span><b id="sCount">—</b></div>
+    </div>
+
+    <div class="panel" id="routePanel" data-static>
+      <h2>Dokąd pojechał przedmiot</h2>
+      <label>Kod
+        <select id="routeCode">
+          <option value="">— bez kodu —</option>
+          <optgroup label="sprzedaż">
+            <option value="CRITS-PRG2">CR&#8203;ITS-PRG2</option>
+            <option value="PL-Sellable">PL&#8203;-Sellable</option>
+          </optgroup>
+          <optgroup label="niesprzedaż">
+            <option value="Liquidation">Li&#8203;quidation</option>
+            <option value="WHD">WH&#8203;D</option>
+            <option value="External-Repair">Ex&#8203;ternal-Repair</option>
+          </optgroup>
+          <optgroup label="poza procentem">
+            <option value="AUDIT">AU&#8203;DIT</option>
+            <option value="Audit-Damage">Au&#8203;dit-Damage</option>
+          </optgroup>
+          <optgroup label="niejednoznaczny">
+            <option value="Secondary-Sorting">Se&#8203;condary-Sorting</option>
+          </optgroup>
+        </select>
+      </label>
+      <label>Kiedy
+        <select id="routeWhen">
+          <option value="before">przed finalnym wyzwalaczem</option>
+          <option value="at">razem z nim</option>
+          <option value="after" selected>po nim</option>
+        </select>
+      </label>
+      <label>Zapis
+        <select id="routeDash">
+          <option value="plain">bez myślnika</option>
+          <option value="dash">z myślnikiem</option>
+          <option value="rand" selected>losowo</option>
+        </select>
+      </label>
+      <label>Uściślenie
+        <select id="routeConfirm">
+          <option value="">— brak —</option>
+          <option value="sell">Transfer&#8203; - Sellable</option>
+          <option value="unsell">FBA&#8203;Transfer</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="panel" id="logPanel" data-static>
+      <h2>Dziennik</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script src="stand.js"></script>
+</body>
+</html>

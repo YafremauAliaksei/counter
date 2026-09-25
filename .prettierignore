@@ -3,7 +3,6 @@
 counter.js
 
 node_modules/
-tests/manual/
 
 # src/ — moduły są fragmentami jednej IIFE i mają wcięcie 4 spacji, którego
 # Prettier nie rozumie: widzi je jako pliki najwyższego poziomu i wcięcie
