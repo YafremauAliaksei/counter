@@ -10,7 +10,14 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.4.2 — 2026-09-25
+
+Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_3_0_`, więc aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany. Liczenie, dziennik i moduł cen działają jak w 1.4.1. Człowiek przy stanowisku zobaczy dwie rzeczy:
+
+- przycisk „Zastosuj i zamknij” jest zawsze widoczny u dołu panelu ustawień;
+- plik nie ma wpisanego adresu wydania (`config.releaseUrl` jest pusty), więc w panelu, w sekcji kodu ustawień, zamiast pola „Gotowa zakładka” stoi podpowiedź. Zakładki, które ludzie już mają, działają dalej — adres pliku siedzi w samej zakładce; kod ustawień też działa bez zmian.
+
+W konsoli `SH.StorageManager` nazywa się teraz `SH.Persistence`.
 
 ### Dodano
 
