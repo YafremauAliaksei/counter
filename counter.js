@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.4.1
+// @version      1.4.2
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -93,7 +93,7 @@ const SCRIPT_LOGS_ENABLED = false;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.4.1',
+        SCRIPT_VERSION: '1.4.2',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Koduje SCHEMAT zapisanych danych,

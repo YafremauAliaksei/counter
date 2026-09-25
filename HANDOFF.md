@@ -5,8 +5,10 @@ Ten plik jest napisany dla agenta, który przejmie pracę **na maszynie z dział
 
 Zacznij od przeczytania [`CLAUDE.md`](CLAUDE.md) — tam są zasady projektu.
 
-> **Stan na 24.09.2026:** ostatnie wydanie to **1.4.1**, gałąź `release` wskazuje
-> na nie. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń
+> **Stan na 25.09.2026:** ostatnie wydanie to **1.4.2**, gałąź `release` wskazuje
+> na nie. Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
+> zakładki — adres wydania wpisuje się przy pierwszym wydaniu na docelowym
+> serwerze. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń
 > nie ma, CI na `main` jest zielone, ESLint nie zgłasza ani jednego ostrzeżenia.
 
 ---
