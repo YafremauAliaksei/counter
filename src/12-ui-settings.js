@@ -672,9 +672,29 @@
             }, { width: '100%', marginTop: '6px' }));
             this.el.appendChild(secCode);
 
-            // Zamknięcie
-            this.el.appendChild(h('hr', { style: { margin: '20px 0' } }));
-            this.el.appendChild(UIBuilder.button(I18n.get('settings_applyAndCloseButton'), () => this.toggle(), { width: '100%', padding: '10px', fontSize: '1.1em' }));
+            /**
+             * Zamknięcie przyklejone do dołu panelu (`position: sticky`):
+             * widać je zawsze, bez przewijania na koniec, ile by sekcji nie
+             * przybyło. Ustawienia zapisują się od razu przy zmianie, więc
+             * przycisk tylko zamyka panel — wcześniej niczego nie gubi.
+             *
+             * Ujemne marginesy wyrównują pasek z krawędziami panelu (wcięcia
+             * 15/25 px). Tło panelu jest lekko przezroczyste, więc pod paskiem
+             * treść przewijana jest dodatkowo rozmyta — inaczej prześwitywałaby
+             * spod przycisku.
+             */
+            this.el.appendChild(h('div', {
+                id: 'settingsPanelFooter',
+                style: {
+                    position: 'sticky', bottom: '-15px', zIndex: '1',
+                    margin: '20px -15px -15px -25px', padding: '10px 15px 15px 25px',
+                    background: CONFIG.SETTINGS_PANEL_BACKGROUND_COLOR,
+                    backdropFilter: 'blur(6px)',
+                    borderTop: `1px solid ${CONFIG.SETTINGS_PANEL_ACCENT_COLOR}33`,
+                    boxShadow: '0 -4px 8px rgba(0,0,0,0.06)',
+                },
+            }, UIBuilder.button(I18n.get('settings_applyAndCloseButton'), () => this.toggle(),
+                { width: '100%', padding: '10px', fontSize: '1.1em' })));
 
             this.el.scrollTop = scrollTop;
         }

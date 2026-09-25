@@ -33,7 +33,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
 | 25 modułów w `src/`                                       | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 33 pliki testów, 487 sprawdzeń                            | **wszystkie zielone**                                               |
+| 33 pliki testów, 488 sprawdzeń                            | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |
@@ -314,7 +314,8 @@ Malejąco według pożytku:
 1. **Rozbudowywać testy stanowiska** (`tests/stand/specs/`, `npm run test:e2e`).
    Są już: cisza przy domyślnym starcie (także pod CSP), cykl przedmiotu z kodami
    sortowania, dwie karty i F5, granica zmiany na podstawionym zegarze, moduł
-   cen z odczytem obrazka, wyłączenie modułu i blokada CSP. Warto dopisać: panel
+   cen z odczytem obrazka, wyłączenie modułu, blokada CSP i przycisk zamknięcia
+   panelu widoczny bez przewijania. Warto dopisać: panel
    ustawień otwierany hasłem i kod ustawień z zakładki. Zadanie CI „Stanowisko
    w przeglądarce” warto dopisać do wymaganych sprawdzeń, gdy pokaże stabilność.
    Zasady — `CONTRIBUTING.md`, „Stanowisko i testy w przeglądarce”.

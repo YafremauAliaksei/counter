@@ -317,3 +317,25 @@ test('panel zadań nie wyszedł do sieci ani do konsoli', () => {
     eq(env.net.consoleLog, [], 'console.log');
     eq(env.net.consoleError, [], 'console.error');
 });
+
+describe('Zamknięcie panelu');
+
+/**
+ * Panel rośnie razem z liczbą sekcji, a zamknięcie stoi na samym końcu.
+ * Przyklejone do dołu (`position: sticky`) jest widoczne bez przewijania
+ * całej listy. Sprawdzenie układu w prawdziwej przeglądarce:
+ * tests/stand/specs/06-panel.spec.js.
+ */
+test('zamknięcie to ostatni element panelu, przyklejony do dołu, i zamyka panel', () => {
+    SH.SettingsPanel.render();
+    const kids = SH.SettingsPanel.el.children;
+    const footer = kids[kids.length - 1];
+    eq(footer.id, SH.CONFIG.SCRIPT_ID_PREFIX + 'settingsPanelFooter', 'ostatni element panelu');
+    eq(footer.style.position, 'sticky');
+    ok(String(footer.textContent).includes(label('settings_applyAndCloseButton')), 'napis przycisku');
+
+    ok(S.uiFlags.isSettingsPanelVisible, 'panel otwarty przed kliknięciem');
+    button(label('settings_applyAndCloseButton')).dispatch('click', {});
+    notOk(S.uiFlags.isSettingsPanelVisible, 'kliknięcie zamyka panel');
+    SH.SettingsPanel.toggle();
+});
