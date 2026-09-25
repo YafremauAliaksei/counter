@@ -464,4 +464,24 @@ function setShift(env, hoursAgo, activeTabs) {
     S.sessionConfig.activeTabInstances = activeTabs || { CRET: Date.now(), WHD: Date.now() };
 }
 
-module.exports = { makeEnv, makeClock, makeTabNetwork, boot, bootOnStand, setShift, STAND_TIME, ARTIFACT, ARTIFACT_PATH, ROOT };
+/**
+ * Linia z hasłami panelu dokładnie tak, jak stoi w nagłówku pliku
+ * (src/00-banner.js), i sama lista przed normalizacją. Testy nie znają
+ * brzmienia haseł — biorą je stąd, więc zmiana haseł w nagłówku (także
+ * w kopii skryptu) nie wymaga ruszania testów.
+ */
+const PASSWORDS_LINE = /^const SETTINGS_ACCESS_PASSWORDS = (\[.*\]);$/m;
+function bannerPasswordsLine() {
+    const src = fs.readFileSync(path.join(ROOT, 'src', '00-banner.js'), 'utf8');
+    const m = PASSWORDS_LINE.exec(src);
+    if (!m) throw new Error('w nagłówku nie ma linii const SETTINGS_ACCESS_PASSWORDS = [...];');
+    return m[0];
+}
+function bannerPasswords() {
+    return vm.runInNewContext(PASSWORDS_LINE.exec(bannerPasswordsLine())[1]);
+}
+
+module.exports = {
+    makeEnv, makeClock, makeTabNetwork, boot, bootOnStand, setShift, STAND_TIME, ARTIFACT, ARTIFACT_PATH, ROOT,
+    bannerPasswords, bannerPasswordsLine,
+};

@@ -21,7 +21,7 @@
 'use strict';
 
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot } = require('./dom-stub');
+const { boot, bannerPasswords } = require('./dom-stub');
 
 const env = boot();
 const SH = env.SH;
@@ -110,70 +110,100 @@ test('lista w pliku nie zawiera takiej pary', () => {
 
 describe('Wpisywanie haseł');
 
-test('oba hasła otwierają panel', () => {
-    closePanel();
-    type('GORDONPAULE');
-    ok(panelOpen(), 'GORDONPAULE');
+/**
+ * Hasła z nagłówka pliku, po normalizacji — testy nie znają ich brzmienia,
+ * więc przechodzą bez zmian przy każdej liście haseł (patrz 02-defaults).
+ * Sprawdzenia wpisywania idą po KAŻDYM haśle z listy.
+ */
+const PW = SH.CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS;
+const LONGEST = PW[0];
 
-    closePanel();
-    type('BOMBA');
-    ok(panelOpen(), 'BOMBA');
+/** Znak spoza wszystkich haseł — do przerywania i do śmieci w buforze. */
+const FOREIGN = ['#', '~', '^', '§'].find(ch => !PW.some(p => p.includes(ch)));
+
+test('lista haseł z nagłówka nie jest pusta', () => {
+    // Pusta lista jest dozwolona (panel otwiera wtedy tylko konsola), ale
+    // przy niej sprawdzenia poniżej niczego by nie dowodziły.
+    ok(PW.length > 0, 'nagłówek nie ma ani jednego hasła');
+    eq(bannerPasswords().length > 0, true);
+});
+
+test('każde hasło otwiera panel', () => {
+    for (const pw of PW) {
+        closePanel();
+        type(pw);
+        ok(panelOpen(), pw);
+    }
     closePanel();
 });
 
 test('wielkość liter przy wpisywaniu nie ma znaczenia', () => {
-    closePanel();
-    type('bomba');
-    ok(panelOpen());
+    for (const pw of PW) {
+        closePanel();
+        type(pw.toLowerCase());
+        ok(panelOpen(), pw.toLowerCase());
+    }
     closePanel();
 });
 
 test('śmieci wpisane wcześniej niczego nie psują', () => {
     // Bufor jest oknem przesuwnym: liczy się KOŃCÓWKA, a nie całość.
-    closePanel();
-    type('zxcvbnm1234567890BOMBA');
-    ok(panelOpen());
+    for (const pw of PW) {
+        closePanel();
+        type(FOREIGN.repeat(LONGEST.length + 5) + pw);
+        ok(panelOpen(), pw);
+    }
     closePanel();
 });
 
 test('hasło przerwane innym znakiem NIE otwiera panelu', () => {
-    closePanel();
-    type('BOMXBA');
-    notOk(panelOpen(), 'przerwana sekwencja nie może zadziałać');
+    for (const pw of PW.filter(p => p.length > 1)) {
+        closePanel();
+        type(pw.slice(0, -1) + FOREIGN + pw.slice(-1));
+        notOk(panelOpen(), 'przerwane: ' + pw);
+    }
     closePanel();
 });
 
 test('drugie wpisanie zamyka panel, a nie otwiera go po raz drugi', () => {
-    closePanel();
-    type('BOMBA');
-    ok(panelOpen(), 'pierwsze wpisanie otwiera');
-    type('BOMBA');
-    notOk(panelOpen(), 'drugie zamyka');
+    for (const pw of PW) {
+        closePanel();
+        type(pw);
+        ok(panelOpen(), 'pierwsze wpisanie otwiera: ' + pw);
+        type(pw);
+        notOk(panelOpen(), 'drugie zamyka: ' + pw);
+    }
     closePanel();
 });
 
 test('po trafieniu bufor jest czyszczony', () => {
-    closePanel();
-    type('BOMBA');
-    eq(SH.InputManager.seqBuffer, '', 'bufor po trafieniu');
+    for (const pw of PW) {
+        closePanel();
+        type(pw);
+        eq(SH.InputManager.seqBuffer, '', 'bufor po trafieniu: ' + pw);
+    }
     closePanel();
 });
 
 test('pisanie w polu tekstowym nie otwiera panelu', () => {
-    closePanel();
-    type('BOMBA', { inField: true });
-    notOk(panelOpen(), 'w polu INPUT hasło nie działa');
+    for (const pw of PW) {
+        closePanel();
+        type(pw, { inField: true });
+        notOk(panelOpen(), 'w polu INPUT hasło nie działa: ' + pw);
+    }
     closePanel();
 });
 
 test('autopowtarzanie klawisza nie buduje hasła', () => {
     // Przytrzymany klawisz daje dziesiątki zdarzeń na sekundę. Gdyby wchodziły
-    // do bufora, przytrzymane „A” samo dopisywałoby się do wpisanego wcześniej
-    // „BOMB”.
-    closePanel();
-    type('BOMB');
-    type('A', { repeat: true });
-    notOk(panelOpen(), 'powtórzenie klawisza nie może dokończyć hasła');
+    // do bufora, przytrzymana ostatnia litera sama dokończyłaby wpisany
+    // wcześniej początek hasła.
+    for (const pw of PW.filter(p => p.length > 1)) {
+        closePanel();
+        type(pw.slice(0, -1));
+        type(pw.slice(-1), { repeat: true });
+        notOk(panelOpen(), 'powtórzenie klawisza nie może dokończyć hasła: ' + pw);
+    }
     closePanel();
 });
 
@@ -181,20 +211,26 @@ describe('Koszt sprawdzania przy każdym klawiszu');
 
 test('bufor nigdy nie rośnie ponad najdłuższe hasło', () => {
     closePanel();
-    type('abcdefghijklmnopqrstuvwxyz0123456789');
-    eq(SH.InputManager.seqBuffer.length, SH.InputManager._maxPasswordLen);
-    eq(SH.InputManager._maxPasswordLen, 11, 'tyle ma GORDONPAULE');
+    type('abcdefghijklmnopqrstuvwxyz0123456789' + FOREIGN.repeat(40));
+    eq(SH.InputManager._maxPasswordLen, LONGEST.length, 'długość najdłuższego hasła');
+    eq(SH.InputManager.seqBuffer.length, LONGEST.length);
     closePanel();
 });
 
 test('porównanie startuje tylko na ostatnich znakach haseł', () => {
-    // Mapa buduje się raz, w init(). Przy 'GORDONPAULE' i 'BOMBA' pracę
-    // uruchamiają wyłącznie litery E i A — każdy inny klawisz kosztuje jedno
-    // nieudane zajrzenie do mapy i ani jednego porównania łańcuchów.
+    // Mapa buduje się raz, w init(). Pracę uruchamiają wyłącznie ostatnie
+    // litery haseł — każdy inny klawisz kosztuje jedno nieudane zajrzenie do
+    // mapy i ani jednego porównania łańcuchów. W grupie kolejność jak w CONFIG
+    // (od najdłuższego), więc przy kilku trafieniach wygrywa dłuższe.
     const byLastChar = SH.InputManager._passwordsByLastChar;
-    eq([...byLastChar.keys()].sort(), ['A', 'E']);
-    eq(byLastChar.get('E'), ['GORDONPAULE']);
-    eq(byLastChar.get('A'), ['BOMBA']);
+    const expected = new Map();
+    for (const pw of PW) {
+        const last = pw[pw.length - 1];
+        if (!expected.has(last)) expected.set(last, []);
+        expected.get(last).push(pw);
+    }
+    eq([...byLastChar.keys()].sort(), [...expected.keys()].sort());
+    for (const [last, list] of expected) eq(byLastChar.get(last), list, 'grupa ' + last);
 });
 
 describe('Cisza po starcie zostaje nienaruszona');

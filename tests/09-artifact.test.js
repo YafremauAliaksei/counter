@@ -21,7 +21,7 @@
 const fs = require('fs');
 const path = require('path');
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { ARTIFACT, ROOT } = require('./dom-stub');
+const { ARTIFACT, ROOT, bannerPasswordsLine } = require('./dom-stub');
 
 const LINES = ARTIFACT.split('\n');
 
@@ -425,8 +425,8 @@ test('hasła leżą w pierwszych 40 liniach', () => {
     const head = LINES.slice(0, 40).join('\n');
     ok(/const\s+SETTINGS_ACCESS_PASSWORDS\s*=\s*\[/.test(head),
        'lista haseł musi być na górze pliku');
-    ok(/'GORDONPAULE'/.test(head) && /'BOMBA'/.test(head),
-       'oba hasła muszą być widoczne w tym bloku');
+    ok(head.includes(bannerPasswordsLine()),
+       'cała linia z hasłami musi być widoczna w tym bloku');
 });
 
 test('wyłącznik logów leży zaraz pod hasłem', () => {

@@ -144,7 +144,7 @@ Stanowisko nie trafia do artefaktu.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 485 sprawdzeń
+npm test             # 487 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)
