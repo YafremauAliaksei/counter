@@ -9,7 +9,7 @@
 'use strict';
 
 const { describe, test, eq, ok } = require('./harness');
-const { boot, makeEnv } = require('./dom-stub');
+const { boot, makeEnv, bannerPasswords } = require('./dom-stub');
 
 const { makeStorage } = makeEnv();
 
@@ -140,10 +140,39 @@ test('sprzątanie usuwa klucze starych schematów i nie rusza bieżących', () =
     fresh.SH.Main.teardown();
 });
 
-test('hasła dostępu to GORDONPAULE i BOMBA, dłuższe pierwsze', () => {
+/**
+ * Hasła są jedynym ustawieniem, które zmienia się wprost w nagłówku pliku —
+ * także w kopii skryptu na innym stanowisku. Dlatego testy nie znają ich
+ * brzmienia: biorą listę z nagłówka (src/00-banner.js) i sprawdzają, że
+ * skrypt przyjął dokładnie ją. Zmiana haseł to jedna linia w nagłówku plus
+ * dwa miejsca w dokumentacji (pilnuje ich 10-language), bez ruszania testów.
+ */
+test('hasła dostępu to lista z nagłówka pliku, znormalizowana, dłuższe pierwsze', () => {
+    const raw = bannerPasswords();
+    const got = env.SH.CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS;
+    eq(got, env.SH.normalizeAccessPasswords(raw), 'CONFIG ma listę z nagłówka');
     // Kolejność nie jest kosmetyką: gdy w jednym naciśnięciu pasuje kilka haseł,
     // wygrywa pierwsze z listy, a lista jest posortowana od najdłuższego.
-    eq(env.SH.CONFIG.SETTINGS_PANEL_ACCESS_PASSWORDS, ['GORDONPAULE', 'BOMBA']);
+    for (let i = 1; i < got.length; i++) {
+        ok(got[i - 1].length >= got[i].length, 'kolejność od najdłuższego: ' + got.join(', '));
+    }
+});
+
+test('README i ściąga w stopce podają te same hasła, co nagłówek', () => {
+    // Hasła zmienia się w nagłówku; dokumentacja powtarza je w dwóch miejscach
+    // i nie może obiecywać haseł, które nie działają.
+    const fs = require('fs');
+    const path = require('path');
+    const { ROOT, bannerPasswordsLine } = require('./dom-stub');
+    const line = bannerPasswordsLine();
+    const docs = {
+        'README.md': fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8'),
+        'src/99-footer.js': fs.readFileSync(path.join(ROOT, 'src', '99-footer.js'), 'utf8'),
+    };
+    for (const [name, text] of Object.entries(docs)) {
+        ok(text.includes(line), name + ': brak linii ' + line);
+        for (const pw of bannerPasswords()) ok(text.includes(String(pw)), name + ': brak hasła ' + pw);
+    }
 });
 
 test('język domyślny to polski, sklep domyślny to amazon.de', () => {

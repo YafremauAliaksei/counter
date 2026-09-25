@@ -563,6 +563,14 @@ początkiem innego hasła** — przy parze `BOM` i `BOMBA` krótsze zadziałało
 wcześniej i wyczyściło bufor, więc dłuższego nie dałoby się wpisać nigdy. Pilnuje
 tego test, więc taka lista zapali CI na czerwono.
 
+Hasło może zawierać litery (także polskie), cyfry i spację — liczy się każdy
+znak, który daje klawiatura. Testy nie znają brzmienia haseł: biorą listę z
+nagłówka i sprawdzają, że każde hasło z niej otwiera i zamyka panel. Zmiana haseł
+w repozytorium to więc ta jedna linia w `src/00-banner.js` plus dwa miejsca, które
+je powtarzają: ten rozdział README (linia z listą i hasła w zdaniu wyżej) i ściąga
+w `src/99-footer.js` — test pilnuje, żeby się zgadzały. W kopii samego `counter.js`
+(bez repozytorium i testów) wystarczy poprawić linię z listą na górze pliku.
+
 | Sekcja                  | Co się ustawia                                                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | **Zadania**             | **bieżący proces pracy: nazwa, początek, paczki, tempo, pauza, historia zmiany — patrz rozdział „Zadania”**        |
@@ -902,7 +910,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 33 pliki, 485 sprawdzeń
+├── tests/                  ← 33 pliki, 487 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -922,7 +930,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 485 sprawdzeń
+npm test             # 487 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
