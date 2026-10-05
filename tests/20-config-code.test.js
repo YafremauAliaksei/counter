@@ -386,6 +386,66 @@ test('powtórne kliknięcie zakładki nakłada nowy kod na działający egzempla
     notOk(BOOT_NAME in e.sandbox.window, 'zmienna posprzątana także tą drogą');
 });
 
+describe('Kod ustawień z zakładki rozdanej przy starszym prefiksie');
+
+/**
+ * Zakładka niesie nazwę zmiennej z prefiksem z chwili, gdy ją rozdano, a ludzie
+ * zakładek nie przepisują. Po zmianie prefiksu ich ustawienia przepadałyby po
+ * cichu — okno w domyślnym miejscu, bez słowa wyjaśnienia.
+ */
+const LEGACY = SH.CONFIG.LEGACY_ID_PREFIXES;
+const OLD_NAME = LEGACY[LEGACY.length - 1] + 'CONFIG_CODE';
+const OLDEST_NAME = LEGACY[0] + 'CONFIG_CODE';
+
+/** Uruchomienie z kilkoma zmiennymi startowymi naraz. */
+function bootWithVars(vars) {
+    return boot({ beforeRun: (e) => { Object.assign(e.sandbox.window, vars); } });
+}
+
+/** Kod ustawień z oknem w pozycji `left`. */
+function codeAt(left) {
+    const src = freshEnv();
+    src.SH.store.localTabConfig.statsWindowPosition.left = left;
+    return src.SH.configCode();
+}
+
+test('kod pod nazwą z poprzednim prefiksem jest nakładany i znika z okna', () => {
+    const e = bootWithVars({ [OLD_NAME]: codeAt('42px') });
+    eq(e.SH.store.localTabConfig.statsWindowPosition.left, '42px');
+    notOk(OLD_NAME in e.sandbox.window, 'stara nazwa sprzątnięta');
+});
+
+test('kod pod nazwą z najstarszego prefiksu też działa', () => {
+    // Wartość graniczna: pierwszy prefiks z listy, nie tylko ostatni.
+    const e = bootWithVars({ [OLDEST_NAME]: codeAt('17px') });
+    eq(e.SH.store.localTabConfig.statsWindowPosition.left, '17px');
+    notOk(OLDEST_NAME in e.sandbox.window);
+});
+
+test('nazwa bieżąca wygrywa ze starą, obie znikają', () => {
+    const e = bootWithVars({ [BOOT_NAME]: codeAt('42px'), [OLD_NAME]: codeAt('17px') });
+    eq(e.SH.store.localTabConfig.statsWindowPosition.left, '42px');
+    notOk(BOOT_NAME in e.sandbox.window, 'bieżąca');
+    notOk(OLD_NAME in e.sandbox.window, 'stara');
+});
+
+test('śmieć pod nazwą bieżącą nie zasłania poprawnego kodu pod starą', () => {
+    // Pusty tekst i nie-tekst to „nic nie podstawiono”, a nie kod do nałożenia.
+    for (const junk of ['', null, 42]) {
+        const e = bootWithVars({ [BOOT_NAME]: junk, [OLD_NAME]: codeAt('42px') });
+        eq(e.SH.store.localTabConfig.statsWindowPosition.left, '42px', 'wartość: ' + String(junk));
+    }
+});
+
+test('śmieć pod starą nazwą: start z domyślnymi, bez słowa w konsoli', () => {
+    const e = bootWithVars({ [OLD_NAME]: '0xZZ' });
+    eq(e.SH.store.localTabConfig.statsWindowPosition.left,
+       e.SH.DEFAULT_LOCAL_CONFIG.statsWindowPosition.left);
+    eq(e.net.consoleLog.length, 0);
+    eq(e.net.consoleError.length, 0);
+    notOk(OLD_NAME in e.sandbox.window);
+});
+
 describe('Tryby źródła ceny');
 
 test('każdy tryb z PriceSources.modes ma miejsce w ConfigCode.ENUMS.source', () => {

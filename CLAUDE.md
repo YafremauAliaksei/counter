@@ -78,10 +78,11 @@ Prefiks koduje schemat danych. Zmienia się prefiks — ludziom zerują się
 liczniki, więc aktualizować można tylko między zmianami. Jedno bez drugiego
 nie istnieje.
 
-Jeden świadomy wyjątek w historii: 1.3.1 podniosło prefiks do `v1_3_0_` bez
-MAJOR, bo nowego schematu nie używał jeszcze nikt poza wydaniem stabilnym
-(decyzja autora, opisana w CHANGELOG, sekcja 1.3.1). Wyjątek nie jest
-precedensem — każda następna zmiana prefiksu to MAJOR. Poprzedni prefiks
+Dwa świadome wyjątki w historii, oba decyzją autora: 1.3.1 podniosło prefiks
+do `v1_3_0_` bez MAJOR, bo nowego schematu nie używał jeszcze nikt poza
+wydaniem stabilnym (CHANGELOG, sekcja 1.3.1), a 1.5.0 — do `v1_5_0_`
+(CHANGELOG, sekcja 1.5.0). Wyjątek nie jest precedensem — każda następna
+zmiana prefiksu to MAJOR. Poprzedni prefiks
 trafia wtedy do `LEGACY_ID_PREFIXES`, a nowy na koniec `PREFIX_HISTORY`
 w `tests/02-defaults.test.js` — test nie przepuści jednego bez drugiego.
 

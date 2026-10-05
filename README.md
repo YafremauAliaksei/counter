@@ -635,7 +635,7 @@ spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
 `Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
-javascript:(async()=>{try{window['statsHelper_v1_3_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_5_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -965,10 +965,12 @@ w których to się psuje, i testów, które tego pilnują.
 
 Prefiks magazynu koduje **schemat danych**, a nie numer buildu: kolejne wydania
 zostają przy tym samym prefiksie, dopóki nie zmieni się skład zapisywanych pól.
-Obecnie jest to `statsHelper_v1_3_0_` — podniesiony w 1.3.1 razem z menedżerem
-zadań, bo doszły nowe klucze, a starego schematu nie używał jeszcze nikt poza
-wydaniem stabilnym pod osobnym adresem. Była to świadoma, jednorazowa decyzja
-autora zamiast zmiany MAJOR: szczegóły w CHANGELOG, w sekcji 1.3.1.
+Obecnie jest to `statsHelper_v1_5_0_` — podniesiony w 1.5.0 decyzją autora bez
+zmiany MAJOR; liczniki i ustawienia sprzed 1.5.0 nie przenoszą się, a 1.5.0
+instaluje się między zmianami (CHANGELOG, sekcja 1.5.0). Wcześniej tak samo
+w 1.3.1 (`statsHelper_v1_3_0_`, razem z menedżerem zadań). Zakładki z kodem
+ustawień rozdane przy starszym prefiksie działają dalej — skrypt czyta kod
+także spod starej nazwy zmiennej.
 
 ---
 
