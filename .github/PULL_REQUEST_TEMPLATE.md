@@ -30,6 +30,19 @@
 
 Jeśli choć jeden punkt nie jest odhaczony — wyjaśnij dlaczego:
 
+## Koszt w ciągu zmiany
+
+<!-- Skrypt pracuje osiem godzin bez przeładowania. Usterka kosztu przechodzi
+     przez testy funkcjonalne i wychodzi po godzinach jako zacinanie komputera
+     (CLAUDE.md, zasada 9). Odpowiedź „nic nie rośnie” bez liczby się nie liczy. -->
+
+Co w tej zmianie rośnie z liczbą przedmiotów, zadań, kart albo wpisów dziennika?
+
+- [ ] nic — `tests/35-shift-cost.test.js` i `07-long-shift.spec.js` zielone, a nowa praca na przedmiot jest w nich objęta pomiarem
+- [ ] rośnie świadomie (np. jeden przebieg po dzienniku) — granica i pomiar poniżej
+
+Liczby przed/po (przerysowania, zapisy, odczyty `innerText`, czas na N przedmiotów):
+
 ## Jak to sprawdzano
 
 <!-- Testy automatyczne + co było przeklikane ręcznie w przeglądarce. -->
