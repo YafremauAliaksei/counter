@@ -22,6 +22,7 @@
           SH.priceStats();                    // ile zapytań poszło
           SH.fxStatus();                      // skąd wzięte kursy walut
           SH.valueReport();                   // dziennik wartości do konsoli
+          SH.perf();                          // czy skrypt zwalnia w ciągu zmiany
 
    3. EDYCJA PLIKU (na stałe, dla siebie).
       Skopiuj plik, zmień wartości w blokach DEFAULT_LINE_CONFIG,

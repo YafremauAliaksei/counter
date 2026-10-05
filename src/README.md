@@ -15,7 +15,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~585 |
 | 02 | `02-i18n-strings.js` | trzy słowniki tłumaczeń (pl, en, ru) | ~390 |
 | 03 | `03-utils.js` | `deepMerge`, `clampNum`, `hexToRgb`, generator DOM `h()` | ~215 |
-| 04 | `04-core-state.js` | `EventBus`, reaktywny `store`, `priceModuleOn()` | ~135 |
+| 04 | `04-core-state.js` | `EventBus`, reaktywny `store`, `priceModuleOn()`, liczniki kosztu `Perf` | ~260 |
 | 05 | `05-i18n-runtime.js` | odczyt tłumaczeń i nazw zakładek | ~25 |
 | 06 | `06-storage.js` | odczyt i zapis stanu w `localStorage` | ~455 |
 | 07 | `07-session-shift.js` | cykl życia zmiany, reset danych między zmianami | ~235 |

@@ -10,6 +10,15 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+### Dodano
+
+- **`SH.perf()` — to skrypt czy komputer?** Polecenie w konsoli porównuje koszt przedmiotu z początku zmiany (pierwsze 20 przedmiotów) z ostatnimi 20: skany strony i ich czas, przerysowania okna, zdarzenia, zapisy do magazynu. Ocena rozróżnia trzy przypadki: koszt stały; koszt rośnie (usterka skryptu); operacje stałe przy dłuższym skanie (urosła strona T-REX). Liczniki zbierają się zawsze i nic nie wypisują — po wklejeniu skrypt dalej milczy. Pamięć stała: najwyżej 42 migawki liczników, niezależnie od długości zmiany. Nowy `tests/36-perf.test.js`.
+- **Długa zmiana na stanowisku w Chromium** (`tests/stand/specs/07-long-shift.spec.js`): dwie karty, trzy zadania, dziennik wartości, 48 przedmiotów z prawdziwym MutationObserver, zdarzeniami `storage` i układem strony. Ostatni cykl ma kosztować tyle co drugi; przedmiot czterokrotnie droższy od pierwszych przerywa test od razu. Na kodzie z zagnieżdżaniem Proxy test pada przy jedenastym przedmiocie (104 przerysowania zamiast najwyżej 25), wcześniej przeglądarka wisiała do limitu czasu.
+
+---
+
 ## 1.4.3 — 2026-10-05
 
 Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_3_0_`, więc aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany. Liczenie, dziennik i moduł cen działają jak w 1.4.2. Człowiek przy stanowisku zobaczy jedną rzecz: komputer nie zwalnia już po założeniu drugiego zadania — każda paczka kosztuje tyle samo od początku do końca zmiany, także po kilku godzinach pracy i przełączaniu zadań. Z włączonym modułem cen skan strony jest dwa razy lżejszy.

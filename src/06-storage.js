@@ -32,6 +32,7 @@
          */
         write(key, value) {
             if (this._lastWritten[key] === value) return false;
+            Perf.counts.writes++;
             try {
                 localStorage.setItem(key, value);
             } catch (e) {

@@ -143,6 +143,7 @@
         },
 
         scan() {
+            const startedAt = performance.now();
             const txt = document.body.innerText || '';
             // Kierunek czyta się przed licznikiem: kod sortowania i wyzwalacz
             // końcowy często przychodzą w jednej klatce, a wtedy znak staje od
@@ -166,5 +167,6 @@
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });
+            Perf.scan(performance.now() - startedAt);
         }
     };

@@ -761,6 +761,7 @@ SH.fxStatus(); // skąd wzięto kursy walut
 SH.routeInfo(); // co obecnie wiadomo o kierunku przedmiotu
 
 // Diagnostyka
+SH.perf(); // koszt pracy skryptu: czy przedmiot kosztuje tyle co na początku zmiany
 SH.cspReport(); // co dopuszcza polityka strony (async)
 SH.forcePrice(asin); // odpytać o cenę ręcznie
 SH.readPrice(asin); // odczytać cenę z wykresu z pominięciem cache
@@ -910,7 +911,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 35 plików, 511 sprawdzeń
+├── tests/                  ← 36 plików, 520 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -930,7 +931,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 511 sprawdzeń
+npm test             # 520 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1051,6 +1052,15 @@ patrzeć na `CONFIG.PRE_TRIGGER_REGEX` i `CONFIG.AUTO_TRIGGER_REGEX`.
 Sprawdzić, czy moduł jest włączony: `SH.priceStats()`. Jeśli jest — `SH.cspReport()`
 pokaże, czy polityka bezpieczeństwa strony nie tnie odwołań do `graph.keepa.com`.
 CSP to imienna lista hostów i obejść jej z kodu strony się nie da.
+
+**Komputer zwalnia — to skrypt czy maszyna?**
+`SH.perf()` w konsoli. Po 41 przedmiotach porównuje koszt przedmiotu z początku
+zmiany (pierwsze 20) z ostatnimi 20: skany strony, czas skanu, przerysowania,
+zdarzenia, zapisy. Pole `ocena` mówi wprost: `koszt stały` — skrypt kosztuje
+tyle co rano; `KOSZT ROŚNIE` — usterka skryptu, zgłosić z wynikiem; `operacje
+stałe, skan dłuższy` — urosła sama strona T-REX (np. długi dziennik na ekranie).
+`średni skan [ms]` to koszt jednej reakcji na zmianę strony. Liczniki zbierają
+się zawsze, ale nic nie wypisują — odczyt tylko na żądanie.
 
 **Skrypt już działa, ponowne wklejenie jest ignorowane.**
 Tak ma być: dwa egzemplarze na jednej stronie psują liczniki.

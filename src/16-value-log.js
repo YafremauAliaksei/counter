@@ -133,6 +133,7 @@
             }
             try {
                 const out = JSON.stringify({ shiftStart: this.shiftStart, entries: this.entries });
+                Perf.counts.writes++;
                 localStorage.setItem(this.key(), out);
                 this._knownRaw = out;
                 // Ten klucz pisze się z pominięciem Persistence.write —

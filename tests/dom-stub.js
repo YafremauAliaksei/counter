@@ -300,6 +300,8 @@ function makeEnv(opts = {}) {
             ? AbortController
             : class { constructor() { this.signal = {}; } abort() {} },
         setTimeout, clearTimeout, setInterval, clearInterval,
+        // Obiekt, a nie globalny `performance` Node: test może podmienić now().
+        performance: { now: () => performance.now() },
         console: {
             log(...a) { net.consoleLog.push(a.map(String).join(' ')); },
             error(...a) { net.consoleError.push(a.map(String).join(' ')); },
