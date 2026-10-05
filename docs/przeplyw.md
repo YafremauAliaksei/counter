@@ -319,7 +319,7 @@ każdy krok czegoś potrzebuje od poprzedniego.
 
 ```mermaid
 flowchart TD
-    BOOT["wklejenie pliku albo kliknięcie zakładki"] --> CODE{"window.statsHelper_v1_3_0_CONFIG_CODE<br/>podstawiony kod ustawień?"}
+    BOOT["wklejenie pliku albo kliknięcie zakładki"] --> CODE{"window.statsHelper_v1_5_0_CONFIG_CODE<br/>podstawiony kod ustawień?"}
     CODE -->|"tak"| READY{"skrypt już działa<br/>na tej stronie?"}
     READY -->|"tak"| APPLYOLD["kod nakłada DZIAŁAJĄCY egzemplarz<br/>przez swoje SH.config; ten się nie uruchamia"]
     READY -->|"nie"| INIT

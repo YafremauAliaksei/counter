@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie robi nic poza
 tym: ani jednego zapytania do internetu, ani jednej linii w konsoli.
 
-**Wersja 1.4.3** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.5.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 17.4 28 14%
@@ -83,7 +83,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.4.3/counter.js`.
+`…/counter/v1.5.0/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -635,7 +635,7 @@ spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
 `Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
-javascript:(async()=>{try{window['statsHelper_v1_3_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_5_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -911,7 +911,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 36 plików, 520 sprawdzeń
+├── tests/                  ← 36 plików, 525 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -931,7 +931,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 520 sprawdzeń
+npm test             # 525 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -965,10 +965,12 @@ w których to się psuje, i testów, które tego pilnują.
 
 Prefiks magazynu koduje **schemat danych**, a nie numer buildu: kolejne wydania
 zostają przy tym samym prefiksie, dopóki nie zmieni się skład zapisywanych pól.
-Obecnie jest to `statsHelper_v1_3_0_` — podniesiony w 1.3.1 razem z menedżerem
-zadań, bo doszły nowe klucze, a starego schematu nie używał jeszcze nikt poza
-wydaniem stabilnym pod osobnym adresem. Była to świadoma, jednorazowa decyzja
-autora zamiast zmiany MAJOR: szczegóły w CHANGELOG, w sekcji 1.3.1.
+Obecnie jest to `statsHelper_v1_5_0_` — podniesiony w 1.5.0 decyzją autora bez
+zmiany MAJOR; liczniki i ustawienia sprzed 1.5.0 nie przenoszą się, a 1.5.0
+instaluje się między zmianami (CHANGELOG, sekcja 1.5.0). Wcześniej tak samo
+w 1.3.1 (`statsHelper_v1_3_0_`, razem z menedżerem zadań). Zakładki z kodem
+ustawień rozdane przy starszym prefiksie działają dalej — skrypt czyta kod
+także spod starej nazwy zmiennej.
 
 ---
 

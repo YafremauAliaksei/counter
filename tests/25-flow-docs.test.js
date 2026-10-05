@@ -65,7 +65,7 @@ function referencedNames() {
 const KNOWN_ABSENT = {
     // Nazwa globalnej zmiennej powstaje w czasie działania ze sklejenia
     // SCRIPT_ID_PREFIX + 'CONFIG_CODE', więc w pliku nie stoi dosłownie.
-    'window.statsHelper_v1_3_0_CONFIG_CODE': true,
+    'window.statsHelper_v1_5_0_CONFIG_CODE': true,
     // Odwołania do plików repozytorium, a nie do kodu.
     'przeplyw.md': true,
     // Zapis potoczny w tekście: „r.jina.ai”, „graph.keepa.com” itd. to adresy.

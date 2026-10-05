@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.4.3
+// @version      1.5.0
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -93,7 +93,7 @@ const SCRIPT_LOGS_ENABLED = false;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.4.3',
+        SCRIPT_VERSION: '1.5.0',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Koduje SCHEMAT zapisanych danych,
@@ -107,7 +107,7 @@ const SCRIPT_LOGS_ENABLED = false;
          * dopiero układ, w którym zapisane stare dane przykryłyby nowe wartości
          * domyślne albo zostały źle odczytane.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_3_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_5_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -115,7 +115,7 @@ const SCRIPT_LOGS_ENABLED = false;
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
-                             'statsHelper_v1_0_0_'],
+                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -7131,10 +7131,21 @@ const SCRIPT_LOGS_ENABLED = false;
          * @returns {string|null} kod albo null, gdy nic sensownego nie podstawiono.
          */
         takeBoot() {
-            const name = this.BOOT_GLOBAL;
-            const code = window[name];
-            try { delete window[name]; } catch (e) { window[name] = undefined; }
-            return typeof code === 'string' && code ? code : null;
+            // Zakładki rozdane przy poprzednim prefiksie wpisują kod pod starą
+            // nazwą, a ludzie ich nie przepisują — bez tej listy ustawienia
+            // z zakładki przepadałyby po cichu przy każdej zmianie prefiksu.
+            // Format kodu od prefiksu nie zależy. Wygrywa nazwa bieżąca, potem
+            // najmłodszy stary prefiks; wszystkie nazwy znikają z okna.
+            const names = [this.BOOT_GLOBAL,
+                ...CONFIG.LEGACY_ID_PREFIXES.slice().reverse().map(p => p + 'CONFIG_CODE')];
+            let code = null;
+            for (const name of names) {
+                const value = window[name];
+                if (value === undefined) continue;
+                try { delete window[name]; } catch (e) { window[name] = undefined; }
+                if (code === null && typeof value === 'string' && value) code = value;
+            }
+            return code;
         },
 
         /**
@@ -8076,7 +8087,7 @@ const SCRIPT_LOGS_ENABLED = false;
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_3_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_5_0_'
        Prefiks wszystkich kluczy w localStorage. Koduje SCHEMAT danych, a nie
        numer wydania: zostaje ten sam, dopóki układ zapisywanych pól się
        nie zmieni. Zmiana prefiksu = start od zera

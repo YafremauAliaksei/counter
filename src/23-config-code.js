@@ -409,10 +409,21 @@
          * @returns {string|null} kod albo null, gdy nic sensownego nie podstawiono.
          */
         takeBoot() {
-            const name = this.BOOT_GLOBAL;
-            const code = window[name];
-            try { delete window[name]; } catch (e) { window[name] = undefined; }
-            return typeof code === 'string' && code ? code : null;
+            // Zakładki rozdane przy poprzednim prefiksie wpisują kod pod starą
+            // nazwą, a ludzie ich nie przepisują — bez tej listy ustawienia
+            // z zakładki przepadałyby po cichu przy każdej zmianie prefiksu.
+            // Format kodu od prefiksu nie zależy. Wygrywa nazwa bieżąca, potem
+            // najmłodszy stary prefiks; wszystkie nazwy znikają z okna.
+            const names = [this.BOOT_GLOBAL,
+                ...CONFIG.LEGACY_ID_PREFIXES.slice().reverse().map(p => p + 'CONFIG_CODE')];
+            let code = null;
+            for (const name of names) {
+                const value = window[name];
+                if (value === undefined) continue;
+                try { delete window[name]; } catch (e) { window[name] = undefined; }
+                if (code === null && typeof value === 'string' && value) code = value;
+            }
+            return code;
         },
 
         /**

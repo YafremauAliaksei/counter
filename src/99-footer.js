@@ -144,7 +144,7 @@
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_3_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_5_0_'
        Prefiks wszystkich kluczy w localStorage. Koduje SCHEMAT danych, a nie
        numer wydania: zostaje ten sam, dopóki układ zapisywanych pól się
        nie zmieni. Zmiana prefiksu = start od zera

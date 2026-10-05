@@ -44,7 +44,7 @@
          * dopiero układ, w którym zapisane stare dane przykryłyby nowe wartości
          * domyślne albo zostały źle odczytane.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_3_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_5_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -52,7 +52,7 @@
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
-                             'statsHelper_v1_0_0_'],
+                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją

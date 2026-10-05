@@ -112,7 +112,7 @@ test('wersja została podstawiona przy budowaniu', () => {
 const PREFIX_HISTORY = [
     'statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_', 'statsHelper_v8_3_0_',
     'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_', 'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_',
-    'statsHelper_v9_2_0_', 'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_',
+    'statsHelper_v9_2_0_', 'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
 ];
 
 test('prefiks magazynu jest spójny i poprzednie wersje trafiły na listę starych', () => {

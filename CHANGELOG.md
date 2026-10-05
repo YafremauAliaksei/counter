@@ -10,7 +10,15 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.5.0 — 2026-10-05
+
+> **Aktualizować tylko między zmianami.** Prefiks magazynu zmienia się na `statsHelper_v1_5_0_` (decyzja autora, bez podnoszenia MAJOR — tak jak w 1.3.1). Przy pierwszym uruchomieniu 1.5.0 klucze `statsHelper_v1_3_0_` są usuwane: liczniki kart, zadania, dziennik wartości bieżącej zmiany i ustawienia startują od zera. Archiwum podsumowań zmian (klucz wspólny) zostaje. Zakładki z kodem ustawień działają dalej i nakładają swoje ustawienia — wystarczy kliknąć zakładkę zamiast ustawiać panel od nowa. Jeśli na stronie działa jeszcze poprzednia wersja, najpierw F5, potem nowa.
+
+Poza tym liczenie, dziennik i moduł cen działają jak w 1.4.3. Nowe: `SH.perf()` w konsoli odpowiada, czy zwalnia skrypt, czy komputer.
+
+### Zmieniono
+
+- **Prefiks magazynu `statsHelper_v1_5_0_`.** Poprzedni trafia do `LEGACY_ID_PREFIXES` i jest sprzątany przy starcie. Kod ustawień podstawiony przez zakładkę jest czytany także spod nazw ze starych prefiksów (`statsHelper_v1_3_0_CONFIG_CODE` i starszych): zakładki zawierają nazwę z dnia, w którym je zrobiono, a bez tego ich ustawienia przepadałyby po cichu. Wygrywa nazwa bieżąca, wszystkie nazwy znikają z okna. Testy w `tests/20-config-code.test.js`.
 
 ### Dodano
 
