@@ -165,6 +165,6 @@
             }
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
-            bus.emit('page:scanned');
+            bus.emit('page:scanned', { text: txt });
         }
     };

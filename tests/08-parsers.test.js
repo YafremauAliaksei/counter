@@ -124,9 +124,9 @@ test('_migrate nadaje stabilne id i odrzuca śmieci', () => {
 test('_readShared znosi zepsutą zawartość klucza', () => {
     const key = V.key();
     env.sandbox.localStorage.setItem(key, '{"entries": "nie tablica"}');
-    eq(V._readShared(), null);
+    eq(V._readShared(V._readRaw()), null);
     env.sandbox.localStorage.setItem(key, '[1,2,3]');
-    eq(V._readShared(), null);
+    eq(V._readShared(V._readRaw()), null);
     env.sandbox.localStorage.removeItem(key);
 });
 

@@ -96,3 +96,47 @@ test('CSP strony tnie obrazek: karta mówi dlaczego, a do sieci nic nie wyszło'
     // ta kończy się na polityce strony i do warstwy sieci nie dochodzi nic.
     expect(rec.routed).toEqual([]);
 });
+
+test('ASIN z samego tekstu: karta nie podaje sobie swojego kodu, a skan czyta stronę raz', async ({ page }) => {
+    // Prawdziwy innerText pomija elementy z display:none — atrapa w testach
+    // jednostkowych tego nie umie, więc odejmowanie ASIN karty sprawdza się tu.
+    const f = fixtures();
+    await openStand(page, { respond: f.respond });
+    await paste(page);
+    await priceOn(page);
+    const result = await page.evaluate(([old, now]) => {
+        const P = window.SH.PriceCard;
+        const out = {};
+        P.asinEl.textContent = old;            // karta pokazuje poprzedni przedmiot
+        P.el.style.display = 'block';
+        P.asinEl.style.display = 'inline-block';
+        out.cardOnly = P.detectAsin();
+        const d = document.createElement('div');
+        d.textContent = 'Towar ' + now;
+        document.body.appendChild(d);
+        out.newOnPage = P.detectAsin();
+        d.textContent = 'Towar ' + old;
+        out.sameOnPage = P.detectAsin();
+        P.el.style.display = 'none';
+        out.cardHidden = P.detectAsin();
+        P.el.style.display = 'block';
+        P.asinEl.style.display = 'none';      // showAsin wyłączone
+        out.codeHidden = P.detectAsin();
+        P.asinEl.style.display = 'inline-block';
+        d.remove();
+        // Odczyty innerText w jednym skanie.
+        const desc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'innerText');
+        let reads = 0;
+        Object.defineProperty(document.body, 'innerText', {
+            configurable: true, get() { reads++; return desc.get.call(this); },
+        });
+        window.SH.AutoTrigger.scan();
+        delete document.body.innerText;
+        out.reads = reads;
+        return out;
+    }, ['B019ETZ2ZU', 'B00569J8CQ']);
+    expect(result).toEqual({
+        cardOnly: null, newOnPage: 'B00569J8CQ', sameOnPage: 'B019ETZ2ZU',
+        cardHidden: 'B019ETZ2ZU', codeHidden: 'B019ETZ2ZU', reads: 1,
+    });
+});

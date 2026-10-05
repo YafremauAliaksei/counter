@@ -55,8 +55,8 @@
      * dokładałoby warstwę przy każdym zapisie: odczyt przechodziłby przez
      * wszystkie warstwy, a owijanie dzieci szłoby przez pułapkę `set` starej
      * warstwy i rozsyłało `store:changed` dla każdej z nich. Przy dwóch
-     * zadaniach koszt jednej paczki rósł wtedy z każdą paczką, aż przeglądarka
-     * zaczynała się dławić.
+     * zadaniach koszt jednej paczki rósłby z każdą paczką, aż do zadławienia
+     * przeglądarki.
      */
     function createReactive(target, path = "") {
         if (target && target[RAW]) target = target[RAW];

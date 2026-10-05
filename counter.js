@@ -1322,8 +1322,8 @@ const SCRIPT_LOGS_ENABLED = false;
      * dokładałoby warstwę przy każdym zapisie: odczyt przechodziłby przez
      * wszystkie warstwy, a owijanie dzieci szłoby przez pułapkę `set` starej
      * warstwy i rozsyłało `store:changed` dla każdej z nich. Przy dwóch
-     * zadaniach koszt jednej paczki rósł wtedy z każdą paczką, aż przeglądarka
-     * zaczynała się dławić.
+     * zadaniach koszt jednej paczki rósłby z każdą paczką, aż do zadławienia
+     * przeglądarki.
      */
     function createReactive(target, path = "") {
         if (target && target[RAW]) target = target[RAW];
@@ -4186,6 +4186,16 @@ const SCRIPT_LOGS_ENABLED = false;
         shiftStart: null,
         _archiveTimer: null,
         _writeBackTimer: null,
+        /**
+         * Tekst wspólnego klucza, którego treść ta karta już ma: ostatnio przez
+         * nią zapisany albo wczytany i scalony. Póki klucz go zawiera, scalanie
+         * niczego nie wniesie — save() pomija rozbiór, scalenie i sortowanie
+         * całego dziennika (przy tysiącach wpisów to większość kosztu zapisu,
+         * a zapis idzie dwa razy na przedmiot). Kopia robocza zmienia się
+         * wyłącznie naprzód (nowe wpisy, świeższy `updated`), więc zgodność
+         * tekstu wystarcza.
+         */
+        _knownRaw: null,
 
         key() { return Persistence.getKey(CONFIG.STORAGE_KEY_VALUE_LOG); },
         archiveKey() { return CONFIG.SHARED_ID_PREFIX + CONFIG.STORAGE_KEY_VALUE_ARCHIVE; },
@@ -4224,9 +4234,14 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         /** Wspólny dziennik w postaci, w jakiej leży teraz w localStorage. */
-        _readShared() {
+        _readRaw() {
+            try { return localStorage.getItem(this.key()); } catch (e) { return null; }
+        },
+
+        /** @param {string|null} text - zawartość klucza (`_readRaw()`). */
+        _readShared(text) {
             try {
-                const raw = JSON.parse(localStorage.getItem(this.key()) || 'null');
+                const raw = JSON.parse(text || 'null');
                 if (raw && Array.isArray(raw.entries)) {
                     return {
                         shiftStart: raw.shiftStart || null,
@@ -4269,21 +4284,25 @@ const SCRIPT_LOGS_ENABLED = false;
         },
 
         load() {
-            const shared = this._readShared();
+            const text = this._readRaw();
+            const shared = this._readShared(text);
+            this._knownRaw = shared ? text : null;
             this.entries = shared ? shared.entries : [];
             this.shiftStart = shared ? shared.shiftStart : null;
             if (this.entries.length) Utils.log(`[DZIENNIK] wczytano wpisów: ${this.entries.length}`);
         },
 
         save() {
-            const shared = this._readShared();
-            const merged = shared ? this._merge(shared.entries, this.entries) : this.entries.slice();
-            this.entries = merged;
-            if (!this.shiftStart && shared && shared.shiftStart) this.shiftStart = shared.shiftStart;
+            const text = this._readRaw();
+            if (text !== this._knownRaw) {
+                const shared = this._readShared(text);
+                this.entries = shared ? this._merge(shared.entries, this.entries) : this.entries.slice();
+                if (!this.shiftStart && shared && shared.shiftStart) this.shiftStart = shared.shiftStart;
+            }
             try {
-                localStorage.setItem(this.key(), JSON.stringify({
-                    shiftStart: this.shiftStart, entries: merged,
-                }));
+                const out = JSON.stringify({ shiftStart: this.shiftStart, entries: this.entries });
+                localStorage.setItem(this.key(), out);
+                this._knownRaw = out;
                 // Ten klucz pisze się z pominięciem Persistence.write —
                 // notatka deduplikacji dla niego byłaby nieaktualna.
                 delete Persistence._lastWritten[this.key()];
@@ -4297,8 +4316,13 @@ const SCRIPT_LOGS_ENABLED = false;
 
         /** Sąsiednia karta zmieniła wspólny dziennik. */
         adoptRemote() {
-            const shared = this._readShared();
+            const text = this._readRaw();
+            // Klucz z treścią, którą już mamy — np. dopisanie sąsiada, które
+            // tylko odbiło nasz własny zapis.
+            if (text !== null && text === this._knownRaw) return;
+            const shared = this._readShared(text);
             if (!shared) {
+                this._knownRaw = null;
                 // Klucza już nie ma — sąsiednia karta zresetowała zmianę.
                 if (this.entries.length) {
                     Utils.log('[DZIENNIK] sąsiednia karta wyczyściła dziennik — zdejmujemy swoją kopię');
@@ -4313,6 +4337,7 @@ const SCRIPT_LOGS_ENABLED = false;
             const merged = this._merge(shared.entries, this.entries);
             const haveOurOwn = this._aheadOfShared(merged, shared.entries);
             this.entries = merged;
+            this._knownRaw = text;
             if (shared.shiftStart) this.shiftStart = shared.shiftStart;
             bus.emit('valueLog:changed');
             if (before !== merged.length || haveOurOwn) {
@@ -4524,6 +4549,7 @@ const SCRIPT_LOGS_ENABLED = false;
             clearTimeout(this._writeBackTimer);
             this._writeBackTimer = null;
             this.entries = [];
+            this._knownRaw = null;
             this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
             try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
             delete Persistence._lastWritten[this.key()];
@@ -4851,12 +4877,21 @@ const SCRIPT_LOGS_ENABLED = false;
             // którego jest początkiem.
             const all = this.codes().slice().sort((a, b) => b.length - a.length).map(esc);
             this._re = new RegExp('Zeskanuj\\s*[-–—]?\\s*(' + all.join('|') + ')', 'gi');
+            // Słownik pisowni powstaje razem ze wzorcem: canon() idzie dla
+            // każdego trafienia w każdym skanie, a dziennik na ekranie niesie
+            // ich dziesiątki. Przy dwóch kodach różniących się wielkością liter
+            // wygrywa pierwszy z listy.
+            this._canon = new Map();
+            for (const c of this.codes()) {
+                const low = c.toLowerCase();
+                if (!this._canon.has(low)) this._canon.set(low, c);
+            }
             return this._re;
         },
 
         canon(raw) {
-            const low = String(raw).toLowerCase();
-            return this.codes().find(c => c.toLowerCase() === low) || raw;
+            this.codeRegex();
+            return this._canon.get(String(raw).toLowerCase()) || raw;
         },
 
         countAll(text) {
@@ -5418,7 +5453,12 @@ const SCRIPT_LOGS_ENABLED = false;
          */
         linkMarket: null,
 
-        detectAsin() {
+        /**
+         * @param {string} [pageText] - `document.body.innerText` z tego samego
+         *   skanu (AutoTrigger). Bez niego tekst czyta się tutaj — tylko przy
+         *   starcie karty.
+         */
+        detectAsin(pageText) {
             for (const a of document.querySelectorAll('a[href*="/dp/"], a[href*="/gp/product/"]')) {
                 if (a.closest('#' + CONFIG.SCRIPT_ID_PREFIX + 'priceCard')) continue;
                 const href = a.getAttribute('href') || '';
@@ -5436,22 +5476,24 @@ const SCRIPT_LOGS_ENABLED = false;
             // w dokumencie nie mówi, który jest bieżący (pierwszy to bywa stary
             // wpis dziennika, ostatni — cudzy panel stanu). Przy
             // niejednoznaczności karta zostaje przy ostatnim pewnym ASIN.
-            //
-            // Karta znika na czas odczytu, żeby nie podać własnego ASIN
-            // (pokazuje poprzedni przedmiot). Przywrócenie w `finally` —
-            // innerText rzuca przy rozbieranym drzewie, a karta nie może
-            // zostać schowana na zawsze.
-            const prev = this.el && this.el.style.display;
-            let text;
-            try {
-                if (this.el) this.el.style.display = 'none';
-                text = document.body.innerText || '';
-            } finally {
-                if (this.el) this.el.style.display = prev || '';
+            const text = pageText == null ? (document.body.innerText || '') : pageText;
+            const re = new RegExp(CONFIG.PRICE_ASIN_FROM_TEXT.source, 'g');
+            /** @type {string[]} */
+            const all = text.match(re) || [];
+            // Widoczna karta pokazuje poprzedni przedmiot i jest częścią
+            // innerText — jej ASIN odejmuje się od tekstu strony, inaczej karta
+            // podawałaby sama sobie stary kod. Odejmowanie zamiast chowania
+            // karty na czas odczytu: schowanie unieważnia układ strony i drugi
+            // odczyt innerText liczyłby go od nowa przy każdej mutacji.
+            // ASIN pokazuje tylko asinEl — reszta karty go nie zawiera — i tylko
+            // wtedy, gdy widać i kartę, i sam kod (ustawienie showAsin).
+            if (this.el && this.el.style.display !== 'none' && this.asinEl.style.display !== 'none') {
+                for (const own of this.asinEl.textContent.match(re) || []) {
+                    const i = all.indexOf(own);
+                    if (i !== -1) all.splice(i, 1);
+                }
             }
-
-            const all = text.match(new RegExp(CONFIG.PRICE_ASIN_FROM_TEXT.source, 'g'));
-            if (!all || !all.length) return null;
+            if (!all.length) return null;
             const uniq = [...new Set(all)];
             if (uniq.length > 1) {
                 if (this._ambiguousWarned !== uniq.join()) {
@@ -5545,7 +5587,8 @@ const SCRIPT_LOGS_ENABLED = false;
          * jednakowych zwrotów) — ASIN się nie zmienia, więc o nowym zapytaniu
          * decyduje początek nowego przedmiotu.
          */
-        check() {
+        /** @param {string} [pageText] - tekst strony ze skanu (patrz detectAsin). */
+        check(pageText) {
             // Bez modułu cen ASIN nie jest potrzebny — służy tylko zapytaniu.
             if (!priceModuleOn()) return;
             const pc = store.localTabConfig.priceCard;
@@ -5553,7 +5596,7 @@ const SCRIPT_LOGS_ENABLED = false;
             // sumę w linii 6) — wychodzimy dopiero, gdy nie ma ani karty,
             // ani dziennika.
             if (!pc.visible && !pc.logValues) return;
-            const asin = this.detectAsin();
+            const asin = this.detectAsin(pageText);
             if (!asin) return;
 
             const changed = asin !== this.shownAsin;
@@ -5656,7 +5699,7 @@ const SCRIPT_LOGS_ENABLED = false;
             // Nowy przedmiot — wznosimy pokaz (przypadek „pięć jednakowych pod rząd”).
             bus.on('store:changed:uiFlags.itemInProgress', (d) => { if (d.value === true) this.armNewItem(); });
             // Stronę skanuje AutoTrigger, osobnego obserwatora nie zakładamy.
-            bus.on('page:scanned', () => this.check());
+            bus.on('page:scanned', (d) => this.check(d && d.text));
             // Karta zależy tylko od własnych ustawień i języka.
             onStorePaths(['localTabConfig.priceCard', 'userConfig.language'], () => this.applyStyle());
 
@@ -6158,7 +6201,7 @@ const SCRIPT_LOGS_ENABLED = false;
             }
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
-            bus.emit('page:scanned');
+            bus.emit('page:scanned', { text: txt });
         }
     };
 

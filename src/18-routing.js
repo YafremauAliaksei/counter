@@ -64,12 +64,21 @@
             // którego jest początkiem.
             const all = this.codes().slice().sort((a, b) => b.length - a.length).map(esc);
             this._re = new RegExp('Zeskanuj\\s*[-–—]?\\s*(' + all.join('|') + ')', 'gi');
+            // Słownik pisowni powstaje razem ze wzorcem: canon() idzie dla
+            // każdego trafienia w każdym skanie, a dziennik na ekranie niesie
+            // ich dziesiątki. Przy dwóch kodach różniących się wielkością liter
+            // wygrywa pierwszy z listy.
+            this._canon = new Map();
+            for (const c of this.codes()) {
+                const low = c.toLowerCase();
+                if (!this._canon.has(low)) this._canon.set(low, c);
+            }
             return this._re;
         },
 
         canon(raw) {
-            const low = String(raw).toLowerCase();
-            return this.codes().find(c => c.toLowerCase() === low) || raw;
+            this.codeRegex();
+            return this._canon.get(String(raw).toLowerCase()) || raw;
         },
 
         countAll(text) {

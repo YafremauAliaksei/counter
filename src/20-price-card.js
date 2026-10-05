@@ -330,7 +330,12 @@
          */
         linkMarket: null,
 
-        detectAsin() {
+        /**
+         * @param {string} [pageText] - `document.body.innerText` z tego samego
+         *   skanu (AutoTrigger). Bez niego tekst czyta się tutaj — tylko przy
+         *   starcie karty.
+         */
+        detectAsin(pageText) {
             for (const a of document.querySelectorAll('a[href*="/dp/"], a[href*="/gp/product/"]')) {
                 if (a.closest('#' + CONFIG.SCRIPT_ID_PREFIX + 'priceCard')) continue;
                 const href = a.getAttribute('href') || '';
@@ -348,22 +353,24 @@
             // w dokumencie nie mówi, który jest bieżący (pierwszy to bywa stary
             // wpis dziennika, ostatni — cudzy panel stanu). Przy
             // niejednoznaczności karta zostaje przy ostatnim pewnym ASIN.
-            //
-            // Karta znika na czas odczytu, żeby nie podać własnego ASIN
-            // (pokazuje poprzedni przedmiot). Przywrócenie w `finally` —
-            // innerText rzuca przy rozbieranym drzewie, a karta nie może
-            // zostać schowana na zawsze.
-            const prev = this.el && this.el.style.display;
-            let text;
-            try {
-                if (this.el) this.el.style.display = 'none';
-                text = document.body.innerText || '';
-            } finally {
-                if (this.el) this.el.style.display = prev || '';
+            const text = pageText == null ? (document.body.innerText || '') : pageText;
+            const re = new RegExp(CONFIG.PRICE_ASIN_FROM_TEXT.source, 'g');
+            /** @type {string[]} */
+            const all = text.match(re) || [];
+            // Widoczna karta pokazuje poprzedni przedmiot i jest częścią
+            // innerText — jej ASIN odejmuje się od tekstu strony, inaczej karta
+            // podawałaby sama sobie stary kod. Odejmowanie zamiast chowania
+            // karty na czas odczytu: schowanie unieważnia układ strony i drugi
+            // odczyt innerText liczyłby go od nowa przy każdej mutacji.
+            // ASIN pokazuje tylko asinEl — reszta karty go nie zawiera — i tylko
+            // wtedy, gdy widać i kartę, i sam kod (ustawienie showAsin).
+            if (this.el && this.el.style.display !== 'none' && this.asinEl.style.display !== 'none') {
+                for (const own of this.asinEl.textContent.match(re) || []) {
+                    const i = all.indexOf(own);
+                    if (i !== -1) all.splice(i, 1);
+                }
             }
-
-            const all = text.match(new RegExp(CONFIG.PRICE_ASIN_FROM_TEXT.source, 'g'));
-            if (!all || !all.length) return null;
+            if (!all.length) return null;
             const uniq = [...new Set(all)];
             if (uniq.length > 1) {
                 if (this._ambiguousWarned !== uniq.join()) {
@@ -457,7 +464,8 @@
          * jednakowych zwrotów) — ASIN się nie zmienia, więc o nowym zapytaniu
          * decyduje początek nowego przedmiotu.
          */
-        check() {
+        /** @param {string} [pageText] - tekst strony ze skanu (patrz detectAsin). */
+        check(pageText) {
             // Bez modułu cen ASIN nie jest potrzebny — służy tylko zapytaniu.
             if (!priceModuleOn()) return;
             const pc = store.localTabConfig.priceCard;
@@ -465,7 +473,7 @@
             // sumę w linii 6) — wychodzimy dopiero, gdy nie ma ani karty,
             // ani dziennika.
             if (!pc.visible && !pc.logValues) return;
-            const asin = this.detectAsin();
+            const asin = this.detectAsin(pageText);
             if (!asin) return;
 
             const changed = asin !== this.shownAsin;
@@ -568,7 +576,7 @@
             // Nowy przedmiot — wznosimy pokaz (przypadek „pięć jednakowych pod rząd”).
             bus.on('store:changed:uiFlags.itemInProgress', (d) => { if (d.value === true) this.armNewItem(); });
             // Stronę skanuje AutoTrigger, osobnego obserwatora nie zakładamy.
-            bus.on('page:scanned', () => this.check());
+            bus.on('page:scanned', (d) => this.check(d && d.text));
             // Karta zależy tylko od własnych ustawień i języka.
             onStorePaths(['localTabConfig.priceCard', 'userConfig.language'], () => this.applyStyle());
 
