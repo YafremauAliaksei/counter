@@ -5,7 +5,7 @@ Ten plik jest napisany dla agenta, który przejmie pracę **na maszynie z dział
 
 Zacznij od przeczytania [`CLAUDE.md`](CLAUDE.md) — tam są zasady projektu.
 
-> **Stan na 05.10.2026:** ostatnie wydanie to **1.4.3**, gałąź `release` wskazuje
+> **Stan na 05.10.2026:** ostatnie wydanie to **1.5.0**, gałąź `release` wskazuje
 > na nie. Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
 > zakładki — adres wydania wpisuje się przy pierwszym wydaniu na docelowym
 > serwerze. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń
