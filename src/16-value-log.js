@@ -18,6 +18,16 @@
         shiftStart: null,
         _archiveTimer: null,
         _writeBackTimer: null,
+        /**
+         * Tekst wspólnego klucza, którego treść ta karta już ma: ostatnio przez
+         * nią zapisany albo wczytany i scalony. Póki klucz go zawiera, scalanie
+         * niczego nie wniesie — save() pomija rozbiór, scalenie i sortowanie
+         * całego dziennika (przy tysiącach wpisów to większość kosztu zapisu,
+         * a zapis idzie dwa razy na przedmiot). Kopia robocza zmienia się
+         * wyłącznie naprzód (nowe wpisy, świeższy `updated`), więc zgodność
+         * tekstu wystarcza.
+         */
+        _knownRaw: null,
 
         key() { return Persistence.getKey(CONFIG.STORAGE_KEY_VALUE_LOG); },
         archiveKey() { return CONFIG.SHARED_ID_PREFIX + CONFIG.STORAGE_KEY_VALUE_ARCHIVE; },
@@ -56,9 +66,14 @@
         },
 
         /** Wspólny dziennik w postaci, w jakiej leży teraz w localStorage. */
-        _readShared() {
+        _readRaw() {
+            try { return localStorage.getItem(this.key()); } catch (e) { return null; }
+        },
+
+        /** @param {string|null} text - zawartość klucza (`_readRaw()`). */
+        _readShared(text) {
             try {
-                const raw = JSON.parse(localStorage.getItem(this.key()) || 'null');
+                const raw = JSON.parse(text || 'null');
                 if (raw && Array.isArray(raw.entries)) {
                     return {
                         shiftStart: raw.shiftStart || null,
@@ -101,21 +116,25 @@
         },
 
         load() {
-            const shared = this._readShared();
+            const text = this._readRaw();
+            const shared = this._readShared(text);
+            this._knownRaw = shared ? text : null;
             this.entries = shared ? shared.entries : [];
             this.shiftStart = shared ? shared.shiftStart : null;
             if (this.entries.length) Utils.log(`[DZIENNIK] wczytano wpisów: ${this.entries.length}`);
         },
 
         save() {
-            const shared = this._readShared();
-            const merged = shared ? this._merge(shared.entries, this.entries) : this.entries.slice();
-            this.entries = merged;
-            if (!this.shiftStart && shared && shared.shiftStart) this.shiftStart = shared.shiftStart;
+            const text = this._readRaw();
+            if (text !== this._knownRaw) {
+                const shared = this._readShared(text);
+                this.entries = shared ? this._merge(shared.entries, this.entries) : this.entries.slice();
+                if (!this.shiftStart && shared && shared.shiftStart) this.shiftStart = shared.shiftStart;
+            }
             try {
-                localStorage.setItem(this.key(), JSON.stringify({
-                    shiftStart: this.shiftStart, entries: merged,
-                }));
+                const out = JSON.stringify({ shiftStart: this.shiftStart, entries: this.entries });
+                localStorage.setItem(this.key(), out);
+                this._knownRaw = out;
                 // Ten klucz pisze się z pominięciem Persistence.write —
                 // notatka deduplikacji dla niego byłaby nieaktualna.
                 delete Persistence._lastWritten[this.key()];
@@ -129,8 +148,13 @@
 
         /** Sąsiednia karta zmieniła wspólny dziennik. */
         adoptRemote() {
-            const shared = this._readShared();
+            const text = this._readRaw();
+            // Klucz z treścią, którą już mamy — np. dopisanie sąsiada, które
+            // tylko odbiło nasz własny zapis.
+            if (text !== null && text === this._knownRaw) return;
+            const shared = this._readShared(text);
             if (!shared) {
+                this._knownRaw = null;
                 // Klucza już nie ma — sąsiednia karta zresetowała zmianę.
                 if (this.entries.length) {
                     Utils.log('[DZIENNIK] sąsiednia karta wyczyściła dziennik — zdejmujemy swoją kopię');
@@ -145,6 +169,7 @@
             const merged = this._merge(shared.entries, this.entries);
             const haveOurOwn = this._aheadOfShared(merged, shared.entries);
             this.entries = merged;
+            this._knownRaw = text;
             if (shared.shiftStart) this.shiftStart = shared.shiftStart;
             bus.emit('valueLog:changed');
             if (before !== merged.length || haveOurOwn) {
@@ -356,6 +381,7 @@
             clearTimeout(this._writeBackTimer);
             this._writeBackTimer = null;
             this.entries = [];
+            this._knownRaw = null;
             this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
             try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
             delete Persistence._lastWritten[this.key()];

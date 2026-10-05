@@ -40,7 +40,26 @@
         });
     }
 
+    /**
+     * Klucz, pod którym obiekt reaktywny oddaje swój surowy obiekt. Symbol nie
+     * trafia do Object.keys ani do JSON.stringify, więc nie przecieka do magazynu.
+     */
+    const RAW = Symbol('raw');
+
+    /**
+     * Obiekt reaktywny nad `target`, rekurencyjnie dla zagnieżdżonych obiektów.
+     *
+     * Wejście bywa już obiektem reaktywnym: zapis `store.x = { ...store.x, k: v }`
+     * kopiuje do nowego obiektu dzieci, które są Proxy. Dlatego najpierw
+     * rozpakowanie do surowego obiektu. Owinięcie Proxy w kolejne Proxy
+     * dokładałoby warstwę przy każdym zapisie: odczyt przechodziłby przez
+     * wszystkie warstwy, a owijanie dzieci szłoby przez pułapkę `set` starej
+     * warstwy i rozsyłało `store:changed` dla każdej z nich. Przy dwóch
+     * zadaniach koszt jednej paczki rósłby z każdą paczką, aż do zadławienia
+     * przeglądarki.
+     */
     function createReactive(target, path = "") {
+        if (target && target[RAW]) target = target[RAW];
         if (Utils.isObject(target)) {
             for (const key of Object.keys(target)) {
                 if (Utils.isObject(target[key])) {
@@ -51,6 +70,7 @@
 
         return new Proxy(target, {
             get(obj, prop) {
+                if (prop === RAW) return obj;
                 return obj[prop];
             },
             set(obj, prop, value) {

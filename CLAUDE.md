@@ -137,6 +137,26 @@ Testy stanowiska nie wychodzą do prawdziwej sieci: każde zapytanie poza
 stanowisko jest przechwytywane i dostaje odpowiedź z testu albo odmowę.
 Stanowisko nie trafia do artefaktu.
 
+### 9. Koszt przedmiotu nie rośnie w ciągu zmiany
+
+Skrypt pracuje osiem godzin bez przeładowania; usterka kosztu przechodzi przez
+testy funkcjonalne i wychodzi po godzinach jako zacinanie komputera. Pilnuje
+tego `tests/35-shift-cost.test.js`: przedmiot i kosztuje tyle co przedmiot
+i − cykl, mierzone licznikami operacji (`innerText`, przerysowania, zapisy,
+zdarzenia `storage`, rozbiory dziennika), nie czasem. Złapane ręcznie:
+
+- `store.x = { ...store.x, k: v }` kopiuje dzieci-Proxy — bez rozpakowania
+  (`RAW` w `createReactive`) każdy zapis dokładał warstwę; od drugiego zadania
+  koszt paczki rósł wykładniczo;
+- chowanie elementu na czas odczytu `innerText` to drugi układ strony na
+  mutację — odejmować jego tekst, nie chować;
+- atrapa DOM nie zna `display:none`; widoczność sprawdzać na stanowisku
+  (tak wyszła sprawa ukrytego ASIN karty, `showAsin`);
+- test wzrostu wychodzi przy pierwszym rozjeździe, inaczej regresja
+  wykładnicza wiesza CI zamiast go wywracać.
+
+Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
+
 ---
 
 ## Polecenia
@@ -144,7 +164,7 @@ Stanowisko nie trafia do artefaktu.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 488 sprawdzeń
+npm test             # 511 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)

@@ -227,7 +227,7 @@ dokładnie.
 | Bramka    | Polecenie              | Co łapie                                                  |
 | --------- | ---------------------- | --------------------------------------------------------- |
 | Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 488 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
+| Testy     | `npm test`             | 511 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
 | Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
 | Typy      | `npm run typecheck`    | pomyłki typów w `src/` (TypeScript na JavaScripcie)       |
 | Format    | `npm run format:check` | rozjazdy w stylu                                          |
@@ -435,6 +435,33 @@ Poprawka podana jako „szybsza” albo „lżejsza” ma przyjść z liczbą. W
 najprostszy pomiar w atrapie DOM (liczba przerysowań, liczba odczytów
 `innerText`, czas przebiegu) sprzed i po zmianie, wpisany do opisu PR. Bez tego
 nie da się odróżnić przyspieszenia od przestawienia kodu.
+
+### Koszt przedmiotu jest stały przez całą zmianę
+
+Skrypt pracuje osiem godzin bez przeładowania. Usterka, której koszt rośnie
+z liczbą paczek, zadań albo wpisów, przechodzi przez każdy test funkcjonalny —
+liczby są poprawne — i wychodzi dopiero po kilku godzinach jako zacinanie
+komputera. Dlatego:
+
+- **Miarą są liczniki operacji, nie czas**: odczyty `document.body.innerText`,
+  przerysowania okna, zapisy `Persistence.write`, zdarzenia `storage`,
+  rozbiory wspólnego dziennika. Czas w CI jest zaszumiony, liczba — nie.
+- **Przedmiot i ma kosztować tyle co przedmiot i − cykl** przez całą długą
+  symulację (`tests/35-shift-cost.test.js`: dwie karty, kilka zadań
+  z przełączaniem, dziennik, setki przedmiotów). Nowa ścieżka, która dokłada
+  pracę na przedmiot (nowa linia, źródło, zapis), ma się w tym teście pojawić.
+- **Test wzrostu wychodzi przy pierwszym rozjeździe.** Przy koszcie
+  wykładniczym pełna pętla nie skończy się przed limitem czasu — test ma paść
+  od razu, a nie zawiesić CI.
+- **Rozwinięcie obiektu reaktywnego** (`store.x = { ...store.x, k: v }`)
+  kopiuje do nowego obiektu dzieci-Proxy. `createReactive` rozpakowuje je do
+  surowych obiektów (`RAW`); każda nowa ścieżka owijania musi robić to samo.
+- **Element, który ma zniknąć z tekstu strony, odejmuje się od tekstu, a nie
+  chowa na czas odczytu.** Zmiana `display` przed `innerText` to drugi pełny
+  układ strony przy każdej mutacji.
+- **Widoczność sprawdza się w przeglądarce.** Atrapa DOM liczy `innerText` jak
+  `textContent` i nie zna `display:none`; logika „co jest w tekście strony”
+  ma test na stanowisku (`tests/stand/`).
 
 ---
 
