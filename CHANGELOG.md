@@ -10,9 +10,9 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## Niewydane
+## 1.4.3 — 2026-10-05
 
-Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_3_0_`, aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany.
+Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_3_0_`, więc aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany. Liczenie, dziennik i moduł cen działają jak w 1.4.2. Człowiek przy stanowisku zobaczy jedną rzecz: komputer nie zwalnia już po założeniu drugiego zadania — każda paczka kosztuje tyle samo od początku do końca zmiany, także po kilku godzinach pracy i przełączaniu zadań. Z włączonym modułem cen skan strony jest dwa razy lżejszy.
 
 ### Naprawiono
 
