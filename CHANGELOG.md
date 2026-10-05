@@ -10,6 +10,26 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## Niewydane
+
+Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_3_0_`, aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany.
+
+### Naprawiono
+
+- **Skrypt zwalniał komputer z każdą paczką po założeniu drugiego zadania.** Zapis liczników zadania (`store.taskCounters = { ...store.taskCounters, [id]: … }`) kopiował do nowego obiektu dzieci, które już były obiektami reaktywnymi, a `createReactive` owijał je w kolejne Proxy. Każda paczka dokładała warstwę licznikom wszystkich pozostałych zadań, a każda warstwa rozsyłała własne `store:changed` (przerysowanie okna, autozapis). Przy jednym zadaniu nic nie było widać; od drugiego koszt paczki rósł wykładniczo — na stanowisku 2,7 ms przy pierwszej paczce, 204 ms przy dwudziestej drugiej, a przy trzystu pętla nie kończyła się w 200 s. Na zmianie objawiało się to po kilku godzinach jako zacinanie przy każdym wyzwalaczu. `createReactive` rozpakowuje teraz obiekt reaktywny do surowego przed owinięciem; koszt paczki jest stały (0,3 ms). Tę samą ścieżkę szły liczniki zadań z sąsiedniej karty (zdarzenie `storage`).
+
+### Zmieniono
+
+- **Jeden odczyt tekstu strony na skan także z modułem cen.** Karta ceny szukała ASIN we własnym odczycie `document.body.innerText`, chowając się na ten czas — przy każdej mutacji strony przeglądarka liczyła układ całej strony dwa razy. Karta dostaje teraz tekst z tego samego skanu, który szuka wyzwalaczy, i odejmuje od niego swój ASIN (tylko gdy widać kartę i sam kod — ustawienie „pokaż ASIN”).
+- **Zapis dziennika wartości bez ponownego rozbioru własnego zapisu.** Dziennik pamięta tekst klucza, który sam zapisał albo scalił; póki klucz go zawiera, zapis pomija rozbiór, scalenie i sortowanie całej listy, a zdarzenie z własną treścią jest pomijane. Przy 3000 wpisów zapis trwa 4,3 ms zamiast 9,5 ms, a idzie dwa razy na przedmiot.
+- **Kody sortowania**: pisownia kodu ze słownika budowanego raz razem ze wzorcem zamiast przebudowy listy kodów przy każdym trafieniu w każdym skanie.
+
+### Dodano
+
+- **Test kosztu zmiany** (`tests/35-shift-cost.test.js`): dwie karty na wspólnym magazynie, trzy zadania z przełączaniem, dziennik wartości, 360 przedmiotów. Każdy przedmiot ma kosztować dokładnie tyle, co ten sam przedmiot cykl wcześniej — w odczytach `innerText`, przerysowaniach, zapisach, zdarzeniach `storage` i rozbiorach dziennika. Na kodzie sprzed naprawy pada przy pierwszej paczce po założeniu drugiego zadania. Do tego `tests/34-reactive-nesting.test.js` (zapis do stanu reaktywnego) i test w przeglądarce dla ASIN z samego tekstu (`tests/stand/specs/05-price.spec.js`) — jedyne miejsce, gdzie `innerText` naprawdę pomija schowane elementy.
+
+---
+
 ## 1.4.2 — 2026-09-25
 
 Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_3_0_`, więc aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany. Liczenie, dziennik i moduł cen działają jak w 1.4.1. Człowiek przy stanowisku zobaczy dwie rzeczy:
