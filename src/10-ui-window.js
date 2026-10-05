@@ -146,6 +146,7 @@
         },
 
         renderContent() {
+            Perf.counts.renders++;
             const { workedMs } = ShiftManager.getWorkTime();
             const hWorked = workedMs / 3600000;
             const cid = store.currentTabInstanceId;

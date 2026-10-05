@@ -155,6 +155,12 @@ zdarzenia `storage`, rozbiory dziennika), nie czasem. Złapane ręcznie:
 - test wzrostu wychodzi przy pierwszym rozjeździe, inaczej regresja
   wykładnicza wiesza CI zamiast go wywracać.
 
+To samo w prawdziwej przeglądarce: `tests/stand/specs/07-long-shift.spec.js`.
+Na stanowisku pracy: `SH.perf()` porównuje koszt przedmiotu z początku zmiany
+z ostatnimi przedmiotami. Szablon PR pyta, co rośnie w ciągu zmiany — odpowiedź
+„nic” przychodzi z liczbą. Agent piszący kod i agent przeglądający go mają te
+same ślepe plamy: dowodem jest pomiar, nie przegląd.
+
 Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
 
 ---
@@ -164,7 +170,7 @@ Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 511 sprawdzeń
+npm test             # 520 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)

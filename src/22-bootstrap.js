@@ -196,6 +196,7 @@
                 // z pamięci karty; jeśli jeszcze nie przyszła, dopisze ją
                 // resolve() (ValueLog.fillPending).
                 bus.on('item:completed', () => {
+                    Perf.item();
                     const asin = PriceCard.shownAsin;
                     const r = asin ? PriceCard.cache.get(asin) : null;
                     const price = (r && r.status === 'ok' && r.current) ? r.current : null;
@@ -281,6 +282,12 @@
                      */
                     TaskManager,
                     tasks: () => TaskManager.info(),
+                    /**
+                     * Koszt pracy skryptu: `SH.perf()` — czy przedmiot pod koniec
+                     * zmiany kosztuje tyle co na początku. Sam nic nie wypisuje.
+                     */
+                    perf: () => Perf.report(),
+                    Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
                     // odtwarzają pełny gest myszy.

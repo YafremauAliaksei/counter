@@ -227,7 +227,7 @@ dokładnie.
 | Bramka    | Polecenie              | Co łapie                                                  |
 | --------- | ---------------------- | --------------------------------------------------------- |
 | Budowanie | `npm run build:check`  | artefakt rozjechał się ze źródłami                        |
-| Testy     | `npm test`             | 511 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
+| Testy     | `npm test`             | 520 sprawdzeń: zachowanie, bezpieczeństwo, skan statyczny |
 | Linter    | `npm run lint`         | literówki, martwy kod, nieużywane zmienne                 |
 | Typy      | `npm run typecheck`    | pomyłki typów w `src/` (TypeScript na JavaScripcie)       |
 | Format    | `npm run format:check` | rozjazdy w stylu                                          |
@@ -462,6 +462,13 @@ komputera. Dlatego:
 - **Widoczność sprawdza się w przeglądarce.** Atrapa DOM liczy `innerText` jak
   `textContent` i nie zna `display:none`; logika „co jest w tekście strony”
   ma test na stanowisku (`tests/stand/`).
+- **Długa zmiana w przeglądarce**: `tests/stand/specs/07-long-shift.spec.js`
+  (dwie karty, trzy zadania, 48 przedmiotów). Zapisy odroczone wpadają tam do
+  sąsiednich przedmiotów, więc porównuje się sumy cykli z małym zapasem.
+- **Szablon PR pyta, co rośnie w ciągu zmiany.** Odpowiedź „nic” przychodzi
+  z liczbą przed/po. Przegląd kodu tej klasy usterek nie łapie — każda linia
+  z osobna jest poprawna, rośnie dopiero ich złożenie w czasie.
+- **Na stanowisku pracy** podejrzenie „skrypt zwalnia” sprawdza `SH.perf()`.
 
 ---
 
