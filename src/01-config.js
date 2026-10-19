@@ -245,7 +245,7 @@
         // to napisy samego T-REX. PROBLEM-SOLVE jest wyłączony, bo taki
         // przedmiot wraca do obsługi i zostałby policzony dwa razy.
         PRE_TRIGGER_REGEX: /poniżej|видите ниже|зображенню нижче|Transparency/i,
-        AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|канирование номера LP:|канування LPN:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
+        AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|призначити новий|перепризначте|канирование номера LP:|канування LPN:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
         /**
          * POLE POJEMNIKA (tote). Rozpoznaje się je po podpisie `aria-label`
          * w trzech językach T-REX albo po `data-testid`. Pojemnik jest
@@ -475,7 +475,8 @@
         PRICE_ASIN_FROM_TEXT: /\b(B[01][A-Z0-9]{8})\b/,
 
         DEFAULT_LANGUAGE: 'pl',
-        AVAILABLE_LANGUAGES:[{ code: 'pl', name: 'Polski' }, { code: 'en', name: 'English' }, { code: 'ru', name: 'Русский' }],
+        // Kolejność listy wyboru: polski (domyślny), ukraiński, rosyjski, angielski.
+        AVAILABLE_LANGUAGES:[{ code: 'pl', name: 'Polski' }, { code: 'uk', name: 'Українська' }, { code: 'ru', name: 'Русский' }, { code: 'en', name: 'English' }],
     };
 
     /**
@@ -522,7 +523,7 @@
         line2_globalSummary: {
             visible: false, colorHex: '#808080', alpha: 60, fontSize: 14,
             multicolor: true,
-            customColors: { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
+            customColors: { CRET: '#0078D7', UG: '#8E44AD', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
         },
         line3_shiftInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },
         line4_lunchInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },

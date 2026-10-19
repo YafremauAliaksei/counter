@@ -79,7 +79,7 @@
 
    Linia 2 ma dodatkowo:
        multicolor    — true/false, kolorowanie działów osobnymi kolorami
-       customColors  — { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
+       customColors  — { CRET: '#0078D7', UG: '#8E44AD', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
 
    Linia 6: picker koloru działa tylko na liczbę sztuk. Plus zawsze zielony,
    minus zawsze czerwony — po tym rozpoznaje się znak.
@@ -126,7 +126,7 @@
    -----------------------------------------------------------------------------
    USTAWIENIA WSPÓLNE DLA WSZYSTKICH KART  (store.userConfig)
    -----------------------------------------------------------------------------
-   language    = 'pl'         'pl' | 'en' | 'ru'
+   language    = 'pl'         'pl' | 'uk' | 'ru' | 'en'
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)

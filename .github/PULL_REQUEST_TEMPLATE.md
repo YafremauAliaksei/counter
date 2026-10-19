@@ -4,9 +4,9 @@
 
 ## Rodzaj zmiany
 
-- [ ] `fix` — naprawa, nowych pól w danych nie ma (PATCH)
-- [ ] `feat` — nowa możliwość, dane zgodne wstecz (MINOR)
-- [ ] `feat!` / `BREAKING` — zmienia się `SCRIPT_ID_PREFIX`, liczniki nie przenoszą się (MAJOR)
+- [ ] `fix` — naprawa, nowych pól w danych nie ma (PATCH, prefiks zostaje)
+- [ ] `feat` — nowa możliwość (MINOR: nowy `SCRIPT_ID_PREFIX`, liczniki nie przenoszą się)
+- [ ] `feat!` / `BREAKING` — zmiana zasadnicza (MAJOR: nowy `SCRIPT_ID_PREFIX`)
 - [ ] `docs` / `refactor` / `test` / `chore` — wersja nie drgnie
 
 ## Lista kontrolna

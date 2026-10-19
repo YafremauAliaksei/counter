@@ -75,7 +75,7 @@ test('każdy gradingMode trafia do swojego działu, UG nie wpada do CRET', () =>
 test('UG wchodzi do sumy globalnej domyślnie i ma nazwę w każdym języku', () => {
     const env = make('CRETURN_PRIMARY_GRADING');
     eq(env.SH.store.userConfig.globalStatsContributionKnown.UG, true);
-    for (const lang of ['pl', 'en', 'ru']) {
+    for (const lang of ['pl', 'uk', 'ru', 'en']) {
         env.SH.store.userConfig.language = lang;
         eq(env.SH.I18n.get('tabName_UG'), 'UG', lang);
     }
@@ -443,4 +443,31 @@ test('pełny przebieg: gotowość, LPN, ASIN pod polem; obce okno i zły ASIN od
     scan.remove();
     page(env, '');
     eq(G.chip, null, 'pole zniknęło — link też');
+});
+
+describe('Kod ustawień przenosi pomoce stanowiska');
+
+test('linie 9 i 10, UG, skrót, profil FAST i wyłączniki przechodzą na drugą maszynę', () => {
+    // Kod ustawień ma obejmować wszystko, co da się ustawić — inaczej
+    // zakładka z kodem odtwarza wygląd bez nowych opcji i nikt tego nie widzi.
+    const a = make();
+    const S = a.SH.store;
+    S.localTabConfig.linesConfig.line9_offTask.visible = false;
+    S.localTabConfig.linesConfig.line10_target.visible = true;
+    S.localTabConfig.linesConfig.line10_target.colorHex = '#112233';
+    S.localTabConfig.linesConfig.line2_globalSummary.customColors.UG = '#445566';
+    Object.assign(S.userConfig, { cretProfile: 'FAST', toteCounting: true, autoLpn: true, gravisAsin: true, language: 'uk' });
+    S.userConfig.keyboardShortcuts.TOGGLE_WINDOW = 'F10';
+    S.userConfig.globalStatsContributionKnown.UG = false;
+    const code = a.SH.configCode();
+
+    const b = make();
+    eq(b.SH.config(code)['kod przyjęty'], true);
+    const T = b.SH.store;
+    eq([T.localTabConfig.linesConfig.line9_offTask.visible, T.localTabConfig.linesConfig.line10_target.visible,
+        T.localTabConfig.linesConfig.line10_target.colorHex, T.localTabConfig.linesConfig.line2_globalSummary.customColors.UG],
+       [false, true, '#112233', '#445566']);
+    eq([T.userConfig.cretProfile, T.userConfig.toteCounting, T.userConfig.autoLpn, T.userConfig.gravisAsin,
+        T.userConfig.language, T.userConfig.keyboardShortcuts.TOGGLE_WINDOW, T.userConfig.globalStatsContributionKnown.UG],
+       ['FAST', true, true, true, 'uk', 'F10', false]);
 });

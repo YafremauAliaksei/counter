@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.6.0
+// @version      1.6.1
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.6.0',
+        SCRIPT_VERSION: '1.6.1',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -328,7 +328,7 @@ const PAID_SHIFT_HOURS = 10;
         // to napisy samego T-REX. PROBLEM-SOLVE jest wyłączony, bo taki
         // przedmiot wraca do obsługi i zostałby policzony dwa razy.
         PRE_TRIGGER_REGEX: /poniżej|видите ниже|зображенню нижче|Transparency/i,
-        AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|канирование номера LP:|канування LPN:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
+        AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|призначити новий|перепризначте|канирование номера LP:|канування LPN:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
         /**
          * POLE POJEMNIKA (tote). Rozpoznaje się je po podpisie `aria-label`
          * w trzech językach T-REX albo po `data-testid`. Pojemnik jest
@@ -558,7 +558,8 @@ const PAID_SHIFT_HOURS = 10;
         PRICE_ASIN_FROM_TEXT: /\b(B[01][A-Z0-9]{8})\b/,
 
         DEFAULT_LANGUAGE: 'pl',
-        AVAILABLE_LANGUAGES:[{ code: 'pl', name: 'Polski' }, { code: 'en', name: 'English' }, { code: 'ru', name: 'Русский' }],
+        // Kolejność listy wyboru: polski (domyślny), ukraiński, rosyjski, angielski.
+        AVAILABLE_LANGUAGES:[{ code: 'pl', name: 'Polski' }, { code: 'uk', name: 'Українська' }, { code: 'ru', name: 'Русский' }, { code: 'en', name: 'English' }],
     };
 
     /**
@@ -605,7 +606,7 @@ const PAID_SHIFT_HOURS = 10;
         line2_globalSummary: {
             visible: false, colorHex: '#808080', alpha: 60, fontSize: 14,
             multicolor: true,
-            customColors: { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
+            customColors: { CRET: '#0078D7', UG: '#8E44AD', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
         },
         line3_shiftInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },
         line4_lunchInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 14 },
@@ -1044,6 +1045,150 @@ const PAID_SHIFT_HOURS = 10;
             gravis_remoteNoOpener: 'StatsHelper: otwórz GRAVIS przyciskiem w panelu ustawień T-REX, potem kliknij tu zakładkę.',
             gravis_alreadyRunning: 'StatsHelper: już działa na tej karcie GRAVIS.',
             multicolorMode: 'Wielokolorowe Działy', tabColors: 'Kolory Działów:'
+        },
+        uk: {
+            scriptLoaded: '${scriptName} v${version} Завантажено.', yes: 'Так', no: 'Ні', notApplicable: 'Н/Д',
+            error_items_per_hour_unavailable: '~0.0/год (замало часу)', fromUnit: 'від', inUnit: 'за',
+            hoursShort: 'г', minutesShort: 'хв', secondsShort: 'с', statsPerHourUnit: '/год', completedUnit: 'готово',
+            taskPausedMark: '(пауза)',
+            section_tasks: 'Завдання',
+            tasks_hint: 'Завдання — це один процес роботи з власним годинником. Перемикання не чіпає лічильники зміни: окремо рахується лише темп, тож запізнення до початку процесу його більше не псує.',
+            tasks_name: 'Назва',
+            tasks_startedAt: 'Початок',
+            tasks_now: 'зараз',
+            tasks_minutesBack: '-${value} хв',
+            tasks_shiftStart: 'початок зміни',
+            tasks_packages: 'Пачки',
+            tasks_rate: 'Темп',
+            tasks_summary: 'Продаж / час',
+            tasks_pause: 'Зупинити годинник',
+            tasks_unpause: 'Запустити годинник',
+            tasks_new: 'Нове завдання',
+            tasks_newPlaceholder: 'назва нового завдання',
+            tasks_history: 'Завдання цієї зміни',
+            tasks_resume: 'Продовжити',
+            tasks_delete: 'Видалити',
+            tasks_deleteConfirm: 'Видалити завдання «${name}»? Його пачки зникнуть з лічильника зміни.',
+            tasks_ongoing: 'зараз',
+            lineSettings_taskInfoHint: 'Назва поточного завдання та його власні числа: пачки, темп, відсоток продажу, відпрацьований час. Рядки вище описують усю зміну, цей — процес, яким ви зайняті зараз.',
+            tabName_CRET: 'CRET', tabName_REFURB: 'REFURB', tabName_WHD: 'WHD', tabName_OTHER: 'Інше', tabName_UNKNOWN: 'НЕВІДОМО',
+            statsLine1_current: '${tabName} ${itemsPerHour}${statsPerHourUnit} (${count} ${completedUnit} ${inUnit} ${workTimeFormatted})',
+            statsLine2_global_separator: ' ', statsLine2_global_tab_format: '${tabName} ${itemsPerHour}${statsPerHourUnit}(${count})', statsLine2_global_total_format: '= ~${totalItemsPerHour}${statsPerHourUnit} (${totalCount})',
+            statsLine3_shift: '${shiftType} зміна (${shiftStartTime})', statsLine4_lunch: 'Перерва #${lunchNumber} (${lunchStartTime} - ${lunchEndTime})', statsLine5_clock: '[ ${currentTime} ]',
+            statsLine6_undet: '?${n}',
+            statsLine6_items: '${n} шт',
+            valueLog_fx: 'Курси: ${src} (${brief})',
+            valueLog_fxRefresh: 'Оновити курси',
+            valueLog_routeStats: 'продано ${sold}, не продано ${unsold}, не визначено ${undet}',
+            lineSettings_valueSum: 'Рядок 6: Сума вартості',
+            lineSettings_compact: 'Рядок 7: Компактний лічильник',
+            lineSettings_compactHint: 'Три числа: предметів за годину (усі вкладки), зроблено штук і відсоток продажу. Більше нічого.',
+            lineSettings_taskInfo: 'Рядок 8: Поточне завдання',
+            priceModule_section: 'Модуль цін (мережа)',
+            priceModule_enabled: 'Увімкнути модуль цін',
+            priceModule_hint: 'За замовчуванням ВИМКНЕНО. Поки він вимкнений, скрипт не робить ЖОДНИХ запитів в інтернет: ні за курсами валют, ні за графіком Keepa, ні до r.jina.ai. Лічильник предметів, зміна, перерви й рядок 7 працюють без мережі.',
+            priceModule_offNotice: 'Модуль вимкнено — налаштування нижче запрацюють після його увімкнення.',
+            priceModule_fxOffline: 'вбудовані (без мережі)',
+            lineSettings_valueSumHint: 'Прозорість діє на весь рядок. Колір — лише на кількість штук: плюс лишається зеленим, мінус червоним, за ними й читається знак.',
+            valueLog_section: 'Журнал вартості',
+            valueLog_enabled: 'Вести журнал вартості зроблених предметів',
+            valueLog_hint: 'Рахуються лише предмети, що пройшли повний шлях (лічильник додав +1).',
+            valueLog_reset: 'Очистити журнал вартості',
+            valueLog_resetConfirm: 'Очистити журнал вартості цієї зміни? Лічильники предметів залишаться.',
+            valueLog_export: 'Вивести журнал у консоль',
+            valueLog_stats: '${count} шт., Σ ${sum} ${currency}, без ціни: ${unpriced}',
+            shift_day: 'ДЕННА', shift_night: 'НІЧНА', lunch_day1: 'Перерва вдень 1 (11:20-11:50)', lunch_day2: 'Перерва вдень 2 (11:50-12:20)', lunch_day3: 'Перерва вдень 3 (12:20-12:50)', lunch_day4: 'Перерва вдень 4 (12:50-13:20)',
+            lunch_night1: 'Перерва вночі 1 (23:20-23:50)', lunch_night2: 'Перерва вночі 2 (23:50-00:20)', lunch_night3: 'Перерва вночі 3 (00:20-00:50)', lunch_night4: 'Перерва вночі 4 (00:50-01:20)',
+            settingsPanelTitle: 'Налаштування ${scriptName}', settings_applyAndCloseButton: 'Застосувати й закрити', settings_applyButton: 'Застосувати',
+            settings_resetAllDataButton: 'Скинути всі дані', settings_resetWindowPositionButton: 'Скинути позицію вікна',
+            settings_resetConfirm: 'Видалити всі дані StatsHelper (налаштування й лічильники)? Дані самого TREX не зачіпаються.',
+            settings_resetCountersButton: 'Скинути лише лічильники', settings_resetCountersConfirm: 'Обнулити лічильники предметів? Налаштування вигляду збережуться.',
+            newShiftDetected: 'Виявлено нову зміну — лічильники предметів обнулено.',
+            resetNotice_stale: 'Дані минулої зміни — лічильники предметів обнулено.',
+            notice_storageFull: 'Пам\'ять браузера переповнена — числа на екрані правильні, але не переживуть перезавантаження сторінки (F5).',
+            resetNotice_manual: 'Лічильники предметів обнулено.',
+            settings_manualCounterInputLabel: 'Лічильник', section_general: 'Загальні', section_currentTab: 'Поточна вкладка (${tabInstanceId})',
+            section_visualAids: 'Візуальні ефекти (для ${tabName})', section_statsWindow: 'Вигляд вікна статистики', section_globalStats: 'Глобальна статистика',
+            section_keyboardShortcuts: 'Гарячі клавіші', section_autoIncrement: 'Авто-інкремент', section_lunchSelection: 'Вибір перерви', section_otherCustomTabs: 'Інші користувацькі вкладки',
+            language: 'Мова', customTabDisplayName: 'Відображуване ім\'я', customTabIncludeInGlobal: 'Включити в глобальну суму', overlayOpacity: 'Непрозорість накладання: ${value}%',
+            showPageIndicator: 'Показати текстовий індикатор', windowBgSettings: 'Фон вікна', lineSettings_currentTab: 'Рядок 1: Статистика поточної вкладки',
+            lineSettings_globalSummary: 'Рядок 2: Глобальне зведення', lineSettings_shiftInfo: 'Рядок 3: Інформація про зміну', lineSettings_lunchInfo: 'Рядок 4: Інформація про перерву', lineSettings_realTimeClock: 'Рядок 5: Годинник',
+            fontFamily: 'Шрифт', fontSize: 'Розмір шрифту: ${value}px', dragStatsWindowButton: 'Увімкнути перетягування', dragStatsWindowActiveButton: 'Вікно переміщується (клікніть, щоб зафіксувати)',
+            includeInGlobal_known: 'Включити ${tabName}', incrementKey: 'Кнопка інкременту (+1)', decrementKey: 'Кнопка декременту (-1)', scanIntervalAutoIncrement: 'Інтервал сканування: ${value}мс',
+            noCustomTabsConfigured: 'Інших вкладок не налаштовано.', customTabEntryFormat: '${displayName} (${instanceId_short}) - Включено: ${isIncludedStr}',
+            fontFamily_default: 'За замовчуванням', fontFamily_monospace: 'Моноширинний', fontFamily_sans_serif_thin: 'Тонкий без засічок',
+            key_None: 'Вимкнено', key_ShiftRight: 'Правий Shift', key_ControlRight: 'Правий Ctrl', key_AltRight: 'Правий Alt', key_ScrollLock: 'Scroll Lock', key_PauseBreak: 'Pause/Break', key_Insert: 'Insert',
+            key_Numpad0: 'Num 0', key_NumpadMultiply: 'Num *', key_NumpadSubtract: 'Num -', key_NumpadAdd: 'Num +', key_F10: 'F10',
+            initialNotification_currentTab: 'Поточна вкладка:', initialNotification_shiftStart: 'Початок зміни:',
+            priceCard_cspImg: 'CSP сторінки блокує графік Keepa',
+            priceCard_cspNet: 'CSP сторінки блокує запит ціни',
+            priceCard_cspBoth: 'CSP сторінки блокує обидва джерела',
+            priceCard_marketplace: 'Магазин Amazon',
+            priceCard_fallback: 'Шукати в інших магазинах, якщо ціни немає',
+            priceCard_fallbackHint: 'Лише для одного предмета, у випадковому порядку, раз на секунду. Магазин за замовчуванням не змінюється.',
+            priceCard_searchingOther: 'шукаю в інших магазинах…',
+            priceCard_foundIn: 'знайдено на ${host}',
+            priceCard_marketNoData: 'У Keepa немає графіка для цього магазину — посилання працює, ціни не буде',
+            priceCard_displayCurrency: 'Показувати суми в',
+            priceCard_displayNative: 'валюті магазину (без перерахунку)',
+            priceCard_displayCurrencyHint: 'Суми завжди рахуються в євро, вибрана валюта — лише спосіб показу, тож зміна посеред зміни нічого не втрачає. Перерахована ціна позначена знаком ≈.',
+            priceCard_openHint: 'Клік по ASIN відкриває сторінку товару',
+            priceCard_hiddenHint: 'Картку приховано — ціна все одно читається й іде в суму',
+            priceCard_showCard: 'Показувати картку на екрані',
+            priceCard_refreshing: 'оновлюється…',
+            priceCard_source: 'Джерело ціни',
+            priceCard_src_ocr: 'Ціна текстом (розпізнана з графіка)',
+            priceCard_src_graph: 'Зображення графіка Keepa',
+            priceCard_src_jina: 'Текстовий запит (r.jina.ai)',
+            priceCard_ocrFail: 'не вдалося прочитати ціну з графіка',
+            priceCard_cspOcr: 'CSP сторінки блокує зображення Keepa — ціну не прочитати',
+            priceCard_fromCache: 'з кешу',
+            priceCard_cacheAge: '${days} доб. тому',
+            priceCard_graphMode: 'Область графіка', priceCard_mode_legend: 'Лише ціни (з графіка)',
+            priceCard_mode_right: 'Права частина, натуральний розмір', priceCard_mode_full: 'Весь графік',
+            priceCard_textOff: 'текстовий запит вимкнено',
+            priceCard_section: 'Картка ціни', priceCard_enabled: 'Показувати картку ціни',
+            priceCard_showPrice: 'Показувати поточну ціну', priceCard_showRrp: 'Показувати RRP',
+            priceCard_showGraph: 'Показувати графік Keepa',
+            priceCard_showAsin: 'Показувати код товару (ASIN)',
+            priceCard_asinClickable: 'Код товару — посилання на магазин',
+            priceCard_asinClickableHint: 'За замовчуванням вимкнено: посилання — єдине місце картки, що ловить мишу й може перекрити кнопку T-REX.',
+            priceCard_showLatency: 'Показувати час отримання ціни (мс)',
+            priceCard_width: 'Ширина картки: ${value}px', priceCard_fontSize: 'Розмір ціни: ${value}px',
+            priceCard_bg: 'Фон картки', priceCard_drag: 'Увімкнути перетягування картки',
+            priceCard_showSource: 'Показувати джерело ціни',
+            configCode_section: 'Код налаштувань',
+            configCode_hint: 'У коді лежить усе, що ви змінили відносно значень за замовчуванням: рядки, кольори, прозорість, розміри, положення, вимикачі. Вставлений на іншій машині дає той самий інтерфейс.',
+            configCode_yours: 'Ваш код',
+            configCode_link: 'Готова закладка',
+            configCode_linkMissing: 'У цій збірці не задано адресу релізу, тому готової закладки немає. Код вище працює як завжди: вставте його на іншій машині.',
+            configCode_select: 'Виділити для копіювання',
+            configCode_paste: 'Вставте сюди код',
+            configCode_apply: 'Застосувати код',
+            configCode_applied: 'Застосовано налаштувань: ${n}',
+            priceCard_textColor: 'Колір тексту',
+            priceCard_textColorHint: 'Один колір на всі рядки картки. Повідомлення про те, чому ціни немає, показується завжди, незалежно від вимикачів.',
+            priceCard_dragActive: 'Картка переміщується (клік, щоб зафіксувати)', priceCard_resetPosition: 'Скинути позицію картки',
+            priceCard_searching: 'шукаю ціну...', priceCard_noPrice: 'ціни немає',
+            priceCard_noAsin: 'ASIN не знайдено', priceCard_item: 'предмет', priceCard_rrp: 'RRP',
+            priceCard_seeChart: 'ціна на графіку', priceCard_cached: 'з кешу', priceCard_limit: 'ліміт сесії',
+            tabName_UG: 'UG',
+            lineSettings_offTask: 'Рядок 9: час від тари', lineSettings_target: 'Рядок 10: ціль відділу',
+            lineSettings_offTaskHint: 'Час від останньої закритої тари. Після подвійного часу предмета за ціллю червоніє й дописує час простою.',
+            toggleWindowKey: 'Сховати/показати вікно',
+            section_workflow: 'Ціль і помічники робочого місця',
+            workflow_cretProfile: 'Ціль вкладки CRET',
+            workflow_targetHint: 'Ціль цієї вкладки: ${value}/год. Цілі змінюються на початку файлу (RATE_TARGETS).',
+            workflow_toteCounting: 'Рахувати за закритою тарою (експериментально)',
+            workflow_toteCountingHint: 'Замінює тригер за текстом сторінки. Порівняння обох у консолі: SH.tote().',
+            workflow_autoLpn: 'Авто-LPN: «Перепризначити LPN», якщо в поле тари потрапила етикетка',
+            workflow_gravis: 'Підтягувати ASIN з GRAVIS',
+            workflow_gravisHowTo: '1. Натисніть кнопку нижче — GRAVIS відкриється в новій вкладці. 2. На вкладці GRAVIS один раз клікніть закладку цього скрипта. Далі кожен LPN іде в GRAVIS, а ASIN з\'являється під полем скану предмета: клік вставляє його, Enter натискаєте самі.',
+            workflow_gravisOpen: 'Відкрити GRAVIS', workflow_gravisConnected: 'GRAVIS підключено — відкрити знову',
+            gravis_remoteReady: 'StatsHelper: GRAVIS підключено до T-REX.',
+            gravis_remoteNoOpener: 'StatsHelper: відкрийте GRAVIS кнопкою в панелі налаштувань T-REX, потім клікніть закладку тут.',
+            gravis_alreadyRunning: 'StatsHelper: уже запущено на цій вкладці GRAVIS.',
+            multicolorMode: 'Різнокольорові відділи', tabColors: 'Кольори відділів:'
         },
         ru: {
             scriptLoaded: '${scriptName} v${version} Загружен.', yes: 'Да', no: 'Нет', notApplicable: 'Н/Д',
@@ -6915,7 +7060,7 @@ const PAID_SHIFT_HOURS = 10;
                     Persistence, SettingsPanel, AutoTrigger, I18n,
                     KeepaOCR, PriceSources, PriceNet, ValueLog, FxRates, Routing,
                     // Potrzebne testom i diagnostyce.
-                    Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
+                    Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS, LANG_STRINGS,
                     DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG, DEFAULT_USER_CONFIG,
                     priceModuleOn,
                     // Hasła dostępu: SH.normalizeAccessPasswords(['moje', 'hasła'])
@@ -7140,9 +7285,10 @@ const PAID_SHIFT_HOURS = 10;
             font: ['default', 'monospace', 'sans_serif_thin'],
             source: ['ocr', 'graph', 'jina'],
             graphMode: ['legend', 'right', 'full'],
-            language: ['pl', 'en', 'ru'],
+            language: ['pl', 'en', 'ru', 'uk'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
             displayCurrency: ['native', 'EUR', 'PLN', 'GBP', 'SEK', 'USD', 'CAD'],
+            cretProfile: ['CRET', 'FAST'],
         },
 
         /**
@@ -7191,11 +7337,12 @@ const PAID_SHIFT_HOURS = 10;
             { id: 0x0007, root: 'local', path: 'pageOverlayOpacity', type: 'u8', min: 0, max: 100 },
             { id: 0x0008, root: 'local', path: 'pageIndicatorTextVisible', type: 'bool' },
 
-            // --- linie 1–8 ---
+            // --- linie 1–10 ---
             ...['line1_currentTab', 'line2_globalSummary', 'line3_shiftInfo', 'line4_lunchInfo',
                 'line5_realTimeClock', 'line6_valueSum', 'line7_compact',
-                // Linia 8 — blok 0x0170, kolejny po linii 7.
-                'line8_taskInfo'].flatMap((key, i) => {
+                // Linia 8 — blok 0x0170, kolejny po linii 7; linie 9 i 10 —
+                // 0x0180 i 0x0190.
+                'line8_taskInfo', 'line9_offTask', 'line10_target'].flatMap((key, i) => {
                 const base = 0x0100 + i * 0x10;
                 return [
                     { id: base, root: 'local', path: `linesConfig.${key}.visible`, type: 'bool' },
@@ -7213,6 +7360,7 @@ const PAID_SHIFT_HOURS = 10;
             // Dział ręczny OTHER — numery dotąd niewydane, więc starsze kody
             // nie zmieniają znaczenia.
             { id: 0x0118, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.OTHER', type: 'color' },
+            { id: 0x0119, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.UG', type: 'color' },
 
             // --- karta ceny ---
             // 0x0200 i 0x0202 są wycofane — patrz RETIRED_IDS.
@@ -7249,6 +7397,12 @@ const PAID_SHIFT_HOURS = 10;
             { id: 0x0307, root: 'user', path: 'keyboardShortcuts.INCREMENT', type: 'text' },
             { id: 0x0308, root: 'user', path: 'keyboardShortcuts.DECREMENT', type: 'text' },
             { id: 0x030a, root: 'user', path: 'displayCurrency', type: 'enum', list: 'displayCurrency' },
+            { id: 0x030b, root: 'user', path: 'globalStatsContributionKnown.UG', type: 'bool' },
+            { id: 0x030c, root: 'user', path: 'keyboardShortcuts.TOGGLE_WINDOW', type: 'text' },
+            { id: 0x030d, root: 'user', path: 'cretProfile', type: 'enum', list: 'cretProfile' },
+            { id: 0x030e, root: 'user', path: 'toteCounting', type: 'bool' },
+            { id: 0x030f, root: 'user', path: 'autoLpn', type: 'bool' },
+            { id: 0x0310, root: 'user', path: 'gravisAsin', type: 'bool' },
         ],
 
         // ---------------- pomocnicze ----------------
@@ -8731,7 +8885,7 @@ const PAID_SHIFT_HOURS = 10;
 
    Linia 2 ma dodatkowo:
        multicolor    — true/false, kolorowanie działów osobnymi kolorami
-       customColors  — { CRET: '#0078D7', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
+       customColors  — { CRET: '#0078D7', UG: '#8E44AD', REFURB: '#FFA500', WHD: '#1EB41E', OTHER: '#9E9E9E' }
 
    Linia 6: picker koloru działa tylko na liczbę sztuk. Plus zawsze zielony,
    minus zawsze czerwony — po tym rozpoznaje się znak.
@@ -8778,7 +8932,7 @@ const PAID_SHIFT_HOURS = 10;
    -----------------------------------------------------------------------------
    USTAWIENIA WSPÓLNE DLA WSZYSTKICH KART  (store.userConfig)
    -----------------------------------------------------------------------------
-   language    = 'pl'         'pl' | 'en' | 'ru'
+   language    = 'pl'         'pl' | 'uk' | 'ru' | 'en'
    marketplace = 'de'         'de' | 'co.uk' | 'com' | 'it' | 'fr' | 'es' | 'nl'
                               | 'ca' | 'se' | 'com.be' | 'pl'
                               (Keepa nie ma danych dla 'pl' — link zadziała, cena nie)

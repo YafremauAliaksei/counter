@@ -71,9 +71,10 @@
             font: ['default', 'monospace', 'sans_serif_thin'],
             source: ['ocr', 'graph', 'jina'],
             graphMode: ['legend', 'right', 'full'],
-            language: ['pl', 'en', 'ru'],
+            language: ['pl', 'en', 'ru', 'uk'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
             displayCurrency: ['native', 'EUR', 'PLN', 'GBP', 'SEK', 'USD', 'CAD'],
+            cretProfile: ['CRET', 'FAST'],
         },
 
         /**
@@ -122,11 +123,12 @@
             { id: 0x0007, root: 'local', path: 'pageOverlayOpacity', type: 'u8', min: 0, max: 100 },
             { id: 0x0008, root: 'local', path: 'pageIndicatorTextVisible', type: 'bool' },
 
-            // --- linie 1–8 ---
+            // --- linie 1–10 ---
             ...['line1_currentTab', 'line2_globalSummary', 'line3_shiftInfo', 'line4_lunchInfo',
                 'line5_realTimeClock', 'line6_valueSum', 'line7_compact',
-                // Linia 8 — blok 0x0170, kolejny po linii 7.
-                'line8_taskInfo'].flatMap((key, i) => {
+                // Linia 8 — blok 0x0170, kolejny po linii 7; linie 9 i 10 —
+                // 0x0180 i 0x0190.
+                'line8_taskInfo', 'line9_offTask', 'line10_target'].flatMap((key, i) => {
                 const base = 0x0100 + i * 0x10;
                 return [
                     { id: base, root: 'local', path: `linesConfig.${key}.visible`, type: 'bool' },
@@ -144,6 +146,7 @@
             // Dział ręczny OTHER — numery dotąd niewydane, więc starsze kody
             // nie zmieniają znaczenia.
             { id: 0x0118, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.OTHER', type: 'color' },
+            { id: 0x0119, root: 'local', path: 'linesConfig.line2_globalSummary.customColors.UG', type: 'color' },
 
             // --- karta ceny ---
             // 0x0200 i 0x0202 są wycofane — patrz RETIRED_IDS.
@@ -180,6 +183,12 @@
             { id: 0x0307, root: 'user', path: 'keyboardShortcuts.INCREMENT', type: 'text' },
             { id: 0x0308, root: 'user', path: 'keyboardShortcuts.DECREMENT', type: 'text' },
             { id: 0x030a, root: 'user', path: 'displayCurrency', type: 'enum', list: 'displayCurrency' },
+            { id: 0x030b, root: 'user', path: 'globalStatsContributionKnown.UG', type: 'bool' },
+            { id: 0x030c, root: 'user', path: 'keyboardShortcuts.TOGGLE_WINDOW', type: 'text' },
+            { id: 0x030d, root: 'user', path: 'cretProfile', type: 'enum', list: 'cretProfile' },
+            { id: 0x030e, root: 'user', path: 'toteCounting', type: 'bool' },
+            { id: 0x030f, root: 'user', path: 'autoLpn', type: 'bool' },
+            { id: 0x0310, root: 'user', path: 'gravisAsin', type: 'bool' },
         ],
 
         // ---------------- pomocnicze ----------------

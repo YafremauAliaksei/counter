@@ -279,7 +279,7 @@
                     Persistence, SettingsPanel, AutoTrigger, I18n,
                     KeepaOCR, PriceSources, PriceNet, ValueLog, FxRates, Routing,
                     // Potrzebne testom i diagnostyce.
-                    Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS,
+                    Utils, PriceModule, StatsWindowRenderer, CSSManager, LINE_KEYS, LANG_STRINGS,
                     DEFAULT_LINE_CONFIG, DEFAULT_LOCAL_CONFIG, DEFAULT_USER_CONFIG,
                     priceModuleOn,
                     // Hasła dostępu: SH.normalizeAccessPasswords(['moje', 'hasła'])

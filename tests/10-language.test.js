@@ -13,7 +13,11 @@
  *   - `видите ниже`, `канирование номера LP:` — fragmenty tekstu, które
  *     drukuje sam T-REX. To dane wejściowe wyzwalaczy, a nie nasz tekst:
  *     przetłumaczone przestaną pasować i licznik przestanie liczyć;
- *   - `Русский` — nazwa języka na liście wyboru, pokazywana użytkownikowi.
+ *   - ukraińskie napisy T-REX w wyzwalaczach i podpisach pola pojemnika;
+ *   - `Українська`, `Русский` — nazwy języków na liście wyboru.
+ *
+ * Słownik `uk` leży w tym samym pliku co `ru`, więc jest objęty tym samym
+ * wyjątkiem pliku.
  *
  * Gdyby kiedyś doszedł angielski jako drugi język kodu, zmienia się ten plik —
  * świadomie i osobnym commitem, a nie przy okazji.
@@ -26,7 +30,9 @@ const path = require('path');
 const { describe, test, eq, ok } = require('./harness');
 const { ROOT } = require('./dom-stub');
 
-const CYR = /[Ѐ-ӿ]/;
+// Cały blok cyrylicy z uzupełnieniem: obejmuje też litery ukraińskie
+// (ґ, є, і, ї), których nie ma w alfabecie rosyjskim.
+const CYR = /[\u0400-\u052F]/;
 
 /** Pliki, w których cyrylica jest treścią produktu, a nie niedoróbką. */
 const EXEMPT_FILES = new Set([
@@ -45,6 +51,9 @@ const ALLOWED = [
     'канування LPN',
     'вкажіть транспортну тару',
     'введите тару',
+    'призначити новий',
+    'перепризначте',
+    'Українська',
     'Русский',
 ];
 
@@ -91,6 +100,17 @@ function scan(filter) {
     }
     return bad;
 }
+
+describe('Wykrywanie cyrylicy');
+
+test('wykrywane są wszystkie litery alfabetu ukraińskiego, wielkie i małe', () => {
+    // Litery spoza alfabetu rosyjskiego (ґ, є, і, ї) leżą w innych miejscach
+    // bloku — wąski zakres przepuściłby ukraiński komentarz.
+    const alphabet = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя';
+    const missed = [...alphabet, ...alphabet.toUpperCase()].filter(ch => !CYR.test(ch));
+    eq(missed, [], 'litery, których sprawdzenie nie widzi');
+    ok(!CYR.test('zażółć gęślą jaźń'), 'polskie litery to nie cyrylica');
+});
 
 describe('Język dokumentacji i repozytorium');
 

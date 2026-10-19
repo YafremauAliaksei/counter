@@ -86,7 +86,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.5.0/counter.js`.
+`…/counter/v1.6.1/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -119,22 +119,29 @@ Hasło stoi w jednej linii na początku pliku i można je zmienić dowolnie.
 | ---------------------------------- | ------------------------------------------------- |
 | Zapytań sieciowych po uruchomieniu | **0**                                             |
 | Linii w konsoli po uruchomieniu    | **0**                                             |
-| Widocznych elementów na ekranie    | jedna linia, 13 px, szara, alfa 50 %              |
+| Widocznych elementów na ekranie    | jedna linia, 13 px, szara, alfa 50 % (¹)          |
 | Położenie                          | lewy dolny róg, 20 px od lewej, 8 px od dołu      |
 | Co jest liczone                    | przedmioty ze **wszystkich** otwartych kart T-REX |
+
+(¹) Po pierwszym przybitym pojemniku dochodzi nad nią druga, tak samo szara
+linia 9 — czas od ostatniego pojemnika (rozdział „Pomoce stanowiska”).
 
 To nie jest przypadkowy zestaw, tylko jawny cel tej wersji: skrypt ma przeżyć
 dziesięciogodzinną zmianę, niczego nie zużywając i nie przeszkadzając.
 
 **Jak liczony jest przedmiot.** Skrypt śledzi tekst strony. Pojawienie się
-`poniżej` (albo `Transparency`, albo rosyjskiej wersji tego napisu z interfejsu
-T-REX) podnosi flagę „zaczął się przedmiot”. Przy podniesionej fladze `+1` daje
-pierwsza finalna linia z listy:
+`poniżej` (albo `Transparency`, albo rosyjskiej lub ukraińskiej wersji tego
+napisu z interfejsu T-REX) podnosi flagę „zaczął się przedmiot”. Przy
+podniesionej fladze `+1` daje pierwsza finalna linia z listy:
 
-- `Przypisz nowy` albo `Przypisz ponownie`;
+- `Przypisz nowy` albo `Przypisz ponownie` (także w ukraińskim interfejsie
+  T-REX);
 - `Przedmiot wysłano do …` — z wyjątkiem `PROBLEM-SOLVE`, bo taki przedmiot
   wraca do obsługi i zostałby policzony dwa razy;
-- rosyjski napis skanowania numeru LP z interfejsu T-REX.
+- rosyjski albo ukraiński napis skanowania numeru LP z interfejsu T-REX.
+
+W dziale UG przedmiot, przy którym T-REX każe nakleić naklejkę, liczy się
+`+2` (rozdział „Pomoce stanowiska”).
 
 Pełne wyrażenia stoją w `CONFIG.PRE_TRIGGER_REGEX` i `CONFIG.AUTO_TRIGGER_REGEX`.
 Przerwany przedmiot, przy którym nie doszło do finalnej linii, nie jest
@@ -144,19 +151,24 @@ zaliczany — dokładnie tak samo, jak nie zalicza go sam system.
 
 ## Linie okna statystyk
 
-W oknie jest osiem niezależnych linii. Każda włącza się osobno, każda ma własny
+W oknie jest dziesięć niezależnych linii. Każda włącza się osobno, każda ma własny
 kolor, przezroczystość i rozmiar czcionki.
 
-| Linia | Co pokazuje                                                           | Domyślnie |
-| ----- | --------------------------------------------------------------------- | --------- |
-| **1** | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m) 14%`     | wył.      |
-| **2** | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11) 14%` | wył.      |
-| **3** | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)`                    | wył.      |
-| **4** | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                         | wył.      |
-| **5** | zegar: `[ 14:32:07 ]`                                                 | wył.      |
-| **6** | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`   | wył.      |
-| **7** | **kompaktowy licznik: `17.4 28 14%`**                                 | **wł.**   |
-| **8** | bieżące zadanie: `fast_process 12 34.3/h 58% 21m 00s`                 | wył.      |
+| Linia  | Co pokazuje                                                             | Domyślnie |
+| ------ | ----------------------------------------------------------------------- | --------- |
+| **1**  | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m) 14%`       | wył.      |
+| **2**  | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11) 14%`   | wył.      |
+| **3**  | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)`                      | wył.      |
+| **4**  | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                           | wył.      |
+| **5**  | zegar: `[ 14:32:07 ]`                                                   | wył.      |
+| **6**  | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`     | wył.      |
+| **7**  | **kompaktowy licznik: `17.4 28 14%`**                                   | **wł.**   |
+| **8**  | bieżące zadanie: `fast_process 12 34.3/h 58% 21m 00s`                   | wył.      |
+| **9**  | **czas od ostatniego pojemnika: `2m 41s`, po limicie `7m 00s +3m 00s`** | **wł.**   |
+| **10** | cel działu: `47/h 85% 236/470`                                          | wył.      |
+
+Kolejność na ekranie od góry: 1–6, 10, 9, 7, 8 — dwie szare linie (9 i 7) stoją
+obok siebie przy dolnej krawędzi.
 
 ### Linia 7 dokładniej
 
@@ -615,9 +627,9 @@ w `src/99-footer.js` — test pilnuje, żeby się zgadzały. W kopii samego `cou
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | **Zadania**             | **bieżący proces pracy: nazwa, początek, paczki, tempo, pauza, historia zmiany — patrz rozdział „Zadania”**        |
 | **Statystyki globalne** | **które działy wchodzą do sumy i ręczne wpisanie licznika każdego z nich**                                         |
-| Ogólne                  | język (pl/en/ru), pełny reset danych, reset samych liczników                                                       |
+| Ogólne                  | język (pl/uk/ru/en), pełny reset danych, reset samych liczników                                                    |
 | Pomoce wizualne         | kolorowa nakładka na stronę, duży napis z nazwą działu                                                             |
-| Stylizacja okna         | tło okna, czcionka, **wszystkie osiem linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji                  |
+| Stylizacja okna         | tło okna, czcionka, **wszystkie dziesięć linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji               |
 | Skróty klawiszowe       | klawisze `+1` i `−1`                                                                                               |
 | Auto-inkrementacja      | odstęp skanowania strony (50–200 ms)                                                                               |
 | **Moduł cen**           | **główny wyłącznik sieci**                                                                                         |
@@ -626,7 +638,8 @@ w `src/99-footer.js` — test pilnuje, żeby się zgadzały. W kopii samego `cou
 | Wybór przerwy           | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
 | Kod ustawień            | kod bieżących ustawień, gotowa zakładka z nim i pole na cudzy kod — patrz niżej                                    |
 
-Język interfejsu domyślnie polski, są też angielski i rosyjski.
+Język interfejsu domyślnie polski; na liście dalej ukraiński, rosyjski
+i angielski.
 
 ---
 
@@ -696,7 +709,7 @@ egzemplarza (to byłby ten sam licznik liczony dwa razy), ale sam kod wchodzi �
 do tego działającego egzemplarza. Czyli zmiana wyglądu bez przeładowania strony
 i bez zerowania liczników.
 
-Kod obejmuje **wszystko, co daje się ustawić**: położenie okna, osiem linii
+Kod obejmuje **wszystko, co daje się ustawić**: położenie okna, dziesięć linii
 (widoczność, kolor, przezroczystość, rozmiar pisma), kolory działów w linii 2,
 nakładkę na stronę, całą kartę ceny razem z jej wyłącznikami i położeniem, język,
 sklep, szerokość panelu, skróty klawiszowe i to, które działy wchodzą do sumy.
@@ -802,6 +815,8 @@ SH.routeInfo(); // co obecnie wiadomo o kierunku przedmiotu
 
 // Diagnostyka
 SH.perf(); // koszt pracy skryptu: czy przedmiot kosztuje tyle co na początku zmiany
+SH.settings(); // otworzyć albo zamknąć panel ustawień
+SH.tote(); // pojemniki przybite a przedmioty z wyzwalacza tekstu
 SH.cspReport(); // co dopuszcza polityka strony (async)
 SH.forcePrice(asin); // odpytać o cenę ręcznie
 SH.readPrice(asin); // odczytać cenę z wykresu z pominięciem cache
@@ -943,7 +958,7 @@ Wszystkie punkty są pokryte testami automatycznymi (`npm test`, pliki
 ```
 counter/                    ← korzeń repozytorium
 ├── counter.js              ← ARTEFAKT: to, co wkleja się do konsoli
-├── src/                    ← ŹRÓDŁO: 25 modułów plus nagłówek i stopka
+├── src/                    ← ŹRÓDŁO: 28 modułów plus nagłówek, cele tempa i stopka
 │   ├── 00-banner.js
 │   ├── 01-config.js  …  25-presets.js
 │   ├── 99-footer.js
@@ -951,7 +966,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 36 plików, 525 sprawdzeń
+├── tests/                  ← 38 plików, 557 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -971,7 +986,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 525 sprawdzeń
+npm test             # 557 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)

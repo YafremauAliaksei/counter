@@ -13,7 +13,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 |---|---|---|---|
 | — | `00-banner.js` | nagłówek `==UserScript==`, hasło, wyłącznik logów | ~55 |
 | 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~585 |
-| 02 | `02-i18n-strings.js` | trzy słowniki tłumaczeń (pl, en, ru) | ~390 |
+| 02 | `02-i18n-strings.js` | cztery słowniki tłumaczeń (pl, uk, ru, en) | ~590 |
 | 03 | `03-utils.js` | `deepMerge`, `clampNum`, `hexToRgb`, generator DOM `h()` | ~215 |
 | 04 | `04-core-state.js` | `EventBus`, reaktywny `store`, `priceModuleOn()`, liczniki kosztu `Perf` | ~260 |
 | 05 | `05-i18n-runtime.js` | odczyt tłumaczeń i nazw zakładek | ~25 |
