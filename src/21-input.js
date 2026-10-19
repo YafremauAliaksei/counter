@@ -29,6 +29,8 @@
                     this.modifyCounter(1, { manual: true }); e.preventDefault();
                 } else if (store.userConfig.keyboardShortcuts.DECREMENT !== 'None' && e.code === store.userConfig.keyboardShortcuts.DECREMENT) {
                     this.modifyCounter(-1, { manual: true }); e.preventDefault();
+                } else if (store.userConfig.keyboardShortcuts.TOGGLE_WINDOW !== 'None' && e.code === store.userConfig.keyboardShortcuts.TOGGLE_WINDOW) {
+                    StatsWindowRenderer.toggleHidden(); e.preventDefault();
                 }
 
                 /**
@@ -100,6 +102,14 @@
 
     const AutoTrigger = {
         observer: null,
+        /** Przedmioty zaliczone z wyzwalacza tekstu — porównanie z ToteWatch. */
+        textCompleted: 0,
+        /**
+         * Naklejka zobaczona przy bieżącym przedmiocie (tylko UG). Zwykłe pole,
+         * a nie uiFlags: zapis do stanu reaktywnego przy każdym skanie
+         * rozsyłałby zdarzenia na darmo.
+         */
+        stickerSeen: false,
         debouncedScan: null,
         debouncedAttach: null,
 
@@ -150,23 +160,49 @@
             // razu przy tworzeniu wpisu.
             Routing.observe(txt);
 
-            if (CONFIG.PRE_TRIGGER_REGEX.test(txt)) store.uiFlags.itemInProgress = true;
+            if (CONFIG.PRE_TRIGGER_REGEX.test(txt)) {
+                if (!store.uiFlags.itemInProgress) this.stickerSeen = false;
+                store.uiFlags.itemInProgress = true;
+            }
+            // Naklejka w UG: przedmiot liczy się podwójnie i jest sprzedażą.
+            // Liczy się tylko widoczna — strona potrafi przysłać następny krok
+            // z wyprzedzeniem, ukryty. Wymiary czyta się po innerText, więc
+            // układ strony jest już policzony i odczyt niczego nie przelicza.
+            if (!this.stickerSeen && store.currentTabType === CONFIG.STICKER_TAB_TYPE) {
+                const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+                if (sticker && (sticker.offsetWidth || sticker.offsetHeight)) {
+                    this.stickerSeen = true;
+                    Routing.onSticker();
+                }
+            }
+            const toteDone = ToteWatch.check();
+            const byTote = !!store.userConfig.toteCounting;
             if (CONFIG.AUTO_TRIGGER_REGEX.test(txt)) {
                 if (store.uiFlags.itemInProgress && !store.uiFlags.autoTriggerFound) {
-                    InputManager.modifyCounter(1);
+                    this.textCompleted++;
                     store.uiFlags.autoTriggerFound = true;
-                    store.uiFlags.itemInProgress = false;
-                    // Przedmiot przeszedł pełną ścieżkę — zdarzenie dla dziennika
-                    // idzie stąd, a nie z modifyCounter(), bo skróty i ręczne
-                    // poprawki dziennika nie napełniają.
-                    bus.emit('item:completed');
+                    if (!byTote) this.completeItem();
                 }
             } else {
                 store.uiFlags.autoTriggerFound = false;
             }
+            if (byTote && toteDone) this.completeItem();
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });
             Perf.scan(performance.now() - startedAt);
+        },
+
+        /**
+         * Zaliczenie przedmiotu: +1, a z naklejką w UG +2. Zdarzenie dla
+         * dziennika idzie stąd, a nie z modifyCounter(), bo skróty i ręczne
+         * poprawki dziennika nie napełniają.
+         */
+        completeItem() {
+            const weight = this.stickerSeen ? CONFIG.STICKER_ITEM_WEIGHT : 1;
+            for (let i = 0; i < weight; i++) InputManager.modifyCounter(1);
+            store.uiFlags.itemInProgress = false;
+            this.stickerSeen = false;
+            bus.emit('item:completed', { weight });
         }
     };

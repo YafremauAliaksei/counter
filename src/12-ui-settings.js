@@ -43,11 +43,50 @@
                 this.render();
                 this.el.style.display = 'block';
                 setTimeout(() => this.el.style.transform = 'translateX(0)', 10);
+                this.captureInput(true);
             } else {
+                this.captureInput(false);
                 this.el.style.transform = 'translateX(110%)';
                 Persistence.saveState();
                 setTimeout(() => this.el.style.display = 'none', 200);
             }
+        },
+
+        /**
+         * Panel otwarty przejmuje klawiaturę i klik poza nim.
+         *
+         * KLAWIATURA. T-REX łapie klawisze na całej stronie (cyfry wybierają
+         * przyciski kroku), więc bez tego cyfry wpisywane w pole panelu
+         * przepadają. Słuchacz na `window` w fazie przechwytywania biegnie
+         * przed słuchaczami dokumentu i elementów strony; dla zdarzeń
+         * z wnętrza panelu zatrzymuje dalszą drogę. Domyślne działanie
+         * klawisza (wpisanie znaku) zostaje, a pola panelu słuchają `input`
+         * i `change`, których to nie dotyczy. Hasła dalej zamykają panel:
+         * poza polem tekstowym zdarzenie idzie wprost do InputManager.
+         * Po zamknięciu słuchacze znikają i strona dostaje klawisze jak
+         * wcześniej.
+         *
+         * KLIK POZA PANELEM zamyka go — z wyjątkiem trybu przeciągania okna
+         * albo karty ceny: wtedy klik poza panelem to właśnie przeciąganie.
+         */
+        captureInput(on) {
+            if (!this.onPanelKey) {
+                this.onPanelKey = (e) => {
+                    if (!this.el.contains(e.target)) return;
+                    e.stopImmediatePropagation();
+                    const t = e.target;
+                    const editable = ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable;
+                    if (e.type === 'keydown' && !editable) InputManager.onKeyDown(e);
+                };
+                this.onOutsideDown = (e) => {
+                    if (this.el.contains(e.target)) return;
+                    if (store.uiFlags.isStatsWindowDragging || store.uiFlags.isPriceCardDragging) return;
+                    this.toggle();
+                };
+            }
+            const method = on ? 'addEventListener' : 'removeEventListener';
+            ['keydown', 'keyup', 'keypress'].forEach(t => window[method](t, this.onPanelKey, true));
+            document[method]('mousedown', this.onOutsideDown, true);
         },
         /**
          * SEKCJA ZADAŃ — jedyna część panelu otwierana w trakcie pracy, więc
@@ -212,6 +251,37 @@
          * LICZNIKI DZIAŁÓW — obok zadań, bo wpisanie liczby wprost („zrobiłem
          * dziś 180”) to sposób na powrót do pracy po awarii maszyny.
          */
+        /**
+         * CEL I POMOCE STANOWISKA: cel karty CRET (CRET albo FAST), liczenie
+         * po pojemniku, Auto-LPN i most GRAVIS. Wszystko domyślnie wyłączone;
+         * GRAVIS pokazuje się tylko na kartach, które go potrzebują — w REFURB
+         * i WHD ASIN jest przypięty do LPN w samym programie.
+         */
+        buildWorkflowSection() {
+            const sec = UIBuilder.section(I18n.get('section_workflow'));
+            if (store.currentTabType === 'CRET') {
+                sec.appendChild(UIBuilder.row(I18n.get('workflow_cretProfile'), UIBuilder.select(
+                    ['CRET', 'FAST'].map(k => ({ value: k, text: `${k} (${CONFIG.RATE_TARGETS[k] || 0}/h)` })),
+                    store.userConfig.cretProfile, v => { store.userConfig.cretProfile = v; })));
+            }
+            sec.appendChild(UIBuilder.hint(I18n.get('workflow_targetHint', { value: ToteWatch.targetFor(store.currentTabType) || '—' })));
+            sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_toteCounting'), !!store.userConfig.toteCounting,
+                v => { store.userConfig.toteCounting = !!v; })));
+            sec.appendChild(UIBuilder.hint(I18n.get('workflow_toteCountingHint')));
+            sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_autoLpn'), !!store.userConfig.autoLpn,
+                v => { store.userConfig.autoLpn = !!v; })));
+            if (CONFIG.GRAVIS_TAB_TYPES.includes(store.currentTabType)) {
+                sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_gravis'), !!store.userConfig.gravisAsin,
+                    v => { store.userConfig.gravisAsin = !!v; if (!v) GravisBridge.close(); this.rerender(); })));
+                if (store.userConfig.gravisAsin) {
+                    sec.appendChild(UIBuilder.hint(I18n.get('workflow_gravisHowTo')));
+                    sec.appendChild(UIBuilder.button(I18n.get(GravisBridge.connected() ? 'workflow_gravisConnected' : 'workflow_gravisOpen'),
+                        () => { GravisBridge.open(); this.rerender(); }, { width: '100%' }));
+                }
+            }
+            return sec;
+        },
+
         buildCountersSection() {
             const sec = UIBuilder.section(I18n.get('section_globalStats'));
             Object.values(CONFIG.KNOWN_TAB_TYPES).forEach(t => {
@@ -327,6 +397,9 @@
                 }
                 // Linia 8 opisuje zadanie, a nie zmianę — bez tego zdania wygląda
                 // jak powtórzenie linii 1 z innymi liczbami.
+                if (lineKey === 'line9_offTask') {
+                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_offTaskHint')));
+                }
                 if (lineKey === 'line8_taskInfo') {
                     lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_taskInfoHint')));
                 }
@@ -392,7 +465,9 @@
             const keyOpts = CONFIG.AVAILABLE_SHORTCUT_KEYS.map(k => ({ value: k.code, text: I18n.get(k.name_key) }));
             secKeys.appendChild(UIBuilder.row(I18n.get('incrementKey'), UIBuilder.select(keyOpts, store.userConfig.keyboardShortcuts.INCREMENT, v => store.userConfig.keyboardShortcuts.INCREMENT = v)));
             secKeys.appendChild(UIBuilder.row(I18n.get('decrementKey'), UIBuilder.select(keyOpts, store.userConfig.keyboardShortcuts.DECREMENT, v => store.userConfig.keyboardShortcuts.DECREMENT = v)));
+            secKeys.appendChild(UIBuilder.row(I18n.get('toggleWindowKey'), UIBuilder.select(keyOpts, store.userConfig.keyboardShortcuts.TOGGLE_WINDOW, v => store.userConfig.keyboardShortcuts.TOGGLE_WINDOW = v)));
             this.el.appendChild(secKeys);
+            this.el.appendChild(this.buildWorkflowSection());
 
             // 7. Autoinkrementacja
             const secAuto = UIBuilder.section(I18n.get('section_autoIncrement'));

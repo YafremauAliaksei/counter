@@ -125,6 +125,9 @@ test('wszystkie adresy zewnętrzne należą do znanej listy', () => {
         'graph.keepa.com', 'api.keepa.com', 'r.jina.ai',
         'cdn.jsdelivr.net', 'open.er-api.com', 'www.floatrates.com',
         'example.com',                  // wyłącznie w diagnostyce CSP
+        // GRAVIS: wewnętrzne narzędzie, otwierane wyłącznie kliknięciem
+        // w panelu (GravisBridge.open) przy włączonej opcji — bez fetch.
+        'eu-cretfc-tools-dub.dub.proxy.amazon.com',
     ];
     const amazon = /^www\.amazon\.(de|co\.uk|com|it|fr|es|nl|ca|se|com\.be|pl)$/;
     const hosts = new Set();
@@ -414,6 +417,8 @@ test('lokalizacja rosyjska została na miejscu', () => {
     ok(ARTIFACT.includes("{ code: 'ru', name: 'Русский' }"), 'rosyjski na liście języków');
     ok(ARTIFACT.includes('канирование номера LP'), 'wyzwalacz z cyrylicą musi zostać');
     ok(ARTIFACT.includes('видите ниже'), 'wyzwalacz wstępny z cyrylicą musi zostać');
+    ok(ARTIFACT.includes('зображенню нижче'), 'ukraiński wyzwalacz wstępny musi zostać');
+    ok(ARTIFACT.includes('канування LPN'), 'ukraiński wyzwalacz końcowy musi zostać');
 });
 
 describe('Układ pliku');
@@ -470,6 +475,7 @@ test('w src/ nie ma plików spoza manifestu', () => {
     const known = new Set([
         ...manifest.modules.map(m => path.basename(m.file)),
         path.basename(manifest.banner),
+        path.basename(manifest.targets),
         path.basename(manifest.footer),
         'README.md',
     ]);

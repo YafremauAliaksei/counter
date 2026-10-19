@@ -35,7 +35,7 @@ test('linie 1, 3, 4, 5 domyślnie wyłączone', () => {
     eq(lc.line5_realTimeClock.visible, false);
 });
 
-test('linia 7 jest jedyną włączoną i ma zadane parametry', () => {
+test('włączone są tylko linie 7 i 9, obie z zadanymi parametrami', () => {
     const l7 = env.SH.store.localTabConfig.linesConfig.line7_compact;
     eq(l7.visible, true, 'visible');
     eq(l7.colorHex, '#808080', 'kolor szary');
@@ -44,7 +44,13 @@ test('linia 7 jest jedyną włączoną i ma zadane parametry', () => {
 
     const on = Object.keys(env.SH.DEFAULT_LINE_CONFIG)
         .filter(k => env.SH.DEFAULT_LINE_CONFIG[k].visible);
-    eq(on, ['line7_compact'], 'włączone linie');
+    // Linia 9 (czas od pojemnika) to świadomy wyjątek od zasady „nowe
+    // domyślnie wyłączone” — decyzja autora, zapisana w CHANGELOG. Do
+    // pierwszego pojemnika jest pusta, więc po wklejeniu widać dalej jedną linię.
+    eq(on, ['line7_compact', 'line9_offTask'], 'włączone linie');
+    const l9 = env.SH.store.localTabConfig.linesConfig.line9_offTask;
+    eq([l9.colorHex, l9.alpha, l9.fontSize], ['#808080', 50, 13], 'linia 9 szara jak linia 7');
+    eq(env.SH.StatsWindowRenderer.lines.line9_offTask.textContent, '', 'przed pierwszym pojemnikiem linia 9 jest pusta');
 });
 
 test('kolejność okna kończy się linią 8, a linia 7 stoi tuż przed nią', () => {
@@ -54,7 +60,9 @@ test('kolejność okna kończy się linią 8, a linia 7 stoi tuż przed nią', (
     const keys = env.SH.LINE_KEYS;
     eq(keys[keys.length - 1], 'line8_taskInfo');
     eq(keys[keys.length - 2], 'line7_compact');
-    eq(keys.length, 8);
+    // Linia 9 nad linią 7: obie szare, czas od pojemnika czyta się razem z tempem.
+    eq(keys[keys.length - 3], 'line9_offTask');
+    eq(keys.length, 10);
 });
 
 test('każda linia z LINE_KEYS ma swoją konfigurację i element w DOM', () => {
@@ -113,7 +121,17 @@ const PREFIX_HISTORY = [
     'statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_', 'statsHelper_v8_3_0_',
     'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_', 'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_',
     'statsHelper_v9_2_0_', 'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
+    'statsHelper_v1_6_0_',
 ];
+
+test('prefiks niesie MAJOR i MINOR z package.json, a PATCH go nie rusza', () => {
+    // Zasada wersjonowania: każde wydanie MINOR albo MAJOR zmienia prefiks
+    // (świeży zapis), PATCH zostawia go w spokoju (aktualizacja w trakcie
+    // zmiany). Wersja z package.json, bo tylko tam stoi numer.
+    const pkg = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'package.json'), 'utf8'));
+    const [major, minor] = pkg.version.split('.');
+    eq(env.prefix, `statsHelper_v${major}_${minor}_0_`);
+});
 
 test('prefiks magazynu jest spójny i poprzednie wersje trafiły na listę starych', () => {
     ok(/^statsHelper_v\d+_\d+_\d+_$/.test(env.prefix), 'kształt prefiksu: ' + env.prefix);
@@ -228,7 +246,7 @@ test('wartości w ściądze są prawdziwymi wartościami domyślnymi', () => {
 test('tabela linii w ściądze zna każdą linię i jej wartości domyślne', () => {
     const lines = env.SH.DEFAULT_LOCAL_CONFIG.linesConfig;
     const rows = FOOTER.split('\n')
-        .map(l => /^ {3}(line\d_\w+)\s.*domyślnie:\s*(ON|OFF),\s*(#[0-9A-Fa-f]{6}),\s*(\d+)%,\s*(\d+)px/.exec(l))
+        .map(l => /^ {3}(line\d+_\w+)\s.*domyślnie:\s*(ON|OFF),\s*(#[0-9A-Fa-f]{6}),\s*(\d+)%,\s*(\d+)px/.exec(l))
         .filter(Boolean);
     eq(rows.map(r => r[1]).sort(), Object.keys(lines).sort(), 'każda linia ma wiersz w ściądze');
     for (const [, key, on, color, alpha, size] of rows) {

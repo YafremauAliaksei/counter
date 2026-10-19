@@ -84,6 +84,11 @@
             if (StatsWindowRenderer.tickTimer) { clearInterval(StatsWindowRenderer.tickTimer); StatsWindowRenderer.tickTimer = null; }
             if (this.shiftWatchTimer) { clearInterval(this.shiftWatchTimer); this.shiftWatchTimer = null; }
             if (InputManager.onKeyDown) document.removeEventListener('keydown', InputManager.onKeyDown, true);
+            if (ToteWatch.onKeyDown) document.removeEventListener('keydown', ToteWatch.onKeyDown, true);
+            if (AutoLpn.onInput) document.removeEventListener('input', AutoLpn.onInput, true);
+            if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
+            if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
+            if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
             if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
             if (PriceCard.onCspViolation) document.removeEventListener('securitypolicyviolation', PriceCard.onCspViolation);
             if (this.onPageHide) { window.removeEventListener('pagehide', this.onPageHide); this.onPageHide = null; }
@@ -119,6 +124,9 @@
         },
 
         init() {
+            // Na karcie GRAVIS skrypt nie liczy niczego — jest tylko drugą
+            // stroną mostu (GravisBridge).
+            if (GravisBridge.isGravisPage()) { GravisBridge.initRemote(); return; }
             if (window[CONFIG.SCRIPT_ID_PREFIX + 'INIT']) {
                 /**
                  * Skrypt już działa, ale kod ustawień z zakładki i tak wchodzi —
@@ -130,10 +138,17 @@
                  */
                 const bootCode = ConfigCode.takeBoot();
                 const running = window[CONFIG.SCRIPT_ID_PREFIX + 'API'];
+                /**
+                 * Bez kodu ustawień powtórne kliknięcie zakładki otwiera albo
+                 * zamyka panel — tak samo jak hasło, bez stałego przycisku na
+                 * ekranie.
+                 */
                 if (bootCode && running && typeof running.config === 'function') {
                     running.config(bootCode);
+                } else if (running && typeof running.settings === 'function') {
+                    running.settings();
                 }
-                Utils.log('Skrypt już działa na tej stronie — powtórne wklejenie zignorowane. Aby zrestartować, przeładuj stronę (F5).');
+                Utils.log('Skrypt już działa na tej stronie — powtórne uruchomienie przełącza panel ustawień. Aby zrestartować, przeładuj stronę (F5).');
                 return;
             }
             window[CONFIG.SCRIPT_ID_PREFIX + 'INIT'] = true;
@@ -189,6 +204,9 @@
                 PriceCardDrag.init();
                 Notifier.init();
                 InputManager.init();
+                ToteWatch.init();
+                AutoLpn.init();
+                GravisBridge.init();
                 AutoTrigger.init();
                 Persistence.listen();
 
@@ -287,6 +305,11 @@
                      * zmiany kosztuje tyle co na początku. Sam nic nie wypisuje.
                      */
                     perf: () => Perf.report(),
+                    // Panel ustawień: to samo co hasło i powtórne kliknięcie zakładki.
+                    settings: () => SettingsPanel.toggle(),
+                    // Porównanie liczenia po pojemniku z wyzwalaczem tekstu.
+                    tote: () => ToteWatch.info(),
+                    ToteWatch, AutoLpn, GravisBridge,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które

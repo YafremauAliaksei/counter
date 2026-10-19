@@ -30,23 +30,20 @@
     "",
     "SemVer czytany dla tego projektu:",
     "",
-    "  MAJOR — zmienia się SCRIPT_ID_PREFIX w src/01-config.js. Prefiks koduje",
-    "          SCHEMAT DANYCH w localStorage, więc jego zmiana zeruje ludziom",
-    "          liczniki, dziennik wartości i ustawienia. Aktualizować wolno",
-    "          tylko między zmianami. Prefiksu nie rusza się dla ozdoby: dopiero",
-    "          wtedy, gdy stary zapis przestaje dać się wczytać.",
-    "  MINOR — nowa możliwość, dane zgodne wstecz: nowa linia, nowe ustawienie,",
-    "          nowe pole w konfiguracji z wartością domyślną. Stary zapis wczytuje",
-    "          się dalej, bo deepMerge uzupełnia brakujące pola domyślnymi.",
-    "  PATCH — naprawa bez nowych pól w danych.",
+    "  MAJOR — zmiana zasadnicza. Zmienia SCRIPT_ID_PREFIX w src/01-config.js.",
+    "  MINOR — nowa możliwość. TAKŻE zmienia SCRIPT_ID_PREFIX: prefiks to",
+    "          statsHelper_v<MAJOR>_<MINOR>_0_, więc każde wydanie MINOR i MAJOR",
+    "          startuje na czystym zapisie (liczniki, dziennik, ustawienia od",
+    "          zera) i aktualizuje się wyłącznie między zmianami.",
+    "  PATCH — naprawa bez nowych pól w danych. Prefiks zostaje, aktualizacja",
+    "          w trakcie zmiany jest bezpieczna.",
     "",
     "Dokumentacja, testy i sama przebudowa artefaktu wersji NIE podnoszą.",
     "",
     "TRZY NUMERY, KTÓRYCH NIE WOLNO MYLIĆ:",
     "",
     "  1. wersja skryptu (package.json) — rośnie przy każdym wydaniu;",
-    "  2. SCRIPT_ID_PREFIX (01-config.js) — schemat danych, rośnie rzadko",
-    "     i tylko razem z MAJOR;",
+    "  2. SCRIPT_ID_PREFIX (01-config.js) — MAJOR i MINOR wersji, bez PATCH;",
     "  3. ConfigCode.FORMAT (23-config-code.js) — wersja RAMKI kodu ustawień.",
     "     Rośnie tylko wtedy, gdy zmienia się sama ramka (nagłówek, suma",
     "     kontrolna, układ rekordu). Dopisanie ustawienia do rejestru jej NIE",
@@ -64,6 +61,7 @@
     "close": "})();\n"
   },
   "banner": "src/00-banner.js",
+  "targets": "src/00-targets.js",
   "footer": "src/99-footer.js",
   "modules": [
     { "file": "src/01-config.js", "desc": "Stałe, domyślna konfiguracja linii i karty." },
@@ -113,6 +111,18 @@
     {
       "file": "src/24-tasks.js",
       "desc": "Menedżer zadań: własny zegar i liczniki dla procesu pracy."
+    },
+    {
+      "file": "src/26-tote-watch.js",
+      "desc": "Rozpoznaje przybicie pojemnika (Enter w polu pojemnika, potem zniknięcie pola) i liczy czas od ostatniego."
+    },
+    {
+      "file": "src/27-gravis.js",
+      "desc": "Most do karty GRAVIS: wysyła LPN, odbiera ASIN i pokazuje go pod polem skanu do wstawienia kliknięciem."
+    },
+    {
+      "file": "src/28-auto-lpn.js",
+      "desc": "Wciska „Przypisz ponownie LPN”, gdy w pole pojemnika trafia etykieta zamiast pojemnika."
     },
     { "file": "src/25-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
   ]

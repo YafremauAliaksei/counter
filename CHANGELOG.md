@@ -4,9 +4,43 @@ Format: [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/), wersjonowanie:
 
 Dla tego projektu SemVer czyta się tak:
 
-- **MAJOR** — zmienia się `SCRIPT_ID_PREFIX`: liczniki i ustawienia nie przenoszą się, aktualizować można **wyłącznie między zmianami**;
-- **MINOR** — nowa możliwość, dane zgodne wstecz;
-- **PATCH** — naprawa bez nowych pól w danych.
+- **MAJOR** i **MINOR** — zmienia się `SCRIPT_ID_PREFIX` (`statsHelper_v<MAJOR>_<MINOR>_0_`, od 1.6.0): liczniki i ustawienia nie przenoszą się, aktualizować można **wyłącznie między zmianami**;
+- **PATCH** — naprawa bez nowych pól w danych, prefiks zostaje, aktualizacja w trakcie zmiany jest bezpieczna.
+
+---
+
+## 1.6.0 — 2026-10-19
+
+> **Aktualizować tylko między zmianami.** Prefiks magazynu zmienia się na `statsHelper_v1_6_0_`: liczniki kart, zadania, dziennik bieżącej zmiany i ustawienia startują od zera, klucze `statsHelper_v1_5_0_` są sprzątane przy starcie. Zakładki z kodem ustawień działają dalej.
+
+### Zmieniono
+
+- **Nowa zasada wersjonowania (decyzja autora):** prefiks magazynu niesie MAJOR i MINOR wersji — zmienia się przy każdym wydaniu MINOR i MAJOR, a PATCH (np. 1.6.1) go nie rusza. Zgodność prefiksu z `package.json` sprawdza test.
+
+### Dodano
+
+- **Drugie kliknięcie zakładki otwiera i zamyka panel ustawień.** Zakładka sprawdza najpierw, czy skrypt już działa (`window.SH.settings`) — jeśli tak, przełącza panel bez pobierania pliku. Wklejony drugi raz plik robi to samo. Hasła działają jak dotąd. Nowa zakładka w README; stara dalej działa, tylko drugie kliknięcie pobiera plik od nowa.
+- **Klik poza otwartym panelem go zamyka** — z wyjątkiem trybu przeciągania okna albo karty ceny.
+- **Otwarty panel przejmuje klawiaturę.** T-REX łapie cyfry na całej stronie (wybór przycisków kroku), więc w polach panelu nie dało się wpisać liczby. Klawisze z wnętrza panelu są zatrzymywane przed stroną; po zamknięciu strona dostaje je jak wcześniej.
+- **Dział UG** (`gradingMode=CRETURN_PRIMARY_GRADING`) jako czwarty rozpoznawany. Rozpoznawanie sprawdzone dla wszystkich czterech adresów, także z parametrem za hashem.
+- **Cele tempa w osobnym pliku `src/00-targets.js`**, wklejanym w artefakt tuż pod hasłami: `RATE_TARGETS = { CRET: 47, FAST: 80, UG: 47, REFURB: 30, WHD: 25 }` i `PAID_SHIFT_HOURS = 10` (obiad niepłatny: cel 30 to 300 sztuk na zmianę). FAST pracuje na karcie CRET, więc cel karty CRET wybiera się w panelu.
+- **Linia 9 — czas od ostatniego przybitego pojemnika**, **widoczna domyślnie**: świadomy wyjątek od zasady „nowe domyślnie wyłączone”, decyzja autora. Nie dotyka sieci, a do pierwszego pojemnika zmiany jest pusta. Po podwójnym czasie przedmiotu (2 × 60 / cel minut; REFURB: 4 min) robi się czerwona i dopisuje narosłą bezczynność: po 7 min w REFURB `7m 00s +3m 00s`. Niczego nie wpisuje w T-REX.
+- **Linia 10 — cel działu** (wyłączona): cel, procent bieżącego tempa od celu i sztuki wobec celu zmiany, np. `47/h 85% 236/470`.
+- **Rozpoznawanie pojemnika**: Enter w polu pojemnika (podpis polski, ukraiński albo rosyjski, albo `data-testid`) z nazwą `[twc]s…` do 15 znaków, a potem zniknięcie pola. Bez limitu czasu — odejście od stanowiska z otwartym krokiem niczego nie zalicza.
+- **Liczenie po pojemniku (doświadczalne, wyłączone)** zamiast wyzwalacza z tekstu. Porównanie obu sposobów w konsoli: `SH.tote()`.
+- **Naklejka w UG**: element `#sticker-back-hide` przy przedmiocie w UG daje +2 i dwie sprzedaże, zanim przyjdzie kod sortowania. W WHD ten sam element stoi przy każdej sprzedaży, więc tam nic się nie zmienia.
+- **Wyzwalacze ukraińskiego interfejsu T-REX** (`зображенню нижче`, `канування LPN:`). Bez nich przy ukraińskim interfejsie licznik nie liczył.
+- **Auto-LPN** (wyłączone): gdy w pole pojemnika trafi etykieta zamiast pojemnika, wciska „Przypisz ponownie LPN”.
+- **Most GRAVIS** (wyłączony, tylko CRET i UG): po włączeniu panel pokazuje instrukcję i przycisk otwarcia GRAVIS; skrypt kliknięty na karcie GRAVIS odbiera LPN i odsyła ASIN przez `postMessage` (bez zapytań sieciowych skryptu). ASIN pojawia się pod polem skanu jako niebieski link — kliknięcie wstawia go do pola, Enter naciska człowiek. Wiadomości tylko od znanego okna i adresu, ASIN sprawdzany wzorcem.
+- **Skrót „ukryj okno”** (domyślnie brak klawisza).
+- **Obiad nie nalicza bezczynności** w linii 9: wybrana przerwa odpada z czasu od pojemnika, także obiad nocny przez północ.
+- **Ukryte elementy nic nie liczą:** naklejka i pole pojemnika liczą się tylko widoczne — strona potrafi przysłać następny krok z wyprzedzeniem, ukryty. Schowane pole pojemnika po Enterze znaczy przybicie, jak zdjęte.
+- **Stanowisko w trybie elastycznym** (`tests/stand/specs/08-flex-ug.spec.js`): ekran składany z kawałków przysyłanych na każdy krok, następny krok przychodzi ukryty. Sprawdza w Chromium UG z ukrytą i widoczną naklejką, błędny i poprawny pojemnik, WHD z naklejką.
+- `tests/37-workstation.test.js` — 23 sprawdzenia: granice nazwy pojemnika (2, 15 i 16 znaków), pole, które nie znika, spreparowany cel i czas w magazynie, sekunda po granicy bezczynności, UG kontra WHD, obce okno i zły ASIN w moście GRAVIS.
+
+### Zmieniono
+
+- Kolejność linii okna: 10, 9, 7, 8 na dole — czas od pojemnika stoi tuż nad linią 7.
 
 ---
 

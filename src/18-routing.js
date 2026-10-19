@@ -177,6 +177,24 @@
             this.apply();
         },
 
+        /**
+         * Naklejka w UG: przedmiot idzie na sprzedaż jako przeceniony, zanim
+         * pojawi się kod sortowania. Rozstrzyga też wiszący Secondary-Sorting.
+         * Waga 2 — tyle sztuk dodaje licznik, tyle samo sprzedanych.
+         */
+        onSticker() {
+            if (!this.state) this.startItem('naklejka przed początkiem');
+            const st = this.state;
+            st.weight = CONFIG.STICKER_ITEM_WEIGHT;
+            if (st.direction && !st.pending) return;
+            st.pending = false;
+            st.direction = 'sell';
+            st.code = st.code || 'naklejka';
+            if (this._ambiguous === st) this._ambiguous = null;
+            Utils.log('[KIERUNEK] naklejka -> SPRZEDAŻ');
+            this.apply();
+        },
+
         /** Nazwa kierunku do dziennika w konsoli. */
         directionName(dir) {
             return dir === 'sell' ? 'SPRZEDAŻ'
@@ -239,12 +257,14 @@
             // bieżącego zadania (linia 8) w jednym wywołaniu, żeby suma zadań
             // nie rozjechała się z licznikiem karty. +1 od wartości
             // w magazynie — dwie karty działu dzielą klucz (freshCount).
-            if (st.direction === 'sell') {
-                Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
-                TaskManager.addSold(cid);
-            } else if (st.direction === 'neutral') {
-                Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
-                TaskManager.addNeutral(cid);
+            for (let i = 0; i < (st.weight || 1); i++) {
+                if (st.direction === 'sell') {
+                    Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
+                    TaskManager.addSold(cid);
+                } else if (st.direction === 'neutral') {
+                    Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
+                    TaskManager.addNeutral(cid);
+                }
             }
         },
 

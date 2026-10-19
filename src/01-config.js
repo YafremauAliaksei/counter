@@ -33,18 +33,18 @@
         SCRIPT_VERSION: '__VERSION__',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
-         * Prefiks kluczy w localStorage. Koduje SCHEMAT zapisanych danych,
-         * a nie numer wydania:
+         * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
+         * (`statsHelper_v<MAJOR>_<MINOR>_0_`), PATCH go nie zmienia:
          *
-         *     prefiks się zmienia  <=>  rośnie wersja MAJOR
+         *     prefiks się zmienia  <=>  rośnie MAJOR albo MINOR
          *     prefiks się zmienia  =>   liczniki i ustawienia startują od zera
          *                          =>   aktualizacja tylko między zmianami
          *
-         * Nowe pole z wartością domyślną prefiksu nie zmienia. Zmienia go
-         * dopiero układ, w którym zapisane stare dane przykryłyby nowe wartości
-         * domyślne albo zostały źle odczytane.
+         * Dzięki temu każde wydanie z nowymi możliwościami startuje na czystym
+         * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
+         * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_5_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_6_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -52,7 +52,7 @@
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
-                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_'],
+                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -102,6 +102,9 @@
          */
         KNOWN_TAB_TYPES: {
             CRET: { key: 'CRET', displayNameKey: 'tabName_CRET', baseColorHex: '#0078D7', urlKeyword: 'CRETURN' },
+            // UG ma własny gradingMode; CRETURN jest jego podłańcuchem, więc
+            // zapasowe dopasowanie od najdłuższego klucza sprawdza UG pierwszy.
+            UG: { key: 'UG', displayNameKey: 'tabName_UG', baseColorHex: '#8E44AD', urlKeyword: 'CRETURN_PRIMARY_GRADING' },
             REFURB: { key: 'REFURB', displayNameKey: 'tabName_REFURB', baseColorHex: '#FFA500', urlKeyword: 'CRETURN_REFURB' },
             WHD: { key: 'WHD', displayNameKey: 'tabName_WHD', baseColorHex: '#1EB41E', urlKeyword: 'WAREHOUSE_DEALS' },
             OTHER: { key: 'OTHER', displayNameKey: 'tabName_OTHER', baseColorHex: '#9E9E9E' },
@@ -238,11 +241,62 @@
         // nieskończonym ping-pongiem zapisów między kartami.
         REMOTE_APPLY_SUPPRESS_MS: 2500,
         // Wyzwalacze liczenia: pierwszy podnosi flagę „zaczął się przedmiot”,
-        // drugi przy podniesionej fladze daje +1. Teksty rosyjskie to napisy
-        // samego T-REX. PROBLEM-SOLVE jest wyłączony, bo taki przedmiot wraca
-        // do obsługi i zostałby policzony dwa razy.
-        PRE_TRIGGER_REGEX: /poniżej|видите ниже|Transparency/i,
-        AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|канирование номера LP:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
+        // drugi przy podniesionej fladze daje +1. Teksty rosyjskie i ukraińskie
+        // to napisy samego T-REX. PROBLEM-SOLVE jest wyłączony, bo taki
+        // przedmiot wraca do obsługi i zostałby policzony dwa razy.
+        PRE_TRIGGER_REGEX: /poniżej|видите ниже|зображенню нижче|Transparency/i,
+        AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|канирование номера LP:|канування LPN:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
+        /**
+         * POLE POJEMNIKA (tote). Rozpoznaje się je po podpisie `aria-label`
+         * w trzech językach T-REX albo po `data-testid`. Pojemnik jest
+         * przybity, gdy po Enterze z poprawną nazwą pole zniknie ze strony —
+         * bez limitu czasu: człowiek potrafi odejść od stanowiska z otwartym
+         * krokiem, a liczyć wolno dopiero po zniknięciu pola.
+         *
+         * Nazwa: dwie litery (t/w/c, potem s, dowolna wielkość), dalej litery,
+         * cyfry i podkreślnik, razem najwyżej 15 znaków.
+         */
+        TOTE_INPUT_LABELS: ['wprowadź pojemnik', 'вкажіть транспортну тару', 'введите тару'],
+        TOTE_INPUT_TESTID: 'tote-input-label',
+        TOTE_VALUE_REGEX: /^[twc]s[a-z0-9_]{1,13}$/i,
+        /**
+         * Naklejka uszkodzonego towaru. W UG pojawia się tylko wtedy, gdy
+         * przedmiot idzie na sprzedaż jako przeceniony — taki przedmiot liczy
+         * się podwójnie i jest sprzedażą, zanim przyjdzie kod sortowania.
+         * W WHD ten sam element stoi przy każdej sprzedaży, dlatego reguła
+         * dotyczy wyłącznie UG.
+         */
+        STICKER_ELEMENT_ID: 'sticker-back-hide',
+        STICKER_TAB_TYPE: 'UG',
+        STICKER_ITEM_WEIGHT: 2,
+        // Pola, w które wchodzi LPN przedmiotu (most GRAVIS).
+        LPN_INPUT_TESTIDS: ['lpn-input-label', 'package-input', 'wd-item-scan-label'],
+        LPN_VALUE_REGEX: /^lpn[a-z0-9]+$/i,
+        // Pole skanu przedmiotu, pod którym pokazuje się ASIN z GRAVIS.
+        ITEM_SCAN_INPUT_TESTID: 'item-scan-input',
+        ASIN_VALUE_REGEX: /^[A-Z0-9]{10}$/,
+        // Auto-LPN: przycisk „Przypisz ponownie LPN” i przerwa między wciśnięciami.
+        REASSIGN_LPN_BUTTON_TESTID: 'button-reassign-lpn-id',
+        AUTO_LPN_COOLDOWN_MS: 10000,
+        // Pierwsza litera, po której wpis w polu pojemnika uznaje się za pojemnik.
+        AUTO_LPN_TOTE_PREFIXES: ['t', 'w', 'c'],
+        /**
+         * GRAVIS — wewnętrzne narzędzie z ASIN przypisanym do LPN. Dwie karty
+         * rozmawiają przez postMessage, a nie przez sieć: karta T-REX otwiera
+         * GRAVIS (window.open daje uchwyt okna), skrypt uruchomiony w GRAVIS
+         * odpowiada przez window.opener. Każda strona przyjmuje wiadomość
+         * tylko od znanego okna i znanego adresu.
+         */
+        GRAVIS_URL: 'https://eu-cretfc-tools-dub.dub.proxy.amazon.com/gravis',
+        GRAVIS_WINDOW_NAME: 'statsHelperGravis',
+        TREX_ORIGIN: 'https://trex-prod-eu.aka.amazon.com',
+        GRAVIS_TAB_TYPES: ['CRET', 'UG'],
+        GRAVIS_ASIN_TIMEOUT_MS: 8000,
+        GRAVIS_POLL_MS: 250,
+        // Linia 9 po przekroczeniu podwójnego czasu przedmiotu.
+        OFF_TASK_COLOR: '#E53935',
+        RATE_TARGETS,
+        PAID_SHIFT_HOURS,
         /**
          * KODY KIERUNKU: sprzedaż czy utylizacja.
          *
@@ -441,7 +495,18 @@
         displayCurrency: 'EUR',
         globalStatsContributionKnown: Object.keys(CONFIG.KNOWN_TAB_TYPES)
             .reduce((acc, key) => ({ ...acc, [key]: true }), {}),
-        keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None' },
+        keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None', TOGGLE_WINDOW: 'None' },
+        // Który cel obowiązuje na karcie CRET: CRET albo FAST (ten sam adres).
+        cretProfile: 'CRET',
+        /**
+         * Doświadczalne: zaliczanie przedmiotu po przybiciu pojemnika zamiast
+         * wyzwalacza z tekstu strony. Wyłączone — oba sposoby naraz liczyłyby
+         * każdy przedmiot dwa razy. Porównanie obu: SH.tote().
+         */
+        toteCounting: false,
+        autoLpn: false,
+        // Most GRAVIS. Wyłączony nie otwiera okna i nie wysyła wiadomości.
+        gravisAsin: false,
         triggerMutationDebounceMs: CONFIG.DEFAULT_TRIGGER_MUTATION_DEBOUNCE_MS,
         settingsPanelWidth: CONFIG.SETTINGS_PANEL_INITIAL_WIDTH_PX,
         customTabSettings: {},
@@ -475,7 +540,21 @@
          * tempo, procent, przepracowany czas). Linie 1, 2 i 7 pokazują całą
          * zmianę, ta — proces, przy którym człowiek siedzi teraz.
          */
-        line8_taskInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 13 }
+        line8_taskInfo: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 13 },
+        /**
+         * LINIA 9 — czas od ostatniego przybitego pojemnika. Po podwójnym
+         * czasie przedmiotu (z celu działu) robi się czerwona i dopisuje
+         * narosły czas bezczynności: `7m 00s +3m 00s`. Widoczna od startu —
+         * świadomy wyjątek od zasady „nowe domyślnie wyłączone” (decyzja
+         * autora, CHANGELOG): nie dotyka sieci, a do pierwszego pojemnika
+         * jest pusta.
+         */
+        line9_offTask: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        /**
+         * LINIA 10 — cel działu: procent bieżącego tempa od celu oraz
+         * zrobione sztuki wobec celu zmiany, np. `47/h 85% 236/470`.
+         */
+        line10_target: { visible: false, colorHex: '#808080', alpha: 60, fontSize: 13 }
     };
 
     const DEFAULT_LOCAL_CONFIG = {
