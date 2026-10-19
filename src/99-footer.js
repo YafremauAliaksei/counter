@@ -150,10 +150,10 @@
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_5_0_'
-       Prefiks wszystkich kluczy w localStorage. Koduje SCHEMAT danych, a nie
-       numer wydania: zostaje ten sam, dopóki układ zapisywanych pól się
-       nie zmieni. Zmiana prefiksu = start od zera
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_6_0_'
+       Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
+       Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
+       Zmiana prefiksu = start od zera
        (stare ustawienia i liczniki przestają być widoczne).
    DEBUG_MODE = false         bierze się z SCRIPT_LOGS_ENABLED z góry pliku;
                               tu jest wartość startowa, SH.logsOn() zmienia ją w locie

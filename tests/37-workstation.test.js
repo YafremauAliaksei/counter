@@ -151,18 +151,46 @@ test('REFURB, cel 30: po 4 min czerwień, po 7 min narosło 3 min', () => {
     const env = make('CRETURN_REFURB');
     const SW = env.SH.StatsWindowRenderer;
     const t0 = env.clock.now();
+    const W = env.SH.ToteWatch;
     env.SH.store.sessionConfig.lastToteAt = t0;
-    env.clock.set(t0 + 4 * MIN);
+    // Granica na czystej funkcji z podaną chwilą: zegar atrapy płynie razem
+    // z prawdziwym, więc render „dokładnie po 4 min” nie jest powtarzalny.
+    eq(W.offTask(t0 + 4 * MIN).overMs, 0, 'dokładnie 4 min — jeszcze nie');
+    eq(W.offTask(t0 + 4 * MIN + 1).overMs, 1, 'milisekunda po granicy');
+    env.clock.set(t0 + 4 * MIN - 5000);
     SW.renderContent();
-    eq(SW.lines.line9_offTask.style.color, '', 'dokładnie 4 min — jeszcze nie');
+    eq(SW.lines.line9_offTask.style.color, '', 'przed granicą bez czerwieni');
     env.clock.set(t0 + 4 * MIN + 1000);
     SW.renderContent();
     eq(SW.lines.line9_offTask.style.color, env.SH.CONFIG.OFF_TASK_COLOR, 'sekundę po granicy');
+    eq(W.offTask(t0 + 7 * MIN).overMs, 3 * MIN);
     env.clock.set(t0 + 7 * MIN);
-    const t = env.SH.ToteWatch.offTask(env.clock.now());
-    eq(t.overMs, 3 * MIN);
     SW.renderContent();
     ok(SW.lines.line9_offTask.textContent.includes('+3'), 'dopisany czas bezczynności');
+});
+
+test('obiad nie jest bezczynnością — także obiad nocny przez północ', () => {
+    // Przerwa jest niepłatna i zaplanowana: pół godziny bez pojemnika w jej
+    // trakcie nie może zaczerwienić linii po powrocie.
+    const env = make('CRETURN_REFURB');
+    const S = env.SH.store;
+    const W = env.SH.ToteWatch;
+    const at = (d, h, m) => new Date(2026, 8, d, h, m, 0).getTime();
+    S.sessionConfig.shiftType = 'day';
+    S.sessionConfig.shiftCalculatedStartTime = at(16, 6, 30);
+    S.sessionConfig.selectedLunchIndex = 0;                 // 11:20–11:50
+    S.sessionConfig.lastToteAt = at(16, 11, 15);
+    eq(W.offTask(at(16, 11, 55)).elapsedMs, 10 * MIN, '40 min minus 30 min obiadu');
+    eq(W.offTask(at(16, 11, 55)).overMs, 6 * MIN);
+    S.sessionConfig.lastToteAt = at(16, 11, 30);
+    eq(W.offTask(at(16, 11, 40)).elapsedMs, 0, 'w środku obiadu czas stoi');
+    S.sessionConfig.shiftType = 'night';
+    S.sessionConfig.shiftCalculatedStartTime = at(16, 18, 30);
+    S.sessionConfig.selectedLunchIndex = 5;                 // 23:50–00:20
+    S.sessionConfig.lastToteAt = at(16, 23, 45);
+    eq(W.offTask(at(17, 0, 25)).elapsedMs, 10 * MIN, 'obiad przez północ');
+    S.sessionConfig.selectedLunchIndex = null;
+    eq(W.offTask(at(17, 0, 25)).elapsedMs, 40 * MIN, 'bez wybranego obiadu nic nie odpada');
 });
 
 test('spreparowany zapis i cel — linia pusta albo bez czerwieni, bez wyjątku', () => {
@@ -220,6 +248,27 @@ test('UG z naklejką: +2 i dwie sprzedane jeszcze przed kodem sortowania', () =>
     item(env, false);
     eq(S.tabCounters.UG, 3, 'bez naklejki +1');
     eq(S.tabSold.UG || 0, 2, 'bez naklejki i kodu — nie sprzedaż');
+});
+
+test('UG: naklejka przysłana z wyprzedzeniem, ukryta (zerowe wymiary) — nie liczy się', () => {
+    const env = make('CRETURN_PRIMARY_GRADING');
+    const S = env.SH.store;
+    page(env, '');
+    page(env, 'poniżej');
+    const st = el(env, 'div', { id: 'sticker-back-hide' });
+    st.offsetWidth = 0; st.offsetHeight = 0;
+    page(env, 'poniżej');
+    page(env, 'Przypisz nowy');
+    page(env, '');
+    eq([S.tabCounters.UG, S.tabSold.UG || 0], [1, 0]);
+});
+
+test('pole pojemnika schowane zamiast zdjęte też znaczy przybicie', () => {
+    const env = make();
+    const input = tote(env, 'csB2');
+    input.offsetWidth = 0; input.offsetHeight = 0;
+    page(env, '');
+    eq(env.SH.ToteWatch.confirmed, 1);
 });
 
 test('WHD z tym samym elementem: +1 i bez sprzedaży', () => {

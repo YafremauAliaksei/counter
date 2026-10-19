@@ -116,18 +116,18 @@ const PAID_SHIFT_HOURS = 10;
         SCRIPT_VERSION: '1.6.0',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
-         * Prefiks kluczy w localStorage. Koduje SCHEMAT zapisanych danych,
-         * a nie numer wydania:
+         * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
+         * (`statsHelper_v<MAJOR>_<MINOR>_0_`), PATCH go nie zmienia:
          *
-         *     prefiks się zmienia  <=>  rośnie wersja MAJOR
+         *     prefiks się zmienia  <=>  rośnie MAJOR albo MINOR
          *     prefiks się zmienia  =>   liczniki i ustawienia startują od zera
          *                          =>   aktualizacja tylko między zmianami
          *
-         * Nowe pole z wartością domyślną prefiksu nie zmienia. Zmienia go
-         * dopiero układ, w którym zapisane stare dane przykryłyby nowe wartości
-         * domyślne albo zostały źle odczytane.
+         * Dzięki temu każde wydanie z nowymi możliwościami startuje na czystym
+         * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
+         * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_5_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_6_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -135,7 +135,7 @@ const PAID_SHIFT_HOURS = 10;
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
-                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_'],
+                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -6591,10 +6591,15 @@ const PAID_SHIFT_HOURS = 10;
                 store.uiFlags.itemInProgress = true;
             }
             // Naklejka w UG: przedmiot liczy się podwójnie i jest sprzedażą.
-            if (!this.stickerSeen && store.currentTabType === CONFIG.STICKER_TAB_TYPE
-                && document.getElementById(CONFIG.STICKER_ELEMENT_ID)) {
-                this.stickerSeen = true;
-                Routing.onSticker();
+            // Liczy się tylko widoczna — strona potrafi przysłać następny krok
+            // z wyprzedzeniem, ukryty. Wymiary czyta się po innerText, więc
+            // układ strony jest już policzony i odczyt niczego nie przelicza.
+            if (!this.stickerSeen && store.currentTabType === CONFIG.STICKER_TAB_TYPE) {
+                const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+                if (sticker && (sticker.offsetWidth || sticker.offsetHeight)) {
+                    this.stickerSeen = true;
+                    Routing.onSticker();
+                }
             }
             const toteDone = ToteWatch.check();
             const byTote = !!store.userConfig.toteCounting;
@@ -8249,10 +8254,14 @@ const PAID_SHIFT_HOURS = 10;
             return false;
         },
 
-        /** Zniknięcie pola po Enterze. Zwraca true, gdy pojemnik właśnie przybito. */
+        /**
+         * Zniknięcie pola po Enterze — zdjętego ze strony albo schowanego
+         * (zerowe wymiary). Zwraca true, gdy pojemnik właśnie przybito.
+         */
         check() {
             const p = this.pending;
-            if (!p || this.attached(p.input)) return false;
+            if (!p) return false;
+            if (this.attached(p.input) && (p.input.offsetWidth || p.input.offsetHeight)) return false;
             this.pending = null;
             this.confirmed++;
             store.sessionConfig.lastToteAt = Date.now();
@@ -8272,7 +8281,7 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         /**
-         * Bezczynność od ostatniego pojemnika. Czas przedmiotu to 60 / cel
+         * Bezczynność od ostatniego pojemnika, bez wybranego obiadu. Czas przedmiotu to 60 / cel
          * minut; bezczynność zaczyna narastać po dwóch takich czasach.
          * null — w tej zmianie nie przybito jeszcze pojemnika (albo zapis
          * jest spreparowany: tekst, przyszłość).
@@ -8282,7 +8291,8 @@ const PAID_SHIFT_HOURS = 10;
             const at = Number(store.sessionConfig.lastToteAt);
             if (!Number.isFinite(at) || at <= 0 || at > now) return null;
             const target = this.targetFor(store.currentTabType);
-            const elapsedMs = now - at;
+            // Obiad nie jest bezczynnością: jego część w tym odcinku odpada.
+            const elapsedMs = Math.max(0, now - at - ShiftManager.lunchOverlapMs(at, now));
             const limitMs = target ? 2 * 3600000 / target : 0;
             const overMs = limitMs && elapsedMs > limitMs ? elapsedMs - limitMs : 0;
             return { elapsedMs, limitMs, overMs };
@@ -8792,10 +8802,10 @@ const PAID_SHIFT_HOURS = 10;
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_5_0_'
-       Prefiks wszystkich kluczy w localStorage. Koduje SCHEMAT danych, a nie
-       numer wydania: zostaje ten sam, dopóki układ zapisywanych pól się
-       nie zmieni. Zmiana prefiksu = start od zera
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_6_0_'
+       Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
+       Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
+       Zmiana prefiksu = start od zera
        (stare ustawienia i liczniki przestają być widoczne).
    DEBUG_MODE = false         bierze się z SCRIPT_LOGS_ENABLED z góry pliku;
                               tu jest wartość startowa, SH.logsOn() zmienia ją w locie

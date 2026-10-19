@@ -165,10 +165,15 @@
                 store.uiFlags.itemInProgress = true;
             }
             // Naklejka w UG: przedmiot liczy się podwójnie i jest sprzedażą.
-            if (!this.stickerSeen && store.currentTabType === CONFIG.STICKER_TAB_TYPE
-                && document.getElementById(CONFIG.STICKER_ELEMENT_ID)) {
-                this.stickerSeen = true;
-                Routing.onSticker();
+            // Liczy się tylko widoczna — strona potrafi przysłać następny krok
+            // z wyprzedzeniem, ukryty. Wymiary czyta się po innerText, więc
+            // układ strony jest już policzony i odczyt niczego nie przelicza.
+            if (!this.stickerSeen && store.currentTabType === CONFIG.STICKER_TAB_TYPE) {
+                const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+                if (sticker && (sticker.offsetWidth || sticker.offsetHeight)) {
+                    this.stickerSeen = true;
+                    Routing.onSticker();
+                }
             }
             const toteDone = ToteWatch.check();
             const byTote = !!store.userConfig.toteCounting;

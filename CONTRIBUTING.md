@@ -268,10 +268,10 @@ zasadą, tylko przypomnieniem.
 
 Lista kontrolna sprawdzona na linii 7:
 
-1. **Zdecydować, czy to MINOR, czy MAJOR.** Pojawiło się nowe pole w zapisywanych
-   ustawieniach, które u istniejących użytkowników musi mieć wartość domyślną?
-   Jeśli tak i stara zapisana konfiguracja je przykryje — to MAJOR ze zmianą
-   `SCRIPT_ID_PREFIX`.
+1. **Zdecydować, czy to PATCH, MINOR, czy MAJOR.** Nowa możliwość to co najmniej
+   MINOR, a MINOR i MAJOR zmieniają `SCRIPT_ID_PREFIX` na
+   `statsHelper_v<MAJOR>_<MINOR>_0_` (poprzedni do `LEGACY_ID_PREFIXES`).
+   PATCH prefiksu nie rusza.
 2. **Wartość domyślna ma być najcichsza z możliwych.** Nowa linia wyłączona,
    nowe źródło sieciowe wyłączone. To zasada tego projektu: po wklejeniu pliku
    człowiek nie może dostać niczego, o co nie prosił.

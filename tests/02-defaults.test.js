@@ -121,7 +121,17 @@ const PREFIX_HISTORY = [
     'statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_', 'statsHelper_v8_3_0_',
     'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_', 'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_',
     'statsHelper_v9_2_0_', 'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
+    'statsHelper_v1_6_0_',
 ];
+
+test('prefiks niesie MAJOR i MINOR z package.json, a PATCH go nie rusza', () => {
+    // Zasada wersjonowania: każde wydanie MINOR albo MAJOR zmienia prefiks
+    // (świeży zapis), PATCH zostawia go w spokoju (aktualizacja w trakcie
+    // zmiany). Wersja z package.json, bo tylko tam stoi numer.
+    const pkg = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'package.json'), 'utf8'));
+    const [major, minor] = pkg.version.split('.');
+    eq(env.prefix, `statsHelper_v${major}_${minor}_0_`);
+});
 
 test('prefiks magazynu jest spójny i poprzednie wersje trafiły na listę starych', () => {
     ok(/^statsHelper_v\d+_\d+_\d+_$/.test(env.prefix), 'kształt prefiksu: ' + env.prefix);

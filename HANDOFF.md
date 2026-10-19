@@ -322,13 +322,39 @@ Malejąco według pożytku:
    w przeglądarce” warto dopisać do wymaganych sprawdzeń, gdy pokaże stabilność.
    Zasady — `CONTRIBUTING.md`, „Stanowisko i testy w przeglądarce”.
 
-2. **Dodać plakietki do README** — status CI i wersję ostatniego wydania.
+2. **Dwa panele ustawień zamiast białej listy** (decyzja autora). Biała lista
+   loginów odpada: skrypt sprawdza ją u siebie, więc algorytm i sól są jawne,
+   a krótki login przechodzi przez przegląd zupełny w sekundy. Spowolnienie
+   w rodzaju PoW (jak w captchach) albo KDF na sekundy obciążałoby stanowisko
+   przy każdym sprawdzeniu — też odpada. Zamiast tego:
+   - **panel prosty** — tylko to, co działa domyślnie (linie, cele, zadania,
+     wygląd); otwiera go drugie kliknięcie zakładki i dotychczasowe słowo;
+   - **panel pełny** — wszystkie ustawienia, z modułem cen, dziennikiem
+     wartości, GRAVIS, Auto-LPN i liczeniem po pojemniku; otwiera go osobne
+     słowo-wyzwalacz.
+     Celem jest schowanie rzadkich funkcji przed przypadkowym kliknięciem, a nie
+     ochrona — dlatego wystarczy osobny wyzwalacz.
 
-3. **Pokryć testami to, co zostało niepokryte.** Słabe miejsca:
+3. **„Hasła” nazwać wprost „słowami-wyzwalaczami”** (`SETTINGS_ACCESS_PASSWORDS`
+   → np. `SETTINGS_TRIGGER_WORDS`, teksty README i panelu). Słowo nie jest
+   zabezpieczeniem, tylko sposobem na otwarcie panelu bez stałego przycisku na
+   ekranie. Przechowywanie ich jako skrótów nie ma sensu: dopasowanie idzie po
+   ostatnim znaku i końcówce bufora, więc skrót trzeba by liczyć z okna bufora
+   przy każdym klawiszu, a i tak dałoby się go odwrócić, bo słowa są krótkie.
+   Zmiana nazwy dotyka testu `tests/18-passwords.test.js` i ściągi w stopce.
+
+4. **Sprawdzić na prawdziwym T-REX** pomoce z 1.6.0: podpisy pola pojemnika
+   (`TOTE_INPUT_LABELS`), element `#sticker-back-hide` w UG, przebieg GRAVIS
+   (wybór regionu EU, gdzie leży link z ASIN). Stanowisko naśladuje je według
+   opisu, a nie według zrzutu prawdziwej strony.
+
+5. **Dodać plakietki do README** — status CI i wersję ostatniego wydania.
+
+6. **Pokryć testami to, co zostało niepokryte.** Słabe miejsca:
    `SettingsPanel.render()` jest sprawdzany tylko pod kątem obecności sekcji;
    `PriceCard.render()` — tylko pośrednio.
 
-4. **Pomyśleć o podziale `src/20-price-card.js`** — ok. 1040 linii, największy moduł.
+7. **Pomyśleć o podziale `src/20-price-card.js`** — ok. 1040 linii, największy moduł.
    Uzasadnienie, dlaczego na razie nie jest podzielony, i rozsądny moment na to —
    w `src/README.md`, ostatni rozdział. Bez realnej potrzeby nie ruszać.
 

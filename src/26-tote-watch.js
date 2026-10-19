@@ -45,10 +45,14 @@
             return false;
         },
 
-        /** Zniknięcie pola po Enterze. Zwraca true, gdy pojemnik właśnie przybito. */
+        /**
+         * Zniknięcie pola po Enterze — zdjętego ze strony albo schowanego
+         * (zerowe wymiary). Zwraca true, gdy pojemnik właśnie przybito.
+         */
         check() {
             const p = this.pending;
-            if (!p || this.attached(p.input)) return false;
+            if (!p) return false;
+            if (this.attached(p.input) && (p.input.offsetWidth || p.input.offsetHeight)) return false;
             this.pending = null;
             this.confirmed++;
             store.sessionConfig.lastToteAt = Date.now();
@@ -68,7 +72,7 @@
         },
 
         /**
-         * Bezczynność od ostatniego pojemnika. Czas przedmiotu to 60 / cel
+         * Bezczynność od ostatniego pojemnika, bez wybranego obiadu. Czas przedmiotu to 60 / cel
          * minut; bezczynność zaczyna narastać po dwóch takich czasach.
          * null — w tej zmianie nie przybito jeszcze pojemnika (albo zapis
          * jest spreparowany: tekst, przyszłość).
@@ -78,7 +82,8 @@
             const at = Number(store.sessionConfig.lastToteAt);
             if (!Number.isFinite(at) || at <= 0 || at > now) return null;
             const target = this.targetFor(store.currentTabType);
-            const elapsedMs = now - at;
+            // Obiad nie jest bezczynnością: jego część w tym odcinku odpada.
+            const elapsedMs = Math.max(0, now - at - ShiftManager.lunchOverlapMs(at, now));
             const limitMs = target ? 2 * 3600000 / target : 0;
             const overMs = limitMs && elapsedMs > limitMs ? elapsedMs - limitMs : 0;
             return { elapsedMs, limitMs, overMs };

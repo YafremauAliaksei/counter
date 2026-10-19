@@ -79,6 +79,7 @@
         lastAsin: null,
         stepMs: 1400,
         autoTimer: null,
+        toteDone: false,        // pojemnik przybity — krok końcowy może zejść
     };
 
     // ---------------- dziennik ----------------
@@ -164,9 +165,56 @@
             a.textContent = state.item.title;
             box.appendChild(a);
         }
+        renderExtras();
         if (state.step === 1) log('WYZWALACZ poniżej → początek przedmiotu', 't-pre');
         if (state.step === FINAL_STEP) log('WYZWALACZ Przypisz nowy → koniec przedmiotu', 't-post');
         paintStats();
+    }
+
+    /**
+     * TRYB ELASTYCZNY (`flex`): ekran składa się z kawałków przysyłanych na
+     * każdy krok, jak w prawdziwym T-REX, gdzie serwer odpowiada fragmentem
+     * strony na każde działanie. Następny krok przychodzi z wyprzedzeniem,
+     * ukryty — skrypt nie może reagować na to, czego człowiek nie widzi:
+     *   - naklejka `#sticker-back-hide` leży ukryta na krokach 2 i 3 przy
+     *     każdym przedmiocie, a widoczna jest tylko na kroku 3 przedmiotu
+     *     z `sticker: true`;
+     *   - pole pojemnika przychodzi ukryte krok wcześniej, na kroku końcowym
+     *     jest widoczne; po Enterze z poprawną nazwą znika po chwili
+     *     (odpowiedź serwera), z błędną zostaje.
+     */
+    function renderExtras() {
+        let box = $('extraBox');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'extraBox';
+            $('itemBox').parentNode.appendChild(box);
+        }
+        box.textContent = '';
+        const it = state.item;
+        if (!it || !it.flex) return;
+        const st = state.step;
+        if (st === 2 || st === 3) {
+            const sticker = document.createElement('div');
+            sticker.id = 'sticker-back-hide';
+            sticker.textContent = 'Naklej naklejkę na tył opakowania';
+            sticker.hidden = !(st === 3 && it.sticker);
+            box.appendChild(sticker);
+        }
+        if (it.tote && (st === FINAL_STEP - 1 || st === FINAL_STEP)) {
+            const input = document.createElement('input');
+            input.setAttribute('aria-label', 'Wprowadź pojemnik');
+            input.hidden = st !== FINAL_STEP;
+            input.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter') return;
+                if (!/^[twc]s[a-z0-9_]+$/i.test(input.value.trim())) {
+                    log('pojemnik odrzucony: ' + input.value, 't-pre');
+                    return;
+                }
+                setTimeout(() => { input.remove(); state.toteDone = true; }, 120);
+            });
+            box.appendChild(input);
+        }
     }
 
     /** Nowy przedmiot wchodzi na ekran od razu na kroku 1. */
@@ -178,7 +226,9 @@
         state.confirmPending = null;
         state.routeAfterArmed = false;
         paintRoute();
-        state.item = { asin: pick[0], title: pick[1], route: o.route || null };
+        state.item = { asin: pick[0], title: pick[1], route: o.route || null,
+                       flex: !!(o.tote || o.sticker !== undefined), tote: !!o.tote, sticker: !!o.sticker };
+        state.toteDone = false;
         state.lastAsin = pick[0];
         state.items++;
         log(`przedmiot #${state.items}: ${pick[0]} — ${pick[1]}`, 't-asin');
@@ -211,13 +261,19 @@
      *   asin    — konkretny towar (domyślnie losowy z katalogu);
      *   route   — { code, when: 'before'|'at'|'after', dash: 'plain'|'dash',
      *             confirm: 'sell'|'unsell' };
-     *   abortAt — przerwać na tym kroku (1..3): przedmiot bez wyzwalacza końca.
+     *   abortAt — przerwać na tym kroku (1..3): przedmiot bez wyzwalacza końca;
+     *   sticker — tryb elastyczny, naklejka widoczna na kroku 3 (true) albo
+     *             tylko ukryta (false);
+     *   tote    — tryb elastyczny z polem pojemnika na kroku końcowym; krok
+     *             nie schodzi, dopóki ktoś nie przybije pojemnika (test
+     *             wpisuje go jak człowiek).
      */
     async function item(opts) {
         const o = opts || {};
         begin(o);
         while (true) {
             await wait(state.stepMs);
+            if (o.tote && state.step === FINAL_STEP && !state.toteDone) continue;
             if (o.abortAt && state.step === o.abortAt) {
                 log('PRZERWANE na kroku ' + state.step, 't-pre');
                 return state.items;

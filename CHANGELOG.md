@@ -4,15 +4,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/), wersjonowanie:
 
 Dla tego projektu SemVer czyta się tak:
 
-- **MAJOR** — zmienia się `SCRIPT_ID_PREFIX`: liczniki i ustawienia nie przenoszą się, aktualizować można **wyłącznie między zmianami**;
-- **MINOR** — nowa możliwość, dane zgodne wstecz;
-- **PATCH** — naprawa bez nowych pól w danych.
+- **MAJOR** i **MINOR** — zmienia się `SCRIPT_ID_PREFIX` (`statsHelper_v<MAJOR>_<MINOR>_0_`, od 1.6.0): liczniki i ustawienia nie przenoszą się, aktualizować można **wyłącznie między zmianami**;
+- **PATCH** — naprawa bez nowych pól w danych, prefiks zostaje, aktualizacja w trakcie zmiany jest bezpieczna.
 
 ---
 
 ## 1.6.0 — 2026-10-19
 
-Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_5_0_`, więc aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany. Nowe pola ustawień uzupełniają się wartościami domyślnymi.
+> **Aktualizować tylko między zmianami.** Prefiks magazynu zmienia się na `statsHelper_v1_6_0_`: liczniki kart, zadania, dziennik bieżącej zmiany i ustawienia startują od zera, klucze `statsHelper_v1_5_0_` są sprzątane przy starcie. Zakładki z kodem ustawień działają dalej.
+
+### Zmieniono
+
+- **Nowa zasada wersjonowania (decyzja autora):** prefiks magazynu niesie MAJOR i MINOR wersji — zmienia się przy każdym wydaniu MINOR i MAJOR, a PATCH (np. 1.6.1) go nie rusza. Zgodność prefiksu z `package.json` sprawdza test.
 
 ### Dodano
 
@@ -30,7 +33,10 @@ Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_5_0_`, wię
 - **Auto-LPN** (wyłączone): gdy w pole pojemnika trafi etykieta zamiast pojemnika, wciska „Przypisz ponownie LPN”.
 - **Most GRAVIS** (wyłączony, tylko CRET i UG): po włączeniu panel pokazuje instrukcję i przycisk otwarcia GRAVIS; skrypt kliknięty na karcie GRAVIS odbiera LPN i odsyła ASIN przez `postMessage` (bez zapytań sieciowych skryptu). ASIN pojawia się pod polem skanu jako niebieski link — kliknięcie wstawia go do pola, Enter naciska człowiek. Wiadomości tylko od znanego okna i adresu, ASIN sprawdzany wzorcem.
 - **Skrót „ukryj okno”** (domyślnie brak klawisza).
-- `tests/37-workstation.test.js` — 20 sprawdzeń: granice nazwy pojemnika (2, 15 i 16 znaków), pole, które nie znika, spreparowany cel i czas w magazynie, sekunda po granicy bezczynności, UG kontra WHD, obce okno i zły ASIN w moście GRAVIS.
+- **Obiad nie nalicza bezczynności** w linii 9: wybrana przerwa odpada z czasu od pojemnika, także obiad nocny przez północ.
+- **Ukryte elementy nic nie liczą:** naklejka i pole pojemnika liczą się tylko widoczne — strona potrafi przysłać następny krok z wyprzedzeniem, ukryty. Schowane pole pojemnika po Enterze znaczy przybicie, jak zdjęte.
+- **Stanowisko w trybie elastycznym** (`tests/stand/specs/08-flex-ug.spec.js`): ekran składany z kawałków przysyłanych na każdy krok, następny krok przychodzi ukryty. Sprawdza w Chromium UG z ukrytą i widoczną naklejką, błędny i poprawny pojemnik, WHD z naklejką.
+- `tests/37-workstation.test.js` — 23 sprawdzenia: granice nazwy pojemnika (2, 15 i 16 znaków), pole, które nie znika, spreparowany cel i czas w magazynie, sekunda po granicy bezczynności, UG kontra WHD, obce okno i zły ASIN w moście GRAVIS.
 
 ### Zmieniono
 

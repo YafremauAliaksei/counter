@@ -675,7 +675,7 @@ spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
 `Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
-javascript:(async()=>{try{window['statsHelper_v1_5_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_6_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -997,20 +997,16 @@ w których to się psuje, i testów, które tego pilnują.
 
 [SemVer](https://semver.org/lang/pl/), a dla tego projektu czyta się go tak:
 
-|           | Kiedy podnosić                     | Co to znaczy dla człowieka                                                      |
-| --------- | ---------------------------------- | ------------------------------------------------------------------------------- |
-| **MAJOR** | zmienia się `SCRIPT_ID_PREFIX`     | liczniki i ustawienia **nie przenoszą się**, aktualizować tylko między zmianami |
-| **MINOR** | nowa możliwość, dane zgodne wstecz | można aktualizować w dowolnej chwili                                            |
-| **PATCH** | naprawa bez nowych pól             | można aktualizować w dowolnej chwili                                            |
+|           | Kiedy podnosić         | Co to znaczy dla człowieka                                                      |
+| --------- | ---------------------- | ------------------------------------------------------------------------------- |
+| **MAJOR** | zmiana zasadnicza      | liczniki i ustawienia **nie przenoszą się**, aktualizować tylko między zmianami |
+| **MINOR** | nowa możliwość         | liczniki i ustawienia **nie przenoszą się**, aktualizować tylko między zmianami |
+| **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
-Prefiks magazynu koduje **schemat danych**, a nie numer buildu: kolejne wydania
-zostają przy tym samym prefiksie, dopóki nie zmieni się skład zapisywanych pól.
-Obecnie jest to `statsHelper_v1_5_0_` — podniesiony w 1.5.0 decyzją autora bez
-zmiany MAJOR; liczniki i ustawienia sprzed 1.5.0 nie przenoszą się, a 1.5.0
-instaluje się między zmianami (CHANGELOG, sekcja 1.5.0). Wcześniej tak samo
-w 1.3.1 (`statsHelper_v1_3_0_`, razem z menedżerem zadań). Zakładki z kodem
-ustawień rozdane przy starszym prefiksie działają dalej — skrypt czyta kod
-także spod starej nazwy zmiennej.
+Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
+Obecnie jest to `statsHelper_v1_6_0_`; wydanie 1.6.1 zostanie przy nim, 1.7.0
+dostanie `statsHelper_v1_7_0_`. Zakładki z kodem ustawień rozdane przy starszym
+prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 
 ---
 

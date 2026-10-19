@@ -73,19 +73,17 @@ autora). Nie dotyka sieci ani liczb, zmienia tylko wygląd ceny na karcie,
 którą widać dopiero po ręcznym włączeniu modułu cen. Następny wyjątek — tylko
 decyzją autora i z wpisem w CHANGELOG.
 
-### 4. Zmiana `SCRIPT_ID_PREFIX` to MAJOR
+### 4. `SCRIPT_ID_PREFIX` niesie MAJOR i MINOR
 
-Prefiks koduje schemat danych. Zmienia się prefiks — ludziom zerują się
-liczniki, więc aktualizować można tylko między zmianami. Jedno bez drugiego
-nie istnieje.
+Prefiks to `statsHelper_v<MAJOR>_<MINOR>_0_` (decyzja autora od 1.6.0). Każde
+wydanie MINOR i MAJOR zmienia prefiks — ludziom zerują się liczniki, więc takie
+wydanie aktualizuje się tylko między zmianami. PATCH (`1.6.1`) prefiksu nie
+rusza i można go przyjąć w trakcie zmiany. Zgodność prefiksu z `package.json`
+sprawdza `tests/02-defaults.test.js`.
 
-Dwa świadome wyjątki w historii, oba decyzją autora: 1.3.1 podniosło prefiks
-do `v1_3_0_` bez MAJOR, bo nowego schematu nie używał jeszcze nikt poza
-wydaniem stabilnym (CHANGELOG, sekcja 1.3.1), a 1.5.0 — do `v1_5_0_`
-(CHANGELOG, sekcja 1.5.0). Wyjątek nie jest precedensem — każda następna
-zmiana prefiksu to MAJOR. Poprzedni prefiks
-trafia wtedy do `LEGACY_ID_PREFIXES`, a nowy na koniec `PREFIX_HISTORY`
-w `tests/02-defaults.test.js` — test nie przepuści jednego bez drugiego.
+Przy każdej zmianie prefiksu poprzedni trafia do `LEGACY_ID_PREFIXES`, a nowy na
+koniec `PREFIX_HISTORY` w `tests/02-defaults.test.js` — test nie przepuści jednego
+bez drugiego.
 
 ### 5. Zakazane konstrukcje
 
@@ -172,7 +170,7 @@ Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 545 sprawdzeń
+npm test             # 549 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)
