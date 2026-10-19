@@ -250,3 +250,15 @@ test('tabela linii w ściądze zna każdą linię i jej wartości domyślne', ()
            [lines[key].visible, lines[key].colorHex.toUpperCase(), lines[key].alpha, lines[key].fontSize], key);
     }
 });
+
+test('wersja w nagłówku README zgadza się z package.json', () => {
+    // Nagłówek README to pierwsze, co widać na stronie repozytorium; zostawał
+    // przy starym numerze, bo nic go nie sprawdzało.
+    const fs = require('fs');
+    const path = require('path');
+    const root = path.join(__dirname, '..');
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const m = /\*\*Wersja (\d+\.\d+\.\d+)\*\*/.exec(fs.readFileSync(path.join(root, 'README.md'), 'utf8'));
+    ok(m, 'w README nie ma linii **Wersja X.Y.Z**');
+    eq(m && m[1], pkg.version);
+});

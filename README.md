@@ -1,20 +1,27 @@
 # StatsHelper Counter
 
 Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez całą
-zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie robi nic poza
-tym: ani jednego zapytania do internetu, ani jednej linii w konsoli.
+zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
+sieci ani nie pisze do konsoli.
 
-**Wersja 1.5.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.6.2** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
-17.4 28 14%
+34.3 z 47 · 236 z 470 · 14% · 2m 41s
 ```
 
-To cały domyślny interfejs — trzy szare liczby w lewym dolnym rogu.
-Pierwsza: przedmiotów na godzinę, łącznie ze wszystkich kart. Druga: ile zrobiono.
-Trzecia: ile z nich pojechało na sprzedaż. Cała reszta — linia z podsumowaniem
-działów, bieżące zadanie, bilans pieniężny zmiany, karta ceny towaru — istnieje,
-ale włącza się ręcznie.
+To cały domyślny interfejs — jedna szara linia w lewym dolnym rogu:
+
+- **tempo bieżącego zadania z celu działu** — `34.3 z 47`;
+- **paczki zmiany z celu zmiany** — `236 z 470` (wszystkie otwarte karty, cel ×
+  10 płatnych godzin);
+- **procent sprzedaży**;
+- **czas od ostatniego pojemnika** — czerwony, gdy przerwa trwa za długo.
+
+Przy uruchomieniu otwiera się też panel ustawień; zamyka go pierwszy klik obok,
+a otwiera znowu drugie kliknięcie zakładki. Cała reszta — podsumowanie działów,
+bieżące zadanie, bilans pieniężny zmiany, karta ceny towaru — istnieje, ale
+włącza się ręcznie.
 
 ---
 
@@ -95,8 +102,9 @@ zamienić `release` na numer wersji z literą `v`:
 3. Wkleić całą zawartość [ostatniego wydania](https://github.com/YafremauAliaksei/counter/releases/latest),
    nacisnąć Enter.
 
-W obu przypadkach w lewym dolnym rogu pojawią się trzy liczby: tempo, sztuki
-i procent sprzedaży. Nic więcej robić nie trzeba.
+W obu przypadkach w lewym dolnym rogu pojawi się linia 7 (tempo zadania, paczki,
+procent sprzedaży, czas od pojemnika) i otworzy się panel ustawień. Nic więcej
+robić nie trzeba.
 
 > **Skąd brać plik.** Z **wydania**, nie z `counter.js` w gałęzi `main`. Plik
 > w repozytorium jest artefaktem budowania i zmienia się przy każdym scaleniu;
@@ -996,7 +1004,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 39 plików, 577 sprawdzeń
+├── tests/                  ← 39 plików, 578 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1016,7 +1024,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 577 sprawdzeń
+npm test             # 578 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
