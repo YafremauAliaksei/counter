@@ -244,7 +244,7 @@
         // drugi przy podniesionej fladze daje +1. Teksty rosyjskie i ukraińskie
         // to napisy samego T-REX. PROBLEM-SOLVE jest wyłączony, bo taki
         // przedmiot wraca do obsługi i zostałby policzony dwa razy.
-        PRE_TRIGGER_REGEX: /poniżej|видите ниже|зображенню нижче|Transparency/i,
+        PRE_TRIGGER_REGEX: /poniżej|видите ниже|зображенню нижче|Transparency|Czy produkt jest zgodny|W przypadku tego produktu można pominąć ocenę/i,
         AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|призначити новий|перепризначте|канирование номера LP:|канування LPN:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
         /**
          * POLE POJEMNIKA (tote). Rozpoznaje się je po podpisie `aria-label`
@@ -293,6 +293,13 @@
         GRAVIS_TAB_TYPES: ['CRET', 'UG'],
         GRAVIS_ASIN_TIMEOUT_MS: 8000,
         GRAVIS_POLL_MS: 250,
+        // Skrypt w GRAVIS daje znać, że żyje; brak sygnału przez GRAVIS_STALE_MS
+        // to karta przeładowana (np. uśpiona przez przeglądarkę) — T-REX
+        // podpowiada wtedy, żeby kliknąć tam zakładkę jeszcze raz.
+        GRAVIS_HEARTBEAT_MS: 10000,
+        GRAVIS_STALE_MS: 30000,
+        // Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora).
+        OPEN_SETTINGS_ON_START: true,
         // Linia 9 po przekroczeniu podwójnego czasu przedmiotu.
         OFF_TASK_COLOR: '#E53935',
         RATE_TARGETS,
@@ -506,8 +513,13 @@
          */
         toteCounting: false,
         autoLpn: false,
-        // Most GRAVIS. Wyłączony nie otwiera okna i nie wysyła wiadomości.
-        gravisAsin: false,
+        /**
+         * Most GRAVIS — domyślnie włączony (decyzja autora, CHANGELOG): karty
+         * rozmawiają przez postMessage w przeglądarce, bez sieci. Włączony most
+         * tylko słucha; okno GRAVIS otwiera człowiek przyciskiem w panelu,
+         * a T-REX nie zmienia wyglądu, dopóki skrypt w GRAVIS się nie odezwie.
+         */
+        gravisAsin: true,
         triggerMutationDebounceMs: CONFIG.DEFAULT_TRIGGER_MUTATION_DEBOUNCE_MS,
         settingsPanelWidth: CONFIG.SETTINGS_PANEL_INITIAL_WIDTH_PX,
         customTabSettings: {},
@@ -550,7 +562,7 @@
          * autora, CHANGELOG): nie dotyka sieci, a do pierwszego pojemnika
          * jest pusta.
          */
-        line9_offTask: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        line9_offTask: { visible: false, colorHex: '#808080', alpha: 50, fontSize: 13 },
         /**
          * LINIA 10 — cel działu: procent bieżącego tempa od celu oraz
          * zrobione sztuki wobec celu zmiany, np. `47/h 85% 236/470`.

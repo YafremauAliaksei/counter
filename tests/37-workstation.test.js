@@ -398,6 +398,7 @@ const GRAVIS_ORIGIN = 'https://eu-cretfc-tools-dub.dub.proxy.amazon.com';
 
 test('wyłączony: nie otwiera okna, nie wysyła LPN', () => {
     const { env, sent, opened } = gravisEnv();
+    env.SH.store.userConfig.gravisAsin = false;
     env.SH.GravisBridge.open();
     const input = el(env, 'input', { 'data-testid': 'lpn-input-label', value: 'LPN123ABC' });
     key(env, input, 'Enter');
@@ -416,14 +417,15 @@ test('REFURB i WHD nie mają mostu nawet z włączoną opcją', () => {
 test('pełny przebieg: gotowość, LPN, ASIN pod polem; obce okno i zły ASIN odrzucone', () => {
     const { env, sent, fake } = gravisEnv('CRETURN_PRIMARY_GRADING');
     const G = env.SH.GravisBridge;
+    eq(env.SH.store.userConfig.gravisAsin, true, 'most domyślnie włączony');
     const msg = (data, source = fake, origin = GRAVIS_ORIGIN) => env.sandbox.window._emit('message', { data, source, origin });
     env.SH.store.userConfig.gravisAsin = true;
     G.open();
     const lpnInput = el(env, 'input', { 'data-testid': 'lpn-input-label', value: 'LPN123ABC' });
     key(env, lpnInput, 'Enter');
     eq(sent.length, 0, 'przed gotowością LPN czeka');
-    msg({ type: 'sh-gravis-ready' }, {}, GRAVIS_ORIGIN);
-    eq(G.ready, false, 'gotowość od obcego okna');
+    msg({ type: 'sh-gravis-ready' }, fake, 'https://evil.example');
+    eq(G.ready, false, 'gotowość z obcego adresu');
     msg({ type: 'sh-gravis-ready' });
     eq(sent.map(s => [s.msg.lpn, s.origin]), [['LPN123ABC', GRAVIS_ORIGIN]], 'LPN na znany adres');
 

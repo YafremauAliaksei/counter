@@ -159,6 +159,44 @@
             line.style.color = t.overMs > 0 ? CONFIG.OFF_TASK_COLOR : '';
         },
 
+        /**
+         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy:
+         *
+         *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
+         *
+         *   - tempo BIEŻĄCEGO zadania z celu działu — zadania istnieją właśnie
+         *     po to, żeby procesy o różnych normach nie mieszały się w jedną
+         *     średnią; tempo całej zmiany jest w panelu i w linii 1;
+         *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
+         *     (cel × płatne godziny);
+         *   - procent sprzedaży zmiany;
+         *   - czas od ostatniego pojemnika, czerwony po przekroczeniu limitu
+         *     (jak linia 9); do pierwszego pojemnika go nie ma.
+         * Bez celu działu znika „z …”. Spójnik („z”, „of” i odpowiedniki
+         * ukraiński i rosyjski) idzie ze słownika (statsOf).
+         */
+        renderCompact(gTotal, gSold, gRated) {
+            const line = this.lines.line7_compact;
+            const task = TaskManager.active() || store.tasks[store.tasks.length - 1];
+            const target = ToteWatch.targetFor(store.currentTabType);
+            const of = I18n.get('statsOf');
+            const rate = (task ? TaskManager.rate(task) : 0).toFixed(1);
+            const parts = [
+                target ? `${rate} ${of} ${target}` : rate,
+                target ? `${gTotal} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
+                `${Utils.percentFloor(gSold, gRated)}%`,
+            ];
+            line.innerHTML = '';
+            line.appendChild(document.createTextNode(parts.join(' · ')));
+            const t = ToteWatch.offTask(Date.now());
+            if (!t) return;
+            line.appendChild(document.createTextNode(' · '));
+            line.appendChild(h('span', {
+                textContent: Utils.formatDuration(t.elapsedMs),
+                style: { color: t.overMs > 0 ? CONFIG.OFF_TASK_COLOR : '' },
+            }));
+        },
+
         /** Skrót „ukryj okno”: chowa okno statystyk do następnego naciśnięcia. */
         toggleHidden() {
             this.hidden = !this.hidden;
@@ -301,17 +339,7 @@
             if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
             else this.lines.line6_valueSum.innerHTML = '';
 
-            /**
-             * LINIA 7 — trzy liczby bez jednostek i nazw:
-             *
-             *     17.4 28 14%
-             *
-             * tempo (paczki na godzinę, wszystkie wliczane karty), liczba
-             * zrobionych sztuk i procent sprzedaży — te same, które stoją na
-             * końcu linii 2, z tego samego przebiegu pętli.
-             */
-            this.lines.line7_compact.textContent =
-                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gRated)}%`;
+            this.renderCompact(gTotal, gSold, gRated);
 
             /**
              * LINIA 8 — bieżące zadanie i jego własne liczby, z własnym

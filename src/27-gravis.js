@@ -13,14 +13,24 @@
      * i znanego adresu (e.origin) i wysyłają ją wyłącznie na znany adres —
      * inna karta nie podsunie fałszywego ASIN ani nie podsłucha LPN.
      *
-     * ASIN pokazuje się pod polem skanu przedmiotu jako link; kliknięcie
-     * wstawia go do pola, a Enter naciska człowiek. Tekst linku jest
-     * rozerwany znakiem U+200B: skan strony nie może zobaczyć w nim ASIN
-     * (zmiana ASIN to dla Routing granica przedmiotu).
+     * ASIN pokazuje się pod polem skanu przedmiotu, wyśrodkowany pod nim,
+     * jako link; kliknięcie wstawia go do pola, a Enter naciska człowiek.
+     * Tekst linku jest rozerwany znakiem U+200B: skan strony nie może zobaczyć
+     * w nim ASIN (zmiana ASIN to dla Routing granica przedmiotu). Brak ASIN
+     * albo brak odpowiedzi nie pokazuje niczego.
+     *
+     * Skrypt w GRAVIS co GRAVIS_HEARTBEAT_MS daje znać, że żyje. Dzięki temu
+     * T-REX po własnym przeładowaniu odnajduje okno GRAVIS (przyjmuje je
+     * z pierwszego sygnału ze znanego adresu), a gdy sygnały ustaną — karta
+     * GRAVIS przeładowała się i skrypt zniknął — w miejscu ASIN pojawia się
+     * cicha podpowiedź, żeby kliknąć tam zakładkę jeszcze raz. Dopóki GRAVIS
+     * nie odezwał się ani razu, wygląd T-REX się nie zmienia.
      */
     const GravisBridge = {
         win: null,
         ready: false,
+        /** Chwila ostatniego sygnału z GRAVIS; 0 — jeszcze żadnego. */
+        lastSeen: 0,
         lastLpn: null,
         pendingLpn: null,
         asin: null,
@@ -54,13 +64,23 @@
                 if (CONFIG.LPN_VALUE_REGEX.test(lpn)) this.send(lpn);
             };
             this.onMessage = (e) => {
-                if (!this.win || e.source !== this.win || e.origin !== this.origin()) return;
+                if (!this.enabled() || e.origin !== this.origin() || !e.source) return;
                 const d = e.data;
                 if (!d || typeof d !== 'object') return;
+                // Okno przyjmuje się z sygnału gotowości ze znanego adresu —
+                // także po przeładowaniu T-REX, gdy uchwytu z window.open już nie ma.
                 if (d.type === 'sh-gravis-ready') {
+                    this.win = /** @type {Window} */ (e.source);
+                    const wasStale = !this.ready || this.stale();
                     this.ready = true;
+                    this.lastSeen = Date.now();
                     if (this.pendingLpn) this.send(this.pendingLpn);
-                } else if (d.type === 'sh-gravis-asin' && d.lpn === this.lastLpn) {
+                    if (wasStale) this.place();
+                    return;
+                }
+                if (e.source !== this.win) return;
+                this.lastSeen = Date.now();
+                if (d.type === 'sh-gravis-asin' && d.lpn === this.lastLpn) {
                     this.asin = typeof d.asin === 'string' && CONFIG.ASIN_VALUE_REGEX.test(d.asin) ? d.asin : null;
                     this.place();
                 }
@@ -78,6 +98,7 @@
         /** Wyłączenie mostu. Karty GRAVIS nie zamykamy — mogła być potrzebna sama w sobie. */
         close() {
             this.ready = false;
+            this.lastSeen = 0;
             this.win = null;
             this.lastLpn = this.pendingLpn = this.asin = null;
             this.removeChip();
@@ -102,32 +123,53 @@
          * Link z ASIN pod polem skanu. Woła się z każdego skanu strony, ale
          * zapytanie o pole idzie tylko wtedy, gdy jest ASIN do pokazania.
          */
+        /** GRAVIS odzywał się wcześniej, a teraz milczy dłużej niż GRAVIS_STALE_MS. */
+        stale() {
+            return this.lastSeen > 0 && Date.now() - this.lastSeen > CONFIG.GRAVIS_STALE_MS;
+        },
+        /**
+         * Pod polem skanu: link z ASIN, a gdy GRAVIS zamilkł — podpowiedź.
+         * Woła się z każdego skanu strony, ale zapytanie o pole idzie tylko
+         * wtedy, gdy jest co pokazać.
+         */
         place() {
-            if (!this.asin || !this.enabled()) { this.removeChip(); return; }
+            const mode = !this.enabled() ? null : this.stale() ? 'hint' : this.asin ? 'asin:' + this.asin : null;
+            if (!mode) { this.removeChip(); return; }
             const input = this.findScanInput();
             if (!input) { this.removeChip(); return; }
-            const r = input.getBoundingClientRect();
+            if (this.chip && this.chip.dataset.mode !== mode) this.removeChip();
             if (!this.chip) {
-                const asin = this.asin;
-                this.chip = h('div', {
+                this.chip = mode === 'hint' ? h('div', {
                     id: 'gravisAsin',
-                    textContent: asin.split('').join('​'),
-                    title: 'GRAVIS',
-                    onMousedown: (e) => e.preventDefault(),
-                    onClick: () => {
-                        const target = this.findScanInput();
-                        if (target) { this.fill(target, asin); target.focus(); }
-                    },
-                    style: {
-                        position: 'fixed', zIndex: '2147483645', cursor: 'pointer',
-                        color: '#1a73e8', borderBottom: '1px dashed #1a73e8',
-                        font: '13px monospace', background: 'transparent',
-                    },
-                });
+                    textContent: I18n.get('gravis_restartHint'),
+                    style: { position: 'fixed', zIndex: '2147483645', pointerEvents: 'none',
+                             color: '#9E9E9E', font: '12px sans-serif', transform: 'translateX(-50%)' },
+                }) : this.asinChip(this.asin);
+                this.chip.dataset.mode = mode;
                 document.body.appendChild(this.chip);
             }
-            this.chip.style.left = `${Math.round(r.left)}px`;
-            this.chip.style.top = `${Math.round(r.top + r.height + 2)}px`;
+            // Pola T-REX stoją na środku ekranu i są wąskie — link stoi
+            // wyśrodkowany pod polem, a nie przy jego lewej krawędzi.
+            const r = input.getBoundingClientRect();
+            this.chip.style.left = `${Math.round(r.left + r.width / 2)}px`;
+            this.chip.style.top = `${Math.round(r.top + r.height + 4)}px`;
+        },
+        asinChip(asin) {
+            return h('div', {
+                id: 'gravisAsin',
+                textContent: asin.split('').join('\u200B'),
+                title: 'GRAVIS',
+                onMousedown: (e) => e.preventDefault(),
+                onClick: () => {
+                    const target = this.findScanInput();
+                    if (target) { this.fill(target, asin); target.focus(); }
+                },
+                style: {
+                    position: 'fixed', zIndex: '2147483645', cursor: 'pointer',
+                    color: '#1a73e8', borderBottom: '1px dashed #1a73e8',
+                    font: '13px monospace', background: 'transparent', transform: 'translateX(-50%)',
+                },
+            });
         },
 
         /**
@@ -153,10 +195,15 @@
         },
 
         // --- strona GRAVIS ---
+        /**
+         * W GRAVIS skrypt nie liczy i nie ma ustawień: odpowiada tylko na LPN
+         * i co GRAVIS_HEARTBEAT_MS daje znać, że żyje. W lewym górnym rogu
+         * stoi półprzezroczysty znaczek, przezroczysty dla kliknięć.
+         */
         initRemote() {
             const flag = CONFIG.SCRIPT_ID_PREFIX + 'GRAVIS';
-            if (window[flag]) { this.toast(I18n.get('gravis_alreadyRunning')); return; }
-            if (!window.opener) { this.toast(I18n.get('gravis_remoteNoOpener')); return; }
+            if (window[flag]) return;
+            if (!window.opener) { this.badge(I18n.get('gravis_badgeNoOpener'), '#C62828'); return; }
             window[flag] = true;
             this.onRemoteMessage = async (e) => {
                 if (e.source !== window.opener || e.origin !== CONFIG.TREX_ORIGIN) return;
@@ -167,18 +214,20 @@
                 window.opener.postMessage({ type: 'sh-gravis-asin', lpn: d.lpn, asin }, CONFIG.TREX_ORIGIN);
             };
             window.addEventListener('message', this.onRemoteMessage);
-            window.opener.postMessage({ type: 'sh-gravis-ready' }, CONFIG.TREX_ORIGIN);
-            this.toast(I18n.get('gravis_remoteReady'));
+            const beat = () => {
+                if (window.opener) window.opener.postMessage({ type: 'sh-gravis-ready' }, CONFIG.TREX_ORIGIN);
+            };
+            beat();
+            this.heartbeatTimer = setInterval(beat, CONFIG.GRAVIS_HEARTBEAT_MS);
+            this.badge(I18n.get('gravis_badgeOk'), '#2E7D32');
         },
-        toast(text) {
-            const el = h('div', {
-                id: 'gravisToast', textContent: text,
-                style: { position: 'fixed', right: '24px', bottom: '24px', zIndex: '2147483646',
-                         background: '#323232', color: '#fff', padding: '12px 16px', borderRadius: '4px',
-                         font: '13px sans-serif' },
-            });
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 4000);
+        badge(text, color) {
+            document.body.appendChild(h('div', {
+                id: 'gravisBadge', textContent: text,
+                style: { position: 'fixed', left: '6px', top: '6px', zIndex: '2147483646',
+                         pointerEvents: 'none', opacity: '0.55', background: color, color: '#fff',
+                         padding: '2px 8px', borderRadius: '10px', font: '11px sans-serif' },
+            }));
         },
         asinOf(a) {
             const text = String(a.textContent || '').trim().toUpperCase();

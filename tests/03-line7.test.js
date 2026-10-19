@@ -2,9 +2,13 @@
  * 03-line7.test.js — format linii 7.
  *
  * Linia 7 to jedyne, co widać domyślnie, więc jej format jest częścią umowy
- * z użytkownikiem: DWIE liczby, jedna spacja, nic więcej. Testy trzymają ten
- * format dosłownie — łącznie z tym, że wynik musi zgadzać się z podsumowaniem
- * linii 2, bo obie liczą to samo.
+ * z użytkownikiem:
+ *
+ *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
+ *
+ * tempo BIEŻĄCEGO zadania z celu działu, paczki zmiany z celu zmiany, procent
+ * sprzedaży zmiany i czas od ostatniego pojemnika. Testy trzymają ten format
+ * dosłownie, a paczki porównują z linią 2, bo obie liczą to samo.
  */
 
 'use strict';
@@ -13,122 +17,104 @@ const { describe, test, eq, ok } = require('./harness');
 const { boot, setShift } = require('./dom-stub');
 
 const env = boot();
-const line7 = () => env.SH.StatsWindowRenderer.lines.line7_compact.textContent;
+const SH = env.SH;
+const S = SH.store;
+const line7 = () => SH.StatsWindowRenderer.lines.line7_compact.textContent;
+const render = () => SH.StatsWindowRenderer.renderContent();
+
+/** Zadanie domyślne zaczęte razem ze zmianą i n paczek w CRET. */
+function work(hours, items) {
+    setShift(env, hours);
+    const task = SH.TaskManager.active();
+    task.segments = [{ from: S.sessionConfig.shiftCalculatedStartTime, to: null }];
+    for (let i = 0; i < items; i++) SH.InputManager.modifyCounter(1);
+}
 
 describe('Linia 7 — dokładny format wyjścia');
 
-test('bez przepracowanego czasu pokazuje „0.0 0”', () => {
-    env.SH.StatsWindowRenderer.renderContent();
-    eq(line7(), '0.0 0 0%');
+test('na starcie: zero z celu, zero z celu zmiany, 0%', () => {
+    render();
+    eq(line7(), '0.0 z 47 · 0 z 470 · 0%');
 });
 
-test('trzy człony oddzielone spacjami, bez jednostek i nawiasów', () => {
-    // Procent sprzedaży stoi zawsze na końcu; żadnych jednostek, nawiasów
-    // ani przecinków — linia ma czytać się jednym spojrzeniem.
-    setShift(env, 2);
-    env.SH.store.tabCounters.CRET = 20;
-    env.SH.store.tabCounters.WHD = 15;
-    env.SH.StatsWindowRenderer.renderContent();
-
-    const txt = line7();
-    ok(/^\d+(\.\d)? \d+ \d{1,3}%$/.test(txt),
-       'format „liczba spacja liczba spacja procent”, jest: ' + txt);
-    eq(txt, '17.5 35 0%', '35 sztuk przez 2 h = 17.5/h, nic nie poszło na sprzedaż');
+test('tempo zadania z celu, paczki zmiany z celu zmiany', () => {
+    work(2, 20);
+    render();
+    eq(line7(), '10.0 z 47 · 20 z 470 · 0%', '20 paczek przez 2 h zadania; cel zmiany 47 × 10');
 });
 
-test('liczba w linii 7 zgadza się z sumą linii 2', () => {
-    // Linia 2 jest domyślnie wyłączona, a wyłączonych linii render nie składa —
-    // więc porównanie ma sens dopiero po jej włączeniu. Sprawdzana jest zgodność
-    // liczb, a nie to, czy linia jest widoczna.
-    const cfg = env.SH.store.localTabConfig.linesConfig.line2_globalSummary;
-    const before = cfg.visible;
+test('paczki są ze wszystkich wliczanych kart, tempo — tylko z zadania', () => {
+    // WHD ma 15 paczek spoza bieżącego zadania tej karty: wchodzą do paczek
+    // zmiany, ale nie do tempa zadania.
+    S.tabCounters.WHD = 15;
+    S.sessionConfig.activeTabInstances = { CRET: Date.now(), WHD: Date.now() };
+    render();
+    eq(line7(), '10.0 z 47 · 35 z 470 · 0%');
+    S.userConfig.globalStatsContributionKnown.WHD = false;
+    render();
+    eq(line7(), '10.0 z 47 · 20 z 470 · 0%', 'dział wyłączony z sumy');
+    S.userConfig.globalStatsContributionKnown.WHD = true;
+});
+
+test('paczki zgadzają się z sumą linii 2', () => {
+    const cfg = S.localTabConfig.linesConfig.line2_globalSummary;
     cfg.visible = true;
-    env.SH.StatsWindowRenderer.renderContent();
-
-    const l2 = env.SH.StatsWindowRenderer.lines.line2_globalSummary.textContent;
-    const [iph, count] = line7().split(' ');
-    ok(l2.includes(iph), 'wydajność z linii 7 („' + iph + '”) musi być w linii 2: ' + l2);
-    ok(l2.includes('(' + count + ')'), 'liczba sztuk z linii 7 musi być w linii 2');
-
-    cfg.visible = before;
-    env.SH.StatsWindowRenderer.renderContent();
+    render();
+    const packs = line7().split(' · ')[1].split(' ')[0];
+    ok(SH.StatsWindowRenderer.lines.line2_globalSummary.textContent.includes('(' + packs + ')'),
+       'suma paczek z linii 7 musi być w linii 2');
+    cfg.visible = false;
+    render();
 });
 
-test('wyłączona linia 2 nie jest składana, a linia 7 liczy dalej', () => {
-    // Wydajność: przy ustawieniach domyślnych widoczna jest jedna linia
-    // i tylko ona ma powstawać raz na sekundę. Liczba
-    // w linii 7 nie ma prawa się przez to zmienić — obie linie liczą z tej samej
-    // pętli po kartach.
-    const l2 = env.SH.StatsWindowRenderer.lines.line2_globalSummary;
-    eq(env.SH.store.localTabConfig.linesConfig.line2_globalSummary.visible, false,
-       'linia 2 musi być domyślnie wyłączona');
-    env.SH.StatsWindowRenderer.renderContent();
-    eq(l2.textContent, '', 'wyłączona linia 2 zostaje pusta');
-    eq(l2.children.length, 0, 'wyłączona linia 2 nie tworzy węzłów');
-    eq(line7(), '17.5 35 0%', 'linia 7 pokazuje tę samą sumę co przy włączonej linii 2');
+test('nowe zadanie ma własne tempo, niezależne od reszty zmiany', () => {
+    // Pół godziny nowego procesu i 10 paczek to 20/h, choć zmiana ma ich 45.
+    SH.TaskManager.create('fast', Date.now() - 30 * 60000);
+    for (let i = 0; i < 10; i++) SH.InputManager.modifyCounter(1);
+    render();
+    eq(line7(), '20.0 z 47 · 45 z 470 · 0%');
+});
+
+test('bez celu działu (0, NaN, tekst) znika „z …”', () => {
+    for (const bad of [0, NaN, 'x']) {
+        SH.CONFIG.RATE_TARGETS.CRET = bad;
+        render();
+        eq(line7(), '20.0 · 45 · 0%', String(bad));
+    }
+    SH.CONFIG.RATE_TARGETS.CRET = 47;
+});
+
+test('czas od pojemnika na końcu; po limicie czerwony', () => {
+    S.sessionConfig.lastToteAt = Date.now() - 60000;
+    render();
+    ok(/ · 1m 0\ds$/.test(line7()), 'minuta od pojemnika: ' + line7());
+    const timer = () => { const c = SH.StatsWindowRenderer.lines.line7_compact.children; return c[c.length - 1]; };
+    const span = timer();
+    eq(span.style.color, '', 'przed limitem bez czerwieni');
+    S.sessionConfig.lastToteAt = Date.now() - 10 * 60000;
+    render();
+    eq(timer().style.color, SH.CONFIG.OFF_TASK_COLOR);
+    S.sessionConfig.lastToteAt = null;
+});
+
+test('spójnik idzie ze słownika', () => {
+    for (const [lang, word] of [['pl', 'z'], ['en', 'of']]) {
+        S.userConfig.language = lang;
+        render();
+        ok(line7().startsWith(`20.0 ${word} 47`), lang + ': ' + line7());
+    }
+    S.userConfig.language = 'pl';
 });
 
 test('wyłączona linia 6 nie rusza dziennika wartości', () => {
-    // ValueLog.totals() przechodzi po WSZYSTKICH wpisach i każdy przelicza po
-    // kursie. Linia 6 jest jedynym odbiorcą tego przebiegu, więc przy wyłączonej
-    // linii nie ma prawa się wykonać ani razu.
-    const VL = env.SH.ValueLog;
+    // ValueLog.totals() przechodzi po WSZYSTKICH wpisach; linia 6 jest jedynym
+    // odbiorcą tego przebiegu, więc przy wyłączonej linii nie wykonuje się.
+    const VL = SH.ValueLog;
     const realTotals = VL.totals;
-    let wywolan = 0;
-    VL.totals = function() { wywolan++; return realTotals.call(this); };
-
-    eq(env.SH.store.localTabConfig.linesConfig.line6_valueSum.visible, false,
-       'linia 6 musi być domyślnie wyłączona');
-    env.SH.StatsWindowRenderer.renderContent();
-    eq(wywolan, 0, 'totals() przy wyłączonej linii 6');
-    eq(env.SH.StatsWindowRenderer.lines.line6_valueSum.textContent, '',
-       'wyłączona linia 6 zostaje pusta');
-
-    // Włączenie linii samo w sobie wywołuje render (onStorePaths po
-    // 'localTabConfig'), więc liczba wywołań rośnie od razu — sprawdzamy fakt
-    // widoczny dla człowieka: linia zapełnia się natychmiast, a nie po sekundzie.
-    env.SH.store.localTabConfig.linesConfig.line6_valueSum.visible = true;
-    ok(wywolan > 0, 'totals() po włączeniu linii 6');
-    ok(env.SH.StatsWindowRenderer.lines.line6_valueSum.textContent.length > 0,
-       'włączona linia 6 zapełnia się od razu');
-
-    env.SH.store.localTabConfig.linesConfig.line6_valueSum.visible = false;
+    let calls = 0;
+    VL.totals = function () { calls++; return realTotals.call(this); };
+    eq(S.localTabConfig.linesConfig.line6_valueSum.visible, false, 'linia 6 domyślnie wyłączona');
+    render();
+    eq(calls, 0, 'totals() przy wyłączonej linii 6');
     VL.totals = realTotals;
-    env.SH.StatsWindowRenderer.renderContent();
-});
-
-test('działy wyłączone z sumy globalnej nie wchodzą do linii 7', () => {
-    env.SH.store.userConfig.globalStatsContributionKnown.WHD = false;
-    env.SH.StatsWindowRenderer.renderContent();
-    eq(line7(), '10.0 20 0%');
-    env.SH.store.userConfig.globalStatsContributionKnown.WHD = true;
-    env.SH.StatsWindowRenderer.renderContent();
-    eq(line7(), '17.5 35 0%');
-});
-
-test('linia 7 nie tworzy węzłów HTML — sam tekst', () => {
-    eq(env.SH.StatsWindowRenderer.lines.line7_compact.children.length, 0,
-       'linia 7 nie może mieć dzieci-elementów');
-});
-
-test('wydajność zaokrągla się do jednego miejsca po przecinku', () => {
-    env.SH.store.tabCounters.CRET = 1;
-    env.SH.store.tabCounters.WHD = 0;
-    setShift(env, 3);
-    env.SH.StatsWindowRenderer.renderContent();
-    eq(line7(), '0.3 1 0%', '1 sztuka przez 3 h');
-});
-
-test('przerwa obiadowa skraca czas pracy, więc podnosi wydajność', () => {
-    // Zmiana zaczęła się 4 h temu; wybieramy przerwę, która już minęła w całości.
-    const S = env.SH.store;
-    S.tabCounters.CRET = 40;
-    S.tabCounters.WHD = 0;
-    setShift(env, 4);
-    env.SH.StatsWindowRenderer.renderContent();
-    const bez = parseFloat(line7().split(' ')[0]);
-
-    // Przerwa liczona jest tylko wtedy, gdy mieści się w przedziale zmiany,
-    // więc sprawdzamy jedynie, że mechanizm nie zaniża wyniku.
-    ok(bez >= 9.9 && bez <= 10.1, 'bez przerwy 40 szt / 4 h = ~10/h, jest ' + bez);
 });

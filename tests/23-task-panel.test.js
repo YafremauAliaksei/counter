@@ -300,12 +300,12 @@ test('panel w każdym języku bez surowych kluczy tłumaczeń', () => {
     }
 });
 
-test('podpowiedź linii 7 mówi o trzech liczbach, a linia 8 ma swoją', () => {
-    // Linia 7 pokazuje trzy liczby i podpowiedź ma to mówić; podpowiedź
-    // linii 8 ma być w panelu, a nie tylko w słownikach.
+test('podpowiedź linii 7 opisuje jej człony, a linia 8 ma swoją', () => {
+    // Linia 7 pokazuje tempo zadania, paczki, procent i czas od pojemnika —
+    // podpowiedź ma to mówić; podpowiedź linii 8 ma być w panelu.
     const text = String(SH.SettingsPanel.el.textContent);
     ok(text.includes(label('lineSettings_compactHint')), 'podpowiedź linii 7 w panelu');
-    ok(/trzy|three/i.test(label('lineSettings_compactHint')), 'o trzech liczbach');
+    ok(/zadania|task/i.test(label('lineSettings_compactHint')), 'o tempie zadania');
     ok(text.includes(label('lineSettings_taskInfoHint')), 'podpowiedź linii 8 w panelu');
 });
 

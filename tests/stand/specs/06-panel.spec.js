@@ -17,7 +17,8 @@ test('przycisk zamknięcia przy dolnej krawędzi panelu na każdej wysokości pr
     await page.setViewportSize({ width: 1280, height: 720 });
     await openStand(page);
     await paste(page);
-    await page.evaluate(() => window.SH.SettingsPanel.toggle());
+    // Panel otwiera się sam przy uruchomieniu skryptu.
+    await expect.poll(() => page.evaluate(() => window.SH.store.uiFlags.isSettingsPanelVisible)).toBe(true);
     const panel = page.locator('[id$="settingsPanel"]');
     const close = page.locator('[id$="settingsPanelFooter"] button');
     await expect(close).toBeVisible();

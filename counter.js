@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.6.1
+// @version      1.6.2
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.6.1',
+        SCRIPT_VERSION: '1.6.2',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -327,7 +327,7 @@ const PAID_SHIFT_HOURS = 10;
         // drugi przy podniesionej fladze daje +1. Teksty rosyjskie i ukraińskie
         // to napisy samego T-REX. PROBLEM-SOLVE jest wyłączony, bo taki
         // przedmiot wraca do obsługi i zostałby policzony dwa razy.
-        PRE_TRIGGER_REGEX: /poniżej|видите ниже|зображенню нижче|Transparency/i,
+        PRE_TRIGGER_REGEX: /poniżej|видите ниже|зображенню нижче|Transparency|Czy produkt jest zgodny|W przypadku tego produktu można pominąć ocenę/i,
         AUTO_TRIGGER_REGEX: /Przypisz (nowy|ponownie)|призначити новий|перепризначте|канирование номера LP:|канування LPN:|Przedmiot wysłano do (?!PROBLEM-SOLVE\b).+/i,
         /**
          * POLE POJEMNIKA (tote). Rozpoznaje się je po podpisie `aria-label`
@@ -376,6 +376,13 @@ const PAID_SHIFT_HOURS = 10;
         GRAVIS_TAB_TYPES: ['CRET', 'UG'],
         GRAVIS_ASIN_TIMEOUT_MS: 8000,
         GRAVIS_POLL_MS: 250,
+        // Skrypt w GRAVIS daje znać, że żyje; brak sygnału przez GRAVIS_STALE_MS
+        // to karta przeładowana (np. uśpiona przez przeglądarkę) — T-REX
+        // podpowiada wtedy, żeby kliknąć tam zakładkę jeszcze raz.
+        GRAVIS_HEARTBEAT_MS: 10000,
+        GRAVIS_STALE_MS: 30000,
+        // Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora).
+        OPEN_SETTINGS_ON_START: true,
         // Linia 9 po przekroczeniu podwójnego czasu przedmiotu.
         OFF_TASK_COLOR: '#E53935',
         RATE_TARGETS,
@@ -589,8 +596,13 @@ const PAID_SHIFT_HOURS = 10;
          */
         toteCounting: false,
         autoLpn: false,
-        // Most GRAVIS. Wyłączony nie otwiera okna i nie wysyła wiadomości.
-        gravisAsin: false,
+        /**
+         * Most GRAVIS — domyślnie włączony (decyzja autora, CHANGELOG): karty
+         * rozmawiają przez postMessage w przeglądarce, bez sieci. Włączony most
+         * tylko słucha; okno GRAVIS otwiera człowiek przyciskiem w panelu,
+         * a T-REX nie zmienia wyglądu, dopóki skrypt w GRAVIS się nie odezwie.
+         */
+        gravisAsin: true,
         triggerMutationDebounceMs: CONFIG.DEFAULT_TRIGGER_MUTATION_DEBOUNCE_MS,
         settingsPanelWidth: CONFIG.SETTINGS_PANEL_INITIAL_WIDTH_PX,
         customTabSettings: {},
@@ -633,7 +645,7 @@ const PAID_SHIFT_HOURS = 10;
          * autora, CHANGELOG): nie dotyka sieci, a do pierwszego pojemnika
          * jest pusta.
          */
-        line9_offTask: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        line9_offTask: { visible: false, colorHex: '#808080', alpha: 50, fontSize: 13 },
         /**
          * LINIA 10 — cel działu: procent bieżącego tempa od celu oraz
          * zrobione sztuki wobec celu zmiany, np. `47/h 85% 236/470`.
@@ -792,7 +804,7 @@ const PAID_SHIFT_HOURS = 10;
             valueLog_routeStats: 'sold ${sold}, unsold ${unsold}, undetermined ${undet}',
             lineSettings_valueSum: 'Line 6: Processed Value Sum',
             lineSettings_compact: 'Line 7: Compact counter',
-            lineSettings_compactHint: 'Three numbers: items per hour (all tabs), items done and the sales percentage. Nothing else.',
+            lineSettings_compactHint: 'Task rate of the target rate, shift packages of the shift target, sale percent and time since the last tote (red when idle too long).',
             lineSettings_taskInfo: 'Line 8: Current task',
             priceModule_section: 'Price Module (network)',
             priceModule_enabled: 'Enable the price module',
@@ -870,7 +882,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_bg: 'Card background', priceCard_drag: 'Make Card Draggable',
             priceCard_showSource: 'Show price source',
             configCode_section: 'Settings code',
-            configCode_hint: 'The code holds everything you changed away from the defaults: lines, colours, transparency, sizes, position, switches. Paste it on another machine and you get the same interface.',
+            configCode_hint: 'The code holds everything you changed away from the defaults: lines, colours, transpa\u200brency, sizes, position, switches. Paste it on another machine and you get the same interface.',
             configCode_yours: 'Your code',
             configCode_link: 'Ready-made bookmarklet',
             configCode_linkMissing: 'This build has no release address, so there is no ready-made bookmarklet. The code above works as usual: paste it on another machine.',
@@ -897,9 +909,14 @@ const PAID_SHIFT_HOURS = 10;
             workflow_gravis: 'Suggest ASIN from GRAVIS',
             workflow_gravisHowTo: '1. Press the button below — GRAVIS opens in a new tab. 2. On the GRAVIS tab click this script\'s bookmark once. Afterwards every LPN goes to GRAVIS and the ASIN shows up under the item scan field: click it to paste, Enter is yours.',
             workflow_gravisOpen: 'Open GRAVIS', workflow_gravisConnected: 'GRAVIS connected — open again',
-            gravis_remoteReady: 'StatsHelper: GRAVIS is connected to T-REX.',
-            gravis_remoteNoOpener: 'StatsHelper: open GRAVIS with the button in the T-REX settings panel, then click the bookmark here.',
-            gravis_alreadyRunning: 'StatsHelper: already running on this GRAVIS tab.',
+            statsOf: 'of',
+            gravis_restartHint: 'Click the script bookmark on the GRAVIS tab again',
+            gravis_badgeOk: 'StatsHelper ✓ T-REX',
+            gravis_badgeNoOpener: 'StatsHelper: open GRAVIS with the button in the T-REX panel',
+            tasks_segments: 'Periods',
+            tasks_segmentsHint: 'Comma separated, e.g. 06:30-09:15, 23:30-02:00. A period may cross midnight; lunch is not counted. Leave the end empty to keep the clock running.',
+            tasks_segmentsApply: 'Save periods',
+            tasks_segmentsError: 'Periods not saved: check the format and that they do not overlap.',
             multicolorMode: 'Multi-Color Departments', tabColors: 'Dept. Colors:'
         },
         pl: {
@@ -938,12 +955,12 @@ const PAID_SHIFT_HOURS = 10;
             valueLog_routeStats: 'sprzedane ${sold}, niesprzedane ${unsold}, nieokreślone ${undet}',
             lineSettings_valueSum: 'Linia 6: Suma wartości',
             lineSettings_compact: 'Linia 7: Licznik zwięzły',
-            lineSettings_compactHint: 'Trzy liczby: paczki na godzinę (wszystkie karty), zrobione sztuki i procent sprzedaży. Nic więcej.',
+            lineSettings_compactHint: 'Tempo bieżącego zadania z tempa docelowego, paczki zmiany z celu zmiany, procent sprzedaży i czas od ostatniego pojemnika (czerwony przy zbyt długiej przerwie).',
             lineSettings_taskInfo: 'Linia 8: Bieżące zadanie',
             priceModule_section: 'Moduł cen (sieć)',
             priceModule_enabled: 'Włącz moduł cen',
             priceModule_hint: 'Domyślnie WYŁĄCZONY. Póki jest wyłączony, skrypt nie wysyła ŻADNYCH zapytań do internetu: ani po kursy walut, ani po wykres Keepa, ani do r.jina.ai. Licznik przedmiotów, zmiana, przerwy i linia 7 działają bez sieci.',
-            priceModule_offNotice: 'Moduł wyłączony — ustawienia poniżej zaczną działać po jego włączeniu.',
+            priceModule_offNotice: 'Moduł wyłączony — ustawienia poni\u200bżej zaczną działać po jego włączeniu.',
             priceModule_fxOffline: 'wbudowane (bez sieci)',
             lineSettings_valueSumHint: 'Przezroczystość działa na całą linię. Kolor dotyczy tylko liczby sztuk — plus zostaje zielony, minus czerwony, bo to po nich rozpoznaje się znak.',
             valueLog_section: 'Dziennik wartości',
@@ -1037,13 +1054,18 @@ const PAID_SHIFT_HOURS = 10;
             workflow_targetHint: 'Cel tej karty: ${value}/h. Cele zmienia się na górze pliku (RATE_TARGETS).',
             workflow_toteCounting: 'Liczenie po przybitym pojemniku (doświadczalne)',
             workflow_toteCountingHint: 'Zastępuje wyzwalacz z tekstu strony. Porównanie obu w konsoli: SH.tote().',
-            workflow_autoLpn: 'Auto-LPN: „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta',
+            workflow_autoLpn: 'Auto-LPN: „Przypisz\u200b ponownie LPN”, gdy w pole pojemnika trafi etykieta',
             workflow_gravis: 'Podpowiadaj ASIN z GRAVIS',
             workflow_gravisHowTo: '1. Naciśnij przycisk niżej — GRAVIS otworzy się w nowej karcie. 2. Na karcie GRAVIS kliknij raz zakładkę tego skryptu. Od tej chwili każdy LPN idzie do GRAVIS, a ASIN pojawia się pod polem skanu przedmiotu: kliknięcie go wstawia, Enter naciskasz sam.',
             workflow_gravisOpen: 'Otwórz GRAVIS', workflow_gravisConnected: 'GRAVIS połączony — otwórz ponownie',
-            gravis_remoteReady: 'StatsHelper: GRAVIS połączony z T-REX.',
-            gravis_remoteNoOpener: 'StatsHelper: otwórz GRAVIS przyciskiem w panelu ustawień T-REX, potem kliknij tu zakładkę.',
-            gravis_alreadyRunning: 'StatsHelper: już działa na tej karcie GRAVIS.',
+            statsOf: 'z',
+            gravis_restartHint: 'Kliknij ponownie zakładkę skryptu na karcie GRAVIS',
+            gravis_badgeOk: 'StatsHelper ✓ T-REX',
+            gravis_badgeNoOpener: 'StatsHelper: otwórz GRAVIS przyciskiem w panelu T-REX',
+            tasks_segments: 'Odcinki',
+            tasks_segmentsHint: 'Po przecinku, np. 06:30-09:15, 23:30-02:00. Odcinek może przechodzić przez północ, obiad się nie liczy. Pusty koniec — zegar chodzi dalej.',
+            tasks_segmentsApply: 'Zapisz odcinki',
+            tasks_segmentsError: 'Odcinki nie zapisane: sprawdź zapis i czy nie nachodzą na siebie.',
             multicolorMode: 'Wielokolorowe Działy', tabColors: 'Kolory Działów:'
         },
         uk: {
@@ -1082,7 +1104,7 @@ const PAID_SHIFT_HOURS = 10;
             valueLog_routeStats: 'продано ${sold}, не продано ${unsold}, не визначено ${undet}',
             lineSettings_valueSum: 'Рядок 6: Сума вартості',
             lineSettings_compact: 'Рядок 7: Компактний лічильник',
-            lineSettings_compactHint: 'Три числа: предметів за годину (усі вкладки), зроблено штук і відсоток продажу. Більше нічого.',
+            lineSettings_compactHint: 'Темп поточного завдання з цільового, пачки зміни з цілі зміни, відсоток продажу й час від останньої тари (червоний, якщо простій задовгий).',
             lineSettings_taskInfo: 'Рядок 8: Поточне завдання',
             priceModule_section: 'Модуль цін (мережа)',
             priceModule_enabled: 'Увімкнути модуль цін',
@@ -1185,9 +1207,14 @@ const PAID_SHIFT_HOURS = 10;
             workflow_gravis: 'Підтягувати ASIN з GRAVIS',
             workflow_gravisHowTo: '1. Натисніть кнопку нижче — GRAVIS відкриється в новій вкладці. 2. На вкладці GRAVIS один раз клікніть закладку цього скрипта. Далі кожен LPN іде в GRAVIS, а ASIN з\'являється під полем скану предмета: клік вставляє його, Enter натискаєте самі.',
             workflow_gravisOpen: 'Відкрити GRAVIS', workflow_gravisConnected: 'GRAVIS підключено — відкрити знову',
-            gravis_remoteReady: 'StatsHelper: GRAVIS підключено до T-REX.',
-            gravis_remoteNoOpener: 'StatsHelper: відкрийте GRAVIS кнопкою в панелі налаштувань T-REX, потім клікніть закладку тут.',
-            gravis_alreadyRunning: 'StatsHelper: уже запущено на цій вкладці GRAVIS.',
+            statsOf: 'з',
+            gravis_restartHint: 'Клікніть ще раз закладку скрипта на вкладці GRAVIS',
+            gravis_badgeOk: 'StatsHelper ✓ T-REX',
+            gravis_badgeNoOpener: 'StatsHelper: відкрийте GRAVIS кнопкою в панелі T-REX',
+            tasks_segments: 'Відрізки',
+            tasks_segmentsHint: 'Через кому, напр. 06:30-09:15, 23:30-02:00. Відрізок може переходити через північ, обід не рахується. Порожній кінець — годинник іде далі.',
+            tasks_segmentsApply: 'Зберегти відрізки',
+            tasks_segmentsError: 'Відрізки не збережено: перевірте запис і чи не накладаються вони.',
             multicolorMode: 'Різнокольорові відділи', tabColors: 'Кольори відділів:'
         },
         ru: {
@@ -1226,7 +1253,7 @@ const PAID_SHIFT_HOURS = 10;
             valueLog_routeStats: 'продано ${sold}, непродано ${unsold}, не определено ${undet}',
             lineSettings_valueSum: 'Строка 6: Сумма стоимости',
             lineSettings_compact: 'Строка 7: Компактный счётчик',
-            lineSettings_compactHint: 'Три числа: предметов в час (все вкладки), сделано штук и процент продажи. Больше ничего.',
+            lineSettings_compactHint: 'Темп текущей задачи из целевого, пачки смены из цели смены, процент продажи и время от последнего тоута (красный, если простой слишком долгий).',
             lineSettings_taskInfo: 'Строка 8: Текущая задача',
             priceModule_section: 'Модуль цен (сеть)',
             priceModule_enabled: 'Включить модуль цен',
@@ -1329,9 +1356,14 @@ const PAID_SHIFT_HOURS = 10;
             workflow_gravis: 'Подтягивать ASIN из GRAVIS',
             workflow_gravisHowTo: '1. Нажмите кнопку ниже — GRAVIS откроется в новой вкладке. 2. На вкладке GRAVIS один раз кликните закладку этого скрипта. Дальше каждый LPN уходит в GRAVIS, а ASIN появляется под полем скана предмета: клик вставляет его, Enter нажимаете сами.',
             workflow_gravisOpen: 'Открыть GRAVIS', workflow_gravisConnected: 'GRAVIS подключён — открыть снова',
-            gravis_remoteReady: 'StatsHelper: GRAVIS подключён к T-REX.',
-            gravis_remoteNoOpener: 'StatsHelper: откройте GRAVIS кнопкой в панели настроек T-REX, затем кликните закладку здесь.',
-            gravis_alreadyRunning: 'StatsHelper: уже запущен на этой вкладке GRAVIS.',
+            statsOf: 'из',
+            gravis_restartHint: 'Кликните ещё раз закладку скрипта на вкладке GRAVIS',
+            gravis_badgeOk: 'StatsHelper ✓ T-REX',
+            gravis_badgeNoOpener: 'StatsHelper: откройте GRAVIS кнопкой в панели T-REX',
+            tasks_segments: 'Отрезки',
+            tasks_segmentsHint: 'Через запятую, напр. 06:30-09:15, 23:30-02:00. Отрезок может переходить через полночь, обед не считается. Пустой конец — часы идут дальше.',
+            tasks_segmentsApply: 'Сохранить отрезки',
+            tasks_segmentsError: 'Отрезки не сохранены: проверьте запись и что они не пересекаются.',
             multicolorMode: 'Разноцветные отделы', tabColors: 'Цвета отделов:'
         }
     };
@@ -2839,6 +2871,44 @@ const PAID_SHIFT_HOURS = 10;
             line.style.color = t.overMs > 0 ? CONFIG.OFF_TASK_COLOR : '';
         },
 
+        /**
+         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy:
+         *
+         *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
+         *
+         *   - tempo BIEŻĄCEGO zadania z celu działu — zadania istnieją właśnie
+         *     po to, żeby procesy o różnych normach nie mieszały się w jedną
+         *     średnią; tempo całej zmiany jest w panelu i w linii 1;
+         *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
+         *     (cel × płatne godziny);
+         *   - procent sprzedaży zmiany;
+         *   - czas od ostatniego pojemnika, czerwony po przekroczeniu limitu
+         *     (jak linia 9); do pierwszego pojemnika go nie ma.
+         * Bez celu działu znika „z …”. Spójnik („z”, „of” i odpowiedniki
+         * ukraiński i rosyjski) idzie ze słownika (statsOf).
+         */
+        renderCompact(gTotal, gSold, gRated) {
+            const line = this.lines.line7_compact;
+            const task = TaskManager.active() || store.tasks[store.tasks.length - 1];
+            const target = ToteWatch.targetFor(store.currentTabType);
+            const of = I18n.get('statsOf');
+            const rate = (task ? TaskManager.rate(task) : 0).toFixed(1);
+            const parts = [
+                target ? `${rate} ${of} ${target}` : rate,
+                target ? `${gTotal} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
+                `${Utils.percentFloor(gSold, gRated)}%`,
+            ];
+            line.innerHTML = '';
+            line.appendChild(document.createTextNode(parts.join(' · ')));
+            const t = ToteWatch.offTask(Date.now());
+            if (!t) return;
+            line.appendChild(document.createTextNode(' · '));
+            line.appendChild(h('span', {
+                textContent: Utils.formatDuration(t.elapsedMs),
+                style: { color: t.overMs > 0 ? CONFIG.OFF_TASK_COLOR : '' },
+            }));
+        },
+
         /** Skrót „ukryj okno”: chowa okno statystyk do następnego naciśnięcia. */
         toggleHidden() {
             this.hidden = !this.hidden;
@@ -2981,17 +3051,7 @@ const PAID_SHIFT_HOURS = 10;
             if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
             else this.lines.line6_valueSum.innerHTML = '';
 
-            /**
-             * LINIA 7 — trzy liczby bez jednostek i nazw:
-             *
-             *     17.4 28 14%
-             *
-             * tempo (paczki na godzinę, wszystkie wliczane karty), liczba
-             * zrobionych sztuk i procent sprzedaży — te same, które stoją na
-             * końcu linii 2, z tego samego przebiegu pętli.
-             */
-            this.lines.line7_compact.textContent =
-                `${getIph(gTotal)} ${gTotal} ${Utils.percentFloor(gSold, gRated)}%`;
+            this.renderCompact(gTotal, gSold, gRated);
 
             /**
              * LINIA 8 — bieżące zadanie i jego własne liczby, z własnym
@@ -3241,6 +3301,18 @@ const PAID_SHIFT_HOURS = 10;
                     },
                     style: { width: '70px', padding: '4px', textAlign: 'center' },
                 })));
+
+                // --- odcinki: kilka powrotów do procesu w ciągu zmiany ---
+                const segBox = h('input', {
+                    type: 'text', value: TaskManager.formatSegments(task), spellcheck: false,
+                    style: { flexGrow: '1', padding: '4px', fontFamily: 'monospace' },
+                });
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_segments'), segBox));
+                sec.appendChild(UIBuilder.hint(I18n.get('tasks_segmentsHint')));
+                sec.appendChild(UIBuilder.button(I18n.get('tasks_segmentsApply'), () => {
+                    if (!TaskManager.setSegments(task.id, segBox.value)) Notifier.show(I18n.get('tasks_segmentsError'));
+                    this.rerender();
+                }, { width: '100%', marginTop: '4px' }));
 
                 // --- paczki i tempo: dwa pola opisujące to samo ---
                 // Wpisuje się jedno, drugie przelicza się samo. Po wpisaniu
@@ -6757,7 +6829,10 @@ const PAID_SHIFT_HOURS = 10;
             } else {
                 store.uiFlags.autoTriggerFound = false;
             }
-            if (byTote && toteDone) this.completeItem();
+            // Jeden pojemnik na przedmiot: zaliczenie zdejmuje flagę, więc
+            // kolejne skany w to samo pole nic nie dodają, dopóki nie przyjdzie
+            // następny wyzwalacz początku.
+            if (byTote && toteDone && store.uiFlags.itemInProgress) this.completeItem();
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });
@@ -7051,6 +7126,7 @@ const PAID_SHIFT_HOURS = 10;
 
                 this.startShiftWatch();
                 StatsWindowRenderer.renderContent();
+                if (CONFIG.OPEN_SETTINGS_ON_START && !store.uiFlags.isSettingsPanelVisible) SettingsPanel.toggle();
 
                 // Dostęp do wnętrza z konsoli. Skrypt uruchamia się właśnie przez
                 // F12, więc możliwość obejrzenia stanu i wywołania metody w locie
@@ -7987,6 +8063,72 @@ const PAID_SHIFT_HOURS = 10;
             return end;
         },
 
+        /**
+         * Odcinki wpisane ręcznie: „06:30-09:15, 12:00-14:10, 23:30-02:00”.
+         *
+         * Godzina oznacza najbliższe jej wystąpienie od godziny przed początkiem
+         * zmiany, więc w zmianie nocnej „02:00” to noc po północy, a nie ranek
+         * przed zmianą. Koniec nie późniejszy niż początek przechodzi na
+         * następną dobę (23:30-02:00). Pusty koniec ostatniego odcinka — zegar
+         * chodzi dalej; wolno to tylko zadaniu aktywnemu. Obiad odejmuje
+         * workedMs, jak przy każdym odcinku.
+         *
+         * Odrzucane (null): zły zapis, odcinek w przyszłości, odcinki
+         * nachodzące na siebie albo na odcinki innych zadań — ten sam czas
+         * liczyłby się dwa razy.
+         *
+         * @returns {{from: number, to: number|null}[]|null}
+         */
+        parseSegments(id, text, nowMs) {
+            const now = Number(nowMs) || Date.now();
+            const anchor = (Number(store.sessionConfig.shiftCalculatedStartTime) || now) - 3600000;
+            const at = (h, m, notBefore) => {
+                const d = new Date(notBefore);
+                d.setHours(h, m, 0, 0);
+                if (d.getTime() < notBefore) d.setDate(d.getDate() + 1);
+                return d.getTime();
+            };
+            const items = String(text == null ? '' : text).split(',').map(s => s.trim()).filter(Boolean);
+            if (!items.length) return null;
+            const out = [];
+            for (let i = 0; i < items.length; i++) {
+                const m = /^(\d{1,2})[:.](\d{2})\s*-\s*(?:(\d{1,2})[:.](\d{2}))?$/.exec(items[i]);
+                if (!m || +m[1] > 23 || +m[2] > 59 || (m[3] !== undefined && (+m[3] > 23 || +m[4] > 59))) return null;
+                const from = at(+m[1], +m[2], anchor);
+                const to = m[3] === undefined ? null : at(+m[3], +m[4], from + 60000);
+                if (to === null && (i !== items.length - 1 || store.activeTaskId !== id)) return null;
+                if (from > now || (to !== null && to > now)) return null;
+                out.push({ from, to });
+            }
+            out.sort((a, b) => a.from - b.from);
+            const end = (seg) => (seg.to === null ? now : seg.to);
+            for (let i = 1; i < out.length; i++) if (out[i].from < end(out[i - 1])) return null;
+            for (const other of store.tasks) {
+                if (other.id === id) continue;
+                for (const seg of other.segments) {
+                    if (out.some(o => o.from < end(seg) && seg.from < end(o))) return null;
+                }
+            }
+            return out;
+        },
+
+        /** Zapisuje odcinki z parseSegments. Zwraca false, gdy zapis odrzucono. */
+        setSegments(id, text, nowMs) {
+            const task = this.byId(id);
+            const segments = task ? this.parseSegments(id, text, nowMs) : null;
+            if (!segments) return false;
+            task.segments = segments;
+            this._commit(store.tasks);
+            return true;
+        },
+
+        /** Odcinki zadania w zapisie, który przyjmuje parseSegments. */
+        formatSegments(task) {
+            return task.segments
+                .map(seg => `${Utils.formatClock(seg.from)}-${seg.to === null ? '' : Utils.formatClock(seg.to)}`)
+                .join(', ');
+        },
+
         remove(id) {
             const task = this.byId(id);
             if (!task || store.tasks.length <= 1) return false;
@@ -8479,14 +8621,24 @@ const PAID_SHIFT_HOURS = 10;
      * i znanego adresu (e.origin) i wysyłają ją wyłącznie na znany adres —
      * inna karta nie podsunie fałszywego ASIN ani nie podsłucha LPN.
      *
-     * ASIN pokazuje się pod polem skanu przedmiotu jako link; kliknięcie
-     * wstawia go do pola, a Enter naciska człowiek. Tekst linku jest
-     * rozerwany znakiem U+200B: skan strony nie może zobaczyć w nim ASIN
-     * (zmiana ASIN to dla Routing granica przedmiotu).
+     * ASIN pokazuje się pod polem skanu przedmiotu, wyśrodkowany pod nim,
+     * jako link; kliknięcie wstawia go do pola, a Enter naciska człowiek.
+     * Tekst linku jest rozerwany znakiem U+200B: skan strony nie może zobaczyć
+     * w nim ASIN (zmiana ASIN to dla Routing granica przedmiotu). Brak ASIN
+     * albo brak odpowiedzi nie pokazuje niczego.
+     *
+     * Skrypt w GRAVIS co GRAVIS_HEARTBEAT_MS daje znać, że żyje. Dzięki temu
+     * T-REX po własnym przeładowaniu odnajduje okno GRAVIS (przyjmuje je
+     * z pierwszego sygnału ze znanego adresu), a gdy sygnały ustaną — karta
+     * GRAVIS przeładowała się i skrypt zniknął — w miejscu ASIN pojawia się
+     * cicha podpowiedź, żeby kliknąć tam zakładkę jeszcze raz. Dopóki GRAVIS
+     * nie odezwał się ani razu, wygląd T-REX się nie zmienia.
      */
     const GravisBridge = {
         win: null,
         ready: false,
+        /** Chwila ostatniego sygnału z GRAVIS; 0 — jeszcze żadnego. */
+        lastSeen: 0,
         lastLpn: null,
         pendingLpn: null,
         asin: null,
@@ -8520,13 +8672,23 @@ const PAID_SHIFT_HOURS = 10;
                 if (CONFIG.LPN_VALUE_REGEX.test(lpn)) this.send(lpn);
             };
             this.onMessage = (e) => {
-                if (!this.win || e.source !== this.win || e.origin !== this.origin()) return;
+                if (!this.enabled() || e.origin !== this.origin() || !e.source) return;
                 const d = e.data;
                 if (!d || typeof d !== 'object') return;
+                // Okno przyjmuje się z sygnału gotowości ze znanego adresu —
+                // także po przeładowaniu T-REX, gdy uchwytu z window.open już nie ma.
                 if (d.type === 'sh-gravis-ready') {
+                    this.win = /** @type {Window} */ (e.source);
+                    const wasStale = !this.ready || this.stale();
                     this.ready = true;
+                    this.lastSeen = Date.now();
                     if (this.pendingLpn) this.send(this.pendingLpn);
-                } else if (d.type === 'sh-gravis-asin' && d.lpn === this.lastLpn) {
+                    if (wasStale) this.place();
+                    return;
+                }
+                if (e.source !== this.win) return;
+                this.lastSeen = Date.now();
+                if (d.type === 'sh-gravis-asin' && d.lpn === this.lastLpn) {
                     this.asin = typeof d.asin === 'string' && CONFIG.ASIN_VALUE_REGEX.test(d.asin) ? d.asin : null;
                     this.place();
                 }
@@ -8544,6 +8706,7 @@ const PAID_SHIFT_HOURS = 10;
         /** Wyłączenie mostu. Karty GRAVIS nie zamykamy — mogła być potrzebna sama w sobie. */
         close() {
             this.ready = false;
+            this.lastSeen = 0;
             this.win = null;
             this.lastLpn = this.pendingLpn = this.asin = null;
             this.removeChip();
@@ -8568,32 +8731,53 @@ const PAID_SHIFT_HOURS = 10;
          * Link z ASIN pod polem skanu. Woła się z każdego skanu strony, ale
          * zapytanie o pole idzie tylko wtedy, gdy jest ASIN do pokazania.
          */
+        /** GRAVIS odzywał się wcześniej, a teraz milczy dłużej niż GRAVIS_STALE_MS. */
+        stale() {
+            return this.lastSeen > 0 && Date.now() - this.lastSeen > CONFIG.GRAVIS_STALE_MS;
+        },
+        /**
+         * Pod polem skanu: link z ASIN, a gdy GRAVIS zamilkł — podpowiedź.
+         * Woła się z każdego skanu strony, ale zapytanie o pole idzie tylko
+         * wtedy, gdy jest co pokazać.
+         */
         place() {
-            if (!this.asin || !this.enabled()) { this.removeChip(); return; }
+            const mode = !this.enabled() ? null : this.stale() ? 'hint' : this.asin ? 'asin:' + this.asin : null;
+            if (!mode) { this.removeChip(); return; }
             const input = this.findScanInput();
             if (!input) { this.removeChip(); return; }
-            const r = input.getBoundingClientRect();
+            if (this.chip && this.chip.dataset.mode !== mode) this.removeChip();
             if (!this.chip) {
-                const asin = this.asin;
-                this.chip = h('div', {
+                this.chip = mode === 'hint' ? h('div', {
                     id: 'gravisAsin',
-                    textContent: asin.split('').join('​'),
-                    title: 'GRAVIS',
-                    onMousedown: (e) => e.preventDefault(),
-                    onClick: () => {
-                        const target = this.findScanInput();
-                        if (target) { this.fill(target, asin); target.focus(); }
-                    },
-                    style: {
-                        position: 'fixed', zIndex: '2147483645', cursor: 'pointer',
-                        color: '#1a73e8', borderBottom: '1px dashed #1a73e8',
-                        font: '13px monospace', background: 'transparent',
-                    },
-                });
+                    textContent: I18n.get('gravis_restartHint'),
+                    style: { position: 'fixed', zIndex: '2147483645', pointerEvents: 'none',
+                             color: '#9E9E9E', font: '12px sans-serif', transform: 'translateX(-50%)' },
+                }) : this.asinChip(this.asin);
+                this.chip.dataset.mode = mode;
                 document.body.appendChild(this.chip);
             }
-            this.chip.style.left = `${Math.round(r.left)}px`;
-            this.chip.style.top = `${Math.round(r.top + r.height + 2)}px`;
+            // Pola T-REX stoją na środku ekranu i są wąskie — link stoi
+            // wyśrodkowany pod polem, a nie przy jego lewej krawędzi.
+            const r = input.getBoundingClientRect();
+            this.chip.style.left = `${Math.round(r.left + r.width / 2)}px`;
+            this.chip.style.top = `${Math.round(r.top + r.height + 4)}px`;
+        },
+        asinChip(asin) {
+            return h('div', {
+                id: 'gravisAsin',
+                textContent: asin.split('').join('\u200B'),
+                title: 'GRAVIS',
+                onMousedown: (e) => e.preventDefault(),
+                onClick: () => {
+                    const target = this.findScanInput();
+                    if (target) { this.fill(target, asin); target.focus(); }
+                },
+                style: {
+                    position: 'fixed', zIndex: '2147483645', cursor: 'pointer',
+                    color: '#1a73e8', borderBottom: '1px dashed #1a73e8',
+                    font: '13px monospace', background: 'transparent', transform: 'translateX(-50%)',
+                },
+            });
         },
 
         /**
@@ -8619,10 +8803,15 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         // --- strona GRAVIS ---
+        /**
+         * W GRAVIS skrypt nie liczy i nie ma ustawień: odpowiada tylko na LPN
+         * i co GRAVIS_HEARTBEAT_MS daje znać, że żyje. W lewym górnym rogu
+         * stoi półprzezroczysty znaczek, przezroczysty dla kliknięć.
+         */
         initRemote() {
             const flag = CONFIG.SCRIPT_ID_PREFIX + 'GRAVIS';
-            if (window[flag]) { this.toast(I18n.get('gravis_alreadyRunning')); return; }
-            if (!window.opener) { this.toast(I18n.get('gravis_remoteNoOpener')); return; }
+            if (window[flag]) return;
+            if (!window.opener) { this.badge(I18n.get('gravis_badgeNoOpener'), '#C62828'); return; }
             window[flag] = true;
             this.onRemoteMessage = async (e) => {
                 if (e.source !== window.opener || e.origin !== CONFIG.TREX_ORIGIN) return;
@@ -8633,18 +8822,20 @@ const PAID_SHIFT_HOURS = 10;
                 window.opener.postMessage({ type: 'sh-gravis-asin', lpn: d.lpn, asin }, CONFIG.TREX_ORIGIN);
             };
             window.addEventListener('message', this.onRemoteMessage);
-            window.opener.postMessage({ type: 'sh-gravis-ready' }, CONFIG.TREX_ORIGIN);
-            this.toast(I18n.get('gravis_remoteReady'));
+            const beat = () => {
+                if (window.opener) window.opener.postMessage({ type: 'sh-gravis-ready' }, CONFIG.TREX_ORIGIN);
+            };
+            beat();
+            this.heartbeatTimer = setInterval(beat, CONFIG.GRAVIS_HEARTBEAT_MS);
+            this.badge(I18n.get('gravis_badgeOk'), '#2E7D32');
         },
-        toast(text) {
-            const el = h('div', {
-                id: 'gravisToast', textContent: text,
-                style: { position: 'fixed', right: '24px', bottom: '24px', zIndex: '2147483646',
-                         background: '#323232', color: '#fff', padding: '12px 16px', borderRadius: '4px',
-                         font: '13px sans-serif' },
-            });
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 4000);
+        badge(text, color) {
+            document.body.appendChild(h('div', {
+                id: 'gravisBadge', textContent: text,
+                style: { position: 'fixed', left: '6px', top: '6px', zIndex: '2147483646',
+                         pointerEvents: 'none', opacity: '0.55', background: color, color: '#fff',
+                         padding: '2px 8px', borderRadius: '10px', font: '11px sans-serif' },
+            }));
         },
         asinOf(a) {
             const text = String(a.textContent || '').trim().toUpperCase();
@@ -8880,7 +9071,7 @@ const PAID_SHIFT_HOURS = 10;
    line6_valueSum        bilans pieniężny zmiany         domyślnie: OFF, #7CFFA8, 85%, 14px
    line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 13px
    line8_taskInfo        bieżące zadanie                 domyślnie: OFF, #808080, 60%, 13px
-   line9_offTask         czas od ostatniego pojemnika    domyślnie: ON,  #808080, 50%, 13px
+   line9_offTask         czas od ostatniego pojemnika    domyślnie: OFF, #808080, 50%, 13px
    line10_target         cel działu i procent celu       domyślnie: OFF, #808080, 60%, 13px
 
    Linia 2 ma dodatkowo:
@@ -8948,7 +9139,7 @@ const PAID_SHIFT_HOURS = 10;
    cretProfile = 'CRET'        'CRET' | 'FAST' — który cel z RATE_TARGETS obowiązuje na karcie CRET
    toteCounting = false        doświadczalne: przedmiot zaliczany po przybitym pojemniku
    autoLpn = false             „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta
-   gravisAsin = false          most GRAVIS: ASIN pod polem skanu (tylko CRET i UG)
+   gravisAsin = true           most GRAVIS: ASIN pod polem skanu (tylko CRET i UG); bez skryptu w GRAVIS nic nie widać
    triggerMutationDebounceMs = 50     50..200, jak często skanować stronę
    settingsPanelWidth        = 450    szerokość panelu ustawień w px
 
