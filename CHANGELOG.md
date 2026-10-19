@@ -9,6 +9,29 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.6.1 — 2026-10-19
+
+Wydanie PATCH: prefiks magazynu zostaje `statsHelper_v1_6_0_`. Dla kogoś, kto przechodzi z 1.5.0, to pierwsze wydanie z nowościami 1.6.0 — **aktualizować między zmianami**, bo prefiks 1.6.0 zeruje liczniki i ustawienia (sekcja 1.6.0 niżej). Z 1.6.0 na 1.6.1 można przejść w trakcie zmiany.
+
+Nowości z 1.6.0 w skrócie (szczegóły w sekcji 1.6.0): drugie kliknięcie zakładki otwiera panel ustawień; linia 9 — czas od ostatniego pojemnika, czerwona po podwójnym czasie przedmiotu (bez obiadu); cele tempa na górze pliku (CRET 47, FAST 80, UG 47, REFURB 30, WHD 25) i linia 10 z procentem celu; dział UG z naklejką liczoną +2 i jako sprzedaż; ukraińskie wyzwalacze T-REX; wyłączone domyślnie Auto-LPN, liczenie po pojemniku i ASIN z GRAVIS; nowa zasada wersjonowania — MINOR zmienia prefiks magazynu.
+
+### Dodano
+
+- **Interfejs po ukraińsku.** Czwarty słownik, pełny — te same klucze i parametry co polski (pilnuje tego nowy `tests/38-languages.test.js`). Kolejność na liście wyboru: polski (domyślny), ukraiński, rosyjski, angielski. W kodzie ustawień ukraiński dostał następny wolny indeks, więc rozdane kody nie zmieniają znaczenia.
+- **Ukraińskie odpowiedniki „Przypisz nowy” i „Przypisz ponownie” w wyzwalaczu końcowym** — tak jak działa to dla polskiego interfejsu T-REX.
+
+### Naprawiono
+
+- **Kod ustawień nie przenosił ustawień z 1.6.0**: linii 9 i 10, koloru i udziału działu UG, skrótu „ukryj okno”, celu karty CRET (CRET/FAST), liczenia po pojemniku, Auto-LPN i mostu GRAVIS. Zakładka z kodem odtwarzała wygląd bez nich. Teraz mają własne numery w rejestrze; test przenosi je na drugą maszynę.
+- Kolor działu UG w linii 2 ma wpis domyślny jak pozostałe działy.
+
+### Zmieniono
+
+- **Sprawdzenie cyrylicy obejmuje cały blok z uzupełnieniem** (U+0400–U+052F), czyli wszystkie litery alfabetu ukraińskiego, także cztery spoza rosyjskiego. Test sprawdza każdą literę, wielką i małą. Ukraińskie napisy T-REX w wyzwalaczach i nazwa `Українська` są wymienionymi wyjątkami, jak rosyjskie.
+- **Dokumentacja dogoniła kod**: dziesięć linii okna, cztery języki, nowa zasada wersjonowania w szablonie PR, liczby testów i modułów, stan wydania w HANDOFF, prefiks w diagramach `docs/`.
+
+---
+
 ## 1.6.0 — 2026-10-19
 
 > **Aktualizować tylko między zmianami.** Prefiks magazynu zmienia się na `statsHelper_v1_6_0_`: liczniki kart, zadania, dziennik bieżącej zmiany i ustawienia startują od zera, klucze `statsHelper_v1_5_0_` są sprzątane przy starcie. Zakładki z kodem ustawień działają dalej.

@@ -382,7 +382,7 @@ test('karta ceny jest domyślnie przezroczysta dla myszy', () => {
 describe('Wymogi językowe');
 
 test('w komentarzach nie ma cyrylicy', () => {
-    const cyr = /[Ѐ-ӿ]/;
+    const cyr = /[\u0400-\u052F]/;
     const bad = [];
     LINES.forEach((l, i) => {
         if (IS_COMMENT[i] && cyr.test(l)) bad.push(i + 1 + ': ' + l.trim().slice(0, 60));
@@ -391,7 +391,7 @@ test('w komentarzach nie ma cyrylicy', () => {
 });
 
 test('w wywołaniach logów nie ma cyrylicy', () => {
-    const cyr = /[Ѐ-ӿ]/;
+    const cyr = /[\u0400-\u052F]/;
     const bad = [];
     const re = /Utils\.(log|error|fatal)\(([\s\S]{0,400}?)\);/g;
     let m;
@@ -402,7 +402,7 @@ test('w wywołaniach logów nie ma cyrylicy', () => {
 });
 
 test('komunikaty wyjątków też są po polsku', () => {
-    const cyr = /[Ѐ-ӿ]/;
+    const cyr = /[\u0400-\u052F]/;
     const bad = [];
     const re = /new Error\(([^)]{0,200})\)/g;
     let m;
