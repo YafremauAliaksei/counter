@@ -40,6 +40,11 @@ const EXEMPT_FILES = new Set([
 const ALLOWED = [
     'видите ниже',
     'канирование номера LP',
+    // Ukraiński interfejs T-REX: wyzwalacze i podpisy pola pojemnika.
+    'зображенню нижче',
+    'канування LPN',
+    'вкажіть транспортну тару',
+    'введите тару',
     'Русский',
 ];
 

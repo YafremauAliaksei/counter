@@ -43,6 +43,7 @@ i dokumentacja muszą być czytelne bez tłumacza.
 | README, CHANGELOG, CONTRIBUTING, HANDOFF, `src/README.md`, szablony `.github/**`             | **polski**                            |
 | `LANG_STRINGS.ru`, `Русский` na liście języków                                               | rosyjski — **nie ruszać**             |
 | `видите ниже`, `канирование номера LP:` w wyrażeniach wyzwalaczy                             | **nie ruszać**, to tekst samego T-REX |
+| `зображенню нижче`, `канування LPN:`, podpisy pola pojemnika (`TOTE_INPUT_LABELS`)           | **nie ruszać**, to tekst samego T-REX |
 | **Nazwy w kodzie** (zmienne, funkcje, pola, klucze), także w testach                         | **angielski**                         |
 | Nazwy plików, commity, nazwy gałęzi                                                          | angielski                             |
 | Rozmowa z autorem projektu                                                                   | **rosyjski**                          |
@@ -171,7 +172,7 @@ Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 525 sprawdzeń
+npm test             # 545 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)
@@ -199,7 +200,7 @@ node tests/stand/serve.js
 
 ## Jak zbudowany jest kod
 
-25 modułów w `src/` (plus nagłówek `00` i stopka `99`), sklejanych w kolejności
+28 modułów w `src/` (plus nagłówek `00`, cele tempa `00-targets` i stopka `99`), sklejanych w kolejności
 z `build.manifest.json` w **jeden wspólny scope** (jedna IIFE).
 
 Konsekwencja: w momencie deklaracji moduł widzi tylko to, co zadeklarowano

@@ -74,6 +74,8 @@
    line6_valueSum        bilans pieniężny zmiany         domyślnie: OFF, #7CFFA8, 85%, 14px
    line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 13px
    line8_taskInfo        bieżące zadanie                 domyślnie: OFF, #808080, 60%, 13px
+   line9_offTask         czas od ostatniego pojemnika    domyślnie: ON,  #808080, 50%, 13px
+   line10_target         cel działu i procent celu       domyślnie: OFF, #808080, 60%, 13px
 
    Linia 2 ma dodatkowo:
        multicolor    — true/false, kolorowanie działów osobnymi kolorami
@@ -131,12 +133,16 @@
    displayCurrency = 'EUR'     'native' | 'EUR' | 'PLN' | 'GBP' | 'SEK' | 'USD' | 'CAD'
                               'native' = karta w walucie sklepu, linia 6 w euro;
                               sumy zawsze w euro, to tylko waluta pokazywania
-   globalStatsContributionKnown = { CRET: true, REFURB: true, WHD: true, OTHER: true }
+   globalStatsContributionKnown = { CRET: true, UG: true, REFURB: true, WHD: true, OTHER: true }
                               które działy wliczają się do sumy w liniach 2 i 7
-   keyboardShortcuts = { INCREMENT: 'None', DECREMENT: 'None' }
+   keyboardShortcuts = { INCREMENT: 'None', DECREMENT: 'None', TOGGLE_WINDOW: 'None' }
                               'None' | 'ShiftRight' | 'ControlRight' | 'AltRight'
                               | 'ScrollLock' | 'Pause' | 'Insert' | 'Numpad0'
                               | 'NumpadMultiply' | 'NumpadSubtract' | 'NumpadAdd' | 'F10'
+   cretProfile = 'CRET'        'CRET' | 'FAST' — który cel z RATE_TARGETS obowiązuje na karcie CRET
+   toteCounting = false        doświadczalne: przedmiot zaliczany po przybitym pojemniku
+   autoLpn = false             „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta
+   gravisAsin = false          most GRAVIS: ASIN pod polem skanu (tylko CRET i UG)
    triggerMutationDebounceMs = 50     50..200, jak często skanować stronę
    settingsPanelWidth        = 450    szerokość panelu ustawień w px
 

@@ -64,6 +64,7 @@
     "close": "})();\n"
   },
   "banner": "src/00-banner.js",
+  "targets": "src/00-targets.js",
   "footer": "src/99-footer.js",
   "modules": [
     { "file": "src/01-config.js", "desc": "Stałe, domyślna konfiguracja linii i karty." },
@@ -113,6 +114,18 @@
     {
       "file": "src/24-tasks.js",
       "desc": "Menedżer zadań: własny zegar i liczniki dla procesu pracy."
+    },
+    {
+      "file": "src/26-tote-watch.js",
+      "desc": "Rozpoznaje przybicie pojemnika (Enter w polu pojemnika, potem zniknięcie pola) i liczy czas od ostatniego."
+    },
+    {
+      "file": "src/27-gravis.js",
+      "desc": "Most do karty GRAVIS: wysyła LPN, odbiera ASIN i pokazuje go pod polem skanu do wstawienia kliknięciem."
+    },
+    {
+      "file": "src/28-auto-lpn.js",
+      "desc": "Wciska „Przypisz ponownie LPN”, gdy w pole pojemnika trafia etykieta zamiast pojemnika."
     },
     { "file": "src/25-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
   ]

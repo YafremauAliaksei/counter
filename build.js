@@ -100,9 +100,12 @@ function build() {
     // testy sprawdzają artefakt, więc nowy moduł bez wpisu w manifeście
     // po prostu by nie istniał. Build odmawia zamiast zgłaszać sukces.
     const known = new Set(
-        [...manifest.modules.map((m) => m.file), manifest.banner, manifest.footer].map((f) =>
-            path.basename(f)
-        )
+        [
+            ...manifest.modules.map((m) => m.file),
+            manifest.banner,
+            manifest.targets,
+            manifest.footer,
+        ].map((f) => path.basename(f))
     );
     const orphans = fs
         .readdirSync(path.join(ROOT, 'src'))
@@ -115,6 +118,9 @@ function build() {
 
     const parts = [];
     parts.push(normalize(read(manifest.banner)));
+    // Cele tempa stoją tuż pod hasłami, poza IIFE — tak jak hasła, żeby
+    // poprawiało się je w samym pliku bez szukania w środku.
+    parts.push(normalize(read(manifest.targets)));
     parts.push('\n');
     parts.push(manifest.wrapper.open);
 

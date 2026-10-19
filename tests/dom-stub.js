@@ -141,6 +141,8 @@ function makeEnv(opts = {}) {
         removeChild(c) {
             const i = this.children.indexOf(c);
             if (i >= 0) this.children.splice(i, 1);
+            // Jak w przeglądarce: odpięty węzeł nie ma już rodzica.
+            if (i >= 0) c.parentElement = null;
         }
         remove() { if (this.parentElement) this.parentElement.removeChild(this); }
         addEventListener(t, f) { (this._listeners[t] = this._listeners[t] || []).push(f); }
@@ -161,6 +163,11 @@ function makeEnv(opts = {}) {
             let cur = this;
             while (cur) { if (matches(cur, sel)) return cur; cur = cur.parentElement; }
             return null;
+        }
+        focus() { document.activeElement = this; }
+        contains(n) {
+            for (let c = n; c; c = c.parentElement) if (c === this) return true;
+            return false;
         }
         querySelectorAll(sel) { return collect(this, sel); }
         querySelector(sel) { return collect(this, sel)[0] || null; }
@@ -186,6 +193,9 @@ function makeEnv(opts = {}) {
         const href = sel.match(/^a\[href\*="(.*)"\]$/);
         if (href) return el.tagName === 'A' && (el.getAttribute('href') || '').includes(href[1]);
         if (sel.startsWith('meta[')) return el.tagName === 'META';
+        // tag[atrybut="wartość"] — pola i przyciski T-REX po data-testid.
+        const attr = sel.match(/^(\w+)\[([\w-]+)="(.*)"\]$/);
+        if (attr) return el.tagName === attr[1].toUpperCase() && el.getAttribute(attr[2]) === attr[3];
         return false;
     }
 

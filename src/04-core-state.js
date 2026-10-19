@@ -214,6 +214,9 @@
      */
     const DEFAULT_SESSION_CONFIG = {
         shiftType: null, shiftCalculatedStartTime: null, selectedLunchIndex: null, activeTabInstances: {},
+        // Chwila ostatniego przybitego pojemnika (linia 9). Żyje jedną zmianę,
+        // razem z resztą sessionConfig.
+        lastToteAt: null,
     };
 
     const baseState = {

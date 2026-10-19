@@ -10,6 +10,34 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.6.0 — 2026-10-19
+
+Wydanie bez zmian w danych: prefiks magazynu zostaje `statsHelper_v1_5_0_`, więc aktualizacja niczego nie zeruje i można ją przyjąć w trakcie zmiany. Nowe pola ustawień uzupełniają się wartościami domyślnymi.
+
+### Dodano
+
+- **Drugie kliknięcie zakładki otwiera i zamyka panel ustawień.** Zakładka sprawdza najpierw, czy skrypt już działa (`window.SH.settings`) — jeśli tak, przełącza panel bez pobierania pliku. Wklejony drugi raz plik robi to samo. Hasła działają jak dotąd. Nowa zakładka w README; stara dalej działa, tylko drugie kliknięcie pobiera plik od nowa.
+- **Klik poza otwartym panelem go zamyka** — z wyjątkiem trybu przeciągania okna albo karty ceny.
+- **Otwarty panel przejmuje klawiaturę.** T-REX łapie cyfry na całej stronie (wybór przycisków kroku), więc w polach panelu nie dało się wpisać liczby. Klawisze z wnętrza panelu są zatrzymywane przed stroną; po zamknięciu strona dostaje je jak wcześniej.
+- **Dział UG** (`gradingMode=CRETURN_PRIMARY_GRADING`) jako czwarty rozpoznawany. Rozpoznawanie sprawdzone dla wszystkich czterech adresów, także z parametrem za hashem.
+- **Cele tempa w osobnym pliku `src/00-targets.js`**, wklejanym w artefakt tuż pod hasłami: `RATE_TARGETS = { CRET: 47, FAST: 80, UG: 47, REFURB: 30, WHD: 25 }` i `PAID_SHIFT_HOURS = 10` (obiad niepłatny: cel 30 to 300 sztuk na zmianę). FAST pracuje na karcie CRET, więc cel karty CRET wybiera się w panelu.
+- **Linia 9 — czas od ostatniego przybitego pojemnika**, **widoczna domyślnie**: świadomy wyjątek od zasady „nowe domyślnie wyłączone”, decyzja autora. Nie dotyka sieci, a do pierwszego pojemnika zmiany jest pusta. Po podwójnym czasie przedmiotu (2 × 60 / cel minut; REFURB: 4 min) robi się czerwona i dopisuje narosłą bezczynność: po 7 min w REFURB `7m 00s +3m 00s`. Niczego nie wpisuje w T-REX.
+- **Linia 10 — cel działu** (wyłączona): cel, procent bieżącego tempa od celu i sztuki wobec celu zmiany, np. `47/h 85% 236/470`.
+- **Rozpoznawanie pojemnika**: Enter w polu pojemnika (podpis polski, ukraiński albo rosyjski, albo `data-testid`) z nazwą `[twc]s…` do 15 znaków, a potem zniknięcie pola. Bez limitu czasu — odejście od stanowiska z otwartym krokiem niczego nie zalicza.
+- **Liczenie po pojemniku (doświadczalne, wyłączone)** zamiast wyzwalacza z tekstu. Porównanie obu sposobów w konsoli: `SH.tote()`.
+- **Naklejka w UG**: element `#sticker-back-hide` przy przedmiocie w UG daje +2 i dwie sprzedaże, zanim przyjdzie kod sortowania. W WHD ten sam element stoi przy każdej sprzedaży, więc tam nic się nie zmienia.
+- **Wyzwalacze ukraińskiego interfejsu T-REX** (`зображенню нижче`, `канування LPN:`). Bez nich przy ukraińskim interfejsie licznik nie liczył.
+- **Auto-LPN** (wyłączone): gdy w pole pojemnika trafi etykieta zamiast pojemnika, wciska „Przypisz ponownie LPN”.
+- **Most GRAVIS** (wyłączony, tylko CRET i UG): po włączeniu panel pokazuje instrukcję i przycisk otwarcia GRAVIS; skrypt kliknięty na karcie GRAVIS odbiera LPN i odsyła ASIN przez `postMessage` (bez zapytań sieciowych skryptu). ASIN pojawia się pod polem skanu jako niebieski link — kliknięcie wstawia go do pola, Enter naciska człowiek. Wiadomości tylko od znanego okna i adresu, ASIN sprawdzany wzorcem.
+- **Skrót „ukryj okno”** (domyślnie brak klawisza).
+- `tests/37-workstation.test.js` — 20 sprawdzeń: granice nazwy pojemnika (2, 15 i 16 znaków), pole, które nie znika, spreparowany cel i czas w magazynie, sekunda po granicy bezczynności, UG kontra WHD, obce okno i zły ASIN w moście GRAVIS.
+
+### Zmieniono
+
+- Kolejność linii okna: 10, 9, 7, 8 na dole — czas od pojemnika stoi tuż nad linią 7.
+
+---
+
 ## 1.5.0 — 2026-10-05
 
 > **Aktualizować tylko między zmianami.** Prefiks magazynu zmienia się na `statsHelper_v1_5_0_` (decyzja autora, bez podnoszenia MAJOR — tak jak w 1.3.1). Przy pierwszym uruchomieniu 1.5.0 klucze `statsHelper_v1_3_0_` są usuwane: liczniki kart, zadania, dziennik wartości bieżącej zmiany i ustawienia startują od zera. Archiwum podsumowań zmian (klucz wspólny) zostaje. Zakładki z kodem ustawień działają dalej i nakładają swoje ustawienia — wystarczy kliknąć zakładkę zamiast ustawiać panel od nowa. Jeśli na stronie działa jeszcze poprzednia wersja, najpierw F5, potem nowa.

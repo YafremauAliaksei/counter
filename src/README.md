@@ -36,6 +36,9 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 22 | `22-bootstrap.js` | `Main.init`, rozbiórka, konsolowe API `SH` | ~410 |
 | 23 | `23-config-code.js` | kod ustawień: jeden ciąg szesnastkowy zamiast panelu | ~435 |
 | 24 | `24-tasks.js` | menedżer zadań: własny zegar i liczniki procesu pracy | ~680 |
+| 26 | `26-tote-watch.js` | przybicie pojemnika, czas od niego i cel działu | ~110 |
+| 27 | `27-gravis.js` | most GRAVIS: LPN tam, ASIN z powrotem pod pole skanu | ~250 |
+| 28 | `28-auto-lpn.js` | Auto-LPN: „Przypisz ponownie LPN” po etykiecie w polu pojemnika | ~35 |
 | 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~190 |
 

@@ -140,6 +140,31 @@
          * domyślnej ma się pojawić, a nie zniknąć po cichu. Zmiana `visible`
          * przerysowuje okno od razu (subskrypcja localTabConfig).
          */
+        /**
+         * LINIA 9 — czas od ostatniego przybitego pojemnika. Po przekroczeniu
+         * podwójnego czasu przedmiotu linia jest czerwona i dopisuje narosłą
+         * bezczynność. Kolor nadpisuje się w stylu elementu; zdjęcie nadpisania
+         * wraca do koloru z ustawień linii.
+         */
+        renderOffTask() {
+            const line = this.lines.line9_offTask;
+            const t = ToteWatch.offTask(Date.now());
+            if (!t) {
+                line.textContent = '';
+                line.style.color = '';
+                return;
+            }
+            line.textContent = Utils.formatDuration(t.elapsedMs)
+                + (t.overMs > 0 ? ` +${Utils.formatDuration(t.overMs)}` : '');
+            line.style.color = t.overMs > 0 ? CONFIG.OFF_TASK_COLOR : '';
+        },
+
+        /** Skrót „ukryj okno”: chowa okno statystyk do następnego naciśnięcia. */
+        toggleHidden() {
+            this.hidden = !this.hidden;
+            this.el.style.display = this.hidden ? 'none' : '';
+        },
+
         isLineVisible(key) {
             const cfg = store.localTabConfig.linesConfig[key];
             return !cfg || cfg.visible !== false;
@@ -297,6 +322,24 @@
              * Zatrzymane zadanie dostaje na końcu znak pauzy — inaczej stojące
              * tempo wyglądałoby jak zepsuty licznik.
              */
+            this.renderOffTask();
+
+            /**
+             * LINIA 10 — cel działu z RATE_TARGETS: cel, procent bieżącego
+             * tempa zmiany od celu i sztuki wobec celu zmiany (cel × płatne
+             * godziny, bez niepłatnego obiadu):
+             *
+             *     47/h 85% 236/470
+             */
+            const target = ToteWatch.targetFor(store.currentTabType);
+            if (!target) {
+                this.lines.line10_target.textContent = '';
+            } else {
+                const pct = workedMs >= CONFIG.RATE_MIN_WORKED_MS ? Math.floor(gTotal / hWorked / target * 100) : 0;
+                this.lines.line10_target.textContent =
+                    `${target}${I18n.get('statsPerHourUnit')} ${pct}% ${gTotal}/${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}`;
+            }
+
             const task = TaskManager.active();
             if (!task) {
                 this.lines.line8_taskInfo.textContent = '';
