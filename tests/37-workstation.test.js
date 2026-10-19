@@ -147,26 +147,22 @@ test('pole rozpoznaje się po każdym z trzech podpisów i po data-testid', () =
 
 describe('Linia 9: czas od pojemnika i bezczynność z celu');
 
-test('REFURB, cel 30: po 4 min czerwień, po 7 min narosło 3 min', () => {
-    const env = make('CRETURN_REFURB');
-    const SW = env.SH.StatsWindowRenderer;
-    const t0 = env.clock.now();
-    const W = env.SH.ToteWatch;
-    env.SH.store.sessionConfig.lastToteAt = t0;
-    // Granica na czystej funkcji z podaną chwilą: zegar atrapy płynie razem
-    // z prawdziwym, więc render „dokładnie po 4 min” nie jest powtarzalny.
-    eq(W.offTask(t0 + 4 * MIN).overMs, 0, 'dokładnie 4 min — jeszcze nie');
-    eq(W.offTask(t0 + 4 * MIN + 1).overMs, 1, 'milisekunda po granicy');
-    env.clock.set(t0 + 4 * MIN - 5000);
-    SW.renderContent();
-    eq(SW.lines.line9_offTask.style.color, '', 'przed granicą bez czerwieni');
-    env.clock.set(t0 + 4 * MIN + 1000);
-    SW.renderContent();
-    eq(SW.lines.line9_offTask.style.color, env.SH.CONFIG.OFF_TASK_COLOR, 'sekundę po granicy');
-    eq(W.offTask(t0 + 7 * MIN).overMs, 3 * MIN);
-    env.clock.set(t0 + 7 * MIN);
-    SW.renderContent();
-    ok(SW.lines.line9_offTask.textContent.includes('+3'), 'dopisany czas bezczynności');
+test('czerwień po podwójnym czasie przedmiotu, z dokładnością do 5% tego czasu', () => {
+    // Liczy się, żeby kolor przyszedł mniej więcej na czas: przy celu 30
+    // granica to 4 min, a 5% to 12 s; przy celu 100 — 72 s i 3,6 s. Dokładność
+    // co do sekundy nie jest potrzebna, a zegar testu płynie razem z prawdziwym.
+    for (const [mode, key, target] of [['CRETURN_REFURB', 'REFURB', 30], ['CRETURN', 'CRET', 100]]) {
+        const env = make(mode);
+        env.SH.CONFIG.RATE_TARGETS[key] = target;
+        const SW = env.SH.StatsWindowRenderer;
+        const limit = 2 * 3600000 / target;
+        const t0 = env.clock.now();
+        env.SH.store.sessionConfig.lastToteAt = t0;
+        const colorAt = (ms) => { env.clock.set(t0 + ms); SW.renderContent(); return SW.lines.line9_offTask.style.color; };
+        eq(colorAt(limit * 0.95), '', `${key}: przed granicą`);
+        eq(colorAt(limit * 1.05), env.SH.CONFIG.OFF_TASK_COLOR, `${key}: po granicy`);
+        ok(SW.lines.line9_offTask.textContent.includes('+'), `${key}: dopisana bezczynność`);
+    }
 });
 
 test('obiad nie jest bezczynnością — także obiad nocny przez północ', () => {
