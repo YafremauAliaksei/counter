@@ -141,6 +141,18 @@
                     style: { width: '70px', padding: '4px', textAlign: 'center' },
                 })));
 
+                // --- odcinki: kilka powrotów do procesu w ciągu zmiany ---
+                const segBox = h('input', {
+                    type: 'text', value: TaskManager.formatSegments(task), spellcheck: false,
+                    style: { flexGrow: '1', padding: '4px', fontFamily: 'monospace' },
+                });
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_segments'), segBox));
+                sec.appendChild(UIBuilder.hint(I18n.get('tasks_segmentsHint')));
+                sec.appendChild(UIBuilder.button(I18n.get('tasks_segmentsApply'), () => {
+                    if (!TaskManager.setSegments(task.id, segBox.value)) Notifier.show(I18n.get('tasks_segmentsError'));
+                    this.rerender();
+                }, { width: '100%', marginTop: '4px' }));
+
                 // --- paczki i tempo: dwa pola opisujące to samo ---
                 // Wpisuje się jedno, drugie przelicza się samo. Po wpisaniu
                 // tempa pokazuje się wartość osiągalna przy całych paczkach:

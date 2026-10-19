@@ -9,11 +9,39 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.6.2 — 2026-10-19
+
+Wydanie PATCH: prefiks magazynu zostaje `statsHelper_v1_6_0_`, więc z 1.6.0 i 1.6.1 można przejść w trakcie zmiany — liczniki, zadania i ustawienia zostają. Kto przechodzi z 1.5.0, aktualizuje między zmianami (prefiks 1.6.0 zeruje dane, opis w sekcji 1.6.0 w CHANGELOG.md).
+
+### Zmieniono
+
+- **Linia 7 pokazuje wszystko w jednym miejscu:** `34.3 z 47 · 236 z 470 · 14% · 2m 41s` — tempo **bieżącego zadania** z celu działu, paczki zmiany z celu zmiany, procent sprzedaży i czas od ostatniego pojemnika (czerwony po podwójnym czasie przedmiotu). Tempo zadania zamiast tempa zmiany: zadania są po to, żeby procesy o różnych normach nie mieszały się w jedną średnią; tempo zmiany zostaje w linii 1 i w panelu. Spójnik („z”, „of” i odpowiedniki) idzie ze słownika.
+- **Linia 9 domyślnie wyłączona** — jej treść jest teraz na końcu linii 7. Domyślnie widać znowu tylko linię 7.
+- **Panel ustawień otwiera się przy każdym uruchomieniu** (decyzja autora, wyjątek od zasady „nowe domyślnie wyłączone”). Zamyka go pierwszy klik obok.
+- **Most GRAVIS domyślnie włączony** (decyzja autora). Włączony tylko słucha: karty rozmawiają przez `postMessage` w przeglądarce, bez sieci, a wygląd T-REX zmienia się dopiero wtedy, gdy odezwie się skrypt uruchomiony na karcie GRAVIS.
+- **ASIN z GRAVIS wyśrodkowany pod polem skanu** — pola T-REX stoją na środku ekranu i są wąskie. Brak ASIN albo brak odpowiedzi nie pokazuje niczego.
+
+### Dodano
+
+- **Wyzwalacze początku z prawdziwego T-REX**: „Czy produkt jest zgodny” i „W przypadku tego produktu można pominąć ocenę” — `poniżej` nie pojawia się już przy każdym przedmiocie.
+- **Odcinki zadania wpisane ręcznie** w panelu: `06:30-08:00, 09:00-10:00, 23:30-02:00, 02:30-`. Kilka powrotów do procesu w jednej zmianie, odcinek przez północ, obiad się nie liczy, pusty koniec — zegar chodzi. Zapis błędny, w przyszłości albo nachodzący na inne zadanie jest odrzucany i niczego nie zmienia.
+- **GRAVIS po przeładowaniu karty**: skrypt w GRAVIS co 10 s daje znać, że żyje. Gdy przeglądarka uśpi i przeładuje kartę GRAVIS, po 30 s ciszy w miejscu ASIN pojawia się cicha podpowiedź, żeby kliknąć tam zakładkę jeszcze raz. T-REX przeładowany w trakcie pracy odnajduje okno GRAVIS sam, z pierwszego sygnału.
+- **Znaczek na karcie GRAVIS** w lewym górnym rogu, półprzezroczysty i przezroczysty dla kliknięć. W GRAVIS nie ma licznika ani ustawień.
+- **Kilka kart naraz** sprawdzone testem: wszystkie cztery działy, trzy (UG+WHD+REFURB, CRET+WHD+REFURB) i pary — każda karta liczy swoje, suma paczek i czas od pojemnika są wspólne.
+
+### Naprawiono
+
+- **Otwarty panel zatrzymywał liczenie.** Panel jest częścią tekstu strony, a trzy napisy w słownikach zawierały słowa wyzwalaczy: polskie „Przypisz ponownie” (Auto-LPN) i „poniżej” (moduł cen), angielskie „transparency” (kod ustawień). Przy otwartym panelu flaga przedmiotu zostawała podniesiona i licznik stawał. Słowa są rozerwane znakiem U+200B, a test sprawdza każdy napis we wszystkich czterech językach.
+- **Liczenie po pojemniku: jeden pojemnik na przedmiot.** Kolejne skany w to samo pole nic nie dodają, dopóki nie przyjdzie następny wyzwalacz początku.
+- Opis wydania 1.6.1 odsyłał do „sekcji 1.6.0 niżej”, której na stronie wydania nie ma — odsyła teraz do CHANGELOG.md.
+
+---
+
 ## 1.6.1 — 2026-10-19
 
-Wydanie PATCH: prefiks magazynu zostaje `statsHelper_v1_6_0_`. Dla kogoś, kto przechodzi z 1.5.0, to pierwsze wydanie z nowościami 1.6.0 — **aktualizować między zmianami**, bo prefiks 1.6.0 zeruje liczniki i ustawienia (sekcja 1.6.0 niżej). Z 1.6.0 na 1.6.1 można przejść w trakcie zmiany.
+Wydanie PATCH: prefiks magazynu zostaje `statsHelper_v1_6_0_`. Dla kogoś, kto przechodzi z 1.5.0, to pierwsze wydanie z nowościami 1.6.0 — **aktualizować między zmianami**, bo prefiks 1.6.0 zeruje liczniki i ustawienia (sekcja 1.6.0 w CHANGELOG.md). Z 1.6.0 na 1.6.1 można przejść w trakcie zmiany.
 
-Nowości z 1.6.0 w skrócie (szczegóły w sekcji 1.6.0): drugie kliknięcie zakładki otwiera panel ustawień; linia 9 — czas od ostatniego pojemnika, czerwona po podwójnym czasie przedmiotu (bez obiadu); cele tempa na górze pliku (CRET 47, FAST 80, UG 47, REFURB 30, WHD 25) i linia 10 z procentem celu; dział UG z naklejką liczoną +2 i jako sprzedaż; ukraińskie wyzwalacze T-REX; wyłączone domyślnie Auto-LPN, liczenie po pojemniku i ASIN z GRAVIS; nowa zasada wersjonowania — MINOR zmienia prefiks magazynu.
+Nowości z 1.6.0 w skrócie (szczegóły w sekcji 1.6.0 w CHANGELOG.md): drugie kliknięcie zakładki otwiera panel ustawień; linia 9 — czas od ostatniego pojemnika, czerwona po podwójnym czasie przedmiotu (bez obiadu); cele tempa na górze pliku (CRET 47, FAST 80, UG 47, REFURB 30, WHD 25) i linia 10 z procentem celu; dział UG z naklejką liczoną +2 i jako sprzedaż; ukraińskie wyzwalacze T-REX; wyłączone domyślnie Auto-LPN, liczenie po pojemniku i ASIN z GRAVIS; nowa zasada wersjonowania — MINOR zmienia prefiks magazynu.
 
 ### Dodano
 

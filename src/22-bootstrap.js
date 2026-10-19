@@ -270,6 +270,7 @@
 
                 this.startShiftWatch();
                 StatsWindowRenderer.renderContent();
+                if (CONFIG.OPEN_SETTINGS_ON_START && !store.uiFlags.isSettingsPanelVisible) SettingsPanel.toggle();
 
                 // Dostęp do wnętrza z konsoli. Skrypt uruchamia się właśnie przez
                 // F12, więc możliwość obejrzenia stanu i wywołania metody w locie

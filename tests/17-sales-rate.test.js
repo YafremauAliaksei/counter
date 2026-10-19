@@ -16,6 +16,10 @@
 
 'use strict';
 
+/** Paczki zmiany i procent z linii 7 („R z T · N z S · P%”) — tempo w niej jest tempem zadania. */
+const shiftOf = (t) => { const p = String(t).split(' · '); return p[1].split(' ')[0] + ' ' + p[2]; };
+
+
 const { describe, test, eq, ok } = require('./harness');
 const { boot, setShift } = require('./dom-stub');
 
@@ -149,7 +153,7 @@ test('linia 7 kończy się procentem liczonym po wszystkich kartach', () => {
     S.tabCounters.WHD = 15;  S.tabSold.WHD = 2;
     SH.StatsWindowRenderer.renderContent();
     // 5 z 35 = 14,28% -> 14%
-    eq(SH.StatsWindowRenderer.lines.line7_compact.textContent, '17.5 35 14%');
+    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent), '35 14%');
 });
 
 test('linia 1 pokazuje procent BIEŻĄCEJ karty, a nie sumy', () => {
@@ -178,7 +182,7 @@ test('dział wyłączony z sumy globalnej nie wchodzi też do procentu', () => {
     S.userConfig.globalStatsContributionKnown.WHD = false;
     SH.StatsWindowRenderer.renderContent();
     // Zostaje sam CRET: 3 z 20 = 15%.
-    eq(SH.StatsWindowRenderer.lines.line7_compact.textContent, '10.0 20 15%');
+    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent), '20 15%');
     S.userConfig.globalStatsContributionKnown.WHD = true;
 });
 
@@ -191,11 +195,11 @@ test('zmiana licznika sprzedanych przerysowuje okno od razu', () => {
     S.tabCounters.CRET = 10; S.tabSold.CRET = 1;
     S.tabCounters.WHD = 0;   S.tabSold.WHD = 0;
     SH.StatsWindowRenderer.renderContent();
-    eq(SH.StatsWindowRenderer.lines.line7_compact.textContent.split(' ')[2], '10%');
+    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent).split(' ')[1], '10%');
 
     // Sam zapis do stanu, BEZ jawnego renderContent().
     S.tabSold.CRET = 3;
-    eq(SH.StatsWindowRenderer.lines.line7_compact.textContent.split(' ')[2], '30%',
+    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent).split(' ')[1], '30%',
        'okno ma się przerysować samo');
 });
 
@@ -207,5 +211,5 @@ test('reset zmiany zeruje procent razem z licznikami', () => {
     const klucz = SH.Persistence.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_SOLD + 'CRET');
     eq(env.sandbox.localStorage.getItem(klucz), null, 'klucz w magazynie usunięty');
     SH.StatsWindowRenderer.renderContent();
-    eq(SH.StatsWindowRenderer.lines.line7_compact.textContent, '0.0 0 0%');
+    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent), '0 0%');
 });

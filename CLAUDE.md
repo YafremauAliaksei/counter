@@ -11,8 +11,8 @@ Userscriptowy licznik obsłużonych przedmiotów dla wewnętrznego systemu T-REX
 Człowiek wkleja `counter.js` do konsoli DevTools i pracuje przez zmianę.
 
 **Główna właściwość produktu:** po wklejeniu plik milczy. Zero zapytań
-sieciowych, zero linii w konsoli, jedna szara linia w rogu ekranu. Cała reszta
-włącza się ręcznie.
+sieciowych, zero linii w konsoli, jedna szara linia w rogu ekranu i otwarty
+panel ustawień (zamyka go klik obok). Cała reszta włącza się ręcznie.
 
 To nie jest życzenie, tylko właściwość utrwalona testami. Każda poprawka, po
 której skrypt robi coś sam z siebie, jest regresją.
@@ -70,8 +70,15 @@ po wklejeniu pliku nie może dostać niczego, o co nie prosił.
 
 Świadomy wyjątek: waluta wyświetlania ma domyślnie `EUR` (1.4.0, decyzja
 autora). Nie dotyka sieci ani liczb, zmienia tylko wygląd ceny na karcie,
-którą widać dopiero po ręcznym włączeniu modułu cen. Następny wyjątek — tylko
-decyzją autora i z wpisem w CHANGELOG.
+którą widać dopiero po ręcznym włączeniu modułu cen. Od 1.6.2, też decyzją
+autora: panel ustawień otwiera się przy starcie, a most GRAVIS słucha od razu
+(bez sieci; wygląd T-REX zmienia dopiero odpowiedź skryptu z GRAVIS). Następny
+wyjątek — tylko decyzją autora i z wpisem w CHANGELOG.
+
+**Tekst interfejsu nie może zawierać wyzwalacza.** Otwarty panel jest częścią
+`document.body.innerText`; napis z `poniżej` albo `Przypisz ponownie`
+w słowniku zatrzymałby liczenie. Takie słowa rozrywa się znakiem U+200B;
+pilnuje tego `tests/39-release-162.test.js`.
 
 ### 4. `SCRIPT_ID_PREFIX` niesie MAJOR i MINOR
 
@@ -170,7 +177,7 @@ Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 557 sprawdzeń
+npm test             # 577 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)

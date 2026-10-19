@@ -350,6 +350,10 @@ function boot(opts = {}) {
     vm.runInContext(ARTIFACT, env.sandbox, { filename: 'counter.js' });
     env.SH = env.sandbox.window.SH;
     if (!env.SH) throw new Error('counter.js nie wystawił window.SH — inicjalizacja padła');
+    // Panel otwiera się przy starcie; testy zaczynają od stanu po tym, jak
+    // człowiek go zamknął. Sam start z otwartym panelem sprawdza
+    // tests/37-workstation.test.js (`keepPanel`).
+    if (!opts.keepPanel && env.SH.store.uiFlags.isSettingsPanelVisible) env.SH.SettingsPanel.toggle();
     // Prefiks czytamy z samego skryptu, a nie wpisujemy na sztywno: dzięki temu
     // podniesienie MAJOR (i zmiana prefiksu) nie wymaga ruszania testów.
     env.prefix = env.SH.CONFIG.SCRIPT_ID_PREFIX;

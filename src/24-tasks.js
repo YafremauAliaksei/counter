@@ -307,6 +307,72 @@
             return end;
         },
 
+        /**
+         * Odcinki wpisane ręcznie: „06:30-09:15, 12:00-14:10, 23:30-02:00”.
+         *
+         * Godzina oznacza najbliższe jej wystąpienie od godziny przed początkiem
+         * zmiany, więc w zmianie nocnej „02:00” to noc po północy, a nie ranek
+         * przed zmianą. Koniec nie późniejszy niż początek przechodzi na
+         * następną dobę (23:30-02:00). Pusty koniec ostatniego odcinka — zegar
+         * chodzi dalej; wolno to tylko zadaniu aktywnemu. Obiad odejmuje
+         * workedMs, jak przy każdym odcinku.
+         *
+         * Odrzucane (null): zły zapis, odcinek w przyszłości, odcinki
+         * nachodzące na siebie albo na odcinki innych zadań — ten sam czas
+         * liczyłby się dwa razy.
+         *
+         * @returns {{from: number, to: number|null}[]|null}
+         */
+        parseSegments(id, text, nowMs) {
+            const now = Number(nowMs) || Date.now();
+            const anchor = (Number(store.sessionConfig.shiftCalculatedStartTime) || now) - 3600000;
+            const at = (h, m, notBefore) => {
+                const d = new Date(notBefore);
+                d.setHours(h, m, 0, 0);
+                if (d.getTime() < notBefore) d.setDate(d.getDate() + 1);
+                return d.getTime();
+            };
+            const items = String(text == null ? '' : text).split(',').map(s => s.trim()).filter(Boolean);
+            if (!items.length) return null;
+            const out = [];
+            for (let i = 0; i < items.length; i++) {
+                const m = /^(\d{1,2})[:.](\d{2})\s*-\s*(?:(\d{1,2})[:.](\d{2}))?$/.exec(items[i]);
+                if (!m || +m[1] > 23 || +m[2] > 59 || (m[3] !== undefined && (+m[3] > 23 || +m[4] > 59))) return null;
+                const from = at(+m[1], +m[2], anchor);
+                const to = m[3] === undefined ? null : at(+m[3], +m[4], from + 60000);
+                if (to === null && (i !== items.length - 1 || store.activeTaskId !== id)) return null;
+                if (from > now || (to !== null && to > now)) return null;
+                out.push({ from, to });
+            }
+            out.sort((a, b) => a.from - b.from);
+            const end = (seg) => (seg.to === null ? now : seg.to);
+            for (let i = 1; i < out.length; i++) if (out[i].from < end(out[i - 1])) return null;
+            for (const other of store.tasks) {
+                if (other.id === id) continue;
+                for (const seg of other.segments) {
+                    if (out.some(o => o.from < end(seg) && seg.from < end(o))) return null;
+                }
+            }
+            return out;
+        },
+
+        /** Zapisuje odcinki z parseSegments. Zwraca false, gdy zapis odrzucono. */
+        setSegments(id, text, nowMs) {
+            const task = this.byId(id);
+            const segments = task ? this.parseSegments(id, text, nowMs) : null;
+            if (!segments) return false;
+            task.segments = segments;
+            this._commit(store.tasks);
+            return true;
+        },
+
+        /** Odcinki zadania w zapisie, który przyjmuje parseSegments. */
+        formatSegments(task) {
+            return task.segments
+                .map(seg => `${Utils.formatClock(seg.from)}-${seg.to === null ? '' : Utils.formatClock(seg.to)}`)
+                .join(', ');
+        },
+
         remove(id) {
             const task = this.byId(id);
             if (!task || store.tasks.length <= 1) return false;

@@ -86,7 +86,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.6.1/counter.js`.
+`…/counter/v1.6.2/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -119,12 +119,13 @@ Hasło stoi w jednej linii na początku pliku i można je zmienić dowolnie.
 | ---------------------------------- | ------------------------------------------------- |
 | Zapytań sieciowych po uruchomieniu | **0**                                             |
 | Linii w konsoli po uruchomieniu    | **0**                                             |
-| Widocznych elementów na ekranie    | jedna linia, 13 px, szara, alfa 50 % (¹)          |
+| Widocznych elementów na ekranie    | jedna linia, 13 px, szara, alfa 50 %, i panel (¹) |
 | Położenie                          | lewy dolny róg, 20 px od lewej, 8 px od dołu      |
 | Co jest liczone                    | przedmioty ze **wszystkich** otwartych kart T-REX |
 
-(¹) Po pierwszym przybitym pojemniku dochodzi nad nią druga, tak samo szara
-linia 9 — czas od ostatniego pojemnika (rozdział „Pomoce stanowiska”).
+(¹) Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora);
+zamyka go pierwszy klik obok. Linia 7 po pierwszym przybitym pojemniku dopisuje
+na końcu czas od niego.
 
 To nie jest przypadkowy zestaw, tylko jawny cel tej wersji: skrypt ma przeżyć
 dziesięciogodzinną zmianę, niczego nie zużywając i nie przeszkadzając.
@@ -154,32 +155,37 @@ zaliczany — dokładnie tak samo, jak nie zalicza go sam system.
 W oknie jest dziesięć niezależnych linii. Każda włącza się osobno, każda ma własny
 kolor, przezroczystość i rozmiar czcionki.
 
-| Linia  | Co pokazuje                                                             | Domyślnie |
-| ------ | ----------------------------------------------------------------------- | --------- |
-| **1**  | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m) 14%`       | wył.      |
-| **2**  | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11) 14%`   | wył.      |
-| **3**  | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)`                      | wył.      |
-| **4**  | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                           | wył.      |
-| **5**  | zegar: `[ 14:32:07 ]`                                                   | wył.      |
-| **6**  | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`     | wył.      |
-| **7**  | **kompaktowy licznik: `17.4 28 14%`**                                   | **wł.**   |
-| **8**  | bieżące zadanie: `fast_process 12 34.3/h 58% 21m 00s`                   | wył.      |
-| **9**  | **czas od ostatniego pojemnika: `2m 41s`, po limicie `7m 00s +3m 00s`** | **wł.**   |
-| **10** | cel działu: `47/h 85% 236/470`                                          | wył.      |
+| Linia  | Co pokazuje                                                           | Domyślnie |
+| ------ | --------------------------------------------------------------------- | --------- |
+| **1**  | statystyka bieżącej karty: `CRET 8.8/h (7 zrobione w 2g 15m) 14%`     | wył.      |
+| **2**  | podsumowanie działów: `CRET 8.8/h(7) WHD 5.0/h(4) = ~13.9/h (11) 14%` | wył.      |
+| **3**  | rodzaj i początek zmiany: `DZIENNA zmiana (06:30)`                    | wył.      |
+| **4**  | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                         | wył.      |
+| **5**  | zegar: `[ 14:32:07 ]`                                                 | wył.      |
+| **6**  | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`   | wył.      |
+| **7**  | **licznik: `34.3 z 47 · 236 z 470 · 14% · 2m 41s`**                   | **wł.**   |
+| **8**  | bieżące zadanie: `fast_process 12 34.3/h 58% 21m 00s`                 | wył.      |
+| **9**  | czas od ostatniego pojemnika: `2m 41s`, po limicie `7m 00s +3m 00s`   | wył.      |
+| **10** | cel działu: `47/h 85% 236/470`                                        | wył.      |
 
-Kolejność na ekranie od góry: 1–6, 10, 9, 7, 8 — dwie szare linie (9 i 7) stoją
-obok siebie przy dolnej krawędzi.
+Kolejność na ekranie od góry: 1–6, 10, 9, 7, 8.
 
 ### Linia 7 dokładniej
 
-Trzy człony oddzielone spacjami, bez jednostek, bez nawiasów, bez nazw działów:
+Cztery człony oddzielone kropką:
 
-- **pierwszy** — przedmiotów na godzinę, suma ze wszystkich liczonych kart;
-- **drugi** — ile łącznie zrobiono, też ze wszystkich kart;
-- **trzeci** — procent sprzedaży.
+- **tempo bieżącego zadania z celu działu** — `34.3 z 47`. Nie tempo całej
+  zmiany: zadania są po to, żeby procesy o różnych normach nie mieszały się
+  w jedną średnią (tempo zmiany jest w linii 1 i w panelu);
+- **paczki zmiany z celu zmiany** — `236 z 470`, suma ze wszystkich wliczanych
+  kart, cel to cel działu × 10 płatnych godzin;
+- **procent sprzedaży zmiany**;
+- **czas od ostatniego pojemnika** — czerwony po podwójnym czasie przedmiotu
+  (bez obiadu); do pierwszego pojemnika go nie ma.
 
-To dokładnie te same liczby, które linia 2 pokazuje po `=`, w ostatnim nawiasie
-i na swoim końcu. Odświeżanie raz na sekundę.
+Spójnik zależy od języka (`z`, `of` i odpowiedniki ukraiński i rosyjski). Bez
+celu działu człon „z …” znika. Paczki to ta sama liczba, którą linia 2 pokazuje
+w ostatnim nawiasie. Odświeżanie raz na sekundę.
 
 Linia liczona jest w tym samym przebiegu co linia 2 — celowo. Dwa niezależne
 liczenia tego samego prędzej czy później się rozjadą.
@@ -262,6 +268,20 @@ opisują całą zmianę i tak zostaje; linia 8 mówi o procesie, przy którym
 człowiek siedzi w tej chwili. Domyślnie wyłączona, jak każda nowa linia.
 Zatrzymany zegar dokleja na końcu `(pauza)` — inaczej stojące tempo wygląda jak
 zepsuty licznik.
+
+### Odcinki zadania wpisane ręcznie
+
+Zadanie może mieć kilka odcinków w ciągu zmiany — np. cztery powroty do tego
+samego procesu. W panelu, w polu „Odcinki”, wpisuje się je po przecinku:
+
+```
+06:30-08:00, 09:00-10:00, 23:30-02:00, 02:30-
+```
+
+Odcinek może przechodzić przez północ; obiad się nie liczy (odejmuje go ten sam
+rachunek co zawsze). Pusty koniec ostatniego odcinka znaczy „zegar chodzi
+dalej” — tylko dla bieżącego zadania. Zapis odrzucony (zły format, przyszłość,
+odcinki nachodzące na siebie albo na inne zadanie) niczego nie zmienia.
 
 ### Wznowienie zamiast drugiego zadania o tej samej nazwie
 
@@ -564,14 +584,15 @@ sam dla sortu i dla nie-sortu.
 
 ## Pomoce stanowiska
 
-Wszystko poniżej poza linią 9 jest **domyślnie wyłączone** i włącza się
-w panelu, w sekcji „Cel i pomoce stanowiska”.
+Domyślnie włączony jest tylko most GRAVIS (decyzja autora; bez skryptu
+uruchomionego w GRAVIS niczego nie zmienia). Reszta włącza się w panelu,
+w sekcji „Cel i pomoce stanowiska”.
 
 - **Cele tempa** stoją na górze pliku, pod hasłami (`RATE_TARGETS`,
   `PAID_SHIFT_HOURS`). Cel zmiany to cel × 10 płatnych godzin — obiad jest
   niepłatny, więc przy celu 30 jest to 300 sztuk. Karta CRET służy też FAST,
   dlatego jej cel (CRET 47 albo FAST 80) wybiera się w panelu.
-- **Linia 9** (włączona) — czas od ostatniego przybitego pojemnika. Po
+- **Czas od pojemnika** — na końcu linii 7, a osobno w linii 9 (wyłączona). Po
   podwójnym czasie przedmiotu z celu (REFURB: 2 min na przedmiot, więc po
   4 min) robi się czerwona i dopisuje bezczynność: `7m 00s +3m 00s`. Pojemnik
   jest przybity, gdy po Enterze z nazwą `ts…`/`cs…`/`ws…` (do 15 znaków) pole
@@ -585,12 +606,21 @@ w panelu, w sekcji „Cel i pomoce stanowiska”.
   ten sam element stoi przy każdej sprzedaży.
 - **Auto-LPN** — wciska „Przypisz ponownie LPN”, gdy w pole pojemnika trafi
   etykieta zamiast pojemnika.
-- **ASIN z GRAVIS** (tylko CRET i UG). Po włączeniu: przycisk „Otwórz GRAVIS”
-  w panelu, potem jedno kliknięcie zakładki na karcie GRAVIS. Każdy LPN idzie
-  do GRAVIS, a ASIN pojawia się pod polem skanu przedmiotu jako niebieski
-  link; kliknięcie wstawia go do pola, Enter naciska człowiek. Karty rozmawiają
-  przez `postMessage` — skrypt nie wysyła przy tym zapytań sieciowych, a każda
-  strona przyjmuje wiadomość tylko od znanego okna i adresu.
+- **ASIN z GRAVIS** (tylko CRET i UG, domyślnie włączone). Przycisk „Otwórz
+  GRAVIS” w panelu, potem jedno kliknięcie zakładki na karcie GRAVIS — tam
+  w lewym górnym rogu pojawia się półprzezroczysty znaczek (przezroczysty dla
+  kliknięć); licznika ani ustawień w GRAVIS nie ma. Każdy LPN idzie do GRAVIS,
+  a ASIN pojawia się wyśrodkowany pod polem skanu przedmiotu jako niebieski
+  link; kliknięcie wstawia go do pola, Enter naciska człowiek. Brak ASIN — nic
+  się nie pokazuje. Gdy karta GRAVIS przeładuje się (np. uśpiona przez
+  przeglądarkę) i skrypt w niej zniknie, w tym miejscu pojawia się cicha
+  podpowiedź, żeby kliknąć tam zakładkę jeszcze raz. Karty rozmawiają przez
+  `postMessage` — bez zapytań sieciowych; każda strona przyjmuje wiadomość tylko
+  ze znanego adresu. GRAVIS trzeba otworzyć przyciskiem z panelu: okno otwarte
+  ręcznie nie ma połączenia z kartą T-REX.
+- **Jeden pojemnik na przedmiot** przy liczeniu po pojemniku: kolejne skany
+  w to samo pole nic nie dodają, dopóki nie przyjdzie następny wyzwalacz
+  początku.
 - **Skrót „ukryj okno”** — w sekcji skrótów klawiszowych.
 
 Panel zamyka się kliknięciem poza nim (nie w trybie przeciągania), drugim
@@ -966,7 +996,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 38 plików, 557 sprawdzeń
+├── tests/                  ← 39 plików, 577 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -986,7 +1016,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 557 sprawdzeń
+npm test             # 577 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)

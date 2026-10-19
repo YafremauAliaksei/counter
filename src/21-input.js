@@ -186,7 +186,10 @@
             } else {
                 store.uiFlags.autoTriggerFound = false;
             }
-            if (byTote && toteDone) this.completeItem();
+            // Jeden pojemnik na przedmiot: zaliczenie zdejmuje flagę, więc
+            // kolejne skany w to samo pole nic nie dodają, dopóki nie przyjdzie
+            // następny wyzwalacz początku.
+            if (byTote && toteDone && store.uiFlags.itemInProgress) this.completeItem();
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });

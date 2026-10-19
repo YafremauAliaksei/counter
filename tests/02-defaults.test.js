@@ -35,7 +35,7 @@ test('linie 1, 3, 4, 5 domyślnie wyłączone', () => {
     eq(lc.line5_realTimeClock.visible, false);
 });
 
-test('włączone są tylko linie 7 i 9, obie z zadanymi parametrami', () => {
+test('włączona jest tylko linia 7 — ona niesie też czas od pojemnika', () => {
     const l7 = env.SH.store.localTabConfig.linesConfig.line7_compact;
     eq(l7.visible, true, 'visible');
     eq(l7.colorHex, '#808080', 'kolor szary');
@@ -44,13 +44,9 @@ test('włączone są tylko linie 7 i 9, obie z zadanymi parametrami', () => {
 
     const on = Object.keys(env.SH.DEFAULT_LINE_CONFIG)
         .filter(k => env.SH.DEFAULT_LINE_CONFIG[k].visible);
-    // Linia 9 (czas od pojemnika) to świadomy wyjątek od zasady „nowe
-    // domyślnie wyłączone” — decyzja autora, zapisana w CHANGELOG. Do
-    // pierwszego pojemnika jest pusta, więc po wklejeniu widać dalej jedną linię.
-    eq(on, ['line7_compact', 'line9_offTask'], 'włączone linie');
-    const l9 = env.SH.store.localTabConfig.linesConfig.line9_offTask;
-    eq([l9.colorHex, l9.alpha, l9.fontSize], ['#808080', 50, 13], 'linia 9 szara jak linia 7');
-    eq(env.SH.StatsWindowRenderer.lines.line9_offTask.textContent, '', 'przed pierwszym pojemnikiem linia 9 jest pusta');
+    // Czas od pojemnika jest na końcu linii 7, więc linia 9 jest dodatkiem,
+    // domyślnie wyłączonym jak każda inna.
+    eq(on, ['line7_compact'], 'włączone linie');
 });
 
 test('kolejność okna kończy się linią 8, a linia 7 stoi tuż przed nią', () => {
