@@ -177,7 +177,7 @@ Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 660 sprawdzeń
+npm test             # 669 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)
@@ -205,7 +205,7 @@ node tests/stand/serve.js
 
 ## Jak zbudowany jest kod
 
-29 modułów w `src/` (plus nagłówek `00`, cele tempa `00-targets` i stopka `99`), sklejanych w kolejności
+30 modułów w `src/` (plus nagłówek `00`, cele tempa `00-targets` i stopka `99`), sklejanych w kolejności
 z `build.manifest.json` w **jeden wspólny scope** (jedna IIFE).
 
 Konsekwencja: w momencie deklaracji moduł widzi tylko to, co zadeklarowano

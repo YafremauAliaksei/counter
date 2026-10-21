@@ -37,6 +37,28 @@
                 if (store.uiFlags.isSettingsPanelVisible) this.render();
             }, 0);
         },
+        /**
+         * Kod Data Matrix na płótnie: czarne moduły na białym tle ze strefą
+         * ciszy dwóch modułów — tyle potrzebuje skaner.
+         * @returns {HTMLCanvasElement|null} null, gdy tekstu nie da się zakodować.
+         */
+        matrixCanvas(text) {
+            const m = DataMatrix.encode(text);
+            if (!m) return null;
+            const cell = 4, quiet = 2, side = (m.length + 2 * quiet) * cell;
+            const canvas = /** @type {HTMLCanvasElement} */ (h('canvas', { width: side, height: side }));
+            canvas.style.display = 'block';
+            canvas.style.marginTop = '6px';
+            const ctx = canvas.getContext && canvas.getContext('2d');
+            if (!ctx) return canvas;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, side, side);
+            ctx.fillStyle = '#000000';
+            m.forEach((row, r) => row.forEach((dark, c) => {
+                if (dark) ctx.fillRect((c + quiet) * cell, (r + quiet) * cell, cell, cell);
+            }));
+            return canvas;
+        },
         toggle() {
             store.uiFlags.isSettingsPanelVisible = !store.uiFlags.isSettingsPanelVisible;
             // Animacja poprzedniego przełączenia nie może dokończyć się po
@@ -734,6 +756,19 @@
             secCode.appendChild(link
                 ? UIBuilder.row(I18n.get('configCode_link'), readOnlyBox(link))
                 : UIBuilder.hint(I18n.get('configCode_linkMissing')));
+            if (link) {
+                // Kod obrazkowy rysuje się dopiero na żądanie: panel otwiera
+                // się przy starcie, a obrazek jest potrzebny raz na maszynę.
+                const holder = h('div');
+                secCode.appendChild(UIBuilder.button(I18n.get('configCode_showMatrix'), () => {
+                    holder.textContent = '';
+                    const canvas = this.matrixCanvas(link);
+                    if (!canvas) return;
+                    holder.appendChild(canvas);
+                    holder.appendChild(UIBuilder.hint(I18n.get('configCode_matrixHint')));
+                }));
+                secCode.appendChild(holder);
+            }
 
             secCode.appendChild(UIBuilder.button(I18n.get('configCode_select'), () => {
                 codeBox.focus();

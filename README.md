@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.7.3** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.7.4** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -54,7 +54,7 @@ Tam, gdzie konsola jest zamknięta, a i tak wygodniej. Nowa zakładka, dowolna
 nazwa, a jako adres:
 
 ```
-javascript:(async()=>{try{if(window.SH&&SH.settings){SH.settings();return}const r=await fetch('https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
+javascript:(async()=>{try{if(window.SH&&SH.settings){SH.settings();return}const r=await fetch('https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper: '+e.message)}})();void 0;
 ```
 
 Kliknięcie na stronie T-REX pobiera i uruchamia **ostatnie wydanie**.
@@ -85,15 +85,47 @@ Szczegóły w tym adresie nie są przypadkowe:
   podręcznej. Sam `raw.` trzyma odpowiedź 5 minut po swojej stronie, więc świeże
   wydanie dojeżdża do wszystkich najdalej po tylu;
 - **`r.ok` i `catch`** (od 1.3.3) — gdy plik się nie pobierze (brak sieci,
-  odpowiedź 404/503), pokazuje się komunikat „StatsHelper nie wystartował”
-  z powodem. Wcześniej treść odpowiedzi błędu szła do wykonania, a każdy błąd
+  odpowiedź 404/503), pokazuje się komunikat `StatsHelper: …` z powodem. Wcześniej treść odpowiedzi błędu szła do wykonania, a każdy błąd
   kończył się ciszą: kliknięcie po prostu nic nie robiło;
 - **`void 0` na końcu** — bez tego zakładka, której wyrażenie zwraca tekst,
-  potrafi zastąpić nim całą stronę.
+  potrafi zastąpić nim całą stronę;
+- **tylko znaki ASCII** — zakładkę da się wtedy zakodować w kodzie Data
+  Matrix (niżej).
+
+### Zakładka z kodu Data Matrix
+
+Zamiast przepisywać adres, można go zeskanować telefonem albo skanerem
+i wkleić jako adres zakładki. Obrazek daje polecenie:
+
+```bash
+npm run datamatrix > zakladka.svg            # zakładka z tego README
+node tools/datamatrix.js "dowolny tekst" > kod.svg
+```
+
+Koder jest częścią skryptu (`src/30-datamatrix.js`), bez zależności i bez
+sieci, sprawdzony dekoderem zxing dla wszystkich rozmiarów od 10×10 do
+132×132; zakładka z README mieści się w 72×72. W kompilacji z adresem wydania
+(`config.releaseUrl`) panel ma przy gotowej zakładce przycisk **„Pokaż kod
+Data Matrix”** — obrazek do zeskanowania albo sfotografowania.
+
+Zasady, gdy generator odmawia („Invalid code page or invalid characters”):
+
+- **Tylko ASCII (kody 0–127).** Polskie litery (`ł`, `ó`, `ś`…), cudzysłowy
+  drukarskie (`„ ”`), półpauza `–`, wielokropek `…` i spacja nierozdzielająca
+  są poza ASCII — większość generatorów pracuje na jednej stronie kodowej
+  i takiego znaku nie przyjmie, a skaner odda krzaki. Poprawka: zamienić znak
+  na odpowiednik ASCII (`ł` → `l`, `„` → `"`), a gdy musi zostać w tekście
+  skryptu — zapisać jako `\u0142`.
+- **Bez znaków nowej linii i tabulatorów** — zakładka to jedna linia.
+- **Długość:** do ok. 1300 znaków w tym koderze; krótszy tekst to mniejszy,
+  łatwiej skanowalny kod. Ustawienia domyślne nie dokładają kodu ustawień do
+  zakładki.
+- Opcja generatora „Evaluate escape sequences” ma być **wyłączona** —
+  inaczej `\n` czy `\t` w tekście zmienią się w znaki sterujące.
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.7.3/counter.js`.
+`…/counter/v1.7.4/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -757,7 +789,7 @@ spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
 `Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
-javascript:(async()=>{try{window['statsHelper_v1_7_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_7_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -1036,7 +1068,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 43 pliki, 660 sprawdzeń
+├── tests/                  ← 44 pliki, 669 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1056,7 +1088,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 660 sprawdzeń
+npm test             # 669 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1089,7 +1121,7 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1 i 1.7.3 zostają przy nim, 1.8.0
+Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1 i 1.7.4 zostają przy nim, 1.8.0
 dostanie `statsHelper_v1_8_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 

@@ -128,6 +128,10 @@
       "file": "src/29-diagnostics.js",
       "desc": "Okno diagnostyki na stanowisku bez F12: zdarzenia cyklu przedmiotu, pola formularzy, kopia do schowka."
     },
+    {
+      "file": "src/30-datamatrix.js",
+      "desc": "Kod Data Matrix z tekstu zakładki — do zeskanowania zamiast przepisywania."
+    },
     { "file": "src/25-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
   ]
 }

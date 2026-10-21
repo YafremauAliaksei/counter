@@ -456,10 +456,21 @@
             // rusza pobieranie pliku, który zastaje go gotowego (BOOT_VAR).
             // `r.ok` nie puszcza strony błędu 404/503 do wykonania, a `catch`
             // pokazuje przyczynę zamiast milczeć po kliknięciu.
+            // Tekst jest czysto ASCII: zakładkę skanuje się też z kodu Data
+            // Matrix, a znak w rodzaju „ł” wywraca generatory i skanery.
+            // Ustawienia domyślne dają pusty kod — wtedy zakładka go nie niesie
+            // i kod obrazkowy jest mniejszy.
+            const code = this.encode();
+            // Bez kodu drugie kliknięcie tylko otwiera panel, jak zakładka
+            // z README; z kodem skrypt ma się wczytać od nowa, żeby go nałożyć.
+            const f = this.FORMAT.toString(16).padStart(2, '0');
+            const boot = code === '0x' + f + f
+                ? 'if(window.SH&&SH.settings){SH.settings();return}'
+                : "window['" + this.BOOT_GLOBAL + "']='" + code + "';";
             // eslint-disable-next-line no-script-url -- tekst zakładki, patrz wyżej
-            return "javascript:(async()=>{try{window['" + this.BOOT_GLOBAL + "']='" + this.encode()
-                + "';const r=await fetch('" + CONFIG.RELEASE_URL
+            return "javascript:(async()=>{try{" + boot
+                + "const r=await fetch('" + CONFIG.RELEASE_URL
                 + "',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}"
-                + "catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;";
+                + "catch(e){alert('StatsHelper: '+e.message)}})();void 0;";
         },
     };
