@@ -57,6 +57,22 @@ nazwa, a jako adres:
 javascript:(async()=>{try{if(window.SH&&SH.settings){SH.settings();return}const r=await fetch('https://raw.githubusercontent.com/YafremauAliaksei/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper: '+e.message)}})();void 0;
 ```
 
+**Bez przepisywania — zeskanuj kod telefonem:**
+
+<img src="docs/zakladka-datamatrix.svg" alt="Kod Data Matrix z adresem zakładki" width="300">
+
+1. Zeskanuj kod aparatem telefonu albo aplikacją do kodów — wyjdzie tekst
+   zaczynający się od `javascript:`.
+2. Skopiuj ten tekst i wyślij sobie na komputer (np. mailem albo w czacie).
+3. W przeglądarce na komputerze: **Ctrl+Shift+O** (menedżer zakładek) →
+   „Dodaj zakładkę” → nazwa dowolna, np. `StatsHelper` → w pole **adres**
+   wklej cały tekst → Zapisz.
+4. Na stronie T-REX kliknij tę zakładkę.
+
+Kod niesie dokładnie ten sam tekst, co ramka wyżej. Obrazek odświeża
+`npm run datamatrix > docs/zakladka-datamatrix.svg`; test pilnuje, że jest
+w README i zgadza się z zakładką.
+
 Kliknięcie na stronie T-REX pobiera i uruchamia **ostatnie wydanie**.
 **Drugie kliknięcie** na tej samej stronie otwiera albo zamyka panel ustawień —
 bez pobierania pliku od nowa (początek adresu: `if(window.SH&&SH.settings)…`)
@@ -1068,7 +1084,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 44 pliki, 669 sprawdzeń
+├── tests/                  ← 44 pliki, 670 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1088,7 +1104,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 669 sprawdzeń
+npm test             # 670 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
