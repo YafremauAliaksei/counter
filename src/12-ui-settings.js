@@ -540,11 +540,10 @@
             // więc przełączenie w trakcie zmiany niczego nie gubi. Ustawienie
             // wspólne jak sklep: wszystkie karty mówią jedną walutą.
             secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_displayCurrency'), UIBuilder.select(
-                [{ value: 'native', text: I18n.get('priceCard_displayNative') }]
-                    .concat(Object.entries(CONFIG.DISPLAY_CURRENCIES).map(([code, sign]) => ({
-                        value: code, text: `${code} (${sign})`,
-                    }))),
-                FxRates.displayCurrency() || 'native',
+                Object.entries(CONFIG.DISPLAY_CURRENCIES).map(([code, sign]) => ({
+                    value: code, text: `${code} (${sign})`,
+                })),
+                FxRates.displayCurrency(),
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
@@ -665,11 +664,14 @@
             secVal.appendChild(UIBuilder.hint(I18n.get('valueLog_hint')));
 
             const vt = ValueLog.totals();
+            // Ta sama waluta co w linii 6 — dwie sumy jednego dziennika
+            // w dwóch walutach to zagadka, a nie informacja.
+            const sumCur = FxRates.sumCurrency();
             secVal.appendChild(h('div', {
                 textContent: I18n.get('valueLog_stats', {
                     count: vt.count,
-                    sum: vt.net.toFixed(2),
-                    currency: vt.currency,
+                    sum: FxRates.fromEur(vt.net, sumCur).toFixed(2),
+                    currency: CONFIG.DISPLAY_CURRENCIES[sumCur],
                     unpriced: vt.unpriced + vt.noRate,
                 }),
                 style: { fontWeight: '600', marginBottom: '4px' },

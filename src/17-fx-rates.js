@@ -134,15 +134,30 @@
             return this.rates;
         },
 
+        /**
+         * Kurs waluty (jednostek za 1 EUR): pobrany, a gdy pobranej tablicy
+         * tej waluty brakuje — wbudowany. Kursy z sieci gwarantują tylko
+         * dolara; cena w funtach bez kursu wypadłaby z sumy zmiany i została
+         * na karcie w funtach, a liczy się tu każda waluta, którą da się
+         * przeliczyć, choćby kursem przybliżonym.
+         * @returns {number|null}
+         */
+        rateOf(cur) {
+            for (const table of [this.rates, CONFIG.FX_FALLBACK]) {
+                if (!table || !Object.prototype.hasOwnProperty.call(table, cur)) continue;
+                const rate = table[cur];
+                if (typeof rate === 'number' && isFinite(rate) && rate > 0) return rate;
+            }
+            return null;
+        },
+
         /** @returns {number|null} kwota w euro albo null, jeśli kursu nie ma. */
         toEur(value, currency) {
             if (typeof value !== 'number' || !isFinite(value)) return null;
-            const cur = (currency || 'EUR').toUpperCase();
+            const cur = String(currency || 'EUR').toUpperCase();
             if (cur === 'EUR') return value;
-            const table = this.rates || CONFIG.FX_FALLBACK;
-            const rate = table[cur];
-            if (!rate || !isFinite(rate) || rate <= 0) return null;
-            return value / rate;      // w tablicy — jednostek waluty za 1 EUR
+            const rate = this.rateOf(cur);
+            return rate ? value / rate : null;
         },
 
         /**
@@ -155,42 +170,48 @@
             if (typeof eur !== 'number' || !isFinite(eur)) return null;
             const cur = String(currency || 'EUR').toUpperCase();
             if (cur === 'EUR') return eur;
-            const table = this.rates || CONFIG.FX_FALLBACK;
-            const rate = Object.prototype.hasOwnProperty.call(table, cur) ? table[cur] : null;
-            if (!rate || !isFinite(rate) || rate <= 0) return null;
-            return eur * rate;
+            const rate = this.rateOf(cur);
+            return rate ? eur * rate : null;
         },
 
         /**
-         * Waluta wyświetlania albo null, czyli „jak w sklepie”.
+         * Waluta wyświetlania: jedna dla wszystkich kwot, domyślnie euro.
          *
          * Wartość przychodzi z localStorage, więc może być czymkolwiek:
-         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie 'native' albo
-         * klucz własny CONFIG.DISPLAY_CURRENCIES — wszystko inne to wartość
-         * domyślna (euro), a nie ciche przejście na waluty sklepów.
+         * `'__proto__'`, `'XYZ'`, liczbą, a także dawne „jak w sklepie”
+         * (`'native'`). Przechodzi wyłącznie klucz własny
+         * CONFIG.DISPLAY_CURRENCIES — wszystko inne to euro, a nie ciche
+         * przejście na waluty sklepów.
          */
         displayCurrency() {
             const own = (c) => typeof c === 'string'
                 && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, c);
             const cur = store.userConfig && store.userConfig.displayCurrency;
-            if (cur === 'native') return null;
             if (own(cur)) return cur;
-            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : null;
+            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : 'EUR';
         },
 
         /**
-         * Kwota w dowolnej walucie pokazana w walucie wyświetlania.
+         * Waluta sum (linia 6, panel): wyświetlania, a bez kursu do niej —
+         * euro. Suma nigdy nie wychodzi w walucie, której nie da się policzyć.
+         */
+        sumCurrency() {
+            const cur = this.displayCurrency();
+            return this.fromEur(0, cur) == null ? 'EUR' : cur;
+        },
+
+        /**
+         * Kwota w dowolnej walucie pokazana w walucie sum.
          *
          * `≈` stoi wtedy, gdy kwota została przeliczona: kurs jest dzienny,
          * a bez sieci — wbudowany, więc to szacunek, nie cena z Amazonu. Ta
          * sama waluta co w sklepie idzie bez znaku, bo niczego nie liczono.
          *
-         * @returns {string|null} tekst albo null, gdy wybrano „jak w sklepie”
-         *   lub nie ma kursu — wtedy wywołujący pokazuje cenę tak, jak przyszła.
+         * @returns {string|null} tekst albo null, gdy waluty ceny nie da się
+         *   przeliczyć — wtedy wywołujący pokazuje cenę tak, jak przyszła.
          */
         display(value, currency) {
-            const cur = this.displayCurrency();
-            if (!cur) return null;
+            const cur = this.sumCurrency();
             const from = String(currency || 'EUR').toUpperCase();
             const v = from === cur ? value : this.fromEur(this.toEur(value, from), cur);
             if (typeof v !== 'number' || !isFinite(v)) return null;

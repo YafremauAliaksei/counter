@@ -9,13 +9,28 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## 1.7.2 — 2026-10-21
+## 1.7.3 — 2026-10-21
 
-> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają. Interfejs się nie zmienia, nowych ustawień nie ma — poprawione jest to, co działo się na stykach modułów: gdy zdarzenia jednego przedmiotu nachodzą na następny przedmiot, reset zmiany, inne zadanie albo drugą kartę.
+> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają. 1.7.2 nie zostało wydane — jego poprawki (niżej, „Naprawiono”) wychodzą w tym wydaniu.
+
+### Zmieniono — każda kwota w jednej walucie, domyślnie w euro
+
+Po co: cena w funtach, koronach czy dolarach nic nie mówi, a przedmiot za 3000 € trzeba zauważyć od razu, żeby starannie puścić go na sprzedaż. Kilka centów różnicy z kursu dziennego nie ma znaczenia — to statystyka.
+
+- **Waluta wyświetlania obejmuje teraz każdą kwotę:** cenę na karcie, cenę katalogową, drugą serię wykresu keepa, linię 6 i sumę dziennika w panelu. Domyślnie euro; w panelu („Karta ceny” → „Kwoty pokazywać w”) można wybrać `PLN`, `GBP`, `SEK`, `USD` albo `CAD` — wtedy w tej walucie są i ceny, i suma dnia.
+- **Opcja „waluta sklepu (bez przeliczania)” zniknęła z panelu.** Zapisane wcześniej to ustawienie (także w starym kodzie ustawień) czyta się jako euro.
+- **Waluta, której brakuje w kursach z sieci, nie wypada już z sumy.** Kursy z sieci gwarantują tylko dolara; gdy brakowało w nich np. funta, cena z co.uk zostawała na karcie w funtach, a w linii 6 trafiała do `?N`, poza sumę. Teraz brakujący kurs bierze się z tablicy wbudowanej w plik (`CONFIG.FX_FALLBACK`) — każda cena z obsługiwanego sklepu jest przeliczona na euro i doliczona.
+- **Druga seria wykresu keepa** (np. „Neu”) pokazywała gołą liczbę w walucie sklepu obok ceny w euro — teraz jest przeliczona jak cena główna: `Neu ≈ 15.63 €`.
+- **Suma dziennika w panelu** była zawsze w euro, nawet przy innej walucie wyświetlania — teraz w tej samej walucie co linia 6.
+- Gdy do wybranej waluty nie ma żadnego kursu, wszystko pokazuje się w euro (wcześniej karta wracała do waluty sklepu). Cena w walucie bez żadnego kursu zostaje taka, jak przyszła, i trafia do `?N` — nigdy zero ani `NaN`.
+
+### Naprawiono — z lokalnego audytu kodu (przygotowane jako 1.7.2)
+
+Interfejs się nie zmienia, nowych ustawień nie ma — poprawione jest to, co działo się na stykach modułów: gdy zdarzenia jednego przedmiotu nachodzą na następny przedmiot, reset zmiany, inne zadanie albo drugą kartę.
 
 Wszystkie poprawki pochodzą z lokalnego audytu kodu. Każda ma test, który bez niej pada (`tests/42-release-172.test.js`), a nowa macierz stanów (`tests/43-state-matrix.test.js`) przechodzi dwanaście przebiegów po 312 przedmiotów: karty CRET/UG/REFURB/WHD po 1, 2 i 4, jedno albo trzy zadania z przełączaniem i odcinkami przez północ, moduł cen włączony i wyłączony, naklejka, fraza, sprzedaż przed pojemnikiem i po nim, `tsREP…`, brak pojemnika, przerwane przedmioty, otwarty panel i okno diagnostyki, obiad, północ, reset w trakcie przedmiotu. We wszystkich liczba zaliczeń zgadza się z tym, co zrobił człowiek, a koszt ostatnich 20 przedmiotów nie jest większy niż pierwszych 20.
 
-### Naprawiono — liczenie
+#### Liczenie
 
 - **UG: naklejka z poprzedniego przedmiotu dawała następnemu +2 i dwie sprzedaże.** Gdy następny krok przychodził, zanim strona zdjęła `#sticker-back-hide`, nowy przedmiot widział starą naklejkę w tym samym skanie, w którym się zaczynał. Teraz naklejka widoczna już w chwili startu przedmiotu należy do poprzedniego; nowy dostaje +2 dopiero, gdy naklejka zniknie i pojawi się znowu. Okno diagnostyki zapisuje to jako „naklejka z poprzedniego przedmiotu — pominięta”. Przykład z testu: dwa przedmioty, naklejka tylko przy pierwszym — było 4 paczki i 4 sprzedane, jest 3 i 2.
 - **Reset zmiany między pojemnikiem a kodem sortowania dopisywał sprzedaż do nowej zmiany.** Spóźniony kod (UG z frazą o odsprzedaży) dawał świeżej zmianie `1` paczkę i `2` sprzedane — procent ponad 100. Przedmiot zakończony przed resetem należy teraz do starej zmiany: jego kod, premia za sprzedaż i pojemnik do nowej nie przechodzą.
@@ -26,7 +41,7 @@ Wszystkie poprawki pochodzą z lokalnego audytu kodu. Każda ma test, który bez
 - **Kod sortowania po przełączeniu zadania dopisywał sprzedaż nowemu zadaniu** — miało ono sprzedane bez paczek. Kierunek i premia za frazę idą teraz do zadania, w którym przedmiot został zaliczony.
 - **Drugi kod sortowania dla rozliczonego już przedmiotu** (ponowne skanowanie) przestawiał znak w dzienniku, a liczniki zostawały przy pierwszym — dziennik i linia 2 mówiły co innego. Drugi kod jest teraz pomijany.
 
-### Naprawiono — magazyn, karty, okno
+#### Magazyn, karty, okno
 
 - **Jedna nieudana próba zapisu odcinała kartę od sąsiadów do końca strony.** Po pierwszej odmowie (pełny magazyn) wszystkie liczniki liczyły się już tylko z pamięci, także gdy magazyn znów działał — dwie karty jednego działu przestawały się sumować. Teraz z pamięci liczy się tylko klucz, którego ostatni zapis się nie udał, do pierwszego udanego. Powiadomienie o pełnym magazynie zostaje jak było.
 - **Zamknięcie karty tuż po wczytaniu stanu sąsiedniej karty gubiło ostatnią zmianę ustawień.** Autozapis przesunięty za 2,5 s ciszy szedł osobnym timerem, którego wyjście ze strony nie dokańczało, a rozbiórka (ponowne wklejenie) nie gasiła. Oba przypadki są teraz obsłużone.
@@ -34,7 +49,7 @@ Wszystkie poprawki pochodzą z lokalnego audytu kodu. Każda ma test, który bez
 - **Sumy dziennika (linia 6) przeliczały cały dziennik co sekundę** — koszt rósł z każdym przedmiotem zmiany. Sumy liczą się teraz raz po zmianie dziennika albo kursów. Dotyczy tylko włączonego modułu cen.
 - **Panel ustawień zamknięty i otwarty w ciągu 200 ms zostawał niewidoczny**, choć skrypt uważał go za otwarty (pierwszy klik obok tylko „zamykał” niewidoczny panel).
 
-### Naprawiono — źródła zewnętrzne (moduł cen i GRAVIS)
+#### Źródła zewnętrzne (moduł cen i GRAVIS)
 
 - **GRAVIS: zablokowane wyskakujące okno zrywało działające połączenie,** a LPN zeskanowany przed następnym sygnałem GRAVIS (do 10 s) przepadał. Teraz `window.open` zwracające `null` niczego nie zmienia, a LPN zeskanowany bez okna — także po przeładowaniu T-REX — czeka na sygnał gotowości i idzie do GRAVIS.
 - **GRAVIS: ponowne kliknięcie zakładki w karcie bez okna-rodzica dokładało drugi znaczek** w rogu.
@@ -46,7 +61,7 @@ Wszystkie poprawki pochodzą z lokalnego audytu kodu. Każda ma test, który bez
 
 - **Wynik testów nie zależy już od pory dnia.** Kilka plików (`03-line7`, `04-multitab`, `17-sales-rate`) budowało dzienną zmianę „sprzed dwóch godzin” na prawdziwym zegarze — po 18:30 wykrywanie zmiany nocnej wchodziło im w drogę i 11 testów padało. Runner stawia teraz stały zegar (16.09.2026, 15:00), który płynie dalej; `REAL_CLOCK=1 npm test` przywraca prawdziwy czas.
 - **Pliki testów idą jeden po drugim**, także z testami asynchronicznymi: ciężki plik synchroniczny (macierz stanów, ok. 20 s) nie przekracza już cudzych granic czasu (`33-market-fallback`).
-- `tests/42-release-172.test.js` — 19 testów styków, `tests/43-state-matrix.test.js` — 26 sprawdzeń macierzy. Razem 655 sprawdzeń, 18 testów stanowiska w Chromium bez zmian zielonych.
+- `tests/42-release-172.test.js` — 19 testów styków, `tests/43-state-matrix.test.js` — 26 sprawdzeń macierzy, a `tests/32-display-currency.test.js` dostał przypadki brakującego kursu, dawnego „jak w sklepie”, drugiej serii wykresu i sumy w panelu. Razem 660 sprawdzeń, 18 testów stanowiska w Chromium bez zmian zielonych.
 
 ### Bez zmian, z pomiarem
 

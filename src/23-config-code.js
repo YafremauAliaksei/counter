@@ -73,6 +73,8 @@
             graphMode: ['legend', 'right', 'full'],
             language: ['pl', 'en', 'ru', 'uk'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
+            // 'native' (dawne „jak w sklepie”) zostaje na swoim miejscu, żeby
+            // stare kody dalej się rozkładały; czytane jest jako euro.
             displayCurrency: ['native', 'EUR', 'PLN', 'GBP', 'SEK', 'USD', 'CAD'],
             cretProfile: ['CRET', 'FAST'],
         },

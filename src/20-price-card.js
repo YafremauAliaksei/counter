@@ -715,9 +715,10 @@
         },
 
         /**
-         * Tekst ceny na karcie: w walucie wyświetlania, jeśli ją wybrano,
-         * inaczej tak, jak przyszła ze sklepu. Obiekt ceny się nie zmienia —
-         * do dziennika idzie kwota i waluta sklepu, do sumy euro.
+         * Tekst ceny na karcie: w walucie wyświetlania (domyślnie euro).
+         * Tak, jak przyszła ze sklepu, tylko gdy jej waluty nie da się
+         * przeliczyć. Obiekt ceny się nie zmienia — do dziennika idzie kwota
+         * i waluta sklepu, do sumy euro.
          */
         priceText(p) {
             return FxRates.display(p.value, p.currency) || p.text;
@@ -819,7 +820,7 @@
                     this.rrpEl.style.textDecoration = 'line-through';
                     this.rrpEl.style.display = 'block';
                 } else if (pc.showRrp && r.secondary) {
-                    this.rrpEl.textContent = r.secondary.text;
+                    this.rrpEl.textContent = `${r.secondary.label} ${this.priceText(r.secondary)}`;
                     this.rrpEl.style.textDecoration = 'none';
                     this.rrpEl.style.display = 'block';
                 } else {

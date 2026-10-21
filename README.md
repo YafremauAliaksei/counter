@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.7.2** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.7.3** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -93,7 +93,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.7.2/counter.js`.
+`…/counter/v1.7.3/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -488,11 +488,13 @@ korony ze `se` sprowadza się do euro.
 ### Waluta wyświetlania
 
 Panel → „Karta ceny” → **Kwoty pokazywać w**. Do wyboru jedna stała waluta —
-`EUR` (**domyślnie**), `PLN`, `GBP`, `SEK`, `USD`, `CAD` — albo waluta sklepu,
-bez przeliczania. Po co: kwota w funtach czy koronach wielu osobom nie mówi nic,
-a decyzję o przedmiocie podejmuje się w sekundę. Liczy się rynek europejski,
-więc od razu po włączeniu modułu cen wszystko jest w euro; kto myśli
-w złotych, przełącza na `PLN`.
+`EUR` (**domyślnie**), `PLN`, `GBP`, `SEK`, `USD`, `CAD`. Każda kwota — cena na
+karcie, cena katalogowa, druga seria wykresu, linia 6, suma w panelu — jest
+w tej jednej walucie. Po co: kwota w funtach czy koronach wielu osobom nie mówi
+nic, a decyzję o przedmiocie podejmuje się w sekundę — na przykład, że
+przedmiot za 3000 € trzeba starannie puścić na sprzedaż. Od razu po włączeniu
+modułu cen wszystko jest w euro; kto myśli w złotych, przełącza na `PLN`.
+Kilka centów różnicy z kursu dziennego nie ma tu znaczenia — to statystyka.
 
 Euro domyślnie to świadomy wyjątek od zasady „nowe jest domyślnie wyłączone”
 (decyzja autora): nie dotyka sieci ani liczb, zmienia tylko to, jak cena
@@ -510,7 +512,6 @@ wstecz — zmienia się tylko to, jak liczby wyglądają. Przykład, kurs 1 € 
 | Na karcie przy wyborze | `GBP 12.50` ze sklepu | `EUR 999.99` ze sklepu |
 | ---------------------- | --------------------- | ---------------------- |
 | EUR (domyślnie)        | `≈ 15.63 €`           | `999.99 €`             |
-| waluta sklepu          | `GBP 12.50`           | `EUR 999.99`           |
 | PLN                    | `≈ 62.50 zł`          | `≈ 3999.96 zł`         |
 
 `≈` znaczy „przeliczone”: kurs jest dzienny (a przy braku sieci — wbudowany
@@ -518,11 +519,15 @@ w plik), więc to szacunek, nie cena z Amazonu. Cena w tej samej walucie idzie
 bez znaku. Kto chce porównać kartę ze stroną sklepu, włącza wiersz źródła —
 przy przeliczonej cenie stoi tam kwota oryginalna.
 
-Linia 6 idzie za tym samym wyborem: przy walucie sklepu zostaje w euro (bilans
-z kilku sklepów nie ma jednej „waluty sklepu”), przy wybranej — pokazuje się
-w niej. Ustawienie jest wspólne dla wszystkich kart, jak wybór sklepu, więc
-CRET i WHD mówią jedną walutą. Jeśli kursu do wybranej waluty nie ma, karta
-pokazuje cenę sklepu, a linia 6 — euro; nigdy zero ani `NaN`.
+Linia 6 i suma dziennika w panelu idą za tym samym wyborem. Ustawienie jest
+wspólne dla wszystkich kart, jak wybór sklepu, więc CRET i WHD mówią jedną
+walutą. Kursy z sieci gwarantują tylko dolara; waluty, której w nich brakuje,
+skrypt nie pomija, tylko liczy kursem wbudowanym w plik (`CONFIG.FX_FALLBACK`),
+więc cena z każdego obsługiwanego sklepu wchodzi do sumy. Gdyby do wybranej
+waluty nie było żadnego kursu, wszystko pokazuje się w euro; cena w walucie
+bez żadnego kursu zostaje taka, jak przyszła, i trafia do `?N`. Nigdy zero
+ani `NaN`. Dawne ustawienie „waluta sklepu” (zapis albo stary kod ustawień)
+czyta się jako euro.
 
 ### Skąd bierze się cena
 
@@ -1031,7 +1036,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 43 pliki, 655 sprawdzeń
+├── tests/                  ← 43 pliki, 660 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1051,7 +1056,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 655 sprawdzeń
+npm test             # 660 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1084,7 +1089,7 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1 i 1.7.2 zostają przy nim, 1.8.0
+Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1 i 1.7.3 zostają przy nim, 1.8.0
 dostanie `statsHelper_v1_8_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 
