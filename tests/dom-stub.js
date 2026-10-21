@@ -175,6 +175,7 @@ function makeEnv(opts = {}) {
         getContext() {
             return {
                 drawImage() {},
+                fillRect() {},
                 getImageData() { return { width: 1, height: 1, data: new Uint8ClampedArray(4) }; },
             };
         }

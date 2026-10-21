@@ -41,6 +41,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 28 | `28-auto-lpn.js` | Auto-LPN: „Przypisz ponownie LPN” po etykiecie w polu pojemnika | ~35 |
 | 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
 | 29 | `29-diagnostics.js` | okno diagnostyki na stanowisku bez F12 | ~120 |
+| 30 | `30-datamatrix.js` | kod Data Matrix z tekstu zakładki | ~190 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~190 |
 
 ---

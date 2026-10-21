@@ -9,11 +9,19 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
-## 1.7.3 — 2026-10-21
+## 1.7.4 — 2026-10-21
 
-> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają. 1.7.2 nie zostało wydane — jego poprawki (niżej, „Naprawiono”) wychodzą w tym wydaniu.
+> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają. 1.7.2 i 1.7.3 nie zostały wydane — wszystko, co przygotowano pod te numery, wychodzi w tym wydaniu.
 
-### Zmieniono — każda kwota w jednej walucie, domyślnie w euro
+### Dodano — zakładka z kodu Data Matrix
+
+- **Zakładka czysto ASCII.** Komunikat błędu brzmiał `StatsHelper nie wystartował`, a litera `ł` wywracała generatory kodów („Invalid code page or invalid characters”) i skanery. Teraz `StatsHelper: …` — w README, w gotowej zakładce z panelu i w przykładach.
+- **Generator Data Matrix w repozytorium:** `npm run datamatrix > zakladka.svg` daje kod zakładki z README, `node tools/datamatrix.js "tekst"` — dowolnego tekstu. Koder (`src/30-datamatrix.js`, ECC200, kodowanie ASCII) jest bez zależności i bez sieci, sprawdzony dekoderem zxing dla rozmiarów od 10×10 do 132×132; zakładka z README mieści się w 72×72. Znak spoza ASCII daje czytelny błąd z podpowiedzią zamiany, zamiast kodu, którego skaner nie odczyta.
+- **Przycisk „Pokaż kod Data Matrix” w panelu** przy gotowej zakładce — obrazek do zeskanowania albo sfotografowania, rysowany dopiero po kliknięciu. Pokazuje się w kompilacji z adresem wydania (`config.releaseUrl`); artefakt z repozytorium celowo nie niesie adresu repozytorium, więc tam przycisku nie ma — wtedy kod daje `npm run datamatrix`.
+- **Gotowa zakładka przy ustawieniach domyślnych nie niesie pustego kodu ustawień** i drugim kliknięciem otwiera panel, jak zakładka z README — jest krótsza, a kod obrazkowy mniejszy.
+- README: zasady dla kodów (tylko ASCII, bez nowych linii, wyłączone „Evaluate escape sequences”, długość) i jak poprawić tekst, który generator odrzuca.
+
+### Zmieniono — każda kwota w jednej walucie, domyślnie w euro (przygotowane jako 1.7.3)
 
 Po co: cena w funtach, koronach czy dolarach nic nie mówi, a przedmiot za 3000 € trzeba zauważyć od razu, żeby starannie puścić go na sprzedaż. Kilka centów różnicy z kursu dziennego nie ma znaczenia — to statystyka.
 
@@ -61,7 +69,7 @@ Wszystkie poprawki pochodzą z lokalnego audytu kodu. Każda ma test, który bez
 
 - **Wynik testów nie zależy już od pory dnia.** Kilka plików (`03-line7`, `04-multitab`, `17-sales-rate`) budowało dzienną zmianę „sprzed dwóch godzin” na prawdziwym zegarze — po 18:30 wykrywanie zmiany nocnej wchodziło im w drogę i 11 testów padało. Runner stawia teraz stały zegar (16.09.2026, 15:00), który płynie dalej; `REAL_CLOCK=1 npm test` przywraca prawdziwy czas.
 - **Pliki testów idą jeden po drugim**, także z testami asynchronicznymi: ciężki plik synchroniczny (macierz stanów, ok. 20 s) nie przekracza już cudzych granic czasu (`33-market-fallback`).
-- `tests/42-release-172.test.js` — 19 testów styków, `tests/43-state-matrix.test.js` — 26 sprawdzeń macierzy, a `tests/32-display-currency.test.js` dostał przypadki brakującego kursu, dawnego „jak w sklepie”, drugiej serii wykresu i sumy w panelu. Razem 660 sprawdzeń, 18 testów stanowiska w Chromium bez zmian zielonych.
+- `tests/42-release-172.test.js` — 19 testów styków, `tests/43-state-matrix.test.js` — 26 sprawdzeń macierzy, a `tests/32-display-currency.test.js` dostał przypadki brakującego kursu, dawnego „jak w sklepie”, drugiej serii wykresu i sumy w panelu. Razem 669 sprawdzeń (z `tests/44-datamatrix.test.js`), 18 testów stanowiska w Chromium bez zmian zielonych.
 
 ### Bez zmian, z pomiarem
 
