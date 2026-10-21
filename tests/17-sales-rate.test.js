@@ -21,7 +21,7 @@ const shiftOf = (t) => { const p = String(t).split(' · '); return p[1].split(' 
 
 
 const { describe, test, eq, ok } = require('./harness');
-const { boot, setShift } = require('./dom-stub');
+const { boot, setShift, scanTote } = require('./dom-stub');
 
 const env = boot();
 const SH = env.SH;
@@ -85,6 +85,7 @@ function przedmiot(kod) {
     };
     ustaw('poniżej — czy przedmiot zgadza się z tym, co widzisz?');
     ustaw(kod ? `Zeskanuj ${kod}\nPrzypisz nowy` : 'Przypisz nowy');
+    scanTote(env);
     ustaw('');   // ekran się czyści, wyzwalacz znika
 }
 
@@ -173,7 +174,7 @@ test('linia 2 kończy się tym samym procentem, co linia 7', () => {
     const l2 = SH.StatsWindowRenderer.lines.line2_globalSummary.textContent;
     const l7 = SH.StatsWindowRenderer.lines.line7_compact.textContent;
     ok(/ 14%$/.test(l2), 'linia 2 ma kończyć się na 14%, jest: ' + l2);
-    ok(l7.endsWith(' 14%'), 'i ma to być ta sama liczba co w linii 7: ' + l7);
+    ok(shiftOf(l7).endsWith(' 14%'), 'i ma to być ta sama liczba co w linii 7: ' + l7);
     S.localTabConfig.linesConfig.line2_globalSummary.visible = false;
 });
 

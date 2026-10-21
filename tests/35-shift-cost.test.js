@@ -26,7 +26,7 @@
 'use strict';
 
 const { describe, test, eq, ok, same } = require('./harness');
-const { makeTabNetwork, makeClock, STAND_TIME, bootOnStand } = require('./dom-stub');
+const { makeTabNetwork, makeClock, STAND_TIME, bootOnStand, scanTote } = require('./dom-stub');
 
 const URL_CRET = 'https://trex.example/?gradingMode=CRETURN';
 const URL_WHD = 'https://trex.example/?gradingMode=WAREHOUSE_DEALS';
@@ -85,7 +85,10 @@ net.flush();
 function runItem(i) {
     zero();
     const env = i % 3 === 2 ? B : A;
-    for (const f of frames(i)) env.show(f);
+    for (const f of frames(i)) {
+        if (f === '') scanTote(env);
+        env.show(f);
+    }
     ops.events = net.pending();
     net.flush();
     A.SH.StatsWindowRenderer.renderContent();

@@ -140,7 +140,6 @@
                               | 'ScrollLock' | 'Pause' | 'Insert' | 'Numpad0'
                               | 'NumpadMultiply' | 'NumpadSubtract' | 'NumpadAdd' | 'F10'
    cretProfile = 'CRET'        'CRET' | 'FAST' — który cel z RATE_TARGETS obowiązuje na karcie CRET
-   toteCounting = false        doświadczalne: przedmiot zaliczany po przybitym pojemniku
    autoLpn = false             „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta
    gravisAsin = true           most GRAVIS: ASIN pod polem skanu (tylko CRET i UG); bez skryptu w GRAVIS nic nie widać
    triggerMutationDebounceMs = 50     50..200, jak często skanować stronę
@@ -150,7 +149,7 @@
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_6_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_7_0_'
        Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
        Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
        Zmiana prefiksu = start od zera

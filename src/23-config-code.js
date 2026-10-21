@@ -92,7 +92,7 @@
          * Kody z tymi numerami nadal się wczytują — te rekordy są pomijane
          * i liczone w sprawozdaniu jako wycofane.
          */
-        RETIRED_IDS: [0x0200, 0x0202],
+        RETIRED_IDS: [0x0200, 0x0202, 0x030e],
 
         /**
          * REJESTR USTAWIEŃ — jedyne miejsce, które trzeba ruszyć, dodając
@@ -186,7 +186,6 @@
             { id: 0x030b, root: 'user', path: 'globalStatsContributionKnown.UG', type: 'bool' },
             { id: 0x030c, root: 'user', path: 'keyboardShortcuts.TOGGLE_WINDOW', type: 'text' },
             { id: 0x030d, root: 'user', path: 'cretProfile', type: 'enum', list: 'cretProfile' },
-            { id: 0x030e, root: 'user', path: 'toteCounting', type: 'bool' },
             { id: 0x030f, root: 'user', path: 'autoLpn', type: 'bool' },
             { id: 0x0310, root: 'user', path: 'gravisAsin', type: 'bool' },
         ],

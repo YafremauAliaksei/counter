@@ -100,26 +100,36 @@
         }
     };
 
+    /**
+     * CYKL PRZEDMIOTU — od wyzwalacza początku do zaliczenia.
+     *
+     *   początek   — wyzwalacz początku POJAWIŁ SIĘ na stronie (zbocze: nie
+     *                było go w poprzednim skanie). Gdy poprzedni przedmiot
+     *                nie dostał wyzwalacza końcowego, został przerwany i nic
+     *                nie dostaje; gdy dostał, a pojemnika nie było — zalicza
+     *                się teraz (pole pojemnika bywa poza naszym zasięgiem).
+     *   koniec     — wyzwalacz końcowy przy trwającym przedmiocie.
+     *   pojemnik   — przybity pojemnik. `tsREP…` przerywa przedmiot na każdym
+     *                etapie. Zwykły zalicza przedmiot, jeśli był już koniec;
+     *                jeśli nie — zaliczy go koniec.
+     *   czas       — koniec bez pojemnika przez ITEM_FINISH_GRACE_MS: zalicza.
+     *
+     * Zaliczenie: +1, a w działach DOUBLE_TAB_TYPES +2, gdy była widoczna
+     * naklejka albo fraza o odsprzedaży i przedmiot pojechał na sprzedaż
+     * (o sprzedaży rozstrzyga Routing — także po zaliczeniu, gdy kod
+     * sortowania przyjdzie później).
+     */
     const AutoTrigger = {
         observer: null,
-        /** Przedmioty zaliczone z wyzwalacza tekstu — porównanie z ToteWatch. */
-        textCompleted: 0,
-        /**
-         * Naklejka zobaczona przy bieżącym przedmiocie (tylko UG). Zwykłe pole,
-         * a nie uiFlags: zapis do stanu reaktywnego przy każdym skanie
-         * rozsyłałby zdarzenia na darmo.
-         */
-        stickerSeen: false,
         debouncedScan: null,
         debouncedAttach: null,
+        /** Przedmioty, które dostały wyzwalacz końcowy — porównanie w SH.tote(). */
+        textCompleted: 0,
+        /** @type {{finished: boolean, finishedAt: number, toteOk: boolean, sticker: boolean, phrase: boolean}|null} */
+        item: null,
+        /** Czy wyzwalacz początku był w poprzednim skanie (do wykrycia zbocza). */
+        preSeen: false,
 
-        /**
-         * Czy węzeł należy do własnego interfejsu skryptu. Okno statystyk,
-         * nakładka i panel leżą w obserwowanym document.body, a okno
-         * przerysowuje się co sekundę — bez tego filtra każda taka mutacja
-         * uruchamiałaby scan() z odczytem innerText (przeliczenie geometrii
-         * całej strony).
-         */
         isOwnNode(node) {
             if (!node) return false;
             const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
@@ -145,6 +155,7 @@
 
         init() {
             this.attach();
+            this.tickTimer = setInterval(() => this.tick(), CONFIG.ITEM_TICK_MS);
             // Odtwarzanie observera z debounce — przeciąganie suwaka interwału
             // dawałoby dziesiątki disconnect/observe. Uchwyt na obiekcie, żeby
             // rozbiórka mogła go zgasić.
@@ -160,52 +171,104 @@
             // razu przy tworzeniu wpisu.
             Routing.observe(txt);
 
-            if (CONFIG.PRE_TRIGGER_REGEX.test(txt)) {
-                if (!store.uiFlags.itemInProgress) this.stickerSeen = false;
-                store.uiFlags.itemInProgress = true;
-            }
-            // Naklejka w UG: przedmiot liczy się podwójnie i jest sprzedażą.
-            // Liczy się tylko widoczna — strona potrafi przysłać następny krok
-            // z wyprzedzeniem, ukryty. Wymiary czyta się po innerText, więc
-            // układ strony jest już policzony i odczyt niczego nie przelicza.
-            if (!this.stickerSeen && store.currentTabType === CONFIG.STICKER_TAB_TYPE) {
-                const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
-                if (sticker && (sticker.offsetWidth || sticker.offsetHeight)) {
-                    this.stickerSeen = true;
-                    Routing.onSticker();
+            const pre = CONFIG.PRE_TRIGGER_REGEX.test(txt);
+            if (pre && !this.preSeen) this.start();
+            this.preSeen = pre;
+
+            const item = this.item;
+            if (item && CONFIG.DOUBLE_TAB_TYPES.includes(store.currentTabType)) {
+                // Naklejka liczy się widoczna: strona potrafi przysłać następny
+                // krok z wyprzedzeniem, ukryty (offsetParent === null). Sam
+                // element bywa pusty i bez wymiarów, więc rozmiar nie świadczy
+                // o niczym.
+                if (!item.sticker) {
+                    const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+                    if (sticker && sticker.offsetParent !== null) {
+                        item.sticker = true;
+                        Diag.event('naklejka');
+                        Routing.onSticker();
+                    }
+                }
+                if (!item.phrase && CONFIG.RESALE_PHRASE_REGEX.test(txt)) {
+                    item.phrase = true;
+                    Diag.event('fraza odsprzedaży');
                 }
             }
-            const toteDone = ToteWatch.check();
-            const byTote = !!store.userConfig.toteCounting;
+
             if (CONFIG.AUTO_TRIGGER_REGEX.test(txt)) {
-                if (store.uiFlags.itemInProgress && !store.uiFlags.autoTriggerFound) {
-                    this.textCompleted++;
+                if (!store.uiFlags.autoTriggerFound && item && !item.finished) {
                     store.uiFlags.autoTriggerFound = true;
-                    if (!byTote) this.completeItem();
+                    item.finished = true;
+                    item.finishedAt = Date.now();
+                    this.textCompleted++;
+                    Diag.event('koniec');
+                    if (item.toteOk) this.count('pojemnik przed końcem');
                 }
             } else {
                 store.uiFlags.autoTriggerFound = false;
             }
-            // Jeden pojemnik na przedmiot: zaliczenie zdejmuje flagę, więc
-            // kolejne skany w to samo pole nic nie dodają, dopóki nie przyjdzie
-            // następny wyzwalacz początku.
-            if (byTote && toteDone && store.uiFlags.itemInProgress) this.completeItem();
+
+            const tote = ToteWatch.check();
+            if (tote !== null) this.onTote(tote);
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });
             Perf.scan(performance.now() - startedAt);
         },
 
-        /**
-         * Zaliczenie przedmiotu: +1, a z naklejką w UG +2. Zdarzenie dla
-         * dziennika idzie stąd, a nie z modifyCounter(), bo skróty i ręczne
-         * poprawki dziennika nie napełniają.
-         */
-        completeItem() {
-            const weight = this.stickerSeen ? CONFIG.STICKER_ITEM_WEIGHT : 1;
-            for (let i = 0; i < weight; i++) InputManager.modifyCounter(1);
+        /** Wyzwalacz początku: nowy przedmiot; poprzedni zaliczony albo przerwany. */
+        start() {
+            const prev = this.item;
+            if (prev && prev.finished) this.count('nowy początek bez pojemnika');
+            else if (prev) Diag.event('przerwany — nowy początek');
+            this.item = { finished: false, finishedAt: 0, toteOk: false, sticker: false, phrase: false };
+            // Zbocze false -> true flagi: Routing i karta ceny zaczynają nowy
+            // przedmiot także wtedy, gdy poprzedni został przerwany w trakcie.
             store.uiFlags.itemInProgress = false;
-            this.stickerSeen = false;
+            store.uiFlags.itemInProgress = true;
+            Diag.event('początek');
+        },
+
+        /** Przybity pojemnik (wartość z ToteWatch). */
+        onTote(value) {
+            const item = this.item;
+            if (CONFIG.ESCALATION_TOTE_REGEX.test(value)) {
+                if (item) {
+                    this.item = null;
+                    store.uiFlags.itemInProgress = false;
+                    Diag.event('eskalacja — przedmiot przerwany', value);
+                }
+                return;
+            }
+            if (!item) return;
+            item.toteOk = true;
+            if (item.finished) this.count('pojemnik');
+        },
+
+        /** Koniec bez pojemnika przez ITEM_FINISH_GRACE_MS — zaliczenie. */
+        tick() {
+            const item = this.item;
+            if (item && item.finished && Date.now() - item.finishedAt >= CONFIG.ITEM_FINISH_GRACE_MS) {
+                this.count('czas bez pojemnika');
+            }
+        },
+
+        /**
+         * Zaliczenie: +1, z naklejką +2 od razu. Fraza o odsprzedaży daje +1
+         * dopiero przy sprzedaży — rozstrzyga Routing.countDirection, bo kod
+         * sortowania potrafi przyjść po zaliczeniu. Zdarzenie dla dziennika
+         * idzie stąd, a nie z modifyCounter(), bo skróty i ręczne poprawki
+         * dziennika nie napełniają.
+         */
+        count(reason) {
+            const item = this.item;
+            if (!item) return;
+            this.item = null;
+            const weight = item.sticker ? 2 : 1;
+            for (let i = 0; i < weight; i++) InputManager.modifyCounter(1);
+            Routing.markItem({ weight, bonusIfSell: item.phrase && !item.sticker });
+            store.uiFlags.itemInProgress = false;
+            Diag.event(`zaliczony +${weight}`, reason);
             bus.emit('item:completed', { weight });
         }
     };

@@ -497,7 +497,24 @@ function bannerPasswords() {
     return vm.runInNewContext(PASSWORDS_LINE.exec(bannerPasswordsLine())[1]);
 }
 
+/**
+ * Przybicie pojemnika tak jak przy stanowisku: Enter w polu pojemnika, potem
+ * pole znika. Bez skanu — zniknięcie zauważy najbliższy skan testu. Przedmiot
+ * zalicza się dopiero po pojemniku (albo po czasie, albo przy następnym
+ * początku), więc pomocnicze przebiegi przedmiotu przybijają pojemnik po
+ * wyzwalaczu końcowym.
+ */
+function scanTote(env, value = 'tsT1') {
+    const doc = env.sandbox.document;
+    const input = doc.createElement('input');
+    input.setAttribute('aria-label', 'Wprowadź pojemnik');
+    input.value = value;
+    doc.body.appendChild(input);
+    doc.dispatch('keydown', { key: 'Enter', target: input });
+    input.remove();
+}
+
 module.exports = {
     makeEnv, makeClock, makeTabNetwork, boot, bootOnStand, setShift, STAND_TIME, ARTIFACT, ARTIFACT_PATH, ROOT,
-    bannerPasswords, bannerPasswordsLine,
+    bannerPasswords, bannerPasswordsLine, scanTote,
 };

@@ -47,17 +47,17 @@
 
         /**
          * Zniknięcie pola po Enterze — zdjętego ze strony albo schowanego
-         * (zerowe wymiary). Zwraca true, gdy pojemnik właśnie przybito.
+         * (zerowe wymiary). Zwraca nazwę właśnie przybitego pojemnika albo null.
          */
         check() {
             const p = this.pending;
-            if (!p) return false;
-            if (this.attached(p.input) && (p.input.offsetWidth || p.input.offsetHeight)) return false;
+            if (!p) return null;
+            if (this.attached(p.input) && (p.input.offsetWidth || p.input.offsetHeight)) return null;
             this.pending = null;
             this.confirmed++;
             store.sessionConfig.lastToteAt = Date.now();
-            bus.emit('tote:confirmed', { value: p.value });
-            return true;
+            Diag.event('pojemnik', p.value);
+            return p.value;
         },
 
         /**
@@ -94,7 +94,6 @@
             return {
                 'pojemniki przybite': this.confirmed,
                 'przedmioty z wyzwalacza tekstu': AutoTrigger.textCompleted,
-                'liczenie po pojemniku': !!store.userConfig.toteCounting,
                 'oczekuje na zniknięcie pola': this.pending ? this.pending.value : null,
             };
         },

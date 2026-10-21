@@ -44,7 +44,7 @@
          * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
          * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_6_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_7_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -52,7 +52,8 @@
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
-                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_'],
+                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
+                             'statsHelper_v1_6_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -267,8 +268,33 @@
          * dotyczy wyłącznie UG.
          */
         STICKER_ELEMENT_ID: 'sticker-back-hide',
-        STICKER_TAB_TYPE: 'UG',
-        STICKER_ITEM_WEIGHT: 2,
+        /**
+         * PRZEDMIOT PODWÓJNY (+2 zamiast +1) — działy, w których obowiązuje,
+         * i dwa niezależne sygnały, z których wystarczy jeden:
+         *   - widoczna naklejka `#sticker-back-hide` przy przedmiocie;
+         *   - fraza o odsprzedaży jako używany (RESALE_PHRASE_REGEX) w trakcie
+         *     przedmiotu ORAZ przedmiot pojechał na sprzedaż.
+         * Oba naraz to dalej +2, nie +3.
+         */
+        DOUBLE_TAB_TYPES: ['UG'],
+        RESALE_PHRASE_REGEX: /Teraz oceniasz produkt, który można odsprzedać jako używany/i,
+        /**
+         * Pojemnik eskalacji (`tsREP…`) przerywa przedmiot na każdym etapie,
+         * także po wyzwalaczu końcowym — przedmiot nie jest zaliczany.
+         */
+        ESCALATION_TOTE_REGEX: /^tsrep/i,
+        /**
+         * Przedmiot z wyzwalaczem końcowym, ale bez przybitego pojemnika,
+         * zalicza się mimo to po tym czasie albo przy następnym wyzwalaczu
+         * początku — inaczej przepadłby przy kroku bez pola pojemnika.
+         */
+        ITEM_FINISH_GRACE_MS: 60000,
+        ITEM_TICK_MS: 5000,
+        // Okno diagnostyki: długość pierścienia zdarzeń, liczba pokazanych pól,
+        // odświeżanie otwartego okna.
+        DIAG_MAX_EVENTS: 60,
+        DIAG_MAX_INPUTS: 12,
+        DIAG_REFRESH_MS: 1000,
         // Pola, w które wchodzi LPN przedmiotu (most GRAVIS).
         LPN_INPUT_TESTIDS: ['lpn-input-label', 'package-input', 'wd-item-scan-label'],
         LPN_VALUE_REGEX: /^lpn[a-z0-9]+$/i,
@@ -506,12 +532,6 @@
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None', TOGGLE_WINDOW: 'None' },
         // Który cel obowiązuje na karcie CRET: CRET albo FAST (ten sam adres).
         cretProfile: 'CRET',
-        /**
-         * Doświadczalne: zaliczanie przedmiotu po przybiciu pojemnika zamiast
-         * wyzwalacza z tekstu strony. Wyłączone — oba sposoby naraz liczyłyby
-         * każdy przedmiot dwa razy. Porównanie obu: SH.tote().
-         */
-        toteCounting: false,
         autoLpn: false,
         /**
          * Most GRAVIS — domyślnie włączony (decyzja autora, CHANGELOG): karty

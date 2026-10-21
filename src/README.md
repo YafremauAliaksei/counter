@@ -32,7 +32,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 18 | `18-routing.js` | ustalenie, dokąd pojechał przedmiot | ~260 |
 | 19 | `19-price-module.js` | główny wyłącznik sieci: `enable` / `disable` | ~35 |
 | 20 | `20-price-card.js` | karta ceny: pytanie źródeł, limity, przegląd sklepów, CSP, rysowanie | ~900 |
-| 21 | `21-input.js` | klawiatura i `MutationObserver` | ~170 |
+| 21 | `21-input.js` | klawiatura, `MutationObserver` i cykl przedmiotu (początek, koniec, pojemnik, zaliczenie) | ~275 |
 | 22 | `22-bootstrap.js` | `Main.init`, rozbiórka, konsolowe API `SH` | ~410 |
 | 23 | `23-config-code.js` | kod ustawień: jeden ciąg szesnastkowy zamiast panelu | ~435 |
 | 24 | `24-tasks.js` | menedżer zadań: własny zegar i liczniki procesu pracy | ~680 |
@@ -40,6 +40,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 27 | `27-gravis.js` | most GRAVIS: LPN tam, ASIN z powrotem pod pole skanu | ~250 |
 | 28 | `28-auto-lpn.js` | Auto-LPN: „Przypisz ponownie LPN” po etykiecie w polu pojemnika | ~35 |
 | 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
+| 29 | `29-diagnostics.js` | okno diagnostyki na stanowisku bez F12 | ~120 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~190 |
 
 ---

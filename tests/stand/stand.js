@@ -227,7 +227,8 @@
         state.routeAfterArmed = false;
         paintRoute();
         state.item = { asin: pick[0], title: pick[1], route: o.route || null,
-                       flex: !!(o.tote || o.sticker !== undefined), tote: !!o.tote, sticker: !!o.sticker };
+                       flex: !!(o.tote || o.sticker !== undefined), tote: !!o.tote, sticker: !!o.sticker,
+                       noTote: !!o.noTote };
         state.toteDone = false;
         state.lastAsin = pick[0];
         state.items++;
@@ -236,10 +237,28 @@
         render();
     }
 
+    /**
+     * Skaner przybija pojemnik na kroku końcowym: pole pojemnika, Enter,
+     * pole znika. Licznik zalicza przedmiot właśnie w tej chwili.
+     */
+    async function autoTote(value) {
+        const box = $('itemBox');
+        const input = document.createElement('input');
+        input.setAttribute('aria-label', 'Wprowadź pojemnik');
+        input.value = value || 'tsAUTO1';
+        box.parentNode.appendChild(input);
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        // Pole znika tuż po Enterze, jak po odpowiedzi serwera; zaliczenie
+        // przychodzi ze skanu po tej mutacji, przed następnym krokiem.
+        await wait(10);
+        input.remove();
+    }
+
     /** Następny krok; po kroku końcowym ekran wraca do bezczynności. */
     function step() {
         if (state.step === 0) return begin();
         if (state.step === FINAL_STEP) {
+            if (state.item && !state.item.tote && !state.item.noTote) autoTote();
             state.lastRoute = state.item && state.item.route;
             state.routeAfterArmed = !!(state.lastRoute && state.lastRoute.when === 'after');
             state.item = null;
@@ -266,7 +285,9 @@
      *             tylko ukryta (false);
      *   tote    — tryb elastyczny z polem pojemnika na kroku końcowym; krok
      *             nie schodzi, dopóki ktoś nie przybije pojemnika (test
-     *             wpisuje go jak człowiek).
+     *             wpisuje go jak człowiek);
+     *   noTote  — krok końcowy bez pojemnika (domyślnie stanowisko przybija
+     *             go samo, jak skaner).
      */
     async function item(opts) {
         const o = opts || {};

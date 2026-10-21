@@ -14,7 +14,7 @@
 
 const vm = require('vm');
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { bootOnStand, boot, makeEnv, makeTabNetwork, makeClock, STAND_TIME, ARTIFACT } = require('./dom-stub');
+const { bootOnStand, boot, makeEnv, makeTabNetwork, makeClock, STAND_TIME, ARTIFACT, scanTote } = require('./dom-stub');
 
 const URL_OF = (mode) => `https://trex-prod-eu.aka.amazon.com/?gradingMode=${mode}`;
 const MIN = 60000;
@@ -32,6 +32,7 @@ test('„Czy produkt jest zgodny” i „W przypadku tego produktu można pomin�
         page(env, '');
         page(env, pre);
         page(env, 'Przypisz nowy');
+        scanTote(env);
         page(env, '');
         eq(env.SH.store.tabCounters.CRET, 1, pre);
     }
@@ -59,6 +60,7 @@ test('panel otwarty na stronie nie psuje liczenia', () => {
         page(env, panelText());
         page(env, panelText() + ' poniżej');
         page(env, panelText() + ' Przypisz nowy');
+        scanTote(env);
     }
     page(env, panelText());
     eq(env.SH.store.tabCounters.CRET, 3);
@@ -88,13 +90,14 @@ function tote(env, value) {
 
 test('dziesięć pojemników bez nowego wyzwalacza początku to jeden przedmiot', () => {
     const env = bootOnStand();
-    env.SH.store.userConfig.toteCounting = true;
     page(env, '');
     page(env, 'poniżej');
+    page(env, 'Przypisz nowy');
     for (let i = 0; i < 10; i++) tote(env, 'tsA' + i);
     eq(env.SH.store.tabCounters.CRET, 1, 'jeden przedmiot');
     eq(env.SH.ToteWatch.confirmed, 10, 'czas od pojemnika liczy się od każdego');
     page(env, 'poniżej');
+    page(env, 'Przypisz nowy');
     tote(env, 'tsB1');
     eq(env.SH.store.tabCounters.CRET, 2, 'nowy początek — nowy przedmiot');
 });
@@ -273,6 +276,7 @@ for (const combo of COMBOS) {
                 }
                 page(t, 'Przypisz nowy');
                 if (st) st.remove();
+                scanTote(t);
                 page(t, '');
                 net.flush();
             }

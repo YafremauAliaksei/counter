@@ -82,6 +82,8 @@
         teardown() {
             if (AutoTrigger.observer) { AutoTrigger.observer.disconnect(); AutoTrigger.observer = null; }
             if (StatsWindowRenderer.tickTimer) { clearInterval(StatsWindowRenderer.tickTimer); StatsWindowRenderer.tickTimer = null; }
+            if (AutoTrigger.tickTimer) { clearInterval(AutoTrigger.tickTimer); AutoTrigger.tickTimer = null; }
+            Diag.close();
             if (this.shiftWatchTimer) { clearInterval(this.shiftWatchTimer); this.shiftWatchTimer = null; }
             if (InputManager.onKeyDown) document.removeEventListener('keydown', InputManager.onKeyDown, true);
             if (ToteWatch.onKeyDown) document.removeEventListener('keydown', ToteWatch.onKeyDown, true);
@@ -310,7 +312,9 @@
                     settings: () => SettingsPanel.toggle(),
                     // Porównanie liczenia po pojemniku z wyzwalaczem tekstu.
                     tote: () => ToteWatch.info(),
-                    ToteWatch, AutoLpn, GravisBridge,
+                    // Okno diagnostyki — to samo co przycisk w panelu.
+                    debug: () => Diag.toggle(),
+                    ToteWatch, AutoLpn, GravisBridge, Diag,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które

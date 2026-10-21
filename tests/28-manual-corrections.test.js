@@ -17,7 +17,7 @@
 'use strict';
 
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot, bootOnStand, makeEnv } = require('./dom-stub');
+const { boot, bootOnStand, makeEnv, scanTote } = require('./dom-stub');
 
 const { makeStorage } = makeEnv();
 
@@ -39,6 +39,7 @@ function item(code) {
     };
     set('poniżej — czy przedmiot zgadza się z tym, co widzisz?');
     set(`Zeskanuj ${code}\nPrzypisz nowy`);
+    scanTote(env);
     set('');
 }
 
@@ -227,7 +228,7 @@ test('karta z licznikiem „poza mianownikiem” większym od paczek nie zaniża
     S.sessionConfig.activeTabInstances.WHD = clock.now();
     SH.StatsWindowRenderer.renderContent();
     const text = SH.StatsWindowRenderer.lines.line7_compact.textContent;
-    ok(/ 50%$/.test(text), 'linia 7: ' + text);
+    ok(/ 50%( · |$)/.test(text), 'linia 7: ' + text);
     S.tabCounters.WHD = 0; S.tabNeutral.WHD = 0;
     invariants(cid, 'po teście');
 });

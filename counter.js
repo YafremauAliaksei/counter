@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.6.2
+// @version      1.7.0
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.6.2',
+        SCRIPT_VERSION: '1.7.0',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -127,7 +127,7 @@ const PAID_SHIFT_HOURS = 10;
          * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
          * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_6_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_7_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -135,7 +135,8 @@ const PAID_SHIFT_HOURS = 10;
         LEGACY_ID_PREFIXES: ['statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_',
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
-                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_'],
+                             'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
+                             'statsHelper_v1_6_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -350,8 +351,33 @@ const PAID_SHIFT_HOURS = 10;
          * dotyczy wyłącznie UG.
          */
         STICKER_ELEMENT_ID: 'sticker-back-hide',
-        STICKER_TAB_TYPE: 'UG',
-        STICKER_ITEM_WEIGHT: 2,
+        /**
+         * PRZEDMIOT PODWÓJNY (+2 zamiast +1) — działy, w których obowiązuje,
+         * i dwa niezależne sygnały, z których wystarczy jeden:
+         *   - widoczna naklejka `#sticker-back-hide` przy przedmiocie;
+         *   - fraza o odsprzedaży jako używany (RESALE_PHRASE_REGEX) w trakcie
+         *     przedmiotu ORAZ przedmiot pojechał na sprzedaż.
+         * Oba naraz to dalej +2, nie +3.
+         */
+        DOUBLE_TAB_TYPES: ['UG'],
+        RESALE_PHRASE_REGEX: /Teraz oceniasz produkt, który można odsprzedać jako używany/i,
+        /**
+         * Pojemnik eskalacji (`tsREP…`) przerywa przedmiot na każdym etapie,
+         * także po wyzwalaczu końcowym — przedmiot nie jest zaliczany.
+         */
+        ESCALATION_TOTE_REGEX: /^tsrep/i,
+        /**
+         * Przedmiot z wyzwalaczem końcowym, ale bez przybitego pojemnika,
+         * zalicza się mimo to po tym czasie albo przy następnym wyzwalaczu
+         * początku — inaczej przepadłby przy kroku bez pola pojemnika.
+         */
+        ITEM_FINISH_GRACE_MS: 60000,
+        ITEM_TICK_MS: 5000,
+        // Okno diagnostyki: długość pierścienia zdarzeń, liczba pokazanych pól,
+        // odświeżanie otwartego okna.
+        DIAG_MAX_EVENTS: 60,
+        DIAG_MAX_INPUTS: 12,
+        DIAG_REFRESH_MS: 1000,
         // Pola, w które wchodzi LPN przedmiotu (most GRAVIS).
         LPN_INPUT_TESTIDS: ['lpn-input-label', 'package-input', 'wd-item-scan-label'],
         LPN_VALUE_REGEX: /^lpn[a-z0-9]+$/i,
@@ -589,12 +615,6 @@ const PAID_SHIFT_HOURS = 10;
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None', TOGGLE_WINDOW: 'None' },
         // Który cel obowiązuje na karcie CRET: CRET albo FAST (ten sam adres).
         cretProfile: 'CRET',
-        /**
-         * Doświadczalne: zaliczanie przedmiotu po przybiciu pojemnika zamiast
-         * wyzwalacza z tekstu strony. Wyłączone — oba sposoby naraz liczyłyby
-         * każdy przedmiot dwa razy. Porównanie obu: SH.tote().
-         */
-        toteCounting: false,
         autoLpn: false,
         /**
          * Most GRAVIS — domyślnie włączony (decyzja autora, CHANGELOG): karty
@@ -903,8 +923,6 @@ const PAID_SHIFT_HOURS = 10;
             section_workflow: 'Target and Workstation Helpers',
             workflow_cretProfile: 'CRET tab target',
             workflow_targetHint: 'Target of this tab: ${value}/h. Targets are edited at the top of the file (RATE_TARGETS).',
-            workflow_toteCounting: 'Count items by closed tote (experimental)',
-            workflow_toteCountingHint: 'Replaces the page-text trigger. Compare both in the console: SH.tote().',
             workflow_autoLpn: 'Auto-LPN: press "Reassign LPN" when a label is scanned into the tote field',
             workflow_gravis: 'Suggest ASIN from GRAVIS',
             workflow_gravisHowTo: '1. Press the button below — GRAVIS opens in a new tab. 2. On the GRAVIS tab click this script\'s bookmark once. Afterwards every LPN goes to GRAVIS and the ASIN shows up under the item scan field: click it to paste, Enter is yours.',
@@ -917,6 +935,10 @@ const PAID_SHIFT_HOURS = 10;
             tasks_segmentsHint: 'Comma separated, e.g. 06:30-09:15, 23:30-02:00. A period may cross midnight; lunch is not counted. Leave the end empty to keep the clock running.',
             tasks_segmentsApply: 'Save periods',
             tasks_segmentsError: 'Periods not saved: check the format and that they do not overlap.',
+            diag_open: 'Diagnostics',
+            diag_hint: 'Window with the item cycle events and the form fields the script sees — for workstations without F12. "Copy" puts everything on the clipboard.',
+            diag_copy: 'Copy',
+            diag_close: 'Close',
             multicolorMode: 'Multi-Color Departments', tabColors: 'Dept. Colors:'
         },
         pl: {
@@ -1052,8 +1074,6 @@ const PAID_SHIFT_HOURS = 10;
             section_workflow: 'Cel i pomoce stanowiska',
             workflow_cretProfile: 'Cel karty CRET',
             workflow_targetHint: 'Cel tej karty: ${value}/h. Cele zmienia się na górze pliku (RATE_TARGETS).',
-            workflow_toteCounting: 'Liczenie po przybitym pojemniku (doświadczalne)',
-            workflow_toteCountingHint: 'Zastępuje wyzwalacz z tekstu strony. Porównanie obu w konsoli: SH.tote().',
             workflow_autoLpn: 'Auto-LPN: „Przypisz\u200b ponownie LPN”, gdy w pole pojemnika trafi etykieta',
             workflow_gravis: 'Podpowiadaj ASIN z GRAVIS',
             workflow_gravisHowTo: '1. Naciśnij przycisk niżej — GRAVIS otworzy się w nowej karcie. 2. Na karcie GRAVIS kliknij raz zakładkę tego skryptu. Od tej chwili każdy LPN idzie do GRAVIS, a ASIN pojawia się pod polem skanu przedmiotu: kliknięcie go wstawia, Enter naciskasz sam.',
@@ -1066,6 +1086,10 @@ const PAID_SHIFT_HOURS = 10;
             tasks_segmentsHint: 'Po przecinku, np. 06:30-09:15, 23:30-02:00. Odcinek może przechodzić przez północ, obiad się nie liczy. Pusty koniec — zegar chodzi dalej.',
             tasks_segmentsApply: 'Zapisz odcinki',
             tasks_segmentsError: 'Odcinki nie zapisane: sprawdź zapis i czy nie nachodzą na siebie.',
+            diag_open: 'Diagnostyka',
+            diag_hint: 'Okno ze zdarzeniami cyklu przedmiotu i polami formularzy, które widzi skrypt — dla stanowisk bez F12. „Kopiuj” kładzie całość do schowka.',
+            diag_copy: 'Kopiuj',
+            diag_close: 'Zamknij',
             multicolorMode: 'Wielokolorowe Działy', tabColors: 'Kolory Działów:'
         },
         uk: {
@@ -1201,8 +1225,6 @@ const PAID_SHIFT_HOURS = 10;
             section_workflow: 'Ціль і помічники робочого місця',
             workflow_cretProfile: 'Ціль вкладки CRET',
             workflow_targetHint: 'Ціль цієї вкладки: ${value}/год. Цілі змінюються на початку файлу (RATE_TARGETS).',
-            workflow_toteCounting: 'Рахувати за закритою тарою (експериментально)',
-            workflow_toteCountingHint: 'Замінює тригер за текстом сторінки. Порівняння обох у консолі: SH.tote().',
             workflow_autoLpn: 'Авто-LPN: «Перепризначити LPN», якщо в поле тари потрапила етикетка',
             workflow_gravis: 'Підтягувати ASIN з GRAVIS',
             workflow_gravisHowTo: '1. Натисніть кнопку нижче — GRAVIS відкриється в новій вкладці. 2. На вкладці GRAVIS один раз клікніть закладку цього скрипта. Далі кожен LPN іде в GRAVIS, а ASIN з\'являється під полем скану предмета: клік вставляє його, Enter натискаєте самі.',
@@ -1215,6 +1237,10 @@ const PAID_SHIFT_HOURS = 10;
             tasks_segmentsHint: 'Через кому, напр. 06:30-09:15, 23:30-02:00. Відрізок може переходити через північ, обід не рахується. Порожній кінець — годинник іде далі.',
             tasks_segmentsApply: 'Зберегти відрізки',
             tasks_segmentsError: 'Відрізки не збережено: перевірте запис і чи не накладаються вони.',
+            diag_open: 'Діагностика',
+            diag_hint: 'Вікно з подіями циклу предмета й полями форм, які бачить скрипт, — для робочих місць без F12. «Копіювати» кладе все в буфер обміну.',
+            diag_copy: 'Копіювати',
+            diag_close: 'Закрити',
             multicolorMode: 'Різнокольорові відділи', tabColors: 'Кольори відділів:'
         },
         ru: {
@@ -1350,8 +1376,6 @@ const PAID_SHIFT_HOURS = 10;
             section_workflow: 'Цель и помощники рабочего места',
             workflow_cretProfile: 'Цель вкладки CRET',
             workflow_targetHint: 'Цель этой вкладки: ${value}/ч. Цели меняются в начале файла (RATE_TARGETS).',
-            workflow_toteCounting: 'Считать по закрытому тоуту (экспериментально)',
-            workflow_toteCountingHint: 'Заменяет триггер по тексту страницы. Сравнение обоих в консоли: SH.tote().',
             workflow_autoLpn: 'Авто-LPN: «Назначить LPN заново», если в поле тоута попала этикетка',
             workflow_gravis: 'Подтягивать ASIN из GRAVIS',
             workflow_gravisHowTo: '1. Нажмите кнопку ниже — GRAVIS откроется в новой вкладке. 2. На вкладке GRAVIS один раз кликните закладку этого скрипта. Дальше каждый LPN уходит в GRAVIS, а ASIN появляется под полем скана предмета: клик вставляет его, Enter нажимаете сами.',
@@ -1364,6 +1388,10 @@ const PAID_SHIFT_HOURS = 10;
             tasks_segmentsHint: 'Через запятую, напр. 06:30-09:15, 23:30-02:00. Отрезок может переходить через полночь, обед не считается. Пустой конец — часы идут дальше.',
             tasks_segmentsApply: 'Сохранить отрезки',
             tasks_segmentsError: 'Отрезки не сохранены: проверьте запись и что они не пересекаются.',
+            diag_open: 'Диагностика',
+            diag_hint: 'Окно с событиями цикла предмета и полями форм, которые видит скрипт, — для рабочих мест без F12. «Копировать» кладёт всё в буфер обмена.',
+            diag_copy: 'Копировать',
+            diag_close: 'Закрыть',
             multicolorMode: 'Разноцветные отделы', tabColors: 'Цвета отделов:'
         }
     };
@@ -3438,9 +3466,8 @@ const PAID_SHIFT_HOURS = 10;
                     store.userConfig.cretProfile, v => { store.userConfig.cretProfile = v; })));
             }
             sec.appendChild(UIBuilder.hint(I18n.get('workflow_targetHint', { value: ToteWatch.targetFor(store.currentTabType) || '—' })));
-            sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_toteCounting'), !!store.userConfig.toteCounting,
-                v => { store.userConfig.toteCounting = !!v; })));
-            sec.appendChild(UIBuilder.hint(I18n.get('workflow_toteCountingHint')));
+            sec.appendChild(UIBuilder.button(I18n.get('diag_open'), () => Diag.toggle(), { width: '100%' }));
+            sec.appendChild(UIBuilder.hint(I18n.get('diag_hint')));
             sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_autoLpn'), !!store.userConfig.autoLpn,
                 v => { store.userConfig.autoLpn = !!v; })));
             if (CONFIG.GRAVIS_TAB_TYPES.includes(store.currentTabType)) {
@@ -5585,7 +5612,6 @@ const PAID_SHIFT_HOURS = 10;
         onSticker() {
             if (!this.state) this.startItem('naklejka przed początkiem');
             const st = this.state;
-            st.weight = CONFIG.STICKER_ITEM_WEIGHT;
             if (st.direction && !st.pending) return;
             st.pending = false;
             st.direction = 'sell';
@@ -5593,6 +5619,17 @@ const PAID_SHIFT_HOURS = 10;
             if (this._ambiguous === st) this._ambiguous = null;
             Utils.log('[KIERUNEK] naklejka -> SPRZEDAŻ');
             this.apply();
+        },
+
+        /**
+         * Zaliczony przedmiot przekazuje swoją wagę (ile dodano do licznika)
+         * i to, czy przy sprzedaży należy mu się jeszcze +1 (fraza
+         * o odsprzedaży). Wołane tuż przed onCompleted().
+         */
+        markItem({ weight, bonusIfSell }) {
+            if (!this.state) this.startItem('zaliczenie bez początku');
+            this.state.weight = weight;
+            this.state.bonusIfSell = !!bonusIfSell;
         },
 
         /** Nazwa kierunku do dziennika w konsoli. */
@@ -5652,6 +5689,14 @@ const PAID_SHIFT_HOURS = 10;
         countDirection(st) {
             if (!st || st.counted || !st.completed || !st.direction) return;
             st.counted = true;
+            Diag.event('kierunek', st.direction);
+            // Fraza o odsprzedaży + sprzedaż: przedmiot podwójny, druga sztuka
+            // dochodzi teraz, gdy kierunek jest już znany.
+            if (st.bonusIfSell && st.direction === 'sell') {
+                InputManager.modifyCounter(1);
+                st.weight = (st.weight || 1) + 1;
+                Diag.event('premia za sprzedaż +1');
+            }
             const cid = store.currentTabInstanceId;
             // Kierunek trafia do liczników zmiany (linie 1, 2, 7) i do
             // bieżącego zadania (linia 8) w jednym wywołaniu, żeby suma zadań
@@ -6743,26 +6788,36 @@ const PAID_SHIFT_HOURS = 10;
         }
     };
 
+    /**
+     * CYKL PRZEDMIOTU — od wyzwalacza początku do zaliczenia.
+     *
+     *   początek   — wyzwalacz początku POJAWIŁ SIĘ na stronie (zbocze: nie
+     *                było go w poprzednim skanie). Gdy poprzedni przedmiot
+     *                nie dostał wyzwalacza końcowego, został przerwany i nic
+     *                nie dostaje; gdy dostał, a pojemnika nie było — zalicza
+     *                się teraz (pole pojemnika bywa poza naszym zasięgiem).
+     *   koniec     — wyzwalacz końcowy przy trwającym przedmiocie.
+     *   pojemnik   — przybity pojemnik. `tsREP…` przerywa przedmiot na każdym
+     *                etapie. Zwykły zalicza przedmiot, jeśli był już koniec;
+     *                jeśli nie — zaliczy go koniec.
+     *   czas       — koniec bez pojemnika przez ITEM_FINISH_GRACE_MS: zalicza.
+     *
+     * Zaliczenie: +1, a w działach DOUBLE_TAB_TYPES +2, gdy była widoczna
+     * naklejka albo fraza o odsprzedaży i przedmiot pojechał na sprzedaż
+     * (o sprzedaży rozstrzyga Routing — także po zaliczeniu, gdy kod
+     * sortowania przyjdzie później).
+     */
     const AutoTrigger = {
         observer: null,
-        /** Przedmioty zaliczone z wyzwalacza tekstu — porównanie z ToteWatch. */
-        textCompleted: 0,
-        /**
-         * Naklejka zobaczona przy bieżącym przedmiocie (tylko UG). Zwykłe pole,
-         * a nie uiFlags: zapis do stanu reaktywnego przy każdym skanie
-         * rozsyłałby zdarzenia na darmo.
-         */
-        stickerSeen: false,
         debouncedScan: null,
         debouncedAttach: null,
+        /** Przedmioty, które dostały wyzwalacz końcowy — porównanie w SH.tote(). */
+        textCompleted: 0,
+        /** @type {{finished: boolean, finishedAt: number, toteOk: boolean, sticker: boolean, phrase: boolean}|null} */
+        item: null,
+        /** Czy wyzwalacz początku był w poprzednim skanie (do wykrycia zbocza). */
+        preSeen: false,
 
-        /**
-         * Czy węzeł należy do własnego interfejsu skryptu. Okno statystyk,
-         * nakładka i panel leżą w obserwowanym document.body, a okno
-         * przerysowuje się co sekundę — bez tego filtra każda taka mutacja
-         * uruchamiałaby scan() z odczytem innerText (przeliczenie geometrii
-         * całej strony).
-         */
         isOwnNode(node) {
             if (!node) return false;
             const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
@@ -6788,6 +6843,7 @@ const PAID_SHIFT_HOURS = 10;
 
         init() {
             this.attach();
+            this.tickTimer = setInterval(() => this.tick(), CONFIG.ITEM_TICK_MS);
             // Odtwarzanie observera z debounce — przeciąganie suwaka interwału
             // dawałoby dziesiątki disconnect/observe. Uchwyt na obiekcie, żeby
             // rozbiórka mogła go zgasić.
@@ -6803,52 +6859,104 @@ const PAID_SHIFT_HOURS = 10;
             // razu przy tworzeniu wpisu.
             Routing.observe(txt);
 
-            if (CONFIG.PRE_TRIGGER_REGEX.test(txt)) {
-                if (!store.uiFlags.itemInProgress) this.stickerSeen = false;
-                store.uiFlags.itemInProgress = true;
-            }
-            // Naklejka w UG: przedmiot liczy się podwójnie i jest sprzedażą.
-            // Liczy się tylko widoczna — strona potrafi przysłać następny krok
-            // z wyprzedzeniem, ukryty. Wymiary czyta się po innerText, więc
-            // układ strony jest już policzony i odczyt niczego nie przelicza.
-            if (!this.stickerSeen && store.currentTabType === CONFIG.STICKER_TAB_TYPE) {
-                const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
-                if (sticker && (sticker.offsetWidth || sticker.offsetHeight)) {
-                    this.stickerSeen = true;
-                    Routing.onSticker();
+            const pre = CONFIG.PRE_TRIGGER_REGEX.test(txt);
+            if (pre && !this.preSeen) this.start();
+            this.preSeen = pre;
+
+            const item = this.item;
+            if (item && CONFIG.DOUBLE_TAB_TYPES.includes(store.currentTabType)) {
+                // Naklejka liczy się widoczna: strona potrafi przysłać następny
+                // krok z wyprzedzeniem, ukryty (offsetParent === null). Sam
+                // element bywa pusty i bez wymiarów, więc rozmiar nie świadczy
+                // o niczym.
+                if (!item.sticker) {
+                    const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+                    if (sticker && sticker.offsetParent !== null) {
+                        item.sticker = true;
+                        Diag.event('naklejka');
+                        Routing.onSticker();
+                    }
+                }
+                if (!item.phrase && CONFIG.RESALE_PHRASE_REGEX.test(txt)) {
+                    item.phrase = true;
+                    Diag.event('fraza odsprzedaży');
                 }
             }
-            const toteDone = ToteWatch.check();
-            const byTote = !!store.userConfig.toteCounting;
+
             if (CONFIG.AUTO_TRIGGER_REGEX.test(txt)) {
-                if (store.uiFlags.itemInProgress && !store.uiFlags.autoTriggerFound) {
-                    this.textCompleted++;
+                if (!store.uiFlags.autoTriggerFound && item && !item.finished) {
                     store.uiFlags.autoTriggerFound = true;
-                    if (!byTote) this.completeItem();
+                    item.finished = true;
+                    item.finishedAt = Date.now();
+                    this.textCompleted++;
+                    Diag.event('koniec');
+                    if (item.toteOk) this.count('pojemnik przed końcem');
                 }
             } else {
                 store.uiFlags.autoTriggerFound = false;
             }
-            // Jeden pojemnik na przedmiot: zaliczenie zdejmuje flagę, więc
-            // kolejne skany w to samo pole nic nie dodają, dopóki nie przyjdzie
-            // następny wyzwalacz początku.
-            if (byTote && toteDone && store.uiFlags.itemInProgress) this.completeItem();
+
+            const tote = ToteWatch.check();
+            if (tote !== null) this.onTote(tote);
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });
             Perf.scan(performance.now() - startedAt);
         },
 
-        /**
-         * Zaliczenie przedmiotu: +1, a z naklejką w UG +2. Zdarzenie dla
-         * dziennika idzie stąd, a nie z modifyCounter(), bo skróty i ręczne
-         * poprawki dziennika nie napełniają.
-         */
-        completeItem() {
-            const weight = this.stickerSeen ? CONFIG.STICKER_ITEM_WEIGHT : 1;
-            for (let i = 0; i < weight; i++) InputManager.modifyCounter(1);
+        /** Wyzwalacz początku: nowy przedmiot; poprzedni zaliczony albo przerwany. */
+        start() {
+            const prev = this.item;
+            if (prev && prev.finished) this.count('nowy początek bez pojemnika');
+            else if (prev) Diag.event('przerwany — nowy początek');
+            this.item = { finished: false, finishedAt: 0, toteOk: false, sticker: false, phrase: false };
+            // Zbocze false -> true flagi: Routing i karta ceny zaczynają nowy
+            // przedmiot także wtedy, gdy poprzedni został przerwany w trakcie.
             store.uiFlags.itemInProgress = false;
-            this.stickerSeen = false;
+            store.uiFlags.itemInProgress = true;
+            Diag.event('początek');
+        },
+
+        /** Przybity pojemnik (wartość z ToteWatch). */
+        onTote(value) {
+            const item = this.item;
+            if (CONFIG.ESCALATION_TOTE_REGEX.test(value)) {
+                if (item) {
+                    this.item = null;
+                    store.uiFlags.itemInProgress = false;
+                    Diag.event('eskalacja — przedmiot przerwany', value);
+                }
+                return;
+            }
+            if (!item) return;
+            item.toteOk = true;
+            if (item.finished) this.count('pojemnik');
+        },
+
+        /** Koniec bez pojemnika przez ITEM_FINISH_GRACE_MS — zaliczenie. */
+        tick() {
+            const item = this.item;
+            if (item && item.finished && Date.now() - item.finishedAt >= CONFIG.ITEM_FINISH_GRACE_MS) {
+                this.count('czas bez pojemnika');
+            }
+        },
+
+        /**
+         * Zaliczenie: +1, z naklejką +2 od razu. Fraza o odsprzedaży daje +1
+         * dopiero przy sprzedaży — rozstrzyga Routing.countDirection, bo kod
+         * sortowania potrafi przyjść po zaliczeniu. Zdarzenie dla dziennika
+         * idzie stąd, a nie z modifyCounter(), bo skróty i ręczne poprawki
+         * dziennika nie napełniają.
+         */
+        count(reason) {
+            const item = this.item;
+            if (!item) return;
+            this.item = null;
+            const weight = item.sticker ? 2 : 1;
+            for (let i = 0; i < weight; i++) InputManager.modifyCounter(1);
+            Routing.markItem({ weight, bonusIfSell: item.phrase && !item.sticker });
+            store.uiFlags.itemInProgress = false;
+            Diag.event(`zaliczony +${weight}`, reason);
             bus.emit('item:completed', { weight });
         }
     };
@@ -6938,6 +7046,8 @@ const PAID_SHIFT_HOURS = 10;
         teardown() {
             if (AutoTrigger.observer) { AutoTrigger.observer.disconnect(); AutoTrigger.observer = null; }
             if (StatsWindowRenderer.tickTimer) { clearInterval(StatsWindowRenderer.tickTimer); StatsWindowRenderer.tickTimer = null; }
+            if (AutoTrigger.tickTimer) { clearInterval(AutoTrigger.tickTimer); AutoTrigger.tickTimer = null; }
+            Diag.close();
             if (this.shiftWatchTimer) { clearInterval(this.shiftWatchTimer); this.shiftWatchTimer = null; }
             if (InputManager.onKeyDown) document.removeEventListener('keydown', InputManager.onKeyDown, true);
             if (ToteWatch.onKeyDown) document.removeEventListener('keydown', ToteWatch.onKeyDown, true);
@@ -7166,7 +7276,9 @@ const PAID_SHIFT_HOURS = 10;
                     settings: () => SettingsPanel.toggle(),
                     // Porównanie liczenia po pojemniku z wyzwalaczem tekstu.
                     tote: () => ToteWatch.info(),
-                    ToteWatch, AutoLpn, GravisBridge,
+                    // Okno diagnostyki — to samo co przycisk w panelu.
+                    debug: () => Diag.toggle(),
+                    ToteWatch, AutoLpn, GravisBridge, Diag,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
@@ -7382,7 +7494,7 @@ const PAID_SHIFT_HOURS = 10;
          * Kody z tymi numerami nadal się wczytują — te rekordy są pomijane
          * i liczone w sprawozdaniu jako wycofane.
          */
-        RETIRED_IDS: [0x0200, 0x0202],
+        RETIRED_IDS: [0x0200, 0x0202, 0x030e],
 
         /**
          * REJESTR USTAWIEŃ — jedyne miejsce, które trzeba ruszyć, dodając
@@ -7476,7 +7588,6 @@ const PAID_SHIFT_HOURS = 10;
             { id: 0x030b, root: 'user', path: 'globalStatsContributionKnown.UG', type: 'bool' },
             { id: 0x030c, root: 'user', path: 'keyboardShortcuts.TOGGLE_WINDOW', type: 'text' },
             { id: 0x030d, root: 'user', path: 'cretProfile', type: 'enum', list: 'cretProfile' },
-            { id: 0x030e, root: 'user', path: 'toteCounting', type: 'bool' },
             { id: 0x030f, root: 'user', path: 'autoLpn', type: 'bool' },
             { id: 0x0310, root: 'user', path: 'gravisAsin', type: 'bool' },
         ],
@@ -8552,17 +8663,17 @@ const PAID_SHIFT_HOURS = 10;
 
         /**
          * Zniknięcie pola po Enterze — zdjętego ze strony albo schowanego
-         * (zerowe wymiary). Zwraca true, gdy pojemnik właśnie przybito.
+         * (zerowe wymiary). Zwraca nazwę właśnie przybitego pojemnika albo null.
          */
         check() {
             const p = this.pending;
-            if (!p) return false;
-            if (this.attached(p.input) && (p.input.offsetWidth || p.input.offsetHeight)) return false;
+            if (!p) return null;
+            if (this.attached(p.input) && (p.input.offsetWidth || p.input.offsetHeight)) return null;
             this.pending = null;
             this.confirmed++;
             store.sessionConfig.lastToteAt = Date.now();
-            bus.emit('tote:confirmed', { value: p.value });
-            return true;
+            Diag.event('pojemnik', p.value);
+            return p.value;
         },
 
         /**
@@ -8599,7 +8710,6 @@ const PAID_SHIFT_HOURS = 10;
             return {
                 'pojemniki przybite': this.confirmed,
                 'przedmioty z wyzwalacza tekstu': AutoTrigger.textCompleted,
-                'liczenie po pojemniku': !!store.userConfig.toteCounting,
                 'oczekuje na zniknięcie pola': this.pending ? this.pending.value : null,
             };
         },
@@ -8913,6 +9023,104 @@ const PAID_SHIFT_HOURS = 10;
         },
     };
 
+    // ─── src/29-diagnostics.js ───
+    // ==========================================
+    // 6k. DIAGNOSTYKA NA STANOWISKU
+    // ==========================================
+    /**
+     * Okno diagnostyki dla stanowisk bez narzędzi deweloperskich (F12
+     * wyłączone przez administratora). Pokazuje to, czego na takim komputerze
+     * inaczej nie da się zobaczyć: ostatnie zdarzenia cyklu przedmiotu, stan
+     * bieżącego przedmiotu i pola formularzy widoczne na stronie (podpis,
+     * data-testid) — po tym widać, czy skrypt w ogóle znajduje pole pojemnika
+     * albo naklejkę. Przycisk kopiuje całość jako JSON do schowka.
+     *
+     * Dziennik zdarzeń jest pierścieniem o stałej długości (DIAG_MAX_EVENTS) —
+     * pamięć nie rośnie w ciągu zmiany. Do sieci nic nie idzie, do konsoli też.
+     *
+     * Tekst okna jest częścią strony (document.body.innerText), więc każdy
+     * napis przechodzi przez defuse(): słowa wyzwalaczy dostają U+200B
+     * i okno nie może samo podnieść flagi przedmiotu.
+     */
+    const Diag = {
+        events: [],
+        el: null,
+        timer: null,
+
+        event(what, detail) {
+            this.events.push({ t: Date.now(), what, detail: detail === undefined ? '' : String(detail) });
+            if (this.events.length > CONFIG.DIAG_MAX_EVENTS) this.events.shift();
+        },
+
+        /** Rozrywa w tekście wszystko, co skrypt rozpoznaje na stronie. */
+        defuse(text) {
+            let out = String(text);
+            for (const re of [CONFIG.PRE_TRIGGER_REGEX, CONFIG.AUTO_TRIGGER_REGEX, CONFIG.RESALE_PHRASE_REGEX]) {
+                out = out.replace(new RegExp(re.source, 'gi'), m => m.slice(0, 2) + '​' + m.slice(2));
+            }
+            return out;
+        },
+
+        /** Pola formularzy na stronie (bez własnych) — najwyżej DIAG_MAX_INPUTS. */
+        inputs() {
+            return Array.from(document.querySelectorAll('input'))
+                .filter(i => !AutoTrigger.isOwnNode(i))
+                .slice(0, CONFIG.DIAG_MAX_INPUTS)
+                .map(i => ({
+                    'podpis': i.getAttribute('aria-label') || '',
+                    'data-testid': i.getAttribute('data-testid') || '',
+                    'widoczne': i.offsetParent !== null,
+                    'pole pojemnika': ToteWatch.isToteInput(i),
+                }));
+        },
+
+        snapshot() {
+            const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+            const text = document.body.innerText || '';
+            return {
+                'wersja': CONFIG.SCRIPT_VERSION,
+                'karta': store.currentTabType,
+                'przedmiot': AutoTrigger.item ? { ...AutoTrigger.item } : null,
+                'na stronie: początek': CONFIG.PRE_TRIGGER_REGEX.test(text),
+                'na stronie: koniec': CONFIG.AUTO_TRIGGER_REGEX.test(text),
+                'na stronie: fraza odsprzedaży': CONFIG.RESALE_PHRASE_REGEX.test(text),
+                'naklejka': sticker ? { 'widoczna': sticker.offsetParent !== null, 'znacznik': sticker.tagName } : null,
+                'pojemnik czeka': ToteWatch.pending ? ToteWatch.pending.value : null,
+                'pola': this.inputs(),
+                'zdarzenia': this.events.map(e => `${Utils.formatTime(new Date(e.t), true, ':')} ${e.what}${e.detail ? ' ' + e.detail : ''}`),
+            };
+        },
+
+        toggle() {
+            if (this.el) { this.close(); return; }
+            const pre = h('pre', { style: { margin: '0', whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' } });
+            this.el = h('div', {
+                id: 'diagPanel',
+                style: { position: 'fixed', left: '10px', top: '10px', width: '440px', zIndex: '2147483646',
+                         background: 'rgba(20,20,20,0.92)', color: '#e0e0e0', font: '11px monospace',
+                         padding: '8px', borderRadius: '6px' },
+            },
+            h('div', { style: { display: 'flex', gap: '6px', marginBottom: '6px' } },
+                UIBuilder.button(I18n.get('diag_copy'), () => {
+                    const json = JSON.stringify(this.snapshot(), null, 2);
+                    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(json).catch(() => {});
+                }, { marginTop: '0' }),
+                UIBuilder.button(I18n.get('diag_close'), () => this.close(), { marginTop: '0' })),
+            pre);
+            document.body.appendChild(this.el);
+            const paint = () => { pre.textContent = this.defuse(JSON.stringify(this.snapshot(), null, 1)); };
+            paint();
+            this.timer = setInterval(paint, CONFIG.DIAG_REFRESH_MS);
+        },
+
+        close() {
+            clearInterval(this.timer);
+            this.timer = null;
+            if (this.el) this.el.remove();
+            this.el = null;
+        },
+    };
+
     // ─── src/25-presets.js ───
 // ==========================================
     // 9. USTAWIENIA PRACOWNIKA (KONFIGURACJA OSOBISTA)
@@ -9137,7 +9345,6 @@ const PAID_SHIFT_HOURS = 10;
                               | 'ScrollLock' | 'Pause' | 'Insert' | 'Numpad0'
                               | 'NumpadMultiply' | 'NumpadSubtract' | 'NumpadAdd' | 'F10'
    cretProfile = 'CRET'        'CRET' | 'FAST' — który cel z RATE_TARGETS obowiązuje na karcie CRET
-   toteCounting = false        doświadczalne: przedmiot zaliczany po przybitym pojemniku
    autoLpn = false             „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta
    gravisAsin = true           most GRAVIS: ASIN pod polem skanu (tylko CRET i UG); bez skryptu w GRAVIS nic nie widać
    triggerMutationDebounceMs = 50     50..200, jak często skanować stronę
@@ -9147,7 +9354,7 @@ const PAID_SHIFT_HOURS = 10;
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_6_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_7_0_'
        Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
        Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
        Zmiana prefiksu = start od zera

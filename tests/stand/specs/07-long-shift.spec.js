@@ -124,8 +124,12 @@ test('dwie karty, trzy zadania: ostatni cykl kosztuje tyle co drugi', async ({ c
         cycles.push(sum);
     }
 
-    const total = await cret.evaluate(() => window.SH.store.tabCounters);
-    expect(total.CRET + total.WHD, 'paczki po obu kartach').toBe(CYCLE * CYCLES);
+    // Przedmiot zalicza się w chwili pojemnika, czyli skanem po zniknięciu
+    // jego pola — ostatni może przyjść chwilę po kroku stanowiska.
+    await expect.poll(async () =>
+        (await cret.evaluate(() => window.SH.store.tabCounters.CRET || 0))
+        + (await whd.evaluate(() => window.SH.store.tabCounters.WHD || 0)),
+    { message: 'paczki po obu kartach' }).toBe(CYCLE * CYCLES);
 
     // Jeden odczyt tekstu strony na skan, przez całą zmianę.
     for (const c of cycles) expect(c.reads, 'odczyty innerText = skany').toBe(c.scans);

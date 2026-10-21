@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.6.2** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.7.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -93,7 +93,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.6.2/counter.js`.
+`…/counter/v1.7.0/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -138,23 +138,37 @@ na końcu czas od niego.
 To nie jest przypadkowy zestaw, tylko jawny cel tej wersji: skrypt ma przeżyć
 dziesięciogodzinną zmianę, niczego nie zużywając i nie przeszkadzając.
 
-**Jak liczony jest przedmiot.** Skrypt śledzi tekst strony. Pojawienie się
-`poniżej` (albo `Transparency`, albo rosyjskiej lub ukraińskiej wersji tego
-napisu z interfejsu T-REX) podnosi flagę „zaczął się przedmiot”. Przy
-podniesionej fladze `+1` daje pierwsza finalna linia z listy:
+**Jak liczony jest przedmiot.** Skrypt śledzi tekst strony i pole pojemnika.
 
-- `Przypisz nowy` albo `Przypisz ponownie` (także w ukraińskim interfejsie
-  T-REX);
-- `Przedmiot wysłano do …` — z wyjątkiem `PROBLEM-SOLVE`, bo taki przedmiot
-  wraca do obsługi i zostałby policzony dwa razy;
-- rosyjski albo ukraiński napis skanowania numeru LP z interfejsu T-REX.
+1. **Początek** — na stronie POJAWIA SIĘ wyzwalacz początku: `poniżej`,
+   `Czy produkt jest zgodny`, `W przypadku tego produktu można pominąć ocenę`,
+   `Transparency` albo rosyjska lub ukraińska wersja napisu z T-REX.
+2. **Koniec** — pierwsza linia z listy: `Przypisz nowy` / `Przypisz ponownie`
+   (też po ukraińsku), `Przedmiot wysłano do …` — z wyjątkiem `PROBLEM-SOLVE`,
+   bo taki przedmiot wraca do obsługi — albo napis skanowania numeru LP.
+3. **Pojemnik** — Enter w polu pojemnika i zniknięcie pola. Przedmiot
+   zalicza się (`+1`) w chwili pojemnika; pojemnik przed końcem zalicza go
+   w chwili końca.
 
-W dziale UG przedmiot, przy którym T-REX każe nakleić naklejkę, liczy się
-`+2` (rozdział „Pomoce stanowiska”).
+| Sytuacja                                                                            | Wynik                                                         |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| początek → koniec → pojemnik (albo pojemnik przed końcem)                           | +1                                                            |
+| początek → koniec, bez pojemnika                                                    | +1 przy następnym początku albo po 60 s                       |
+| początek → nowy początek bez końca                                                  | poprzedni przerwany: 0                                        |
+| pojemnik `tsREP…` na dowolnym etapie, także po końcu                                | przedmiot przerwany: 0                                        |
+| `Przedmiot wysłano do PROBLEM-SOLVE`                                                | to nie koniec; przedmiot czeka albo przerywa go nowy początek |
+| kolejne pojemniki bez nowego początku                                               | nic (tylko czas od pojemnika)                                 |
+| UG: widoczna naklejka `#sticker-back-hide`                                          | +2                                                            |
+| UG: fraza „Teraz oceniasz produkt, który można odsprzedać jako używany…” i sprzedaż | +2 (także gdy kod sprzedaży przyjdzie po pojemniku)           |
+| UG: fraza bez sprzedaży                                                             | +1                                                            |
+| UG: naklejka i fraza ze sprzedażą                                                   | +2, nie +3                                                    |
+| naklejka albo fraza w przerwanym przedmiocie                                        | nie przechodzi na następny                                    |
+| WHD i pozostałe działy: naklejka albo fraza                                         | +1                                                            |
 
-Pełne wyrażenia stoją w `CONFIG.PRE_TRIGGER_REGEX` i `CONFIG.AUTO_TRIGGER_REGEX`.
-Przerwany przedmiot, przy którym nie doszło do finalnej linii, nie jest
-zaliczany — dokładnie tak samo, jak nie zalicza go sam system.
+Działy z przedmiotem podwójnym: `CONFIG.DOUBLE_TAB_TYPES` (domyślnie UG).
+Pełne wyrażenia stoją w `CONFIG.PRE_TRIGGER_REGEX`, `CONFIG.AUTO_TRIGGER_REGEX`,
+`CONFIG.RESALE_PHRASE_REGEX` i `CONFIG.ESCALATION_TOTE_REGEX`. Każdą
+kombinację sprawdza `tests/40-item-flow.test.js`.
 
 ---
 
@@ -607,11 +621,14 @@ w sekcji „Cel i pomoce stanowiska”.
   pojemnika zniknie ze strony.
 - **Linia 10** — cel, procent bieżącego tempa od celu i sztuki wobec celu
   zmiany: `47/h 85% 236/470`.
-- **Liczenie po pojemniku** (doświadczalne) zamiast wyzwalacza z tekstu.
-  Porównanie obu: `SH.tote()` w konsoli.
-- **UG i naklejka**: przedmiot, przy którym T-REX każe nakleić naklejkę
-  (`#sticker-back-hide`), liczy się +2 i jest sprzedażą. Tylko w UG — w WHD
-  ten sam element stoi przy każdej sprzedaży.
+- **Diagnostyka** — przycisk w tej sekcji (albo `SH.debug()`) otwiera okno ze
+  zdarzeniami cyklu przedmiotu (początek, koniec, pojemnik, zaliczenie,
+  naklejka, fraza, kierunek), stanem bieżącego przedmiotu i polami formularzy,
+  które widzi skrypt (podpis, `data-testid`, widoczność). Dla stanowisk, na
+  których F12 jest wyłączone. „Kopiuj” kładzie całość jako JSON do schowka —
+  wystarczy wkleić to autorowi. Do sieci i konsoli nic nie idzie.
+- **UG: przedmiot podwójny** — naklejka albo fraza o odsprzedaży ze sprzedażą
+  daje +2 (tabela w rozdziale „Co robi domyślnie”).
 - **Auto-LPN** — wciska „Przypisz ponownie LPN”, gdy w pole pojemnika trafi
   etykieta zamiast pojemnika.
 - **ASIN z GRAVIS** (tylko CRET i UG, domyślnie włączone). Przycisk „Otwórz
@@ -626,9 +643,6 @@ w sekcji „Cel i pomoce stanowiska”.
   `postMessage` — bez zapytań sieciowych; każda strona przyjmuje wiadomość tylko
   ze znanego adresu. GRAVIS trzeba otworzyć przyciskiem z panelu: okno otwarte
   ręcznie nie ma połączenia z kartą T-REX.
-- **Jeden pojemnik na przedmiot** przy liczeniu po pojemniku: kolejne skany
-  w to samo pole nic nie dodają, dopóki nie przyjdzie następny wyzwalacz
-  początku.
 - **Skrót „ukryj okno”** — w sekcji skrótów klawiszowych.
 
 Panel zamyka się kliknięciem poza nim (nie w trybie przeciągania), drugim
@@ -726,7 +740,7 @@ spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
 `Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
-javascript:(async()=>{try{window['statsHelper_v1_6_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_7_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper nie wystartował: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -854,7 +868,8 @@ SH.routeInfo(); // co obecnie wiadomo o kierunku przedmiotu
 // Diagnostyka
 SH.perf(); // koszt pracy skryptu: czy przedmiot kosztuje tyle co na początku zmiany
 SH.settings(); // otworzyć albo zamknąć panel ustawień
-SH.tote(); // pojemniki przybite a przedmioty z wyzwalacza tekstu
+SH.tote(); // pojemniki przybite a przedmioty z wyzwalaczem końcowym
+SH.debug(); // okno diagnostyki (to samo co przycisk w panelu)
 SH.cspReport(); // co dopuszcza polityka strony (async)
 SH.forcePrice(asin); // odpytać o cenę ręcznie
 SH.readPrice(asin); // odczytać cenę z wykresu z pominięciem cache
@@ -996,7 +1011,7 @@ Wszystkie punkty są pokryte testami automatycznymi (`npm test`, pliki
 ```
 counter/                    ← korzeń repozytorium
 ├── counter.js              ← ARTEFAKT: to, co wkleja się do konsoli
-├── src/                    ← ŹRÓDŁO: 28 modułów plus nagłówek, cele tempa i stopka
+├── src/                    ← ŹRÓDŁO: 29 modułów plus nagłówek, cele tempa i stopka
 │   ├── 00-banner.js
 │   ├── 01-config.js  …  25-presets.js
 │   ├── 99-footer.js
@@ -1004,7 +1019,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 39 plików, 578 sprawdzeń
+├── tests/                  ← 40 plików, 604 sprawdzenia
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1024,7 +1039,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 578 sprawdzeń
+npm test             # 604 sprawdzenia
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1057,8 +1072,8 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_6_0_`; wydanie 1.6.1 zostanie przy nim, 1.7.0
-dostanie `statsHelper_v1_7_0_`. Zakładki z kodem ustawień rozdane przy starszym
+Obecnie jest to `statsHelper_v1_7_0_`; wydanie 1.7.1 zostanie przy nim, 1.8.0
+dostanie `statsHelper_v1_8_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 
 ---

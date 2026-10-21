@@ -9,6 +9,29 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.7.0 — 2026-10-21
+
+> **Aktualizować tylko między zmianami.** Wydanie MINOR: prefiks magazynu zmienia się na `statsHelper_v1_7_0_`, więc liczniki, zadania i ustawienia startują od zera; klucze `statsHelper_v1_6_0_` są sprzątane przy starcie. Zakładki z kodem ustawień działają dalej.
+
+### Zmieniono
+
+- **Przedmiot zalicza się w chwili przybicia pojemnika.** Cykl: początek (wyzwalacz POJAWIA SIĘ na stronie) → koniec (wyzwalacz końcowy) → pojemnik; pojemnik przed końcem zalicza przedmiot w chwili końca. Gdy pojemnika nie było, przedmiot z końcem zalicza się przy następnym początku albo po 60 s — pole pojemnika bywa poza zasięgiem skryptu, a przedmiot nie może przepaść. Ten sam moment zeruje czas od pojemnika, więc tempo i czas mówią o tym samym zdarzeniu.
+- **Nowy początek bez końca przerywa poprzedni przedmiot.** Nic za niego nie przychodzi, a jego naklejka i fraza nie przechodzą na następny — anulowany przedmiot nie może dostać +2 cudzego przedmiotu.
+- **Przedmiot podwójny (+2) w UG ma dwa niezależne sygnały:** widoczną naklejkę albo frazę „Teraz oceniasz produkt, który można odsprzedać jako używany…” w trakcie przedmiotu razem ze sprzedażą. Kod sprzedaży przychodzący po pojemniku też daje +1. Oba sygnały naraz to dalej +2. Działy z przedmiotem podwójnym: `CONFIG.DOUBLE_TAB_TYPES` (UG).
+- **Doświadczalne „liczenie po pojemniku” zniknęło z panelu** — stało się zwykłym sposobem liczenia. Numer ustawienia w kodzie ustawień jest wycofany, stare kody dalej się nakładają.
+
+### Dodano
+
+- **Pojemnik eskalacji `tsREP…`** przerywa przedmiot na każdym etapie, także po wyzwalaczu końcowym — przedmiot nie jest zaliczany (jak `PROBLEM-SOLVE` w linii końcowej).
+- **Okno diagnostyki** dla stanowisk bez F12: przycisk w panelu albo `SH.debug()`. Zdarzenia cyklu przedmiotu, stan bieżącego przedmiotu, wyniki wyzwalaczy na bieżącej stronie, naklejka (czy jest, czy widoczna) i pola formularzy, które widzi skrypt (podpis, `data-testid`, widoczność, czy to pole pojemnika). „Kopiuj” kładzie całość jako JSON do schowka. Dziennik zdarzeń ma stałą długość (60), do sieci i konsoli nic nie idzie, a tekst okna jest rozbrojony, żeby nie udawał wyzwalacza.
+- `tests/40-item-flow.test.js` — 24 kombinacje sygnałów (początek, koniec, pojemnik zwykły i `tsREP`, naklejka, fraza, sprzedaż teraz i później, czas, PROBLEM-SOLVE, przerwany przedmiot, działy) i okno diagnostyki. Stanowisko w przeglądarce przybija pojemnik na kroku końcowym jak skaner.
+
+### Naprawiono
+
+- **Naklejka w UG nie była zauważana.** Skrypt liczył ją tylko wtedy, gdy element miał niezerowe wymiary, a `#sticker-back-hide` bywa pustym znacznikiem bez wymiarów. Teraz liczy się element, który nie jest schowany (`offsetParent`), bez względu na rozmiar.
+
+---
+
 ## 1.6.2 — 2026-10-19
 
 Wydanie PATCH: prefiks magazynu zostaje `statsHelper_v1_6_0_`, więc z 1.6.0 i 1.6.1 można przejść w trakcie zmiany — liczniki, zadania i ustawienia zostają. Kto przechodzi z 1.5.0, aktualizuje między zmianami (prefiks 1.6.0 zeruje dane, opis w sekcji 1.6.0 w CHANGELOG.md).

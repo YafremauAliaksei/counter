@@ -277,9 +277,8 @@
                     store.userConfig.cretProfile, v => { store.userConfig.cretProfile = v; })));
             }
             sec.appendChild(UIBuilder.hint(I18n.get('workflow_targetHint', { value: ToteWatch.targetFor(store.currentTabType) || '—' })));
-            sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_toteCounting'), !!store.userConfig.toteCounting,
-                v => { store.userConfig.toteCounting = !!v; })));
-            sec.appendChild(UIBuilder.hint(I18n.get('workflow_toteCountingHint')));
+            sec.appendChild(UIBuilder.button(I18n.get('diag_open'), () => Diag.toggle(), { width: '100%' }));
+            sec.appendChild(UIBuilder.hint(I18n.get('diag_hint')));
             sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_autoLpn'), !!store.userConfig.autoLpn,
                 v => { store.userConfig.autoLpn = !!v; })));
             if (CONFIG.GRAVIS_TAB_TYPES.includes(store.currentTabType)) {
