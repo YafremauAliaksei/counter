@@ -84,6 +84,18 @@ test('SVG: tło, strefa ciszy i jeden prostokąt na ciemny moduł', () => {
     ok(svg.includes('width="112"'), '(10 + 2·2) · 8 = 112');
 });
 
+test('README pokazuje kod Data Matrix zgodny z zakładką — obrazek nie może zniknąć', () => {
+    // Ludzie bez konsoli i bez wprawy uruchamiają skrypt z tego obrazka.
+    const fs = require('fs');
+    const path = require('path');
+    const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+    ok(readme.includes('<img src="docs/zakladka-datamatrix.svg"'), 'obrazek w README');
+    const file = path.join(__dirname, '..', 'docs', 'zakladka-datamatrix.svg');
+    ok(fs.existsSync(file), 'plik docs/zakladka-datamatrix.svg');
+    eq(fs.readFileSync(file, 'utf8'), toSvg(DataMatrix.encode(readmeBookmarklet())),
+       'obrazek nieaktualny: npm run datamatrix > docs/zakladka-datamatrix.svg');
+});
+
 describe('Zakładka w panelu');
 
 test('gotowa zakładka jest czysto ASCII; przy domyślnych ustawieniach bez kodu ustawień', () => {
