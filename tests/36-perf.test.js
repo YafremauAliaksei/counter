@@ -19,7 +19,7 @@
 'use strict';
 
 const { describe, test, eq, ok } = require('./harness');
-const { bootOnStand } = require('./dom-stub');
+const { bootOnStand, scanTote } = require('./dom-stub');
 
 const CODES = ['CRITS-PRG2', 'WHD', 'AUDIT'];
 
@@ -33,6 +33,10 @@ function shift() {
         };
         set('poniżej — czy przedmiot zgadza się z tym, co widzisz?');
         set(`Zeskanuj ${CODES[i % 3]}\nPrzypisz nowy`);
+        // Przedmiot trwa — chwila pojemnika różni się od poprzedniej, jak na
+        // stanowisku; ta sama milisekunda nie przerysowałaby okna.
+        env.clock.set(env.clock.now() + 1000);
+        scanTote(env);
         set('');
     };
     env.items = (from, n) => { for (let i = from; i < from + n; i++) env.item(i); };

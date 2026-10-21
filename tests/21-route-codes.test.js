@@ -25,7 +25,7 @@
 'use strict';
 
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot } = require('./dom-stub');
+const { boot, scanTote } = require('./dom-stub');
 
 const env = boot();
 const SH = env.SH;
@@ -41,6 +41,7 @@ function item(code) {
     };
     set('poniżej — czy przedmiot zgadza się z tym, co widzisz?');
     set(code ? `Zeskanuj ${code}\nPrzypisz nowy` : 'Przypisz nowy');
+    scanTote(env);
     set('');
 }
 
@@ -228,7 +229,7 @@ test('linia 7 pokazuje procent z pomniejszonego mianownika', () => {
     SH.StatsWindowRenderer.renderContent();
     const text = SH.StatsWindowRenderer.lines.line7_compact.textContent;
     ok(/\b2\b/.test(text), 'liczba sztuk to nadal 2, razem z audytem: ' + text);
-    ok(text.trim().endsWith('100%'), 'procent liczy się z jednej paczki: ' + text);
+    ok(text.split(' · ')[2] === '100%', 'procent liczy się z jednej paczki: ' + text);
 });
 
 test('reset zmiany kasuje licznik audytów razem z pozostałymi', () => {
@@ -258,6 +259,7 @@ test('NS-Secondary-Sorting czeka na uściślenie i przyjmuje je bez przedrostka'
     set('Zeskanuj NS-Secondary-Sorting\nPrzypisz nowy');
     eq(R.info()['czeka na uściślenie'], true, 'sam kod niczego nie rozstrzyga');
     set('Zeskanuj NS-Secondary-Sorting\nPrzedmiot wysłano do Transfer - Sellable');
+    scanTote(env);
     set('');
     eq(SH.store.tabSold[cid], 1, 'uściślenie sprzedażowe weszło');
     eq(SH.store.tabNeutral[cid], 0, 'to nie jest audyt');
@@ -274,6 +276,7 @@ test('NS-Secondary-Sorting bez uściślenia to niesprzedaż', () => {
     };
     set('poniżej — nowy przedmiot');
     set('Zeskanuj NS-Secondary-Sorting\nPrzypisz nowy');
+    scanTote(env);
     set('');
     set('poniżej — następny przedmiot');   // prawdziwa granica przedmiotu
     eq(SH.store.tabSold[cid], 0, 'sprzedaży nie było');

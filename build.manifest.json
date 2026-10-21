@@ -124,6 +124,10 @@
       "file": "src/28-auto-lpn.js",
       "desc": "Wciska „Przypisz ponownie LPN”, gdy w pole pojemnika trafia etykieta zamiast pojemnika."
     },
+    {
+      "file": "src/29-diagnostics.js",
+      "desc": "Okno diagnostyki na stanowisku bez F12: zdarzenia cyklu przedmiotu, pola formularzy, kopia do schowka."
+    },
     { "file": "src/25-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
   ]
 }

@@ -46,10 +46,11 @@ test('UG: ukryta naklejka nie liczy, widoczna daje +2 i sprzedaż; pojemnik zeru
     expect(await tab(page)).toMatchObject({ count: 3, sold: 2 });
 
     const line9 = () => page.evaluate(() => window.SH.StatsWindowRenderer.lines.line9_offTask.textContent);
-    expect(await line9()).toBe('');
+    const confirmed = () => page.evaluate(() => window.SH.ToteWatch.confirmed);
+    const before = await confirmed();
     // Błędny pojemnik zostawia pole — dopiero drugi, poprawny, je zdejmuje.
     await toteItem(page, { tote: true, sticker: false }, ['LPN0001', 'tsUG01x']);
-    expect(await page.evaluate(() => window.SH.ToteWatch.confirmed)).toBe(1);
+    expect(await confirmed()).toBe(before + 1);
     await page.evaluate(() => window.SH.StatsWindowRenderer.renderContent());
     expect(await line9()).not.toBe('');
     expect(await tab(page)).toMatchObject({ count: 4, sold: 2 });

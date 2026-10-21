@@ -23,7 +23,7 @@
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { describe, test, eq, ok } = require('./harness');
-const { boot, makeClock, makeEnv } = require('./dom-stub');
+const { boot, makeClock, makeEnv, scanTote } = require('./dom-stub');
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -40,6 +40,7 @@ function item(env, code) {
     };
     set('poniżej — czy przedmiot zgadza się z tym, co widzisz?');
     set(code ? `Zeskanuj ${code}\nPrzypisz nowy` : 'Przypisz nowy');
+    scanTote(env);
     set('');
 }
 

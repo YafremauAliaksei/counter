@@ -185,7 +185,6 @@
         onSticker() {
             if (!this.state) this.startItem('naklejka przed początkiem');
             const st = this.state;
-            st.weight = CONFIG.STICKER_ITEM_WEIGHT;
             if (st.direction && !st.pending) return;
             st.pending = false;
             st.direction = 'sell';
@@ -193,6 +192,17 @@
             if (this._ambiguous === st) this._ambiguous = null;
             Utils.log('[KIERUNEK] naklejka -> SPRZEDAŻ');
             this.apply();
+        },
+
+        /**
+         * Zaliczony przedmiot przekazuje swoją wagę (ile dodano do licznika)
+         * i to, czy przy sprzedaży należy mu się jeszcze +1 (fraza
+         * o odsprzedaży). Wołane tuż przed onCompleted().
+         */
+        markItem({ weight, bonusIfSell }) {
+            if (!this.state) this.startItem('zaliczenie bez początku');
+            this.state.weight = weight;
+            this.state.bonusIfSell = !!bonusIfSell;
         },
 
         /** Nazwa kierunku do dziennika w konsoli. */
@@ -252,6 +262,14 @@
         countDirection(st) {
             if (!st || st.counted || !st.completed || !st.direction) return;
             st.counted = true;
+            Diag.event('kierunek', st.direction);
+            // Fraza o odsprzedaży + sprzedaż: przedmiot podwójny, druga sztuka
+            // dochodzi teraz, gdy kierunek jest już znany.
+            if (st.bonusIfSell && st.direction === 'sell') {
+                InputManager.modifyCounter(1);
+                st.weight = (st.weight || 1) + 1;
+                Diag.event('premia za sprzedaż +1');
+            }
             const cid = store.currentTabInstanceId;
             // Kierunek trafia do liczników zmiany (linie 1, 2, 7) i do
             // bieżącego zadania (linia 8) w jednym wywołaniu, żeby suma zadań

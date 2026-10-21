@@ -140,8 +140,6 @@
             section_workflow: 'Target and Workstation Helpers',
             workflow_cretProfile: 'CRET tab target',
             workflow_targetHint: 'Target of this tab: ${value}/h. Targets are edited at the top of the file (RATE_TARGETS).',
-            workflow_toteCounting: 'Count items by closed tote (experimental)',
-            workflow_toteCountingHint: 'Replaces the page-text trigger. Compare both in the console: SH.tote().',
             workflow_autoLpn: 'Auto-LPN: press "Reassign LPN" when a label is scanned into the tote field',
             workflow_gravis: 'Suggest ASIN from GRAVIS',
             workflow_gravisHowTo: '1. Press the button below — GRAVIS opens in a new tab. 2. On the GRAVIS tab click this script\'s bookmark once. Afterwards every LPN goes to GRAVIS and the ASIN shows up under the item scan field: click it to paste, Enter is yours.',
@@ -154,6 +152,10 @@
             tasks_segmentsHint: 'Comma separated, e.g. 06:30-09:15, 23:30-02:00. A period may cross midnight; lunch is not counted. Leave the end empty to keep the clock running.',
             tasks_segmentsApply: 'Save periods',
             tasks_segmentsError: 'Periods not saved: check the format and that they do not overlap.',
+            diag_open: 'Diagnostics',
+            diag_hint: 'Window with the item cycle events and the form fields the script sees — for workstations without F12. "Copy" puts everything on the clipboard.',
+            diag_copy: 'Copy',
+            diag_close: 'Close',
             multicolorMode: 'Multi-Color Departments', tabColors: 'Dept. Colors:'
         },
         pl: {
@@ -289,8 +291,6 @@
             section_workflow: 'Cel i pomoce stanowiska',
             workflow_cretProfile: 'Cel karty CRET',
             workflow_targetHint: 'Cel tej karty: ${value}/h. Cele zmienia się na górze pliku (RATE_TARGETS).',
-            workflow_toteCounting: 'Liczenie po przybitym pojemniku (doświadczalne)',
-            workflow_toteCountingHint: 'Zastępuje wyzwalacz z tekstu strony. Porównanie obu w konsoli: SH.tote().',
             workflow_autoLpn: 'Auto-LPN: „Przypisz\u200b ponownie LPN”, gdy w pole pojemnika trafi etykieta',
             workflow_gravis: 'Podpowiadaj ASIN z GRAVIS',
             workflow_gravisHowTo: '1. Naciśnij przycisk niżej — GRAVIS otworzy się w nowej karcie. 2. Na karcie GRAVIS kliknij raz zakładkę tego skryptu. Od tej chwili każdy LPN idzie do GRAVIS, a ASIN pojawia się pod polem skanu przedmiotu: kliknięcie go wstawia, Enter naciskasz sam.',
@@ -303,6 +303,10 @@
             tasks_segmentsHint: 'Po przecinku, np. 06:30-09:15, 23:30-02:00. Odcinek może przechodzić przez północ, obiad się nie liczy. Pusty koniec — zegar chodzi dalej.',
             tasks_segmentsApply: 'Zapisz odcinki',
             tasks_segmentsError: 'Odcinki nie zapisane: sprawdź zapis i czy nie nachodzą na siebie.',
+            diag_open: 'Diagnostyka',
+            diag_hint: 'Okno ze zdarzeniami cyklu przedmiotu i polami formularzy, które widzi skrypt — dla stanowisk bez F12. „Kopiuj” kładzie całość do schowka.',
+            diag_copy: 'Kopiuj',
+            diag_close: 'Zamknij',
             multicolorMode: 'Wielokolorowe Działy', tabColors: 'Kolory Działów:'
         },
         uk: {
@@ -438,8 +442,6 @@
             section_workflow: 'Ціль і помічники робочого місця',
             workflow_cretProfile: 'Ціль вкладки CRET',
             workflow_targetHint: 'Ціль цієї вкладки: ${value}/год. Цілі змінюються на початку файлу (RATE_TARGETS).',
-            workflow_toteCounting: 'Рахувати за закритою тарою (експериментально)',
-            workflow_toteCountingHint: 'Замінює тригер за текстом сторінки. Порівняння обох у консолі: SH.tote().',
             workflow_autoLpn: 'Авто-LPN: «Перепризначити LPN», якщо в поле тари потрапила етикетка',
             workflow_gravis: 'Підтягувати ASIN з GRAVIS',
             workflow_gravisHowTo: '1. Натисніть кнопку нижче — GRAVIS відкриється в новій вкладці. 2. На вкладці GRAVIS один раз клікніть закладку цього скрипта. Далі кожен LPN іде в GRAVIS, а ASIN з\'являється під полем скану предмета: клік вставляє його, Enter натискаєте самі.',
@@ -452,6 +454,10 @@
             tasks_segmentsHint: 'Через кому, напр. 06:30-09:15, 23:30-02:00. Відрізок може переходити через північ, обід не рахується. Порожній кінець — годинник іде далі.',
             tasks_segmentsApply: 'Зберегти відрізки',
             tasks_segmentsError: 'Відрізки не збережено: перевірте запис і чи не накладаються вони.',
+            diag_open: 'Діагностика',
+            diag_hint: 'Вікно з подіями циклу предмета й полями форм, які бачить скрипт, — для робочих місць без F12. «Копіювати» кладе все в буфер обміну.',
+            diag_copy: 'Копіювати',
+            diag_close: 'Закрити',
             multicolorMode: 'Різнокольорові відділи', tabColors: 'Кольори відділів:'
         },
         ru: {
@@ -587,8 +593,6 @@
             section_workflow: 'Цель и помощники рабочего места',
             workflow_cretProfile: 'Цель вкладки CRET',
             workflow_targetHint: 'Цель этой вкладки: ${value}/ч. Цели меняются в начале файла (RATE_TARGETS).',
-            workflow_toteCounting: 'Считать по закрытому тоуту (экспериментально)',
-            workflow_toteCountingHint: 'Заменяет триггер по тексту страницы. Сравнение обоих в консоли: SH.tote().',
             workflow_autoLpn: 'Авто-LPN: «Назначить LPN заново», если в поле тоута попала этикетка',
             workflow_gravis: 'Подтягивать ASIN из GRAVIS',
             workflow_gravisHowTo: '1. Нажмите кнопку ниже — GRAVIS откроется в новой вкладке. 2. На вкладке GRAVIS один раз кликните закладку этого скрипта. Дальше каждый LPN уходит в GRAVIS, а ASIN появляется под полем скана предмета: клик вставляет его, Enter нажимаете сами.',
@@ -601,6 +605,10 @@
             tasks_segmentsHint: 'Через запятую, напр. 06:30-09:15, 23:30-02:00. Отрезок может переходить через полночь, обед не считается. Пустой конец — часы идут дальше.',
             tasks_segmentsApply: 'Сохранить отрезки',
             tasks_segmentsError: 'Отрезки не сохранены: проверьте запись и что они не пересекаются.',
+            diag_open: 'Диагностика',
+            diag_hint: 'Окно с событиями цикла предмета и полями форм, которые видит скрипт, — для рабочих мест без F12. «Копировать» кладёт всё в буфер обмена.',
+            diag_copy: 'Копировать',
+            diag_close: 'Закрыть',
             multicolorMode: 'Разноцветные отделы', tabColors: 'Цвета отделов:'
         }
     };

@@ -13,7 +13,7 @@
 
 const vm = require('vm');
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { bootOnStand, ARTIFACT } = require('./dom-stub');
+const { bootOnStand, ARTIFACT, scanTote } = require('./dom-stub');
 
 const URL_OF = (mode) => `https://trex-prod-eu.aka.amazon.com/?gradingMode=${mode}`;
 const MIN = 60000;
@@ -89,6 +89,8 @@ test('zbudowane wyzwalacze ukraińskie dają +1, a każdy osobno nie', () => {
     page(env, '');
     page(env, 'Porównaj: зображенню нижче');
     page(env, 'канування LPN: LPN123');
+    scanTote(env);
+    page(env, '');
     eq(S.tabCounters.CRET, 1, 'pełny przedmiot po ukraińsku');
     page(env, '');
     page(env, 'канування LPN: LPN124');
@@ -231,6 +233,7 @@ function item(env, withSticker) {
     if (withSticker) { st = el(env, 'div', { id: 'sticker-back-hide' }); page(env, 'poniżej'); }
     page(env, 'Przypisz nowy');
     if (st) st.remove();
+    scanTote(env);
     page(env, '');
 }
 
@@ -246,15 +249,16 @@ test('UG z naklejką: +2 i dwie sprzedane jeszcze przed kodem sortowania', () =>
     eq(S.tabSold.UG || 0, 2, 'bez naklejki i kodu — nie sprzedaż');
 });
 
-test('UG: naklejka przysłana z wyprzedzeniem, ukryta (zerowe wymiary) — nie liczy się', () => {
+test('UG: naklejka przysłana z wyprzedzeniem, ukryta (display:none) — nie liczy się', () => {
     const env = make('CRETURN_PRIMARY_GRADING');
     const S = env.SH.store;
     page(env, '');
     page(env, 'poniżej');
     const st = el(env, 'div', { id: 'sticker-back-hide' });
-    st.offsetWidth = 0; st.offsetHeight = 0;
+    st.offsetParent = null;
     page(env, 'poniżej');
     page(env, 'Przypisz nowy');
+    scanTote(env);
     page(env, '');
     eq([S.tabCounters.UG, S.tabSold.UG || 0], [1, 0]);
 });
@@ -274,25 +278,6 @@ test('WHD z tym samym elementem: +1 i bez sprzedaży', () => {
     item(env, true);
     eq(S.tabCounters.WHD, 1);
     eq(S.tabSold.WHD || 0, 0);
-});
-
-describe('Liczenie po pojemniku (doświadczalne)');
-
-test('wyłączone: liczy tekst; włączone: liczy pojemnik, a tekst tylko porównuje', () => {
-    const env = make();
-    const S = env.SH.store;
-    page(env, '');
-    page(env, 'poniżej'); page(env, 'Przypisz nowy'); page(env, '');
-    eq(S.tabCounters.CRET, 1, 'domyślnie z tekstu');
-    S.userConfig.toteCounting = true;
-    page(env, 'poniżej'); page(env, 'Przypisz nowy');
-    eq(S.tabCounters.CRET, 1, 'tekst już nie liczy');
-    const input = tote(env, 'tsA1');
-    input.remove();
-    page(env, '');
-    eq(S.tabCounters.CRET, 2, 'pojemnik liczy');
-    const info = env.SH.tote();
-    eq([info['pojemniki przybite'], info['przedmioty z wyzwalacza tekstu']], [1, 2]);
 });
 
 describe('Panel: powtórne uruchomienie, klawiatura, klik poza panelem');
@@ -458,7 +443,7 @@ test('linie 9 i 10, UG, skrót, profil FAST i wyłączniki przechodzą na drugą
     S.localTabConfig.linesConfig.line10_target.visible = true;
     S.localTabConfig.linesConfig.line10_target.colorHex = '#112233';
     S.localTabConfig.linesConfig.line2_globalSummary.customColors.UG = '#445566';
-    Object.assign(S.userConfig, { cretProfile: 'FAST', toteCounting: true, autoLpn: true, gravisAsin: true, language: 'uk' });
+    Object.assign(S.userConfig, { cretProfile: 'FAST', autoLpn: true, gravisAsin: false, language: 'uk' });
     S.userConfig.keyboardShortcuts.TOGGLE_WINDOW = 'F10';
     S.userConfig.globalStatsContributionKnown.UG = false;
     const code = a.SH.configCode();
@@ -469,7 +454,7 @@ test('linie 9 i 10, UG, skrót, profil FAST i wyłączniki przechodzą na drugą
     eq([T.localTabConfig.linesConfig.line9_offTask.visible, T.localTabConfig.linesConfig.line10_target.visible,
         T.localTabConfig.linesConfig.line10_target.colorHex, T.localTabConfig.linesConfig.line2_globalSummary.customColors.UG],
        [false, true, '#112233', '#445566']);
-    eq([T.userConfig.cretProfile, T.userConfig.toteCounting, T.userConfig.autoLpn, T.userConfig.gravisAsin,
+    eq([T.userConfig.cretProfile, T.userConfig.autoLpn, T.userConfig.gravisAsin,
         T.userConfig.language, T.userConfig.keyboardShortcuts.TOGGLE_WINDOW, T.userConfig.globalStatsContributionKnown.UG],
-       ['FAST', true, true, true, 'uk', 'F10', false]);
+       ['FAST', true, false, 'uk', 'F10', false]);
 });

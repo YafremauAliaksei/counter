@@ -27,7 +27,7 @@
 'use strict';
 
 const { describe, test, eq, ok, notOk } = require('./harness');
-const { boot, bootOnStand, makeEnv } = require('./dom-stub');
+const { boot, bootOnStand, makeEnv, scanTote } = require('./dom-stub');
 
 const { makeStorage } = makeEnv();
 
@@ -47,6 +47,7 @@ function item(code) {
     };
     set('poniżej — czy przedmiot zgadza się z tym, co widzisz?');
     set(code ? `Zeskanuj ${code}\nPrzypisz nowy` : 'Przypisz nowy');
+    scanTote(env);
     set('');
 }
 
