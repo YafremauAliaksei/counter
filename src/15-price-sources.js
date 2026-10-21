@@ -598,7 +598,11 @@
                         const cur = cents(st.current && st.current[1]) ?? cents(st.current && st.current[0]);
                         const rrp = cents(p.listPrice);
                         if (cur == null && rrp == null) throw new Error('w odpowiedzi nie ma cen');
-                        const mk = (v) => v == null ? null : self.money(v, 'EUR');
+                        // Waluta idzie z domeny zapytania: ceny co.uk są w funtach,
+                        // a podpisane jako euro weszłyby do sum bez przeliczenia.
+                        const currency = CONFIG.KEEPA_DOMAIN_CURRENCY[CONFIG.PRICE_KEEPA_API_DOMAIN];
+                        if (!currency) throw new Error('nieznana domena keepa: ' + CONFIG.PRICE_KEEPA_API_DOMAIN);
+                        const mk = (v) => v == null ? null : self.money(v, currency);
                         return { current: mk(cur), rrp: mk(rrp), stale: false };
                     },
                 },

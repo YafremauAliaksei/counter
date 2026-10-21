@@ -97,6 +97,7 @@
             // Jednorazowe timery też — inaczej po chwili ruszyłyby render()
             // zdjętego interfejsu.
             clearTimeout(SettingsPanel._rerenderTimer);
+            clearTimeout(SettingsPanel._slideTimer);
             clearTimeout(Notifier._hideTimer);
             clearTimeout(ValueLog._archiveTimer);
             clearTimeout(ValueLog._writeBackTimer);
@@ -104,7 +105,7 @@
             // Odłożone wywołania debounce — po rozbiórce autozapis nadpisałby
             // magazyn starym stanem, a skan dopisałby paczkę do klucza nowego
             // egzemplarza (test w 27-pending-writes).
-            Persistence.scheduleSave.cancel();
+            Persistence.cancelSave();
             Persistence.debouncedLoad.cancel();
             if (AutoTrigger.debouncedScan) AutoTrigger.debouncedScan.cancel();
             if (AutoTrigger.debouncedAttach) AutoTrigger.debouncedAttach.cancel();
@@ -247,7 +248,7 @@
                 // (400 ms). Bez dokończenia tutaj ostatnie zmiany ginęłyby przy F5.
                 this.onPageHide = () => {
                     try {
-                        Persistence.scheduleSave.flush();
+                        Persistence.flushSave();
                         ValueLog.flushWriteBack();
                         ValueLog.flushArchive();
                     } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ }

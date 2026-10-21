@@ -157,6 +157,13 @@
 
         onCode(code) {
             if (!this.state) this.startItem('kod przyszedł przed początkiem');
+            // Kierunek przedmiotu już wszedł do liczników: drugi kod (ponowne
+            // skanowanie tego samego przedmiotu) zmieniłby tylko dziennik
+            // i rozjechałby go z licznikami sprzedanych.
+            if (this.state.counted) {
+                Utils.log(`[KIERUNEK] ${code} po rozliczeniu przedmiotu — pominięty`);
+                return;
+            }
             this.state.code = code;
             const kind = this.kindOf(code);
             if (kind === 'ambiguous') {
@@ -203,6 +210,7 @@
             if (!this.state) this.startItem('zaliczenie bez początku');
             this.state.weight = weight;
             this.state.bonusIfSell = !!bonusIfSell;
+            this.state.taskId = store.activeTaskId;
         },
 
         /** Nazwa kierunku do dziennika w konsoli. */
@@ -266,7 +274,7 @@
             // Fraza o odsprzedaży + sprzedaż: przedmiot podwójny, druga sztuka
             // dochodzi teraz, gdy kierunek jest już znany.
             if (st.bonusIfSell && st.direction === 'sell') {
-                InputManager.modifyCounter(1);
+                InputManager.modifyCounter(1, { taskId: st.taskId });
                 st.weight = (st.weight || 1) + 1;
                 Diag.event('premia za sprzedaż +1');
             }
@@ -278,10 +286,10 @@
             for (let i = 0; i < (st.weight || 1); i++) {
                 if (st.direction === 'sell') {
                     Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
-                    TaskManager.addSold(cid);
+                    TaskManager.addSold(cid, st.taskId);
                 } else if (st.direction === 'neutral') {
                     Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
-                    TaskManager.addNeutral(cid);
+                    TaskManager.addNeutral(cid, st.taskId);
                 }
             }
         },

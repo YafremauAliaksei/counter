@@ -144,6 +144,7 @@
                 Persistence.reportWriteFailure();
             }
             this.scheduleArchive();
+            this._totals = null;
             bus.emit('valueLog:changed');
         },
 
@@ -163,6 +164,7 @@
                 clearTimeout(this._writeBackTimer);
                 this.entries = [];
                 this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
+                this._totals = null;
                 bus.emit('valueLog:changed');
                 return;
             }
@@ -172,6 +174,7 @@
             this.entries = merged;
             this._knownRaw = text;
             if (shared.shiftStart) this.shiftStart = shared.shiftStart;
+            this._totals = null;
             bus.emit('valueLog:changed');
             if (before !== merged.length || haveOurOwn) {
                 Utils.log(`[DZIENNIK] synchronizacja: u nas było ${before}, w magazynie `
@@ -358,7 +361,21 @@
          * Wpisy bez ceny i bez kursu nie wchodzą do sum i są liczone osobno,
          * żeby zaniżona suma miała widoczną przyczynę.
          */
+        /**
+         * Sumy dziennika. Linia 6 woła je co sekundę, a dziennik rośnie przez
+         * całą zmianę — przeliczenie idzie więc tylko po zmianie dziennika
+         * (każda zmiana kończy się zdarzeniem 'valueLog:changed' i zeruje
+         * zapamiętany wynik) albo kursów. Wynik jest wspólny: nie zmieniać.
+         */
+        _totals: null,
         totals() {
+            const c = this._totals;
+            if (c && c.entries === this.entries && c.rates === FxRates.rates) return c.value;
+            const value = this._computeTotals();
+            this._totals = { entries: this.entries, rates: FxRates.rates, value };
+            return value;
+        },
+        _computeTotals() {
             let sold = 0, unsold = 0, soldN = 0, unsoldN = 0;
             let undetermined = 0, unpriced = 0, noRate = 0;
             for (const e of this.entries) {
@@ -387,6 +404,7 @@
             try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
             delete Persistence._lastWritten[this.key()];
             Utils.log(`[DZIENNIK] wyczyszczony: ${reason}`);
+            this._totals = null;
             bus.emit('valueLog:changed');
         },
 

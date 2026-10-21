@@ -439,6 +439,9 @@
         PRICE_KEEPA_LEGEND_H: 32,
         PRICE_KEEPA_API_KEY: '',    // płatny klucz Keepa: wpisz — stanie się pierwszym źródłem
         PRICE_KEEPA_API_DOMAIN: 3,  // 1=com 2=co.uk 3=de
+        // Waluta cen dla domeny keepa. Domena spoza listy nie daje ceny wcale —
+        // lepiej brak ceny niż kwota w nieznanej walucie.
+        KEEPA_DOMAIN_CURRENCY: { 1: 'USD', 2: 'GBP', 3: 'EUR', 4: 'EUR', 6: 'CAD', 8: 'EUR', 9: 'EUR' },
         PRICE_MIN_REQUEST_GAP_MS: 3000,
         /**
          * Limit zapytań na sesję — domyślnie bez limitu. Limit trafiałby pod

@@ -513,19 +513,38 @@
          * dopisze się osobno (Routing woła `addSold` albo `addNeutral`, gdy go
          * pozna — może to być dopiero za kilka skanów).
          */
-        addItem(tabKey) {
-            const task = this.ensureRunning();
+        addItem(tabKey, taskId) {
+            const task = this._owner(taskId) || this.ensureRunning();
             if (task) this._bump(task, tabKey, 'done');
         },
 
-        addSold(tabKey) {
-            const task = this.active();
+        addSold(tabKey, taskId) {
+            const task = this._owner(taskId) || this.active();
             if (task) this._bump(task, tabKey, 'sold');
         },
 
-        addNeutral(tabKey) {
-            const task = this.active();
+        addNeutral(tabKey, taskId) {
+            const task = this._owner(taskId) || this.active();
             if (task) this._bump(task, tabKey, 'neutral');
+        },
+
+        /**
+         * Zadanie, w którym przedmiot został zaliczony. Kierunek przychodzi
+         * czasem po przełączeniu zadania — wtedy należy do zadania z chwili
+         * zaliczenia, inaczej nowe zadanie miałoby sprzedane bez paczek.
+         * null — brak zapamiętanego zadania albo zostało usunięte.
+         */
+        _owner(taskId) {
+            return taskId ? this.byId(taskId) : null;
+        },
+
+        /**
+         * Liczniki zadania prosto z magazynu. Dwie karty działu dzielą klucz,
+         * a ręczna poprawka liczona od pamięci nadpisałaby paczki sąsiedniej
+         * karty, których zdarzenie storage jeszcze nie doszło.
+         */
+        _fresh(id, tabKey) {
+            return Persistence.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
         },
 
         /**
@@ -558,7 +577,7 @@
             // paczką, więc kończy pauzę tak samo, jak zaliczona automatycznie.
             const task = this.ensureRunning();
             if (!task) return;
-            const c = this.counters(task.id, tabKey);
+            const c = this._fresh(task.id, tabKey);
             this._write(task.id, tabKey, { ...c, done: c.done + delta, neutral: c.neutral + delta });
         },
 
@@ -602,7 +621,7 @@
             }
             for (let i = store.tasks.length - 1; i >= 0 && diff < 0; i--) {
                 const task = store.tasks[i];
-                const c = this.counters(task.id, tabKey);
+                const c = this._fresh(task.id, tabKey);
                 if (!c.done) continue;
                 const take = Math.min(c.done, -diff);
                 this._write(task.id, tabKey, this._shrink(c, c.done - take));
@@ -613,7 +632,7 @@
         /** Suma pola po wszystkich zadaniach dla jednej karty. */
         shiftTotal(tabKey, field) {
             let sum = 0;
-            for (const task of store.tasks) sum += this.counters(task.id, tabKey)[field] || 0;
+            for (const task of store.tasks) sum += this._fresh(task.id, tabKey)[field] || 0;
             return sum;
         },
 

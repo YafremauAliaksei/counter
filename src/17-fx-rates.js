@@ -43,6 +43,12 @@
             // razy droższy, ani trzy razy tańszy. Krzywą odpowiedź lepiej
             // odrzucić, niż policzyć po niej całą zmianę.
             if (!out.USD || out.USD < 0.3 || out.USD > 3) return null;
+            // To samo dla reszty znanych walut: kurs odwrócony albo przesunięty
+            // o rząd wielkości (PLN 0,0045 zamiast 4,5) psułby sumy po cichu.
+            for (const k of Object.keys(CONFIG.FX_FALLBACK)) {
+                const ratio = out[k] / CONFIG.FX_FALLBACK[k];
+                if (out[k] && (ratio < 1 / 3 || ratio > 3)) return null;
+            }
             return out;
         },
 
@@ -50,7 +56,9 @@
             try {
                 const raw = JSON.parse(localStorage.getItem(this.key()) || 'null');
                 if (!raw || !raw.rates || typeof raw.ts !== 'number') return false;
-                if (Date.now() - raw.ts > CONFIG.FX_TTL_MS) return false;
+                // Znacznik z przyszłości (cofnięty zegar) nie wygasłby nigdy.
+                const age = Date.now() - raw.ts;
+                if (age < 0 || age > CONFIG.FX_TTL_MS) return false;
                 const norm = this.normalize(raw.rates);
                 if (!norm) return false;
                 this.rates = norm; this.source = raw.source; this.fetchedAt = raw.ts;

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.7.1
+// @version      1.7.2
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.7.1',
+        SCRIPT_VERSION: '1.7.2',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -522,6 +522,9 @@ const PAID_SHIFT_HOURS = 10;
         PRICE_KEEPA_LEGEND_H: 32,
         PRICE_KEEPA_API_KEY: '',    // płatny klucz Keepa: wpisz — stanie się pierwszym źródłem
         PRICE_KEEPA_API_DOMAIN: 3,  // 1=com 2=co.uk 3=de
+        // Waluta cen dla domeny keepa. Domena spoza listy nie daje ceny wcale —
+        // lepiej brak ceny niż kwota w nieznanej walucie.
+        KEEPA_DOMAIN_CURRENCY: { 1: 'USD', 2: 'GBP', 3: 'EUR', 4: 'EUR', 6: 'CAD', 8: 'EUR', 9: 'EUR' },
         PRICE_MIN_REQUEST_GAP_MS: 3000,
         /**
          * Limit zapytań na sesję — domyślnie bez limitu. Limit trafiałby pod
@@ -1948,12 +1951,14 @@ const PAID_SHIFT_HOURS = 10;
                 localStorage.setItem(key, value);
             } catch (e) {
                 delete this._lastWritten[key];
+                this._staleKeys.add(key);
                 Utils.error(`Zapis do magazynu nie powiódł się (${key}): ${e.name}. `
                           + 'Skrypt pracuje dalej, ale stan nie przeżyje przeładowania strony.');
                 this.reportWriteFailure();
                 return false;
             }
             this._lastWritten[key] = value;
+            this._staleKeys.delete(key);
             return true;
         },
         /**
@@ -1966,6 +1971,12 @@ const PAID_SHIFT_HOURS = 10;
          * przed postawieniem interfejsu; Notifier pokazuje ją raz na stronę.
          */
         writeFailed: false,
+        /**
+         * Klucze, których ostatni zapis się nie udał: magazyn ma pod nimi
+         * starszą wartość niż pamięć. Udany zapis zdejmuje klucz z listy —
+         * jedna chwilowa odmowa nie odcina karty od sąsiadów do końca zmiany.
+         */
+        _staleKeys: new Set(),
         reportWriteFailure() {
             this.writeFailed = true;
             bus.emit('storage:writeFailed');
@@ -2042,11 +2053,33 @@ const PAID_SHIFT_HOURS = 10;
         // w środku zmiany nie gubi ustawień.
         scheduleSave: Utils.debounce(function() {
             // Zapis w oknie ciszy po wczytaniu stanu sąsiedniej karty nie
-            // przepada — przesuwa się za koniec ciszy.
+            // przepada — przesuwa się za koniec ciszy. Uchwyt na obiekcie:
+            // zamknięcie karty musi go dokończyć, a rozbiórka — zgasić.
             const wait = Persistence.suppressSaveUntil - Date.now();
-            if (wait > 0) { setTimeout(() => Persistence.scheduleSave(), wait); return; }
+            clearTimeout(Persistence._quietTimer);
+            Persistence._quietTimer = null;
+            if (wait > 0) { Persistence._quietTimer = setTimeout(() => Persistence.scheduleSave(), wait); return; }
             Persistence.saveState();
         }, CONFIG.AUTOSAVE_DEBOUNCE_MS),
+        /** @type {any} zapis przesunięty za okno ciszy. */
+        _quietTimer: null,
+        /** Zamknięcie karty: zapis odłożony — także przesunięty za ciszę — idzie teraz. */
+        flushSave() {
+            if (this._quietTimer) {
+                clearTimeout(this._quietTimer);
+                this._quietTimer = null;
+                this.scheduleSave.cancel();
+                this.saveState();
+                return;
+            }
+            this.scheduleSave.flush();
+        },
+        /** Rozbiórka: żaden odłożony zapis nie może już ruszyć. */
+        cancelSave() {
+            clearTimeout(this._quietTimer);
+            this._quietTimer = null;
+            this.scheduleSave.cancel();
+        },
 
         saveCounter(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey), String(count));
@@ -2063,7 +2096,7 @@ const PAID_SHIFT_HOURS = 10;
          * Brak klucza to zero: sąsiednia karta zaczęła nową zmianę.
          */
         freshCount(key, fallback) {
-            if (this.writeFailed) return fallback;
+            if (this._staleKeys.has(key)) return fallback;
             try { return this.parseCount(localStorage.getItem(key)); } catch { return fallback; }
         },
         /** +1 do licznika karty (paczki, sprzedane albo poza mianownikiem). */
@@ -2076,9 +2109,10 @@ const PAID_SHIFT_HOURS = 10;
         },
         /** Świeże liczniki zadania dla karty — z tego samego powodu co freshCount. */
         freshTaskCounter(taskId, tabKey, fallback) {
-            if (this.writeFailed) return fallback;
+            const key = this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey);
+            if (this._staleKeys.has(key)) return fallback;
             try {
-                const raw = localStorage.getItem(this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey));
+                const raw = localStorage.getItem(key);
                 return this.parseTaskCounterValue(raw);
             } catch { return fallback; }
         },
@@ -2212,6 +2246,12 @@ const PAID_SHIFT_HOURS = 10;
          *   karty zaczynają w nieskończoność przepisywać sobie stan nawzajem.
          */
         loadAll(fromRemote = false) {
+            // Stan sąsiedniej karty podmienia kilka gałęzi naraz, a każda
+            // budzi przerysowanie okna — wystarczy jedno, po całości.
+            if (fromRemote) StatsWindowRenderer.batch(() => this._load(true));
+            else this._load(false);
+        },
+        _load(fromRemote) {
             try {
                 for (const [name, storageKey] of [['userConfig', CONFIG.STORAGE_KEY_USER_CONFIG],
                                                   ['sessionConfig', CONFIG.STORAGE_KEY_SESSION_CONFIG]]) {
@@ -2427,6 +2467,23 @@ const PAID_SHIFT_HOURS = 10;
             store.activeTaskId = null;
             store.taskCounters = {};
             TaskManager.init();
+
+            // Przedmiot zakończony przed resetem należy do odchodzącej zmiany:
+            // pojemnik czekający na zniknięcie pola, spóźniony kod sortowania
+            // i premia za sprzedaż nie mogą dopisać się do nowej. Przedmiot
+            // dopiero zaczęty zostaje — zostanie skończony już w nowej
+            // zmianie. Liczniki kodów na stronie (Routing._prev) też zostają:
+            // kody, które już tam leżą, nie są nowymi zdarzeniami.
+            const item = AutoTrigger.item;
+            if (!item || item.finished) {
+                AutoTrigger.item = null;
+                ToteWatch.pending = null;
+                store.uiFlags.itemInProgress = false;
+            }
+            if (Routing.state && Routing.state.completed) Routing.state = null;
+            if (Routing._ambiguous && Routing._ambiguous.completed) Routing._ambiguous = null;
+            // Bezczynność liczy się od pojemnika TEJ zmiany.
+            store.sessionConfig.lastToteAt = null;
 
             // Dziennik wartości to ta sama ewidencja w pieniądzach. Podsumowanie
             // odchodzącej zmiany trafia przed czyszczeniem do archiwum.
@@ -2772,9 +2829,9 @@ const PAID_SHIFT_HOURS = 10;
             // bez tej ścieżki procent czekałby na takt timera.
             onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'tasks', 'activeTaskId',
                           'taskCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
-                         () => this.renderContent());
+                         () => this.refresh());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
-            bus.on('valueLog:changed', () => this.renderContent());
+            bus.on('valueLog:changed', () => this.refresh());
             // Takt raz na sekundę: zegar w linii 5 i czas pracy idą płynnie.
             this.tickTimer = setInterval(() => this.renderContent(), CONFIG.UI_UPDATE_INTERVAL_MS);
 
@@ -2953,6 +3010,22 @@ const PAID_SHIFT_HOURS = 10;
             return !cfg || cfg.visible !== false;
         },
 
+        /** Ile wywołań batch() trwa; w ich trakcie przerysowanie czeka. */
+        _held: 0,
+        _dirty: false,
+        /** Seria zmian stanu z jednym przerysowaniem na końcu. */
+        batch(fn) {
+            this._held++;
+            try { fn(); } finally {
+                this._held--;
+                if (!this._held && this._dirty) { this._dirty = false; this.renderContent(); }
+            }
+        },
+        /** Przerysowanie po zmianie stanu — w trakcie batch() odkładane. */
+        refresh() {
+            if (this._held) this._dirty = true;
+            else this.renderContent();
+        },
         renderContent() {
             Perf.counts.renders++;
             const { workedMs } = ShiftManager.getWorkTime();
@@ -3233,16 +3306,19 @@ const PAID_SHIFT_HOURS = 10;
         },
         toggle() {
             store.uiFlags.isSettingsPanelVisible = !store.uiFlags.isSettingsPanelVisible;
+            // Animacja poprzedniego przełączenia nie może dokończyć się po
+            // tym: szybkie zamknij-otwórz schowałoby otwarty już panel.
+            clearTimeout(this._slideTimer);
             if (store.uiFlags.isSettingsPanelVisible) {
                 this.render();
                 this.el.style.display = 'block';
-                setTimeout(() => this.el.style.transform = 'translateX(0)', 10);
+                this._slideTimer = setTimeout(() => this.el.style.transform = 'translateX(0)', 10);
                 this.captureInput(true);
             } else {
                 this.captureInput(false);
                 this.el.style.transform = 'translateX(110%)';
                 Persistence.saveState();
-                setTimeout(() => this.el.style.display = 'none', 200);
+                this._slideTimer = setTimeout(() => this.el.style.display = 'none', 200);
             }
         },
 
@@ -4698,7 +4774,11 @@ const PAID_SHIFT_HOURS = 10;
                         const cur = cents(st.current && st.current[1]) ?? cents(st.current && st.current[0]);
                         const rrp = cents(p.listPrice);
                         if (cur == null && rrp == null) throw new Error('w odpowiedzi nie ma cen');
-                        const mk = (v) => v == null ? null : self.money(v, 'EUR');
+                        // Waluta idzie z domeny zapytania: ceny co.uk są w funtach,
+                        // a podpisane jako euro weszłyby do sum bez przeliczenia.
+                        const currency = CONFIG.KEEPA_DOMAIN_CURRENCY[CONFIG.PRICE_KEEPA_API_DOMAIN];
+                        if (!currency) throw new Error('nieznana domena keepa: ' + CONFIG.PRICE_KEEPA_API_DOMAIN);
+                        const mk = (v) => v == null ? null : self.money(v, currency);
                         return { current: mk(cur), rrp: mk(rrp), stale: false };
                     },
                 },
@@ -4932,6 +5012,7 @@ const PAID_SHIFT_HOURS = 10;
                 Persistence.reportWriteFailure();
             }
             this.scheduleArchive();
+            this._totals = null;
             bus.emit('valueLog:changed');
         },
 
@@ -4951,6 +5032,7 @@ const PAID_SHIFT_HOURS = 10;
                 clearTimeout(this._writeBackTimer);
                 this.entries = [];
                 this.shiftStart = store.sessionConfig.shiftCalculatedStartTime || null;
+                this._totals = null;
                 bus.emit('valueLog:changed');
                 return;
             }
@@ -4960,6 +5042,7 @@ const PAID_SHIFT_HOURS = 10;
             this.entries = merged;
             this._knownRaw = text;
             if (shared.shiftStart) this.shiftStart = shared.shiftStart;
+            this._totals = null;
             bus.emit('valueLog:changed');
             if (before !== merged.length || haveOurOwn) {
                 Utils.log(`[DZIENNIK] synchronizacja: u nas było ${before}, w magazynie `
@@ -5146,7 +5229,21 @@ const PAID_SHIFT_HOURS = 10;
          * Wpisy bez ceny i bez kursu nie wchodzą do sum i są liczone osobno,
          * żeby zaniżona suma miała widoczną przyczynę.
          */
+        /**
+         * Sumy dziennika. Linia 6 woła je co sekundę, a dziennik rośnie przez
+         * całą zmianę — przeliczenie idzie więc tylko po zmianie dziennika
+         * (każda zmiana kończy się zdarzeniem 'valueLog:changed' i zeruje
+         * zapamiętany wynik) albo kursów. Wynik jest wspólny: nie zmieniać.
+         */
+        _totals: null,
         totals() {
+            const c = this._totals;
+            if (c && c.entries === this.entries && c.rates === FxRates.rates) return c.value;
+            const value = this._computeTotals();
+            this._totals = { entries: this.entries, rates: FxRates.rates, value };
+            return value;
+        },
+        _computeTotals() {
             let sold = 0, unsold = 0, soldN = 0, unsoldN = 0;
             let undetermined = 0, unpriced = 0, noRate = 0;
             for (const e of this.entries) {
@@ -5175,6 +5272,7 @@ const PAID_SHIFT_HOURS = 10;
             try { localStorage.removeItem(this.key()); } catch (e) { /* nie ma czego usuwać albo magazyn niedostępny — i tak czyścimy stan w pamięci */ }
             delete Persistence._lastWritten[this.key()];
             Utils.log(`[DZIENNIK] wyczyszczony: ${reason}`);
+            this._totals = null;
             bus.emit('valueLog:changed');
         },
 
@@ -5252,6 +5350,12 @@ const PAID_SHIFT_HOURS = 10;
             // razy droższy, ani trzy razy tańszy. Krzywą odpowiedź lepiej
             // odrzucić, niż policzyć po niej całą zmianę.
             if (!out.USD || out.USD < 0.3 || out.USD > 3) return null;
+            // To samo dla reszty znanych walut: kurs odwrócony albo przesunięty
+            // o rząd wielkości (PLN 0,0045 zamiast 4,5) psułby sumy po cichu.
+            for (const k of Object.keys(CONFIG.FX_FALLBACK)) {
+                const ratio = out[k] / CONFIG.FX_FALLBACK[k];
+                if (out[k] && (ratio < 1 / 3 || ratio > 3)) return null;
+            }
             return out;
         },
 
@@ -5259,7 +5363,9 @@ const PAID_SHIFT_HOURS = 10;
             try {
                 const raw = JSON.parse(localStorage.getItem(this.key()) || 'null');
                 if (!raw || !raw.rates || typeof raw.ts !== 'number') return false;
-                if (Date.now() - raw.ts > CONFIG.FX_TTL_MS) return false;
+                // Znacznik z przyszłości (cofnięty zegar) nie wygasłby nigdy.
+                const age = Date.now() - raw.ts;
+                if (age < 0 || age > CONFIG.FX_TTL_MS) return false;
                 const norm = this.normalize(raw.rates);
                 if (!norm) return false;
                 this.rates = norm; this.source = raw.source; this.fetchedAt = raw.ts;
@@ -5591,6 +5697,13 @@ const PAID_SHIFT_HOURS = 10;
 
         onCode(code) {
             if (!this.state) this.startItem('kod przyszedł przed początkiem');
+            // Kierunek przedmiotu już wszedł do liczników: drugi kod (ponowne
+            // skanowanie tego samego przedmiotu) zmieniłby tylko dziennik
+            // i rozjechałby go z licznikami sprzedanych.
+            if (this.state.counted) {
+                Utils.log(`[KIERUNEK] ${code} po rozliczeniu przedmiotu — pominięty`);
+                return;
+            }
             this.state.code = code;
             const kind = this.kindOf(code);
             if (kind === 'ambiguous') {
@@ -5637,6 +5750,7 @@ const PAID_SHIFT_HOURS = 10;
             if (!this.state) this.startItem('zaliczenie bez początku');
             this.state.weight = weight;
             this.state.bonusIfSell = !!bonusIfSell;
+            this.state.taskId = store.activeTaskId;
         },
 
         /** Nazwa kierunku do dziennika w konsoli. */
@@ -5700,7 +5814,7 @@ const PAID_SHIFT_HOURS = 10;
             // Fraza o odsprzedaży + sprzedaż: przedmiot podwójny, druga sztuka
             // dochodzi teraz, gdy kierunek jest już znany.
             if (st.bonusIfSell && st.direction === 'sell') {
-                InputManager.modifyCounter(1);
+                InputManager.modifyCounter(1, { taskId: st.taskId });
                 st.weight = (st.weight || 1) + 1;
                 Diag.event('premia za sprzedaż +1');
             }
@@ -5712,10 +5826,10 @@ const PAID_SHIFT_HOURS = 10;
             for (let i = 0; i < (st.weight || 1); i++) {
                 if (st.direction === 'sell') {
                     Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_SOLD, store.tabSold, cid);
-                    TaskManager.addSold(cid);
+                    TaskManager.addSold(cid, st.taskId);
                 } else if (st.direction === 'neutral') {
                     Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_NEUTRAL, store.tabNeutral, cid);
-                    TaskManager.addNeutral(cid);
+                    TaskManager.addNeutral(cid, st.taskId);
                 }
             }
         },
@@ -6772,10 +6886,12 @@ const PAID_SHIFT_HOURS = 10;
         },
         /**
          * @param {number} delta
-         * @param {{manual?: boolean}} [opts] - `manual` znaczy „człowiek poprawia
-         *   to, czego program nie zobaczył”. Taka paczka wchodzi do zadania
-         *   inaczej niż zaliczona automatycznie: razem z licznikiem „poza
-         *   mianownikiem”, bo jej kierunku nikt nie zna (patrz TaskManager).
+         * @param {{manual?: boolean, taskId?: string}} [opts] - `manual` znaczy
+         *   „człowiek poprawia to, czego program nie zobaczył”. Taka paczka
+         *   wchodzi do zadania inaczej niż zaliczona automatycznie: razem
+         *   z licznikiem „poza mianownikiem”, bo jej kierunku nikt nie zna
+         *   (patrz TaskManager). `taskId` — zadanie, do którego należy paczka,
+         *   gdy nie jest nim zadanie aktywne (premia za sprzedaż).
          */
         modifyCounter(delta, opts = {}) {
             const cid = store.currentTabInstanceId;
@@ -6788,7 +6904,7 @@ const PAID_SHIFT_HOURS = 10;
                 TaskManager.syncShift(cid);
                 return;
             }
-            TaskManager.addItem(cid);
+            TaskManager.addItem(cid, opts.taskId);
             Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
             // 'tabCounters') — jawne renderContent() dałoby drugi render.
@@ -6820,10 +6936,12 @@ const PAID_SHIFT_HOURS = 10;
         debouncedAttach: null,
         /** Przedmioty, które dostały wyzwalacz końcowy — porównanie w SH.tote(). */
         textCompleted: 0,
-        /** @type {{finished: boolean, finishedAt: number, toteOk: boolean, sticker: boolean, phrase: boolean}|null} */
+        /** @type {{finished: boolean, finishedAt: number, toteOk: boolean, sticker: boolean, phrase: boolean, stickerLeftover: boolean}|null} */
         item: null,
         /** Czy wyzwalacz początku był w poprzednim skanie (do wykrycia zbocza). */
         preSeen: false,
+        /** Czy naklejka była widoczna w poprzednim skanie (do wykrycia zbocza). */
+        stickerSeen: false,
 
         isOwnNode(node) {
             if (!node) return false;
@@ -6866,25 +6984,36 @@ const PAID_SHIFT_HOURS = 10;
             // razu przy tworzeniu wpisu.
             Routing.observe(txt);
 
+            // Pojemnik przed wyzwalaczem początku: pole poprzedniego przedmiotu
+            // potrafi zniknąć w tej samej klatce, w której pojawia się następny
+            // krok, a przybity pojemnik (także `tsREP…`) należy do przedmiotu,
+            // który go dostał, a nie do tego, który dopiero się zaczyna.
+            const tote = ToteWatch.check();
+            if (tote !== null) this.onTote(tote);
+
             const pre = CONFIG.PRE_TRIGGER_REGEX.test(txt);
             if (pre && !this.preSeen) this.start();
             this.preSeen = pre;
 
             const item = this.item;
-            if (item && CONFIG.DOUBLE_TAB_TYPES.includes(store.currentTabType)) {
+            if (CONFIG.DOUBLE_TAB_TYPES.includes(store.currentTabType)) {
                 // Naklejka liczy się widoczna: strona potrafi przysłać następny
                 // krok z wyprzedzeniem, ukryty (offsetParent === null). Sam
                 // element bywa pusty i bez wymiarów, więc rozmiar nie świadczy
                 // o niczym.
-                if (!item.sticker) {
-                    const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
-                    if (sticker && sticker.offsetParent !== null) {
-                        item.sticker = true;
-                        Diag.event('naklejka');
-                        Routing.onSticker();
-                    }
+                const el = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+                const visible = !!el && el.offsetParent !== null;
+                // Naklejka widoczna już w chwili startu wisi z poprzedniego
+                // przedmiotu: nowy dostaje ją dopiero, gdy zniknie i pojawi się
+                // znowu.
+                if (item && !visible) item.stickerLeftover = false;
+                if (item && !item.sticker && visible && !item.stickerLeftover) {
+                    item.sticker = true;
+                    Diag.event('naklejka');
+                    Routing.onSticker();
                 }
-                if (!item.phrase && CONFIG.RESALE_PHRASE_REGEX.test(txt)) {
+                this.stickerSeen = visible;
+                if (item && !item.phrase && CONFIG.RESALE_PHRASE_REGEX.test(txt)) {
                     item.phrase = true;
                     Diag.event('fraza odsprzedaży');
                 }
@@ -6903,8 +7032,6 @@ const PAID_SHIFT_HOURS = 10;
                 store.uiFlags.autoTriggerFound = false;
             }
 
-            const tote = ToteWatch.check();
-            if (tote !== null) this.onTote(tote);
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });
@@ -6916,7 +7043,13 @@ const PAID_SHIFT_HOURS = 10;
             const prev = this.item;
             if (prev && prev.finished) this.count('nowy początek bez pojemnika');
             else if (prev) Diag.event('przerwany — nowy początek');
-            this.item = { finished: false, finishedAt: 0, toteOk: false, sticker: false, phrase: false };
+            // Pojemnik wpisany, a pole jeszcze nie zniknęło: należy do
+            // poprzedniego przedmiotu, którego już nie ma — następny nie może
+            // go dostać jako własny.
+            ToteWatch.pending = null;
+            this.item = { finished: false, finishedAt: 0, toteOk: false, sticker: false, phrase: false,
+                          stickerLeftover: this.stickerSeen };
+            if (this.stickerSeen) Diag.event('naklejka z poprzedniego przedmiotu — pominięta');
             // Zbocze false -> true flagi: Routing i karta ceny zaczynają nowy
             // przedmiot także wtedy, gdy poprzedni został przerwany w trakcie.
             store.uiFlags.itemInProgress = false;
@@ -7068,6 +7201,7 @@ const PAID_SHIFT_HOURS = 10;
             // Jednorazowe timery też — inaczej po chwili ruszyłyby render()
             // zdjętego interfejsu.
             clearTimeout(SettingsPanel._rerenderTimer);
+            clearTimeout(SettingsPanel._slideTimer);
             clearTimeout(Notifier._hideTimer);
             clearTimeout(ValueLog._archiveTimer);
             clearTimeout(ValueLog._writeBackTimer);
@@ -7075,7 +7209,7 @@ const PAID_SHIFT_HOURS = 10;
             // Odłożone wywołania debounce — po rozbiórce autozapis nadpisałby
             // magazyn starym stanem, a skan dopisałby paczkę do klucza nowego
             // egzemplarza (test w 27-pending-writes).
-            Persistence.scheduleSave.cancel();
+            Persistence.cancelSave();
             Persistence.debouncedLoad.cancel();
             if (AutoTrigger.debouncedScan) AutoTrigger.debouncedScan.cancel();
             if (AutoTrigger.debouncedAttach) AutoTrigger.debouncedAttach.cancel();
@@ -7218,7 +7352,7 @@ const PAID_SHIFT_HOURS = 10;
                 // (400 ms). Bez dokończenia tutaj ostatnie zmiany ginęłyby przy F5.
                 this.onPageHide = () => {
                     try {
-                        Persistence.scheduleSave.flush();
+                        Persistence.flushSave();
                         ValueLog.flushWriteBack();
                         ValueLog.flushArchive();
                     } catch (e) { /* strona już się zamyka — nie ma komu zgłosić błędu */ }
@@ -7583,7 +7717,7 @@ const PAID_SHIFT_HOURS = 10;
             // --- wspólne dla wszystkich kart ---
             { id: 0x0300, root: 'user', path: 'language', type: 'enum', list: 'language' },
             { id: 0x0301, root: 'user', path: 'marketplace', type: 'enum', list: 'marketplace' },
-            { id: 0x0302, root: 'user', path: 'triggerMutationDebounceMs', type: 'u16', min: 0, max: 5000 },
+            { id: 0x0302, root: 'user', path: 'triggerMutationDebounceMs', type: 'u16', min: CONFIG.MIN_TRIGGER_DEBOUNCE_MS, max: CONFIG.MAX_TRIGGER_DEBOUNCE_MS },
             { id: 0x0303, root: 'user', path: 'settingsPanelWidth', type: 'u16', min: 200, max: 2000 },
             { id: 0x0304, root: 'user', path: 'globalStatsContributionKnown.CRET', type: 'bool' },
             { id: 0x0305, root: 'user', path: 'globalStatsContributionKnown.REFURB', type: 'bool' },
@@ -8387,19 +8521,38 @@ const PAID_SHIFT_HOURS = 10;
          * dopisze się osobno (Routing woła `addSold` albo `addNeutral`, gdy go
          * pozna — może to być dopiero za kilka skanów).
          */
-        addItem(tabKey) {
-            const task = this.ensureRunning();
+        addItem(tabKey, taskId) {
+            const task = this._owner(taskId) || this.ensureRunning();
             if (task) this._bump(task, tabKey, 'done');
         },
 
-        addSold(tabKey) {
-            const task = this.active();
+        addSold(tabKey, taskId) {
+            const task = this._owner(taskId) || this.active();
             if (task) this._bump(task, tabKey, 'sold');
         },
 
-        addNeutral(tabKey) {
-            const task = this.active();
+        addNeutral(tabKey, taskId) {
+            const task = this._owner(taskId) || this.active();
             if (task) this._bump(task, tabKey, 'neutral');
+        },
+
+        /**
+         * Zadanie, w którym przedmiot został zaliczony. Kierunek przychodzi
+         * czasem po przełączeniu zadania — wtedy należy do zadania z chwili
+         * zaliczenia, inaczej nowe zadanie miałoby sprzedane bez paczek.
+         * null — brak zapamiętanego zadania albo zostało usunięte.
+         */
+        _owner(taskId) {
+            return taskId ? this.byId(taskId) : null;
+        },
+
+        /**
+         * Liczniki zadania prosto z magazynu. Dwie karty działu dzielą klucz,
+         * a ręczna poprawka liczona od pamięci nadpisałaby paczki sąsiedniej
+         * karty, których zdarzenie storage jeszcze nie doszło.
+         */
+        _fresh(id, tabKey) {
+            return Persistence.freshTaskCounter(id, tabKey, this.counters(id, tabKey));
         },
 
         /**
@@ -8432,7 +8585,7 @@ const PAID_SHIFT_HOURS = 10;
             // paczką, więc kończy pauzę tak samo, jak zaliczona automatycznie.
             const task = this.ensureRunning();
             if (!task) return;
-            const c = this.counters(task.id, tabKey);
+            const c = this._fresh(task.id, tabKey);
             this._write(task.id, tabKey, { ...c, done: c.done + delta, neutral: c.neutral + delta });
         },
 
@@ -8476,7 +8629,7 @@ const PAID_SHIFT_HOURS = 10;
             }
             for (let i = store.tasks.length - 1; i >= 0 && diff < 0; i--) {
                 const task = store.tasks[i];
-                const c = this.counters(task.id, tabKey);
+                const c = this._fresh(task.id, tabKey);
                 if (!c.done) continue;
                 const take = Math.min(c.done, -diff);
                 this._write(task.id, tabKey, this._shrink(c, c.done - take));
@@ -8487,7 +8640,7 @@ const PAID_SHIFT_HOURS = 10;
         /** Suma pola po wszystkich zadaniach dla jednej karty. */
         shiftTotal(tabKey, field) {
             let sum = 0;
-            for (const task of store.tasks) sum += this.counters(task.id, tabKey)[field] || 0;
+            for (const task of store.tasks) sum += this._fresh(task.id, tabKey)[field] || 0;
             return sum;
         },
 
@@ -8837,8 +8990,12 @@ const PAID_SHIFT_HOURS = 10;
         /** Jedyne miejsce, z którego T-REX otwiera GRAVIS — kliknięcie w panelu. */
         open() {
             if (!this.enabled()) return;
+            const win = window.open(CONFIG.GRAVIS_URL, CONFIG.GRAVIS_WINDOW_NAME);
+            // Blokada wyskakujących okien zwraca null: działające połączenie
+            // zostaje, zamiast urwać się do następnego sygnału gotowości.
+            if (!win) return;
             this.ready = false;
-            this.win = window.open(CONFIG.GRAVIS_URL, CONFIG.GRAVIS_WINDOW_NAME);
+            this.win = win;
         },
         /** Wyłączenie mostu. Karty GRAVIS nie zamykamy — mogła być potrzebna sama w sobie. */
         close() {
@@ -8852,8 +9009,9 @@ const PAID_SHIFT_HOURS = 10;
             this.lastLpn = lpn;
             this.asin = null;
             this.removeChip();
-            if (!this.win || this.win.closed) return;
-            if (!this.ready) { this.pendingLpn = lpn; return; }
+            // Bez okna (T-REX po przeładowaniu, zanim GRAVIS da znak) LPN
+            // czeka na sygnał gotowości, a nie przepada.
+            if (!this.ready || !this.win || this.win.closed) { this.pendingLpn = lpn; return; }
             this.pendingLpn = null;
             this.win.postMessage({ type: 'sh-gravis-lpn', lpn }, this.origin());
         },
@@ -8967,6 +9125,9 @@ const PAID_SHIFT_HOURS = 10;
             this.badge(I18n.get('gravis_badgeOk'), '#2E7D32');
         },
         badge(text, color) {
+            // Ponowne wklejenie skryptu w karcie bez opener zostawiłoby drugi znaczek.
+            const old = document.getElementById(CONFIG.SCRIPT_ID_PREFIX + 'gravisBadge');
+            if (old) old.remove();
             document.body.appendChild(h('div', {
                 id: 'gravisBadge', textContent: text,
                 style: { position: 'fixed', left: '6px', top: '6px', zIndex: '2147483646',

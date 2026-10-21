@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.7.1** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.7.2** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -93,7 +93,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.7.1/counter.js`.
+`…/counter/v1.7.2/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -150,25 +150,34 @@ dziesięciogodzinną zmianę, niczego nie zużywając i nie przeszkadzając.
    zalicza się (`+1`) w chwili pojemnika; pojemnik przed końcem zalicza go
    w chwili końca.
 
-| Sytuacja                                                                            | Wynik                                                         |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| początek → koniec → pojemnik (albo pojemnik przed końcem)                           | +1                                                            |
-| początek → koniec, bez pojemnika                                                    | +1 przy następnym początku albo po 60 s                       |
-| początek → nowy początek bez końca                                                  | poprzedni przerwany: 0                                        |
-| pojemnik `tsREP…` na dowolnym etapie, także po końcu                                | przedmiot przerwany: 0                                        |
-| `Przedmiot wysłano do PROBLEM-SOLVE`                                                | to nie koniec; przedmiot czeka albo przerywa go nowy początek |
-| kolejne pojemniki bez nowego początku                                               | nic (tylko czas od pojemnika)                                 |
-| UG: widoczna naklejka `#sticker-back-hide`                                          | +2                                                            |
-| UG: fraza „Teraz oceniasz produkt, który można odsprzedać jako używany…” i sprzedaż | +2 (także gdy kod sprzedaży przyjdzie po pojemniku)           |
-| UG: fraza bez sprzedaży                                                             | +1                                                            |
-| UG: naklejka i fraza ze sprzedażą                                                   | +2, nie +3                                                    |
-| naklejka albo fraza w przerwanym przedmiocie                                        | nie przechodzi na następny                                    |
-| WHD i pozostałe działy: naklejka albo fraza                                         | +1                                                            |
+| Sytuacja                                                                            | Wynik                                                          |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| początek → koniec → pojemnik (albo pojemnik przed końcem)                           | +1                                                             |
+| początek → koniec, bez pojemnika                                                    | +1 przy następnym początku albo po 60 s                        |
+| początek → nowy początek bez końca                                                  | poprzedni przerwany: 0                                         |
+| pojemnik `tsREP…` na dowolnym etapie, także po końcu                                | przedmiot przerwany: 0                                         |
+| `Przedmiot wysłano do PROBLEM-SOLVE`                                                | to nie koniec; przedmiot czeka albo przerywa go nowy początek  |
+| kolejne pojemniki bez nowego początku                                               | nic (tylko czas od pojemnika)                                  |
+| UG: widoczna naklejka `#sticker-back-hide`                                          | +2                                                             |
+| UG: fraza „Teraz oceniasz produkt, który można odsprzedać jako używany…” i sprzedaż | +2 (także gdy kod sprzedaży przyjdzie po pojemniku)            |
+| UG: fraza bez sprzedaży                                                             | +1                                                             |
+| UG: naklejka i fraza ze sprzedażą                                                   | +2, nie +3                                                     |
+| naklejka albo fraza w przerwanym przedmiocie                                        | nie przechodzi na następny                                     |
+| UG: naklejka widoczna jeszcze z poprzedniego przedmiotu                             | nie liczy się; nowy dostaje +2, gdy zniknie i pojawi się znowu |
+| WHD i pozostałe działy: naklejka albo fraza                                         | +1                                                             |
+| pole pojemnika znika w tej samej chwili, co pojawia się nowy początek               | pojemnik (także `tsREP…`) należy do poprzedniego przedmiotu    |
+| kod sortowania po przełączeniu zadania                                              | sprzedaż idzie do zadania z chwili zaliczenia                  |
+| drugi kod sortowania dla już rozliczonego przedmiotu                                | pominięty — liczniki i dziennik zostają zgodne                 |
+| reset zmiany: przedmiot już zakończony (czeka na pojemnik albo kod)                 | należy do starej zmiany; do nowej nic nie przechodzi           |
+| reset zmiany: przedmiot dopiero zaczęty                                             | liczy się w nowej zmianie, gdy się skończy                     |
 
 Działy z przedmiotem podwójnym: `CONFIG.DOUBLE_TAB_TYPES` (domyślnie UG).
 Pełne wyrażenia stoją w `CONFIG.PRE_TRIGGER_REGEX`, `CONFIG.AUTO_TRIGGER_REGEX`,
 `CONFIG.RESALE_PHRASE_REGEX` i `CONFIG.ESCALATION_TOTE_REGEX`. Każdą
-kombinację sprawdza `tests/40-item-flow.test.js`.
+kombinację sprawdza `tests/40-item-flow.test.js`, zdarzenia nachodzące na
+siebie (następny przedmiot, reset, zadanie, druga karta) —
+`tests/42-release-172.test.js`, a dwanaście przebiegów po 312 przedmiotów
+w różnych układach kart, zadań i resetów — `tests/43-state-matrix.test.js`.
 
 ---
 
@@ -1022,7 +1031,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 41 plików, 610 sprawdzeń
+├── tests/                  ← 43 pliki, 655 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1042,7 +1051,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 610 sprawdzeń
+npm test             # 655 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1075,7 +1084,7 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_7_0_`; wydanie 1.7.1 zostanie przy nim, 1.8.0
+Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1 i 1.7.2 zostają przy nim, 1.8.0
 dostanie `statsHelper_v1_8_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 

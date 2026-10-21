@@ -37,12 +37,14 @@
                 localStorage.setItem(key, value);
             } catch (e) {
                 delete this._lastWritten[key];
+                this._staleKeys.add(key);
                 Utils.error(`Zapis do magazynu nie powiódł się (${key}): ${e.name}. `
                           + 'Skrypt pracuje dalej, ale stan nie przeżyje przeładowania strony.');
                 this.reportWriteFailure();
                 return false;
             }
             this._lastWritten[key] = value;
+            this._staleKeys.delete(key);
             return true;
         },
         /**
@@ -55,6 +57,12 @@
          * przed postawieniem interfejsu; Notifier pokazuje ją raz na stronę.
          */
         writeFailed: false,
+        /**
+         * Klucze, których ostatni zapis się nie udał: magazyn ma pod nimi
+         * starszą wartość niż pamięć. Udany zapis zdejmuje klucz z listy —
+         * jedna chwilowa odmowa nie odcina karty od sąsiadów do końca zmiany.
+         */
+        _staleKeys: new Set(),
         reportWriteFailure() {
             this.writeFailed = true;
             bus.emit('storage:writeFailed');
@@ -131,11 +139,33 @@
         // w środku zmiany nie gubi ustawień.
         scheduleSave: Utils.debounce(function() {
             // Zapis w oknie ciszy po wczytaniu stanu sąsiedniej karty nie
-            // przepada — przesuwa się za koniec ciszy.
+            // przepada — przesuwa się za koniec ciszy. Uchwyt na obiekcie:
+            // zamknięcie karty musi go dokończyć, a rozbiórka — zgasić.
             const wait = Persistence.suppressSaveUntil - Date.now();
-            if (wait > 0) { setTimeout(() => Persistence.scheduleSave(), wait); return; }
+            clearTimeout(Persistence._quietTimer);
+            Persistence._quietTimer = null;
+            if (wait > 0) { Persistence._quietTimer = setTimeout(() => Persistence.scheduleSave(), wait); return; }
             Persistence.saveState();
         }, CONFIG.AUTOSAVE_DEBOUNCE_MS),
+        /** @type {any} zapis przesunięty za okno ciszy. */
+        _quietTimer: null,
+        /** Zamknięcie karty: zapis odłożony — także przesunięty za ciszę — idzie teraz. */
+        flushSave() {
+            if (this._quietTimer) {
+                clearTimeout(this._quietTimer);
+                this._quietTimer = null;
+                this.scheduleSave.cancel();
+                this.saveState();
+                return;
+            }
+            this.scheduleSave.flush();
+        },
+        /** Rozbiórka: żaden odłożony zapis nie może już ruszyć. */
+        cancelSave() {
+            clearTimeout(this._quietTimer);
+            this._quietTimer = null;
+            this.scheduleSave.cancel();
+        },
 
         saveCounter(tabKey, count) {
             this.write(this.getKey(CONFIG.STORAGE_PREFIX_TAB_COUNTER + tabKey), String(count));
@@ -152,7 +182,7 @@
          * Brak klucza to zero: sąsiednia karta zaczęła nową zmianę.
          */
         freshCount(key, fallback) {
-            if (this.writeFailed) return fallback;
+            if (this._staleKeys.has(key)) return fallback;
             try { return this.parseCount(localStorage.getItem(key)); } catch { return fallback; }
         },
         /** +1 do licznika karty (paczki, sprzedane albo poza mianownikiem). */
@@ -165,9 +195,10 @@
         },
         /** Świeże liczniki zadania dla karty — z tego samego powodu co freshCount. */
         freshTaskCounter(taskId, tabKey, fallback) {
-            if (this.writeFailed) return fallback;
+            const key = this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey);
+            if (this._staleKeys.has(key)) return fallback;
             try {
-                const raw = localStorage.getItem(this.getKey(CONFIG.STORAGE_PREFIX_TASK_COUNTER + taskId + '_' + tabKey));
+                const raw = localStorage.getItem(key);
                 return this.parseTaskCounterValue(raw);
             } catch { return fallback; }
         },
@@ -301,6 +332,12 @@
          *   karty zaczynają w nieskończoność przepisywać sobie stan nawzajem.
          */
         loadAll(fromRemote = false) {
+            // Stan sąsiedniej karty podmienia kilka gałęzi naraz, a każda
+            // budzi przerysowanie okna — wystarczy jedno, po całości.
+            if (fromRemote) StatsWindowRenderer.batch(() => this._load(true));
+            else this._load(false);
+        },
+        _load(fromRemote) {
             try {
                 for (const [name, storageKey] of [['userConfig', CONFIG.STORAGE_KEY_USER_CONFIG],
                                                   ['sessionConfig', CONFIG.STORAGE_KEY_SESSION_CONFIG]]) {

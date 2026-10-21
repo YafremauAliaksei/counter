@@ -77,10 +77,12 @@
         },
         /**
          * @param {number} delta
-         * @param {{manual?: boolean}} [opts] - `manual` znaczy „człowiek poprawia
-         *   to, czego program nie zobaczył”. Taka paczka wchodzi do zadania
-         *   inaczej niż zaliczona automatycznie: razem z licznikiem „poza
-         *   mianownikiem”, bo jej kierunku nikt nie zna (patrz TaskManager).
+         * @param {{manual?: boolean, taskId?: string}} [opts] - `manual` znaczy
+         *   „człowiek poprawia to, czego program nie zobaczył”. Taka paczka
+         *   wchodzi do zadania inaczej niż zaliczona automatycznie: razem
+         *   z licznikiem „poza mianownikiem”, bo jej kierunku nikt nie zna
+         *   (patrz TaskManager). `taskId` — zadanie, do którego należy paczka,
+         *   gdy nie jest nim zadanie aktywne (premia za sprzedaż).
          */
         modifyCounter(delta, opts = {}) {
             const cid = store.currentTabInstanceId;
@@ -93,7 +95,7 @@
                 TaskManager.syncShift(cid);
                 return;
             }
-            TaskManager.addItem(cid);
+            TaskManager.addItem(cid, opts.taskId);
             Persistence.bump(CONFIG.STORAGE_PREFIX_TAB_COUNTER, store.tabCounters, cid);
             // Przerysowanie wywołuje sam zapis do stanu (onStorePaths po
             // 'tabCounters') — jawne renderContent() dałoby drugi render.
@@ -125,10 +127,12 @@
         debouncedAttach: null,
         /** Przedmioty, które dostały wyzwalacz końcowy — porównanie w SH.tote(). */
         textCompleted: 0,
-        /** @type {{finished: boolean, finishedAt: number, toteOk: boolean, sticker: boolean, phrase: boolean}|null} */
+        /** @type {{finished: boolean, finishedAt: number, toteOk: boolean, sticker: boolean, phrase: boolean, stickerLeftover: boolean}|null} */
         item: null,
         /** Czy wyzwalacz początku był w poprzednim skanie (do wykrycia zbocza). */
         preSeen: false,
+        /** Czy naklejka była widoczna w poprzednim skanie (do wykrycia zbocza). */
+        stickerSeen: false,
 
         isOwnNode(node) {
             if (!node) return false;
@@ -171,25 +175,36 @@
             // razu przy tworzeniu wpisu.
             Routing.observe(txt);
 
+            // Pojemnik przed wyzwalaczem początku: pole poprzedniego przedmiotu
+            // potrafi zniknąć w tej samej klatce, w której pojawia się następny
+            // krok, a przybity pojemnik (także `tsREP…`) należy do przedmiotu,
+            // który go dostał, a nie do tego, który dopiero się zaczyna.
+            const tote = ToteWatch.check();
+            if (tote !== null) this.onTote(tote);
+
             const pre = CONFIG.PRE_TRIGGER_REGEX.test(txt);
             if (pre && !this.preSeen) this.start();
             this.preSeen = pre;
 
             const item = this.item;
-            if (item && CONFIG.DOUBLE_TAB_TYPES.includes(store.currentTabType)) {
+            if (CONFIG.DOUBLE_TAB_TYPES.includes(store.currentTabType)) {
                 // Naklejka liczy się widoczna: strona potrafi przysłać następny
                 // krok z wyprzedzeniem, ukryty (offsetParent === null). Sam
                 // element bywa pusty i bez wymiarów, więc rozmiar nie świadczy
                 // o niczym.
-                if (!item.sticker) {
-                    const sticker = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
-                    if (sticker && sticker.offsetParent !== null) {
-                        item.sticker = true;
-                        Diag.event('naklejka');
-                        Routing.onSticker();
-                    }
+                const el = document.getElementById(CONFIG.STICKER_ELEMENT_ID);
+                const visible = !!el && el.offsetParent !== null;
+                // Naklejka widoczna już w chwili startu wisi z poprzedniego
+                // przedmiotu: nowy dostaje ją dopiero, gdy zniknie i pojawi się
+                // znowu.
+                if (item && !visible) item.stickerLeftover = false;
+                if (item && !item.sticker && visible && !item.stickerLeftover) {
+                    item.sticker = true;
+                    Diag.event('naklejka');
+                    Routing.onSticker();
                 }
-                if (!item.phrase && CONFIG.RESALE_PHRASE_REGEX.test(txt)) {
+                this.stickerSeen = visible;
+                if (item && !item.phrase && CONFIG.RESALE_PHRASE_REGEX.test(txt)) {
                     item.phrase = true;
                     Diag.event('fraza odsprzedaży');
                 }
@@ -208,8 +223,6 @@
                 store.uiFlags.autoTriggerFound = false;
             }
 
-            const tote = ToteWatch.check();
-            if (tote !== null) this.onTote(tote);
             // Karta ceny korzysta z tego skanu zamiast własnego obserwatora
             // i drugiego odczytu document.innerText.
             bus.emit('page:scanned', { text: txt });
@@ -221,7 +234,13 @@
             const prev = this.item;
             if (prev && prev.finished) this.count('nowy początek bez pojemnika');
             else if (prev) Diag.event('przerwany — nowy początek');
-            this.item = { finished: false, finishedAt: 0, toteOk: false, sticker: false, phrase: false };
+            // Pojemnik wpisany, a pole jeszcze nie zniknęło: należy do
+            // poprzedniego przedmiotu, którego już nie ma — następny nie może
+            // go dostać jako własny.
+            ToteWatch.pending = null;
+            this.item = { finished: false, finishedAt: 0, toteOk: false, sticker: false, phrase: false,
+                          stickerLeftover: this.stickerSeen };
+            if (this.stickerSeen) Diag.event('naklejka z poprzedniego przedmiotu — pominięta');
             // Zbocze false -> true flagi: Routing i karta ceny zaczynają nowy
             // przedmiot także wtedy, gdy poprzedni został przerwany w trakcie.
             store.uiFlags.itemInProgress = false;

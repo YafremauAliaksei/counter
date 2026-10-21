@@ -32,9 +32,9 @@
             // bez tej ścieżki procent czekałby na takt timera.
             onStorePaths(['tabCounters', 'tabSold', 'tabNeutral', 'tasks', 'activeTaskId',
                           'taskCounters', 'sessionConfig', 'userConfig', 'localTabConfig'],
-                         () => this.renderContent());
+                         () => this.refresh());
             onStorePaths(['localTabConfig.statsWindowPosition'], () => this.applyPosition());
-            bus.on('valueLog:changed', () => this.renderContent());
+            bus.on('valueLog:changed', () => this.refresh());
             // Takt raz na sekundę: zegar w linii 5 i czas pracy idą płynnie.
             this.tickTimer = setInterval(() => this.renderContent(), CONFIG.UI_UPDATE_INTERVAL_MS);
 
@@ -213,6 +213,22 @@
             return !cfg || cfg.visible !== false;
         },
 
+        /** Ile wywołań batch() trwa; w ich trakcie przerysowanie czeka. */
+        _held: 0,
+        _dirty: false,
+        /** Seria zmian stanu z jednym przerysowaniem na końcu. */
+        batch(fn) {
+            this._held++;
+            try { fn(); } finally {
+                this._held--;
+                if (!this._held && this._dirty) { this._dirty = false; this.renderContent(); }
+            }
+        },
+        /** Przerysowanie po zmianie stanu — w trakcie batch() odkładane. */
+        refresh() {
+            if (this._held) this._dirty = true;
+            else this.renderContent();
+        },
         renderContent() {
             Perf.counts.renders++;
             const { workedMs } = ShiftManager.getWorkTime();
