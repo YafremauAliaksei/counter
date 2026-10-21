@@ -14,3 +14,6 @@ src/
 # tests/ — ten sam powód w mniejszej skali: komentarze na końcu linii są
 # wyrównane celowo i czyta się po nich, który przypadek czego dotyczy.
 tests/
+
+# Mapa audytu jest generowana przez tests/audit/map.js — formatuje ją skrypt.
+docs/audit/map.md

@@ -36,7 +36,9 @@
       "Bash(gh run list *)",
       "Bash(gh run list)",
       "Bash(gh run view *)",
-      "Bash(gh repo view *)"
+      "Bash(gh repo view *)",
+      "Bash(node tests/audit/map.js)",
+      "Bash(npm test audit)"
     ],
     "deny": ["Bash(npm publish *)", "Bash(npm publish)"]
   },
