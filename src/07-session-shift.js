@@ -51,6 +51,23 @@
             store.taskCounters = {};
             TaskManager.init();
 
+            // Przedmiot zakończony przed resetem należy do odchodzącej zmiany:
+            // pojemnik czekający na zniknięcie pola, spóźniony kod sortowania
+            // i premia za sprzedaż nie mogą dopisać się do nowej. Przedmiot
+            // dopiero zaczęty zostaje — zostanie skończony już w nowej
+            // zmianie. Liczniki kodów na stronie (Routing._prev) też zostają:
+            // kody, które już tam leżą, nie są nowymi zdarzeniami.
+            const item = AutoTrigger.item;
+            if (!item || item.finished) {
+                AutoTrigger.item = null;
+                ToteWatch.pending = null;
+                store.uiFlags.itemInProgress = false;
+            }
+            if (Routing.state && Routing.state.completed) Routing.state = null;
+            if (Routing._ambiguous && Routing._ambiguous.completed) Routing._ambiguous = null;
+            // Bezczynność liczy się od pojemnika TEJ zmiany.
+            store.sessionConfig.lastToteAt = null;
+
             // Dziennik wartości to ta sama ewidencja w pieniądzach. Podsumowanie
             // odchodzącej zmiany trafia przed czyszczeniem do archiwum.
             ValueLog.reset(reason);

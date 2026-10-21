@@ -16,8 +16,17 @@
 const fs = require('fs');
 const path = require('path');
 const { state, settle, installOrphanGuard } = require('./harness');
+const { makeClock, STAND_TIME } = require('./dom-stub');
 
 installOrphanGuard(process);
+
+// Pora dnia jest częścią wyniku: początek zmiany, obiad i paczki doliczane
+// sprzed pierwszego zadania zależą od godziny. Bez stałego zegara ten sam
+// commit przechodzi o 15:00 i pada o 18:58, tuż po starcie nocnej zmiany.
+// Zegar startuje od STAND_TIME i płynie dalej (timery działają); pliki,
+// które potrzebują innej pory, stawiają własny makeClock. REAL_CLOCK=1
+// przywraca prawdziwy czas — do sprawdzania, czy test jest od pory zależny.
+if (!process.env.REAL_CLOCK) global.Date = makeClock(STAND_TIME).Date;
 
 const DIR = __dirname;
 const filter = process.argv[2] || '';
@@ -35,7 +44,13 @@ if (!files.length) {
 
 const started = Date.now();
 
+// Plik za plikiem: następny ładuje się dopiero, gdy rozstrzygną się testy
+// asynchroniczne poprzedniego. Ciężki plik synchroniczny (macierz stanów)
+// zajmuje proces na kilkanaście sekund — gdyby szedł w trakcie cudzych
+// testów asynchronicznych, ich granica czasu minęłaby bez ich winy.
+(async () => {
 for (const f of files) {
+    await settle();
     state.file = f;
     console.log('\n╔' + '═'.repeat(68));
     console.log('║ ' + f);
@@ -50,12 +65,14 @@ for (const f of files) {
     }
 }
 
-// Testy asynchroniczne rozstrzygają się po przejściu przez wszystkie pliki,
-// więc podsumowanie czeka na nie jawnie — bez stałej granicy czasu, która
-// pominęłaby sprawdzenie wolniejsze od niej.
+// Podsumowanie czeka jawnie na testy asynchroniczne ostatniego pliku — bez
+// stałej granicy czasu, która pominęłaby sprawdzenie wolniejsze od niej.
 // Jedno obejście pętli zdarzeń po ostatnim teście: Node zgłasza odrzucenie
 // bez właściciela dopiero po opróżnieniu kolejki mikrozadań.
-settle().then(() => new Promise(resolve => setImmediate(resolve))).then(summary);
+await settle();
+await new Promise(resolve => setImmediate(resolve));
+summary();
+})();
 
 function summary() {
     const ms = Date.now() - started;

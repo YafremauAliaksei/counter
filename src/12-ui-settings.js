@@ -39,16 +39,19 @@
         },
         toggle() {
             store.uiFlags.isSettingsPanelVisible = !store.uiFlags.isSettingsPanelVisible;
+            // Animacja poprzedniego przełączenia nie może dokończyć się po
+            // tym: szybkie zamknij-otwórz schowałoby otwarty już panel.
+            clearTimeout(this._slideTimer);
             if (store.uiFlags.isSettingsPanelVisible) {
                 this.render();
                 this.el.style.display = 'block';
-                setTimeout(() => this.el.style.transform = 'translateX(0)', 10);
+                this._slideTimer = setTimeout(() => this.el.style.transform = 'translateX(0)', 10);
                 this.captureInput(true);
             } else {
                 this.captureInput(false);
                 this.el.style.transform = 'translateX(110%)';
                 Persistence.saveState();
-                setTimeout(() => this.el.style.display = 'none', 200);
+                this._slideTimer = setTimeout(() => this.el.style.display = 'none', 200);
             }
         },
 

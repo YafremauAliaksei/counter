@@ -9,6 +9,51 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.7.2 — 2026-10-21
+
+> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają. Interfejs się nie zmienia, nowych ustawień nie ma — poprawione jest to, co działo się na stykach modułów: gdy zdarzenia jednego przedmiotu nachodzą na następny przedmiot, reset zmiany, inne zadanie albo drugą kartę.
+
+Wszystkie poprawki pochodzą z lokalnego audytu kodu. Każda ma test, który bez niej pada (`tests/42-release-172.test.js`), a nowa macierz stanów (`tests/43-state-matrix.test.js`) przechodzi dwanaście przebiegów po 312 przedmiotów: karty CRET/UG/REFURB/WHD po 1, 2 i 4, jedno albo trzy zadania z przełączaniem i odcinkami przez północ, moduł cen włączony i wyłączony, naklejka, fraza, sprzedaż przed pojemnikiem i po nim, `tsREP…`, brak pojemnika, przerwane przedmioty, otwarty panel i okno diagnostyki, obiad, północ, reset w trakcie przedmiotu. We wszystkich liczba zaliczeń zgadza się z tym, co zrobił człowiek, a koszt ostatnich 20 przedmiotów nie jest większy niż pierwszych 20.
+
+### Naprawiono — liczenie
+
+- **UG: naklejka z poprzedniego przedmiotu dawała następnemu +2 i dwie sprzedaże.** Gdy następny krok przychodził, zanim strona zdjęła `#sticker-back-hide`, nowy przedmiot widział starą naklejkę w tym samym skanie, w którym się zaczynał. Teraz naklejka widoczna już w chwili startu przedmiotu należy do poprzedniego; nowy dostaje +2 dopiero, gdy naklejka zniknie i pojawi się znowu. Okno diagnostyki zapisuje to jako „naklejka z poprzedniego przedmiotu — pominięta”. Przykład z testu: dwa przedmioty, naklejka tylko przy pierwszym — było 4 paczki i 4 sprzedane, jest 3 i 2.
+- **Reset zmiany między pojemnikiem a kodem sortowania dopisywał sprzedaż do nowej zmiany.** Spóźniony kod (UG z frazą o odsprzedaży) dawał świeżej zmianie `1` paczkę i `2` sprzedane — procent ponad 100. Przedmiot zakończony przed resetem należy teraz do starej zmiany: jego kod, premia za sprzedaż i pojemnik do nowej nie przechodzą.
+- **Reset zmiany, gdy pojemnik czekał na zniknięcie pola, dawał +1 nowej zmianie** i stawiał jej czas od pojemnika. Ten sam powód i ta sama poprawka. Przedmiot dopiero zaczęty w chwili resetu nadal liczy się w nowej zmianie, gdy się skończy — tak liczy macierz stanów.
+- **Linia 9 po resecie liczyła bezczynność od pojemnika poprzedniej zmiany** (przykład z testu: nowa zmiana startowała z czerwonym `+7m`). Reset zeruje czas ostatniego pojemnika.
+- **Pojemnik poprzedniego przedmiotu przechodził na następny**, gdy pole pojemnika znikało w tej samej klatce, w której pojawiał się nowy początek. Zwykły pojemnik zaliczał wtedy następny przedmiot już przy jego końcu, bez własnego pojemnika, a `tsREP…` przerywał następny zamiast eskalowanego. Pojemnik sprawdza się teraz przed nowym początkiem, a pojemnik wpisany, którego pole jeszcze nie zniknęło, przepada razem z przedmiotem, do którego należał.
+- **Ręczne +1 na jednej z dwóch kart tego samego działu gubiło paczki drugiej karty.** Skrót liczył od liczników zadań w pamięci, a potem nadpisywał wspólny klucz ich sumą; gdy zdarzenie z drugiej karty jeszcze nie doszło, trzy jej paczki znikały (`1` zamiast `4`). Ręczna poprawka, w górę i w dół, liczy się teraz od magazynu, tak jak zaliczenie automatyczne.
+- **Kod sortowania po przełączeniu zadania dopisywał sprzedaż nowemu zadaniu** — miało ono sprzedane bez paczek. Kierunek i premia za frazę idą teraz do zadania, w którym przedmiot został zaliczony.
+- **Drugi kod sortowania dla rozliczonego już przedmiotu** (ponowne skanowanie) przestawiał znak w dzienniku, a liczniki zostawały przy pierwszym — dziennik i linia 2 mówiły co innego. Drugi kod jest teraz pomijany.
+
+### Naprawiono — magazyn, karty, okno
+
+- **Jedna nieudana próba zapisu odcinała kartę od sąsiadów do końca strony.** Po pierwszej odmowie (pełny magazyn) wszystkie liczniki liczyły się już tylko z pamięci, także gdy magazyn znów działał — dwie karty jednego działu przestawały się sumować. Teraz z pamięci liczy się tylko klucz, którego ostatni zapis się nie udał, do pierwszego udanego. Powiadomienie o pełnym magazynie zostaje jak było.
+- **Zamknięcie karty tuż po wczytaniu stanu sąsiedniej karty gubiło ostatnią zmianę ustawień.** Autozapis przesunięty za 2,5 s ciszy szedł osobnym timerem, którego wyjście ze strony nie dokańczało, a rozbiórka (ponowne wklejenie) nie gasiła. Oba przypadki są teraz obsłużone.
+- **Pojemnik przybity w jednej karcie kosztował każdą sąsiednią kartę 10 przerysowań okna.** Wczytanie stanu sąsiada podmienia kilka gałęzi naraz, a każda budziła osobne przerysowanie. Teraz jest jedno, po całości.
+- **Sumy dziennika (linia 6) przeliczały cały dziennik co sekundę** — koszt rósł z każdym przedmiotem zmiany. Sumy liczą się teraz raz po zmianie dziennika albo kursów. Dotyczy tylko włączonego modułu cen.
+- **Panel ustawień zamknięty i otwarty w ciągu 200 ms zostawał niewidoczny**, choć skrypt uważał go za otwarty (pierwszy klik obok tylko „zamykał” niewidoczny panel).
+
+### Naprawiono — źródła zewnętrzne (moduł cen i GRAVIS)
+
+- **GRAVIS: zablokowane wyskakujące okno zrywało działające połączenie,** a LPN zeskanowany przed następnym sygnałem GRAVIS (do 10 s) przepadał. Teraz `window.open` zwracające `null` niczego nie zmienia, a LPN zeskanowany bez okna — także po przeładowaniu T-REX — czeka na sygnał gotowości i idzie do GRAVIS.
+- **GRAVIS: ponowne kliknięcie zakładki w karcie bez okna-rodzica dokładało drugi znaczek** w rogu.
+- **keepa-api podpisywało każdą cenę jako euro,** także dla domeny `co.uk` albo `com` — funty i dolary wchodziły do sum bez przeliczenia. Waluta idzie teraz z domeny (`CONFIG.KEEPA_DOMAIN_CURRENCY`), a domena spoza listy nie daje ceny wcale.
+- **Kursy walut:** sprawdzenie zdrowego rozsądku obejmowało tylko dolara — odwrócony kurs złotego (`0,0045` zamiast `4,33`) przechodził i zmieniał sumy tysiąckrotnie. Teraz każda waluta z listy zapasowej musi być w granicach trzech razy od kursu zapasowego. Zapisane kursy ze znacznikiem z przyszłości (cofnięty zegar) już nie są ważne bez końca.
+- **Kod ustawień przyjmował odstęp skanu 0–5000 ms**, a suwak w panelu ma 50–200 ms. Kod spoza zakresu jest teraz przycinany do zakresu suwaka.
+
+### Testy
+
+- **Wynik testów nie zależy już od pory dnia.** Kilka plików (`03-line7`, `04-multitab`, `17-sales-rate`) budowało dzienną zmianę „sprzed dwóch godzin” na prawdziwym zegarze — po 18:30 wykrywanie zmiany nocnej wchodziło im w drogę i 11 testów padało. Runner stawia teraz stały zegar (16.09.2026, 15:00), który płynie dalej; `REAL_CLOCK=1 npm test` przywraca prawdziwy czas.
+- **Pliki testów idą jeden po drugim**, także z testami asynchronicznymi: ciężki plik synchroniczny (macierz stanów, ok. 20 s) nie przekracza już cudzych granic czasu (`33-market-fallback`).
+- `tests/42-release-172.test.js` — 19 testów styków, `tests/43-state-matrix.test.js` — 26 sprawdzeń macierzy. Razem 655 sprawdzeń, 18 testów stanowiska w Chromium bez zmian zielonych.
+
+### Bez zmian, z pomiarem
+
+- Zapis dziennika wartości serializuje cały dziennik — dwa razy na przedmiot przy włączonym module cen. Zmierzone: 0,3 ms na zapis przy 600 wpisach (pełna zmiana), 2,7 ms przy górnej granicy 6000. Zmiana formatu zapisu nie jest tego warta.
+
+---
+
 ## 1.7.1 — 2026-10-21
 
 > **Kto przechodzi z 1.6.x — aktualizować tylko między zmianami.** To pierwsze wydanie z nowościami 1.7.0, a 1.7.0 zmieniło prefiks magazynu na `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia startują od zera (zakładki z kodem ustawień działają dalej). 1.7.1 to PATCH — prefiks zostaje.

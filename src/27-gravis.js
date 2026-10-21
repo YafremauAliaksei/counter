@@ -92,8 +92,12 @@
         /** Jedyne miejsce, z którego T-REX otwiera GRAVIS — kliknięcie w panelu. */
         open() {
             if (!this.enabled()) return;
+            const win = window.open(CONFIG.GRAVIS_URL, CONFIG.GRAVIS_WINDOW_NAME);
+            // Blokada wyskakujących okien zwraca null: działające połączenie
+            // zostaje, zamiast urwać się do następnego sygnału gotowości.
+            if (!win) return;
             this.ready = false;
-            this.win = window.open(CONFIG.GRAVIS_URL, CONFIG.GRAVIS_WINDOW_NAME);
+            this.win = win;
         },
         /** Wyłączenie mostu. Karty GRAVIS nie zamykamy — mogła być potrzebna sama w sobie. */
         close() {
@@ -107,8 +111,9 @@
             this.lastLpn = lpn;
             this.asin = null;
             this.removeChip();
-            if (!this.win || this.win.closed) return;
-            if (!this.ready) { this.pendingLpn = lpn; return; }
+            // Bez okna (T-REX po przeładowaniu, zanim GRAVIS da znak) LPN
+            // czeka na sygnał gotowości, a nie przepada.
+            if (!this.ready || !this.win || this.win.closed) { this.pendingLpn = lpn; return; }
             this.pendingLpn = null;
             this.win.postMessage({ type: 'sh-gravis-lpn', lpn }, this.origin());
         },
@@ -222,6 +227,9 @@
             this.badge(I18n.get('gravis_badgeOk'), '#2E7D32');
         },
         badge(text, color) {
+            // Ponowne wklejenie skryptu w karcie bez opener zostawiłoby drugi znaczek.
+            const old = document.getElementById(CONFIG.SCRIPT_ID_PREFIX + 'gravisBadge');
+            if (old) old.remove();
             document.body.appendChild(h('div', {
                 id: 'gravisBadge', textContent: text,
                 style: { position: 'fixed', left: '6px', top: '6px', zIndex: '2147483646',

@@ -174,7 +174,7 @@
             // --- wspólne dla wszystkich kart ---
             { id: 0x0300, root: 'user', path: 'language', type: 'enum', list: 'language' },
             { id: 0x0301, root: 'user', path: 'marketplace', type: 'enum', list: 'marketplace' },
-            { id: 0x0302, root: 'user', path: 'triggerMutationDebounceMs', type: 'u16', min: 0, max: 5000 },
+            { id: 0x0302, root: 'user', path: 'triggerMutationDebounceMs', type: 'u16', min: CONFIG.MIN_TRIGGER_DEBOUNCE_MS, max: CONFIG.MAX_TRIGGER_DEBOUNCE_MS },
             { id: 0x0303, root: 'user', path: 'settingsPanelWidth', type: 'u16', min: 200, max: 2000 },
             { id: 0x0304, root: 'user', path: 'globalStatsContributionKnown.CRET', type: 'bool' },
             { id: 0x0305, root: 'user', path: 'globalStatsContributionKnown.REFURB', type: 'bool' },

@@ -177,7 +177,7 @@ Szerzej: `CONTRIBUTING.md`, rozdział 6, „Koszt przedmiotu jest stały”.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # porównać artefakt z przebudową (nie pisze na dysk)
-npm test             # 610 sprawdzeń
+npm test             # 655 sprawdzeń
 npm test line7       # tylko pliki z "line7" w nazwie
 npm run verify       # build:check + test — to samo, co w CI
 npm run test:e2e     # stanowisko w Chromium (npm ci + npx playwright install chromium)
@@ -236,6 +236,17 @@ Najważniejsze miejsca:
 5. Push, Pull Request, doczekać zielonego CI.
 
 Szczegóły i listy kontrolne — w `CONTRIBUTING.md`.
+
+---
+
+## Audyty
+
+Audyt kodu (agenci, reguły audytu, mapy, raporty) prowadzi się **wyłącznie
+lokalnie**, w sesji, na gałęzi, która nigdy nie idzie na GitHub. Reguły
+i instrukcje audytu nie trafiają do repozytorium ani do PR. Do repozytorium
+trafiają tylko poprawki znalezisk: każda z testem, który bez niej pada,
+zwykłym wydaniem (PATCH, gdy nie zmienia danych ani interfejsu) i z opisem
+w CHANGELOG.
 
 ---
 
