@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.7.2
+// @version      1.7.3
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.7.2',
+        SCRIPT_VERSION: '1.7.3',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -877,8 +877,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'found on ${host}',
             priceCard_marketNoData: 'Keepa has no chart for this store — link works, price will not',
             priceCard_displayCurrency: 'Show amounts in',
-            priceCard_displayNative: 'store currency (no conversion)',
-            priceCard_displayCurrencyHint: 'Totals are always counted in euro; the chosen currency is only how they are shown, so switching it mid-shift loses nothing. A converted price is marked with ≈.',
+            priceCard_displayCurrencyHint: 'Every price and every total is shown in this currency, euro by default; prices from other stores are converted at the daily rate and marked with ≈. Totals are always counted in euro, so switching mid-shift loses nothing.',
             priceCard_openHint: 'Click the ASIN to open the product page',
             priceCard_hiddenHint: 'Card hidden — price is still read and added to the sum',
             priceCard_showCard: 'Show the card on screen',
@@ -1028,8 +1027,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'znaleziono na ${host}',
             priceCard_marketNoData: 'Keepa nie ma wykresu dla tego sklepu — link działa, ceny nie będzie',
             priceCard_displayCurrency: 'Kwoty pokazywać w',
-            priceCard_displayNative: 'walucie sklepu (bez przeliczania)',
-            priceCard_displayCurrencyHint: 'Sumy liczone są zawsze w euro, a wybrana waluta to tylko sposób pokazania — zmiana w trakcie zmiany niczego nie gubi. Cena przeliczona ma znak ≈.',
+            priceCard_displayCurrencyHint: 'Każda cena i każda suma pokazuje się w tej walucie, domyślnie w euro; ceny z innych sklepów są przeliczane po kursie dziennym i mają znak ≈. Sumy liczone są zawsze w euro, więc zmiana w trakcie zmiany niczego nie gubi.',
             priceCard_openHint: 'Kliknij ASIN, aby otworzyć stronę produktu',
             priceCard_hiddenHint: 'Karta ukryta — cena nadal jest odczytywana i wliczana do sumy',
             priceCard_showCard: 'Pokazuj kartę na ekranie',
@@ -1179,8 +1177,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'знайдено на ${host}',
             priceCard_marketNoData: 'У Keepa немає графіка для цього магазину — посилання працює, ціни не буде',
             priceCard_displayCurrency: 'Показувати суми в',
-            priceCard_displayNative: 'валюті магазину (без перерахунку)',
-            priceCard_displayCurrencyHint: 'Суми завжди рахуються в євро, вибрана валюта — лише спосіб показу, тож зміна посеред зміни нічого не втрачає. Перерахована ціна позначена знаком ≈.',
+            priceCard_displayCurrencyHint: 'Кожна ціна і кожна сума показується в цій валюті, типово в євро; ціни з інших магазинів перераховуються за денним курсом і позначені знаком ≈. Суми завжди рахуються в євро, тож зміна посеред зміни нічого не втрачає.',
             priceCard_openHint: 'Клік по ASIN відкриває сторінку товару',
             priceCard_hiddenHint: 'Картку приховано — ціна все одно читається й іде в суму',
             priceCard_showCard: 'Показувати картку на екрані',
@@ -1330,8 +1327,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'найдено на ${host}',
             priceCard_marketNoData: 'У Keepa нет графика для этого магазина — ссылка работает, цены не будет',
             priceCard_displayCurrency: 'Показывать суммы в',
-            priceCard_displayNative: 'валюте магазина (без пересчёта)',
-            priceCard_displayCurrencyHint: 'Суммы всегда считаются в евро, выбранная валюта — только способ показа, поэтому смена посреди смены ничего не теряет. Пересчитанная цена помечена знаком ≈.',
+            priceCard_displayCurrencyHint: 'Каждая цена и каждая сумма показывается в этой валюте, по умолчанию в евро; цены из других магазинов пересчитываются по дневному курсу и помечены знаком ≈. Суммы всегда считаются в евро, поэтому смена посреди смены ничего не теряет.',
             priceCard_openHint: 'Клик по ASIN открывает страницу товара',
             priceCard_hiddenHint: 'Карточка скрыта — цена всё равно читается и идёт в сумму',
             priceCard_showCard: 'Показывать карточку на экране',
@@ -2907,10 +2903,8 @@ const PAID_SHIFT_HOURS = 10;
                 return sp;
             };
             // Sumy są zawsze w euro; waluta wyświetlania to jedno mnożenie
-            // tutaj. „Jak w sklepie” zostaje przy euro — bilans z kilku sklepów
-            // nie ma jednej waluty. Bez kursu do wybranej waluty zostaje euro.
-            let cur = FxRates.displayCurrency() || 'EUR';
-            if (FxRates.fromEur(0, cur) == null) cur = 'EUR';
+            // tutaj. Bez kursu do wybranej waluty zostaje euro.
+            const cur = FxRates.sumCurrency();
             const money = (v) => FxRates.fromEur(v, cur).toFixed(2);
 
             l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
@@ -3807,11 +3801,10 @@ const PAID_SHIFT_HOURS = 10;
             // więc przełączenie w trakcie zmiany niczego nie gubi. Ustawienie
             // wspólne jak sklep: wszystkie karty mówią jedną walutą.
             secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_displayCurrency'), UIBuilder.select(
-                [{ value: 'native', text: I18n.get('priceCard_displayNative') }]
-                    .concat(Object.entries(CONFIG.DISPLAY_CURRENCIES).map(([code, sign]) => ({
-                        value: code, text: `${code} (${sign})`,
-                    }))),
-                FxRates.displayCurrency() || 'native',
+                Object.entries(CONFIG.DISPLAY_CURRENCIES).map(([code, sign]) => ({
+                    value: code, text: `${code} (${sign})`,
+                })),
+                FxRates.displayCurrency(),
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
@@ -3932,11 +3925,14 @@ const PAID_SHIFT_HOURS = 10;
             secVal.appendChild(UIBuilder.hint(I18n.get('valueLog_hint')));
 
             const vt = ValueLog.totals();
+            // Ta sama waluta co w linii 6 — dwie sumy jednego dziennika
+            // w dwóch walutach to zagadka, a nie informacja.
+            const sumCur = FxRates.sumCurrency();
             secVal.appendChild(h('div', {
                 textContent: I18n.get('valueLog_stats', {
                     count: vt.count,
-                    sum: vt.net.toFixed(2),
-                    currency: vt.currency,
+                    sum: FxRates.fromEur(vt.net, sumCur).toFixed(2),
+                    currency: CONFIG.DISPLAY_CURRENCIES[sumCur],
                     unpriced: vt.unpriced + vt.noRate,
                 }),
                 style: { fontWeight: '600', marginBottom: '4px' },
@@ -4206,7 +4202,7 @@ const PAID_SHIFT_HOURS = 10;
      *                 to klucz z CONFIG.MARKETPLACES (bez niego: wybrany).
      *
      *   PriceResult = { current: Money|null, rrp: Money|null, stale: boolean,
-     *                   secondary?: { text }, series?: string, market?: string }
+     *                   secondary?: Money & { label }, series?: string, market?: string }
      *   Money       = { value: number, currency: string, text: string }
      *                 — waluta musi mieć kurs w CONFIG.FX_FALLBACK, inaczej
      *                 kwota nie wejdzie do sum w euro (PriceSources.money()).
@@ -4553,8 +4549,8 @@ const PAID_SHIFT_HOURS = 10;
             const top = this.pickHighest(rows);
             if (!top) return null;
             const second = rows
-                .filter(r => r.price && r.price !== top.price)
-                .map(r => ({ series: r.series, text: `${r.series} ${r.price}` }))[0] || null;
+                .filter(r => r.price && r.price !== top.price && isFinite(parseFloat(r.price)))
+                .map(r => ({ series: r.series, value: parseFloat(r.price), text: `${r.series} ${r.price}` }))[0] || null;
             return { top, second, rows };
         },
     };
@@ -4715,7 +4711,10 @@ const PAID_SHIFT_HOURS = 10;
             return {
                 current: this.money(d.top.value, marketplace(key).currency),
                 rrp: null,
-                secondary: d.second ? { text: d.second.text } : null,
+                // Druga seria wykresu w walucie rynku, jak cena główna — karta
+                // pokazuje ją przeliczoną, a nie samą liczbę bez waluty.
+                secondary: d.second ? { ...this.money(d.second.value, marketplace(key).currency),
+                                        label: d.second.series } : null,
                 series: d.top.series,
                 market: key,
                 stale: false,
@@ -5441,15 +5440,30 @@ const PAID_SHIFT_HOURS = 10;
             return this.rates;
         },
 
+        /**
+         * Kurs waluty (jednostek za 1 EUR): pobrany, a gdy pobranej tablicy
+         * tej waluty brakuje — wbudowany. Kursy z sieci gwarantują tylko
+         * dolara; cena w funtach bez kursu wypadłaby z sumy zmiany i została
+         * na karcie w funtach, a liczy się tu każda waluta, którą da się
+         * przeliczyć, choćby kursem przybliżonym.
+         * @returns {number|null}
+         */
+        rateOf(cur) {
+            for (const table of [this.rates, CONFIG.FX_FALLBACK]) {
+                if (!table || !Object.prototype.hasOwnProperty.call(table, cur)) continue;
+                const rate = table[cur];
+                if (typeof rate === 'number' && isFinite(rate) && rate > 0) return rate;
+            }
+            return null;
+        },
+
         /** @returns {number|null} kwota w euro albo null, jeśli kursu nie ma. */
         toEur(value, currency) {
             if (typeof value !== 'number' || !isFinite(value)) return null;
-            const cur = (currency || 'EUR').toUpperCase();
+            const cur = String(currency || 'EUR').toUpperCase();
             if (cur === 'EUR') return value;
-            const table = this.rates || CONFIG.FX_FALLBACK;
-            const rate = table[cur];
-            if (!rate || !isFinite(rate) || rate <= 0) return null;
-            return value / rate;      // w tablicy — jednostek waluty za 1 EUR
+            const rate = this.rateOf(cur);
+            return rate ? value / rate : null;
         },
 
         /**
@@ -5462,42 +5476,48 @@ const PAID_SHIFT_HOURS = 10;
             if (typeof eur !== 'number' || !isFinite(eur)) return null;
             const cur = String(currency || 'EUR').toUpperCase();
             if (cur === 'EUR') return eur;
-            const table = this.rates || CONFIG.FX_FALLBACK;
-            const rate = Object.prototype.hasOwnProperty.call(table, cur) ? table[cur] : null;
-            if (!rate || !isFinite(rate) || rate <= 0) return null;
-            return eur * rate;
+            const rate = this.rateOf(cur);
+            return rate ? eur * rate : null;
         },
 
         /**
-         * Waluta wyświetlania albo null, czyli „jak w sklepie”.
+         * Waluta wyświetlania: jedna dla wszystkich kwot, domyślnie euro.
          *
          * Wartość przychodzi z localStorage, więc może być czymkolwiek:
-         * `'__proto__'`, `'XYZ'`, liczbą. Przechodzi wyłącznie 'native' albo
-         * klucz własny CONFIG.DISPLAY_CURRENCIES — wszystko inne to wartość
-         * domyślna (euro), a nie ciche przejście na waluty sklepów.
+         * `'__proto__'`, `'XYZ'`, liczbą, a także dawne „jak w sklepie”
+         * (`'native'`). Przechodzi wyłącznie klucz własny
+         * CONFIG.DISPLAY_CURRENCIES — wszystko inne to euro, a nie ciche
+         * przejście na waluty sklepów.
          */
         displayCurrency() {
             const own = (c) => typeof c === 'string'
                 && Object.prototype.hasOwnProperty.call(CONFIG.DISPLAY_CURRENCIES, c);
             const cur = store.userConfig && store.userConfig.displayCurrency;
-            if (cur === 'native') return null;
             if (own(cur)) return cur;
-            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : null;
+            return own(DEFAULT_USER_CONFIG.displayCurrency) ? DEFAULT_USER_CONFIG.displayCurrency : 'EUR';
         },
 
         /**
-         * Kwota w dowolnej walucie pokazana w walucie wyświetlania.
+         * Waluta sum (linia 6, panel): wyświetlania, a bez kursu do niej —
+         * euro. Suma nigdy nie wychodzi w walucie, której nie da się policzyć.
+         */
+        sumCurrency() {
+            const cur = this.displayCurrency();
+            return this.fromEur(0, cur) == null ? 'EUR' : cur;
+        },
+
+        /**
+         * Kwota w dowolnej walucie pokazana w walucie sum.
          *
          * `≈` stoi wtedy, gdy kwota została przeliczona: kurs jest dzienny,
          * a bez sieci — wbudowany, więc to szacunek, nie cena z Amazonu. Ta
          * sama waluta co w sklepie idzie bez znaku, bo niczego nie liczono.
          *
-         * @returns {string|null} tekst albo null, gdy wybrano „jak w sklepie”
-         *   lub nie ma kursu — wtedy wywołujący pokazuje cenę tak, jak przyszła.
+         * @returns {string|null} tekst albo null, gdy waluty ceny nie da się
+         *   przeliczyć — wtedy wywołujący pokazuje cenę tak, jak przyszła.
          */
         display(value, currency) {
-            const cur = this.displayCurrency();
-            if (!cur) return null;
+            const cur = this.sumCurrency();
             const from = String(currency || 'EUR').toUpperCase();
             const v = from === cur ? value : this.fromEur(this.toEur(value, from), cur);
             if (typeof v !== 'number' || !isFinite(v)) return null;
@@ -6611,9 +6631,10 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         /**
-         * Tekst ceny na karcie: w walucie wyświetlania, jeśli ją wybrano,
-         * inaczej tak, jak przyszła ze sklepu. Obiekt ceny się nie zmienia —
-         * do dziennika idzie kwota i waluta sklepu, do sumy euro.
+         * Tekst ceny na karcie: w walucie wyświetlania (domyślnie euro).
+         * Tak, jak przyszła ze sklepu, tylko gdy jej waluty nie da się
+         * przeliczyć. Obiekt ceny się nie zmienia — do dziennika idzie kwota
+         * i waluta sklepu, do sumy euro.
          */
         priceText(p) {
             return FxRates.display(p.value, p.currency) || p.text;
@@ -6715,7 +6736,7 @@ const PAID_SHIFT_HOURS = 10;
                     this.rrpEl.style.textDecoration = 'line-through';
                     this.rrpEl.style.display = 'block';
                 } else if (pc.showRrp && r.secondary) {
-                    this.rrpEl.textContent = r.secondary.text;
+                    this.rrpEl.textContent = `${r.secondary.label} ${this.priceText(r.secondary)}`;
                     this.rrpEl.style.textDecoration = 'none';
                     this.rrpEl.style.display = 'block';
                 } else {
@@ -7616,6 +7637,8 @@ const PAID_SHIFT_HOURS = 10;
             graphMode: ['legend', 'right', 'full'],
             language: ['pl', 'en', 'ru', 'uk'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
+            // 'native' (dawne „jak w sklepie”) zostaje na swoim miejscu, żeby
+            // stare kody dalej się rozkładały; czytane jest jako euro.
             displayCurrency: ['native', 'EUR', 'PLN', 'GBP', 'SEK', 'USD', 'CAD'],
             cretProfile: ['CRET', 'FAST'],
         },

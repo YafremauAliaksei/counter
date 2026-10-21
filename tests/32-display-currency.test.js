@@ -2,18 +2,20 @@
  * 32-display-currency.test.js — waluta wyświetlania.
  *
  * PO CO. Dla części ludzi kwota w funtach albo koronach nie znaczy nic, a
- * decyzję trzeba podjąć od razu. Karta ceny i linia 6 mogą więc pokazywać
- * kwoty w jednej wybranej walucie — euro albo złotych.
+ * decyzję trzeba podjąć od razu — choćby przy przedmiocie za 3000 €, który
+ * warto starannie puścić na sprzedaż. Karta ceny, linia 6 i panel pokazują
+ * więc każdą kwotę w jednej walucie: domyślnie w euro, w panelu do zmiany.
  *
  * ZASADA, KTÓREJ TEN PLIK PILNUJE: liczy się ZAWSZE w euro. Dziennik trzyma
  * cenę w walucie sklepu, suma idzie w euro, a waluta wyświetlania to jedno
  * mnożenie przy rysowaniu. Stąd obietnice sprawdzane niżej:
  *   - zmiana waluty w trakcie zmiany nie zmienia ani jednej liczby w euro;
  *   - domyślnie wszystko w euro (decyzja autora, wyjątek od zasady „nowe
- *     domyślnie wyłączone” — CLAUDE.md §3), a „jak w sklepie” pokazuje cenę
- *     dokładnie tak, jak przyszła ze sklepu;
- *   - śmieci w magazynie dają wartość domyślną, a brak kursu — cenę sklepu
- *     i euro; nigdy „NaN zł” albo zero.
+ *     domyślnie wyłączone” — CLAUDE.md §3), także dawne „jak w sklepie”;
+ *   - waluta, której brakuje w kursach z sieci, liczy się kursem wbudowanym,
+ *     a nie wypada z sumy;
+ *   - śmieci w magazynie dają wartość domyślną, a waluta bez żadnego kursu —
+ *     cenę sklepu i euro; nigdy „NaN zł” albo zero.
  *
  * Kursy są w testach podane wprost, okrągłe, żeby wynik dało się sprawdzić
  * w pamięci: 1 EUR = 4 PLN = 0,8 GBP = 1,25 USD = 10 SEK = 1,5 CAD.
@@ -100,19 +102,25 @@ test('linia 6 w euro, ze znakiem €, jak zawsze', () => {
     eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt');
 });
 
-describe('„Jak w sklepie”: cena tak, jak przyszła ze sklepu');
+describe('Dawne „jak w sklepie” to euro');
 
-test('karta pokazuje cenę dokładnie tak, jak przyszła ze sklepu', () => {
+test('zapisane „jak w sklepie” pokazuje każdą cenę w euro', () => {
+    // Ustawienie wyszło z panelu; zapis i stare kody ustawień nadal je niosą.
     setCurrency('native');
-    eq(F.displayCurrency(), null, 'native nie jest walutą, tylko brakiem przeliczania');
-    eq(showCard(price(12.5, 'GBP')), 'GBP 12.50');
-    eq(showCard(price(11699, 'EUR')), 'EUR 11699.00');
-});
-
-test('linia 6 zostaje w euro — bilans z kilku sklepów nie ma „waluty sklepu”', () => {
-    setCurrency('native');
+    eq(F.displayCurrency(), 'EUR');
+    eq(showCard(price(12.5, 'GBP')), '≈ 15.63 €');
+    eq(showCard(price(2991.39, 'EUR')), '2991.39 €', 'przedmiot droższy niż tysiąc, bez przeliczenia');
     mixedLog();
     eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt');
+});
+
+test('w panelu nie ma już wyboru „jak w sklepie”', () => {
+    SH.store.uiFlags.isSettingsPanelVisible = true;
+    SH.SettingsPanel.render();
+    const txt = SH.SettingsPanel.el.textContent;
+    SH.store.uiFlags.isSettingsPanelVisible = false;
+    ok(txt.includes('EUR (€)'), 'euro na liście');
+    notOk(/bez przeliczania/.test(txt), 'opcji bez przeliczania nie ma');
 });
 
 describe('Waluta wybrana: karta');
@@ -223,18 +231,59 @@ test('spreparowana waluta z localStorage to wartość domyślna — euro', () =>
     }
 });
 
-test('kursy bez wybranej waluty: karta w walucie sklepu, linia 6 w euro — nigdy NaN', () => {
+test('kursy z sieci bez wybranej waluty: brakujący kurs bierze się z tablicy wbudowanej', () => {
     // Kursy z sieci przechodzą normalize() z samym USD — brak PLN jest możliwy.
     const saved = F.rates;
     F.rates = { EUR: 1, USD: 1.25, GBP: 0.8 };
     try {
         setCurrency('PLN');
         mixedLog();
-        eq(showCard(price(12.5, 'GBP')), 'GBP 12.50');
-        eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt');
+        const pln = SH.CONFIG.FX_FALLBACK.PLN;
+        eq(showCard(price(12.5, 'GBP')), `≈ ${(12.5 / 0.8 * pln).toFixed(2)} zł`);
+        eq(line6(), `+${(150 * pln).toFixed(2)} -${(100 * pln).toFixed(2)} = ${(50 * pln).toFixed(2)} zł  3 szt`);
     } finally {
         F.rates = saved;
     }
+});
+
+test('waluta ceny, której brakuje w kursach z sieci, i tak wchodzi do sumy', () => {
+    // Bez tablicy wbudowanej funty z co.uk lądowałyby w „?N” i poza sumą.
+    const saved = F.rates;
+    F.rates = { EUR: 1, USD: 1.25 };
+    try {
+        setCurrency('EUR');
+        mixedLog();
+        const gbp = SH.CONFIG.FX_FALLBACK.GBP;
+        eq(SH.ValueLog.totals().noRate, 0, 'nic nie wypada z sumy');
+        eq(SH.ValueLog.totals().sold, 80 / gbp + 50);
+        eq(showCard(price(12.5, 'GBP')), `≈ ${(12.5 / gbp).toFixed(2)} €`);
+    } finally {
+        F.rates = saved;
+    }
+});
+
+test('wybrana waluta bez żadnego kursu: wszystko w euro — nigdy NaN', () => {
+    const saved = F.rates;
+    const fallbackPln = SH.CONFIG.FX_FALLBACK.PLN;
+    F.rates = { EUR: 1, USD: 1.25, GBP: 0.8 };
+    delete SH.CONFIG.FX_FALLBACK.PLN;
+    try {
+        setCurrency('PLN');
+        mixedLog();
+        eq(F.sumCurrency(), 'EUR');
+        eq(showCard(price(12.5, 'GBP')), '≈ 15.63 €');
+        eq(line6(), '+150.00 -100.00 = 50.00 €  3 szt');
+    } finally {
+        F.rates = saved;
+        SH.CONFIG.FX_FALLBACK.PLN = fallbackPln;
+    }
+});
+
+test('cena w walucie bez żadnego kursu zostaje taka, jak przyszła, i nie wchodzi do sumy', () => {
+    setCurrency('EUR');
+    eq(showCard(price(12.5, 'XYZ')), 'XYZ 12.50');
+    SH.ValueLog.entries = [{ id: 'x', ts: 1, asin: 'X', price: 12.5, currency: 'XYZ', sign: 1, dept: 'CRET' }];
+    eq(SH.ValueLog.totals().noRate, 1);
 });
 
 test('fromEur: NaN, Infinity, null i tekst nie przechodzą', () => {
@@ -257,8 +306,8 @@ describe('Kod ustawień i kilka kart');
 test('waluta wyświetlania przechodzi przez kod ustawień', () => {
     const source = freshEnv();
     eq(source.SH.configCode(), '0x0101', 'domyślna wartość nie trafia do kodu');
-    source.SH.store.userConfig.displayCurrency = 'native';
-    ok(source.SH.configCode().includes('030a'), '„jak w sklepie” to odstępstwo od domyślnej, więc jedzie w kodzie');
+    source.SH.store.userConfig.displayCurrency = 'GBP';
+    ok(source.SH.configCode().includes('030a'), 'funty to odstępstwo od domyślnej, więc jadą w kodzie');
     source.SH.store.userConfig.displayCurrency = 'PLN';
     const code = source.SH.configCode();
     ok(code.includes('030a'), 'numer 0x030a w kodzie: ' + code);
@@ -298,4 +347,38 @@ test('przełączanie waluty przy wyłączonym module nie dotyka sieci ani konsol
     eq(e.net.images, [], 'obrazki');
     eq(e.net.consoleLog, [], 'console.log');
     eq(e.net.consoleError, [], 'console.error');
+});
+
+describe('Druga cena z wykresu i suma w panelu');
+
+test('druga seria wykresu keepa idzie w walucie sum, a nie jako goła liczba', () => {
+    // Obrazek z co.uk: „Neu 12.50” to funty — bez przeliczenia człowiek
+    // widziałby liczbę bez waluty obok ceny w euro.
+    setCurrency('EUR');
+    SH.store.localTabConfig.priceCard.showRrp = true;
+    try {
+        const r = SH.PriceSources.ocrResult({ top: { value: 20, series: 'Amazon' },
+                                              second: { series: 'Neu', value: 12.5, text: 'Neu 12.50' } }, 'co.uk');
+        eq([r.current.currency, r.secondary.currency, r.secondary.label], ['GBP', 'GBP', 'Neu']);
+        showCard(r.current, { secondary: r.secondary });
+        eq(P.rrpEl.textContent, 'Neu ≈ 15.63 €');
+    } finally {
+        SH.store.localTabConfig.priceCard.showRrp = false;
+    }
+});
+
+test('suma dziennika w panelu w tej samej walucie co linia 6', () => {
+    mixedLog();
+    SH.store.localTabConfig.priceCard.moduleEnabled = true;
+    SH.store.uiFlags.isSettingsPanelVisible = true;
+    try {
+        for (const [cur, want] of [['EUR', 'Σ 50.00 €'], ['PLN', 'Σ 200.00 zł'], ['native', 'Σ 50.00 €']]) {
+            setCurrency(cur);
+            SH.SettingsPanel.render();
+            ok(SH.SettingsPanel.el.textContent.includes(want), `${cur}: ${want}`);
+        }
+    } finally {
+        SH.store.uiFlags.isSettingsPanelVisible = false;
+        setCurrency('EUR');
+    }
 });

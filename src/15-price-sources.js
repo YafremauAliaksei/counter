@@ -30,7 +30,7 @@
      *                 to klucz z CONFIG.MARKETPLACES (bez niego: wybrany).
      *
      *   PriceResult = { current: Money|null, rrp: Money|null, stale: boolean,
-     *                   secondary?: { text }, series?: string, market?: string }
+     *                   secondary?: Money & { label }, series?: string, market?: string }
      *   Money       = { value: number, currency: string, text: string }
      *                 — waluta musi mieć kurs w CONFIG.FX_FALLBACK, inaczej
      *                 kwota nie wejdzie do sum w euro (PriceSources.money()).
@@ -377,8 +377,8 @@
             const top = this.pickHighest(rows);
             if (!top) return null;
             const second = rows
-                .filter(r => r.price && r.price !== top.price)
-                .map(r => ({ series: r.series, text: `${r.series} ${r.price}` }))[0] || null;
+                .filter(r => r.price && r.price !== top.price && isFinite(parseFloat(r.price)))
+                .map(r => ({ series: r.series, value: parseFloat(r.price), text: `${r.series} ${r.price}` }))[0] || null;
             return { top, second, rows };
         },
     };
@@ -539,7 +539,10 @@
             return {
                 current: this.money(d.top.value, marketplace(key).currency),
                 rrp: null,
-                secondary: d.second ? { text: d.second.text } : null,
+                // Druga seria wykresu w walucie rynku, jak cena główna — karta
+                // pokazuje ją przeliczoną, a nie samą liczbę bez waluty.
+                secondary: d.second ? { ...this.money(d.second.value, marketplace(key).currency),
+                                        label: d.second.series } : null,
                 series: d.top.series,
                 market: key,
                 stale: false,

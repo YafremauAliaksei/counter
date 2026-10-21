@@ -110,10 +110,8 @@
                 return sp;
             };
             // Sumy są zawsze w euro; waluta wyświetlania to jedno mnożenie
-            // tutaj. „Jak w sklepie” zostaje przy euro — bilans z kilku sklepów
-            // nie ma jednej waluty. Bez kursu do wybranej waluty zostaje euro.
-            let cur = FxRates.displayCurrency() || 'EUR';
-            if (FxRates.fromEur(0, cur) == null) cur = 'EUR';
+            // tutaj. Bez kursu do wybranej waluty zostaje euro.
+            const cur = FxRates.sumCurrency();
             const money = (v) => FxRates.fromEur(v, cur).toFixed(2);
 
             l6.appendChild(piece(`+${money(vt.sold)}`, GREEN));
