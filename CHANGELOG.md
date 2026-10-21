@@ -9,6 +9,29 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.7.1 — 2026-10-21
+
+> **Kto przechodzi z 1.6.x — aktualizować tylko między zmianami.** To pierwsze wydanie z nowościami 1.7.0, a 1.7.0 zmieniło prefiks magazynu na `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia startują od zera (zakładki z kodem ustawień działają dalej). 1.7.1 to PATCH — prefiks zostaje.
+
+### Zmieniono
+
+- **Paczki zmiany w linii 7 przy starcie w połowie zmiany.** Po obiedzie na innym stanowisku (czysta przeglądarka) z zadaniem cofniętym na 23:50 linia pokazywała `4 z 300`, choć od 18:30 przepracowano prawie pięć godzin. Czas zmiany sprzed pierwszego zadania — bez obiadu — dolicza się teraz według celu działu, a liczba dostaje `≈`: REFURB (30/h), zadanie od 23:50, 4 paczki o 23:58 → `30.0 z 30 · ≈149 z 300`. Przerwy między zadaniami są pauzami i nie są doliczane; bez celu działu albo bez rozpoznanej zmiany nic się nie dolicza.
+- **Wybór języka na samej górze panelu**, przed zadaniami.
+
+### Nowości 1.7.0 (wydane razem z tym wydaniem)
+
+- **Przedmiot zalicza się w chwili przybicia pojemnika.** Początek (wyzwalacz POJAWIA SIĘ na stronie) → koniec (wyzwalacz końcowy) → pojemnik; pojemnik przed końcem zalicza przedmiot w chwili końca. Bez pojemnika przedmiot z końcem zalicza się przy następnym początku albo po 60 s.
+- **Nowy początek bez końca przerywa poprzedni przedmiot** — nic za niego nie przychodzi, jego naklejka i fraza nie przechodzą dalej.
+- **Pojemnik eskalacji `tsREP…`** przerywa przedmiot na każdym etapie, także po wyzwalaczu końcowym.
+- **Przedmiot podwójny (+2) w UG:** widoczna naklejka albo fraza „Teraz oceniasz produkt, który można odsprzedać jako używany…” ze sprzedażą (także gdy kod sprzedaży przyjdzie po pojemniku). Oba sygnały naraz to dalej +2.
+- **Naprawa naklejki w UG:** liczyła się tylko z niezerowymi wymiarami, a `#sticker-back-hide` bywa pustym znacznikiem — teraz liczy się element, który nie jest schowany.
+- **Okno diagnostyki** dla stanowisk bez F12 (przycisk „Diagnostyka” w panelu albo `SH.debug()`): zdarzenia cyklu przedmiotu, stan bieżącego przedmiotu, dopasowania wyzwalaczy, naklejka, pola formularzy widziane przez skrypt; „Kopiuj” daje JSON do schowka.
+- Doświadczalne „liczenie po pojemniku” zniknęło z panelu — stało się zwykłym sposobem liczenia.
+
+Pełny opis 1.7.0 — sekcja niżej w CHANGELOG.md.
+
+---
+
 ## 1.7.0 — 2026-10-21
 
 > **Aktualizować tylko między zmianami.** Wydanie MINOR: prefiks magazynu zmienia się na `statsHelper_v1_7_0_`, więc liczniki, zadania i ustawienia startują od zera; klucze `statsHelper_v1_6_0_` są sprzątane przy starcie. Zakładki z kodem ustawień działają dalej.

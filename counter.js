@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.7.0
+// @version      1.7.1
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.7.0',
+        SCRIPT_VERSION: '1.7.1',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -2908,7 +2908,8 @@ const PAID_SHIFT_HOURS = 10;
          *     po to, żeby procesy o różnych normach nie mieszały się w jedną
          *     średnią; tempo całej zmiany jest w panelu i w linii 1;
          *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
-         *     (cel × płatne godziny);
+         *     (cel × płatne godziny); czas zmiany sprzed pierwszego zadania
+         *     dolicza się według celu i liczba dostaje „≈”;
          *   - procent sprzedaży zmiany;
          *   - czas od ostatniego pojemnika, czerwony po przekroczeniu limitu
          *     (jak linia 9); do pierwszego pojemnika go nie ma.
@@ -2921,9 +2922,13 @@ const PAID_SHIFT_HOURS = 10;
             const target = ToteWatch.targetFor(store.currentTabType);
             const of = I18n.get('statsOf');
             const rate = (task ? TaskManager.rate(task) : 0).toFixed(1);
+            // Czas zmiany sprzed pierwszego zadania liczy się po celu działu
+            // i paczki są wtedy przybliżone (≈).
+            const assumed = target ? Math.round(target * TaskManager.untrackedWorkedMs() / 3600000) : 0;
+            const packs = assumed > 0 ? `≈${gTotal + assumed}` : String(gTotal);
             const parts = [
                 target ? `${rate} ${of} ${target}` : rate,
-                target ? `${gTotal} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
+                target ? `${packs} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
                 `${Utils.percentFloor(gSold, gRated)}%`,
             ];
             line.innerHTML = '';
@@ -3508,12 +3513,14 @@ const PAID_SHIFT_HOURS = 10;
             this.el.appendChild(h('h2', { textContent: I18n.get('settingsPanelTitle'), style: { textAlign: 'center', marginTop: '0' } }));
 
             // 0. Zadania i liczniki — na górze, jedyna sekcja używana w trakcie pracy.
+            // Język na samej górze: kto otworzył panel w obcym języku, nie musi
+            // szukać przełącznika wśród napisów, których nie rozumie.
+            this.el.appendChild(UIBuilder.row(I18n.get('language'), UIBuilder.select(CONFIG.AVAILABLE_LANGUAGES.map(l => ({ value: l.code, text: l.name })), store.userConfig.language, v => { store.userConfig.language = v; this.rerender(); })));
             this.el.appendChild(this.buildTasksSection());
             this.el.appendChild(this.buildCountersSection());
 
             // 1. Ogólne
             const secGen = UIBuilder.section(I18n.get('section_general'));
-            secGen.appendChild(UIBuilder.row(I18n.get('language'), UIBuilder.select(CONFIG.AVAILABLE_LANGUAGES.map(l => ({ value: l.code, text: l.name })), store.userConfig.language, v => { store.userConfig.language = v; this.rerender(); })));
             // Pełny reset usuwa wyłącznie klucze skryptu (ownKeys) — resztę
             // localStorage tej domeny trzyma T-REX.
             secGen.appendChild(UIBuilder.button(I18n.get('settings_resetAllDataButton'), () => {
@@ -8308,6 +8315,26 @@ const PAID_SHIFT_HOURS = 10;
         countedFrom() {
             const start = store.sessionConfig.shiftCalculatedStartTime;
             return typeof start === 'number' ? start : -Infinity;
+        },
+
+        /**
+         * Przepracowany czas zmiany sprzed pierwszego odcinka wszystkich zadań
+         * (bez obiadu). Skrypt uruchomiony w połowie zmiany — inne stanowisko,
+         * czysta przeglądarka — nie ma danych o tym czasie, a człowiek przez
+         * niego pracował. Linia 7 dolicza za niego paczki według celu działu,
+         * żeby „z celu zmiany” nie zaczynało się od zera o północy.
+         * Przerwy między zadaniami się nie liczą — to były pauzy.
+         */
+        untrackedWorkedMs(nowMs) {
+            const floor = this.countedFrom();
+            if (!Number.isFinite(floor)) return 0;
+            const now = Number(nowMs) || Date.now();
+            let first = now;
+            for (const task of store.tasks) {
+                for (const seg of task.segments) if (seg.from < first) first = seg.from;
+            }
+            if (first <= floor) return 0;
+            return Math.max(0, (first - floor) - ShiftManager.lunchOverlapMs(floor, first));
         },
 
         /**

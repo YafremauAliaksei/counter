@@ -319,12 +319,14 @@
             this.el.appendChild(h('h2', { textContent: I18n.get('settingsPanelTitle'), style: { textAlign: 'center', marginTop: '0' } }));
 
             // 0. Zadania i liczniki — na górze, jedyna sekcja używana w trakcie pracy.
+            // Język na samej górze: kto otworzył panel w obcym języku, nie musi
+            // szukać przełącznika wśród napisów, których nie rozumie.
+            this.el.appendChild(UIBuilder.row(I18n.get('language'), UIBuilder.select(CONFIG.AVAILABLE_LANGUAGES.map(l => ({ value: l.code, text: l.name })), store.userConfig.language, v => { store.userConfig.language = v; this.rerender(); })));
             this.el.appendChild(this.buildTasksSection());
             this.el.appendChild(this.buildCountersSection());
 
             // 1. Ogólne
             const secGen = UIBuilder.section(I18n.get('section_general'));
-            secGen.appendChild(UIBuilder.row(I18n.get('language'), UIBuilder.select(CONFIG.AVAILABLE_LANGUAGES.map(l => ({ value: l.code, text: l.name })), store.userConfig.language, v => { store.userConfig.language = v; this.rerender(); })));
             // Pełny reset usuwa wyłącznie klucze skryptu (ownKeys) — resztę
             // localStorage tej domeny trzyma T-REX.
             secGen.appendChild(UIBuilder.button(I18n.get('settings_resetAllDataButton'), () => {

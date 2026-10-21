@@ -168,7 +168,8 @@
          *     po to, żeby procesy o różnych normach nie mieszały się w jedną
          *     średnią; tempo całej zmiany jest w panelu i w linii 1;
          *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
-         *     (cel × płatne godziny);
+         *     (cel × płatne godziny); czas zmiany sprzed pierwszego zadania
+         *     dolicza się według celu i liczba dostaje „≈”;
          *   - procent sprzedaży zmiany;
          *   - czas od ostatniego pojemnika, czerwony po przekroczeniu limitu
          *     (jak linia 9); do pierwszego pojemnika go nie ma.
@@ -181,9 +182,13 @@
             const target = ToteWatch.targetFor(store.currentTabType);
             const of = I18n.get('statsOf');
             const rate = (task ? TaskManager.rate(task) : 0).toFixed(1);
+            // Czas zmiany sprzed pierwszego zadania liczy się po celu działu
+            // i paczki są wtedy przybliżone (≈).
+            const assumed = target ? Math.round(target * TaskManager.untrackedWorkedMs() / 3600000) : 0;
+            const packs = assumed > 0 ? `≈${gTotal + assumed}` : String(gTotal);
             const parts = [
                 target ? `${rate} ${of} ${target}` : rate,
-                target ? `${gTotal} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
+                target ? `${packs} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
                 `${Utils.percentFloor(gSold, gRated)}%`,
             ];
             line.innerHTML = '';
