@@ -444,6 +444,26 @@
         },
 
         /**
+         * Przepracowany czas zmiany sprzed pierwszego odcinka wszystkich zadań
+         * (bez obiadu). Skrypt uruchomiony w połowie zmiany — inne stanowisko,
+         * czysta przeglądarka — nie ma danych o tym czasie, a człowiek przez
+         * niego pracował. Linia 7 dolicza za niego paczki według celu działu,
+         * żeby „z celu zmiany” nie zaczynało się od zera o północy.
+         * Przerwy między zadaniami się nie liczą — to były pauzy.
+         */
+        untrackedWorkedMs(nowMs) {
+            const floor = this.countedFrom();
+            if (!Number.isFinite(floor)) return 0;
+            const now = Number(nowMs) || Date.now();
+            let first = now;
+            for (const task of store.tasks) {
+                for (const seg of task.segments) if (seg.from < first) first = seg.from;
+            }
+            if (first <= floor) return 0;
+            return Math.max(0, (first - floor) - ShiftManager.lunchOverlapMs(floor, first));
+        },
+
+        /**
          * Początek pierwszego odcinka i koniec ostatniego — do podsumowania.
          * Początek widać w panelu, więc przycina się tak samo jak czas: inaczej
          * panel pokazywałby 06:20, a tempo liczyłoby się od 06:30.

@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.7.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.7.1** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -14,7 +14,7 @@ To cały domyślny interfejs — jedna szara linia w lewym dolnym rogu:
 
 - **tempo bieżącego zadania z celu działu** — `34.3 z 47`;
 - **paczki zmiany z celu zmiany** — `236 z 470` (wszystkie otwarte karty, cel ×
-  10 płatnych godzin);
+  10 płatnych godzin; po starcie w połowie zmiany przybliżone, `≈`);
 - **procent sprzedaży**;
 - **czas od ostatniego pojemnika** — czerwony, gdy przerwa trwa za długo.
 
@@ -93,7 +93,7 @@ Szczegóły w tym adresie nie są przypadkowe:
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.7.0/counter.js`.
+`…/counter/v1.7.1/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -200,7 +200,10 @@ Cztery człony oddzielone kropką:
   zmiany: zadania są po to, żeby procesy o różnych normach nie mieszały się
   w jedną średnią (tempo zmiany jest w linii 1 i w panelu);
 - **paczki zmiany z celu zmiany** — `236 z 470`, suma ze wszystkich wliczanych
-  kart, cel to cel działu × 10 płatnych godzin;
+  kart, cel to cel działu × 10 płatnych godzin. Gdy skrypt ruszył w połowie
+  zmiany (inne stanowisko, czysta przeglądarka), czas zmiany sprzed pierwszego
+  zadania — bez obiadu — dolicza się według celu działu i liczba dostaje `≈`:
+  zadanie od 23:50 w REFURB (30/h) daje o 23:58 `≈149 z 300`, a nie `4 z 300`;
 - **procent sprzedaży zmiany**;
 - **czas od ostatniego pojemnika** — czerwony po podwójnym czasie przedmiotu
   (bez obiadu); do pierwszego pojemnika go nie ma.
@@ -1019,7 +1022,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 40 plików, 604 sprawdzenia
+├── tests/                  ← 41 plików, 610 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1039,7 +1042,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 604 sprawdzenia
+npm test             # 610 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
