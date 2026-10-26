@@ -111,7 +111,9 @@
             }
             const method = on ? 'addEventListener' : 'removeEventListener';
             ['keydown', 'keyup', 'keypress'].forEach(t => window[method](t, this.onPanelKey, true));
-            document[method]('mousedown', this.onOutsideDown, true);
+            // pointerdown, a nie mousedown: stuknięcie palcem daje „mysz” dopiero
+            // po puszczeniu, a na części ekranów dotykowych wcale.
+            document[method]('pointerdown', this.onOutsideDown, true);
         },
         /**
          * SEKCJA ZADAŃ — jedyna część panelu otwierana w trakcie pracy, więc

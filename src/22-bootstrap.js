@@ -93,6 +93,9 @@
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
             if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
             if (PriceCard.onCspViolation) document.removeEventListener('securitypolicyviolation', PriceCard.onCspViolation);
+            // Rozbiórka w trakcie ciągnięcia zostawiłaby słuchaczy na dokumencie.
+            if (DragDropManager.onPointerMove) DragDropManager.release();
+            if (PriceCardDrag.onPointerMove) PriceCardDrag.release();
             if (this.onPageHide) { window.removeEventListener('pagehide', this.onPageHide); this.onPageHide = null; }
             // Jednorazowe timery też — inaczej po chwili ruszyłyby render()
             // zdjętego interfejsu.

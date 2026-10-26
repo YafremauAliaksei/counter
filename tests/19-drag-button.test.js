@@ -59,7 +59,7 @@ test('włączenie trybu zmienia napis przycisku', () => {
     notOk(panelText().includes(idleLabel()), 'spoczynkowego już nie ma');
 });
 
-test('PUSZCZENIE MYSZY po przeciągnięciu wraca przycisk do spoczynku', () => {
+test('PUSZCZENIE po przeciągnięciu wraca przycisk do spoczynku', () => {
     // Flagę zdejmuje dragger, a nie obsługa kliknięcia — panel i tak ma się
     // o tym dowiedzieć.
     const el = env.el('statsWindow');
@@ -67,9 +67,9 @@ test('PUSZCZENIE MYSZY po przeciągnięciu wraca przycisk do spoczynku', () => {
 
     S.uiFlags.isStatsWindowDragging = true;
     const dragger = SH.DragDropManager;
-    dragger.onMouseDown({ button: 0, clientX: 20, clientY: 20 });
-    dragger.onMouseMove({ clientX: 120, clientY: 90, preventDefault() {} });
-    dragger.onMouseUp();
+    dragger.onPointerDown({ button: 0, pointerId: 1, isPrimary: true, clientX: 20, clientY: 20 });
+    dragger.onPointerMove({ pointerId: 1, clientX: 120, clientY: 90, preventDefault() {} });
+    dragger.onPointerUp({ pointerId: 1 });
 
     notOk(S.uiFlags.isStatsWindowDragging, 'dragger zdejmuje flagę po puszczeniu');
     ok(panelText().includes(idleLabel()), 'przycisk wrócił do napisu spoczynkowego');
@@ -115,4 +115,73 @@ test('cała ta zabawa nie wysłała ani jednego zapytania', () => {
     // ten drugi świadomie budzi sieć, a zapis pola ma tylko odsłonić sekcję.
     eq(env.net.fetches, [], 'fetch');
     eq(env.net.images, [], 'obrazki');
+});
+
+describe('Ekran dotykowy');
+
+/** Okno w trybie przeciągania i licznik przesunięć z dokumentu. */
+function touchSetup() {
+    const e = boot();
+    const el = e.el('statsWindow');
+    el.getBoundingClientRect = () => ({ left: 10, top: 10, width: 100, height: 20 });
+    e.SH.store.uiFlags.isStatsWindowDragging = true;
+    const doc = e.sandbox.document;
+    const fire = (type, init) => doc.dispatch(type, { preventDefault() {}, ...init });
+    return { e, el, S: e.SH.store, drag: e.SH.DragDropManager, fire };
+}
+
+test('palec przeciąga okno: pointer, nie mysz, i bez przewijania strony', () => {
+    // Firefox z ekranem dotykowym zamienia na mysz tylko stuknięcie, a ruch
+    // palcem przewija stronę — stąd zdarzenia wskaźnika i touch-action.
+    const { el, S, drag, fire } = touchSetup();
+    eq(el.style.touchAction, 'none', 'przeglądarka nie zabiera ruchu palca');
+    drag.onPointerDown({ button: 0, pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: 20, clientY: 20 });
+    fire('pointermove', { pointerId: 7, clientX: 220, clientY: 120 });
+    eq([el.style.left, el.style.top], ['210px', '110px']);
+    fire('pointerup', { pointerId: 7 });
+    eq(S.uiFlags.isStatsWindowDragging, false, 'po puszczeniu tryb gaśnie');
+    eq(S.localTabConfig.statsWindowPosition.left, '210px', 'pozycja zapisana');
+    fire('pointermove', { pointerId: 7, clientX: 400, clientY: 300 });
+    eq(el.style.left, '210px', 'po puszczeniu ruch niczego nie przesuwa');
+});
+
+test('drugi palec i obcy wskaźnik nie przejmują okna', () => {
+    const { el, drag, fire } = touchSetup();
+    drag.onPointerDown({ button: 0, pointerId: 2, isPrimary: false, clientX: 20, clientY: 20 });
+    eq(drag.isDragging, false, 'drugi palec nie zaczyna');
+    drag.onPointerDown({ button: 0, pointerId: 1, isPrimary: true, clientX: 20, clientY: 20 });
+    fire('pointermove', { pointerId: 2, clientX: 500, clientY: 500 });
+    eq(el.style.left === '490px', false, 'ruch innego palca pomijany');
+    fire('pointerup', { pointerId: 2 });
+    eq(drag.isDragging, true, 'puszczenie innego palca nie kończy');
+    fire('pointerup', { pointerId: 1 });
+});
+
+test('przerwany dotyk (pointercancel) kończy jak puszczenie i zapisuje pozycję', () => {
+    const { S, drag, fire } = touchSetup();
+    drag.onPointerDown({ button: 0, pointerId: 3, isPrimary: true, clientX: 20, clientY: 20 });
+    fire('pointermove', { pointerId: 3, clientX: 60, clientY: 40 });
+    fire('pointercancel', { pointerId: 3 });
+    eq(drag.isDragging, false);
+    eq(S.uiFlags.isStatsWindowDragging, false);
+    eq(S.localTabConfig.statsWindowPosition.left, '50px');
+});
+
+test('poza trybem przeciągania dotyk nic nie rusza; prawy przycisk myszy też nie', () => {
+    const { S, drag } = touchSetup();
+    drag.onPointerDown({ button: 2, pointerId: 1, isPrimary: true, clientX: 20, clientY: 20 });
+    eq(drag.isDragging, false, 'prawy przycisk');
+    S.uiFlags.isStatsWindowDragging = false;
+    drag.onPointerDown({ button: 0, pointerId: 1, isPrimary: true, clientX: 20, clientY: 20 });
+    eq(drag.isDragging, false, 'bez trybu przeciągania');
+});
+
+test('rozbiórka w trakcie ciągnięcia zdejmuje słuchaczy z dokumentu', () => {
+    const { e, el, drag, fire } = touchSetup();
+    drag.onPointerDown({ button: 0, pointerId: 4, isPrimary: true, clientX: 20, clientY: 20 });
+    e.SH.Main.teardown();
+    eq(drag.isDragging, false);
+    const before = el.style.left;
+    fire('pointermove', { pointerId: 4, clientX: 300, clientY: 300 });
+    eq(el.style.left, before, 'po rozbiórce ruch niczego nie przesuwa');
 });
