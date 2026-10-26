@@ -354,7 +354,30 @@ Malejąco według pożytku:
    `SettingsPanel.render()` jest sprawdzany tylko pod kątem obecności sekcji;
    `PriceCard.render()` — tylko pośrednio.
 
-7. **Pomyśleć o podziale `src/20-price-card.js`** — ok. 1040 linii, największy moduł.
+7. **Źródło ceny „karta Amazon” — pomysł na przyszłość, NIE wdrażać bez
+   decyzji autora.** Cena prosto ze sklepu zamiast z obrazka Keepa, a karta
+   T-REX nie wysyła niczego na zewnątrz. Budowa jak most GRAVIS:
+   - T-REX otwiera kartę `amazon.de` przyciskiem w panelu (uchwyt okna),
+     człowiek klika tam raz zakładkę; rozmowa przez `postMessage`, każda
+     strona przyjmuje wiadomość tylko ze znanego adresu, sygnał „żyję”
+     i podpowiedź w T-REX, gdy skrypt w karcie Amazon zniknie;
+   - karta Amazon **nie przechodzi pod nowy adres** (przejście zabija skrypt
+     wklejony zakładką): dostaje ASIN i sama pobiera
+     `https://www.amazon.de/dp/<ASIN>` przez `fetch` — zapytanie do tego samego
+     adresu, bez CORS, z ciasteczkami człowieka — wyjmuje cenę z HTML i odsyła;
+   - zapytanie tylko na żądanie (jak LPN do GRAVIS: gdy cena jest naprawdę
+     potrzebna), z ograniczeniem częstości; captcha albo błąd → „brak danych”,
+     bez ponawiania.
+     Ograniczenia: jeden sklep = jedna karta (z `amazon.de` nie da się pobrać
+     `amazon.fr` — CORS); wyjmowanie ceny z HTML trzeba utrzymywać przy zmianach
+     strony (kilka miejsc na cenę, zapisane strony jako próbki w testach);
+     osadzenie Amazon w ramce odpada (X-Frame-Options); po ręcznym przeładowaniu
+     karty Amazon zakładkę klika się ponownie. Przed wdrożeniem: zapisana strona
+     produktu z `amazon.de` (Ctrl+S) jako próbka i potwierdzenie, że regulamin
+     pracy pozwala na automatyczne zapytania do sklepu. Miejsce w kodzie: nowe
+     źródło w `PriceSources` obok Keepa, nie zamiast niego; domyślnie wyłączone.
+
+8. **Pomyśleć o podziale `src/20-price-card.js`** — ok. 1040 linii, największy moduł.
    Uzasadnienie, dlaczego na razie nie jest podzielony, i rozsądny moment na to —
    w `src/README.md`, ostatni rozdział. Bez realnej potrzeby nie ruszać.
 
