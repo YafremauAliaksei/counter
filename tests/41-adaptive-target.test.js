@@ -1,6 +1,6 @@
 /**
  * 41-adaptive-target.test.js — paczki zmiany, gdy skrypt startuje w połowie
- * zmiany, i język na górze panelu.
+ * zmiany. Kolejność sekcji panelu (z językiem) sprawdza 45-panel-layout.
  *
  * Przypadek z pracy: po obiedzie człowiek siada do innego stanowiska (czysta
  * przeglądarka, zero danych) o 23:55 i cofa początek zadania na 23:50. Tempo
@@ -64,14 +64,4 @@ test('bez rozpoznanej zmiany nic się nie dolicza', () => {
     const { S, env } = nightRefurb();
     S.sessionConfig.shiftCalculatedStartTime = null;
     eq(env.SH.TaskManager.untrackedWorkedMs(), 0);
-});
-
-describe('Panel');
-
-test('wybór języka stoi na górze panelu, przed zadaniami', () => {
-    const env = bootOnStand();
-    env.SH.SettingsPanel.toggle();
-    // [0] tytuł, [1] wiersz z językiem, potem sekcja zadań.
-    const children = env.SH.SettingsPanel.el.children;
-    ok(String(children[1].textContent).includes(env.SH.I18n.get('language')), 'drugi element to język');
 });

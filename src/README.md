@@ -22,8 +22,8 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 08 | `08-drag.js` | przeciąganie okna i karty | ~75 |
 | 09 | `09-ui-css.js` | generowanie zmiennych CSS z konfiguracji, `LINE_KEYS` | ~50 |
 | 10 | `10-ui-window.js` | okno statystyk: linie 1–8 | ~310 |
-| 11 | `11-ui-builder.js` | klocki panelu ustawień | ~60 |
-| 12 | `12-ui-settings.js` | panel ustawień | ~680 |
+| 11 | `11-ui-builder.js` | klocki panelu ustawień | ~80 |
+| 12 | `12-ui-settings.js` | panel ustawień | ~1040 |
 | 13 | `13-ui-visuals.js` | przyciemnienie strony, wskaźnik działu, powiadomienia | ~85 |
 | 14 | `14-marketplace.js` | wybrany sklep i budowa linku do towaru | ~25 |
 | 15 | `15-price-sources.js` | **adapter źródeł**: jedyne wyjście do sieci (`PriceNet`), odczyt z wykresu Keepa, źródła ceny i kursów (`PriceSources`) | ~680 |
@@ -42,6 +42,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
 | 29 | `29-diagnostics.js` | okno diagnostyki na stanowisku bez F12 | ~120 |
 | 30 | `30-datamatrix.js` | kod Data Matrix z tekstu zakładki | ~190 |
+| 31 | `31-clear-session.js` | „Usuń sesję” skrótem u+s, z powrotem ten sam LPN i stacja | ~135 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~190 |
 
 ---

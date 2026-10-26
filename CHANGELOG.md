@@ -9,6 +9,54 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.8.0 — 2026-10-26
+
+> **Wydanie MINOR — aktualizować wyłącznie między zmianami.** Nowy prefiks magazynu `statsHelper_v1_8_0_`: liczniki, zadania i ustawienia startują od zera. Kod ustawień i zakładki z kodem działają dalej.
+
+### Dodano — cel własny
+
+- **Pole „Cel własny, szt./h”** w sekcji „Cel i pomoce stanowiska”. Wpisana liczba (1–999, np. 65 dla nowego procesu) zastępuje cel działu na każdej karcie: linia 7, linia 10 i czas od pojemnika liczą się od niej. Nowy proces działa od pierwszej zmiany, bez czekania na wydanie z nowym wpisem w `RATE_TARGETS`. Puste pole albo 0 — cele wbudowane (CRET 47, FAST 80, UG 47, REFURB 30, WHD 25). Przy celu własnym wybór CRET/FAST znika z panelu, bo niczego by nie zmieniał. Wartość jedzie w kodzie ustawień (`0x0311`).
+- **„Do tempa zadania liczą się”** — pod celem własnym pola CRET, UG, REFURB, WHD, OTHER, **osobne dla każdego zadania** (`excludedTabs` w zadaniu). Przykład: zadanie „stare” (godzina, CRET 20, WHD 10, REFURB 3, wszystko liczone) ma tempo 33; w zadaniu „nowe” odznaczone WHD, po godzinie CRET 100, WHD 90, REFURB 10 — tempo 110 w linii 7, a linia 8 i historia pokazują `110+90`: paczki WHD zrobione, ale bez wpływu na tempo. Stare zadanie zostaje z tempem 33, wznowione wraca ze swoim wyborem; nowe zadanie startuje z wszystkimi kartami. Tempo w linii 7, linii 8, historii zadań i w polu „Tempo” liczy się od tej pory z kart liczonych przez zadanie (dotąd — ze wszystkich). Wpisanie tempa przelicza paczki na karcie stanowiska; na karcie nieliczonej nic nie robi. Sumy zmiany (linie 2, 10, paczki zmiany w linii 7) dalej idą po „Statystykach globalnych”.
+
+### Zmieniono — panel ustawień
+
+- **Kolejność sekcji z makiety autora:** przerwa, cel i pomoce stanowiska, zadania, statystyki globalne, bieżąca karta, pomoce wizualne, stylizacja okna, skróty, auto-inkrementacja, moduł cen, karta ceny, dziennik wartości, kod ustawień, język, ogólne (reset).
+- **Każdą sekcję da się zwinąć** kliknięciem w tytuł; panel pamięta wybór (`panelSections`). Domyślnie zwinięta jest „Stylizacja okna” — jak zwinięta kategoria kanałów zostawia na widoku ustawienia linii włączonych (domyślnie 7), a tytuł mówi, ile schowano (`+12`).
+- **Pod palec:** panel 520 px (zamiast 450, nie szerszy niż ekran), pola i przyciski co najmniej 40–44 px, czcionka pól 16 px, większe pola wyboru.
+- **Mniej pustego miejsca:** podpis i pole w jednej linii (stała kolumna podpisu, pole bierze resztę), pole godziny początku zadania w wierszu skrótów, opis pola wyboru obok niego zamiast pod całym wierszem, mniejsze odstępy między sekcjami.
+- **Domyślnie zwinięte** (decyzja autora): Zadania, Ustawienia bieżącej karty, Pomoce wizualne, Skróty klawiszowe, Moduł cen, Karta ceny, Auto-inkrementacja, Kod ustawień, Diagnostyka. Rozwinięte: przerwa, cel i pomoce, statystyki globalne, dziennik wartości, język, ogólne.
+- **Zwinięta „Stylizacja okna”** pokazuje zawsze przyciski przeciągania i resetu pozycji okna oraz podpowiedź, że pozostałe linie są pod tytułem sekcji.
+- **Linia 7 i karta ceny: czcionka 14 px** zamiast 13 (decyzja autora; karta ma ten sam rozmiar co linia 7).
+- **Diagnostyka** przeniesiona z sekcji celu do osobnej sekcji na samym końcu panelu, domyślnie zwiniętej. Działa jak dotąd, także `SH.debug()`.
+- **Pola zapisują się bez Enter** — 1,2 s po ostatnim znaku albo od razu po wyjściu z pola: cel własny, nazwa i początek zadania, odcinki, paczki, tempo, liczniki działów.
+- **Fokus zostaje w polu.** Przerysowanie panelu po zapisie przywraca fokus, wpisany tekst i kursor. Gdy strona przejmie fokus z pola, w którym pisano w ostatnich 3 s, wraca on do pola — najwyżej trzy razy z rzędu, żeby nie przeciągać się z T-REX. Tab i klik obok to wybór człowieka.
+
+### Dodano — „Usuń sesję” klawiszami U, S
+
+- Wyłącznik w sekcji „Cel i pomoce stanowiska”, **domyślnie wyłączony**. Litery „u”, „s” (do 1,5 s odstępu) poza polem tekstowym i bez Ctrl/Alt/Meta: skrypt klika „Usuń sesję” i „Kontynuuj”, potem wpisuje z Enterem ten sam LPN i tę samą stację roboczą — przedmiot zaczyna się od nowa bez ręcznego skanowania. Wzorowane na skrypcie alternatywnym (`clear_session`).
+- LPN zapamiętuje się z Entera w polu LPN, osobno w każdej karcie (sessionStorage); stacja — z Entera w polu stacji (`ws_…`/`ws-…`), jedna na maszynę. Bez nich skrypt zatrzymuje się na danym kroku i mówi to w powiadomieniu — zamiast `alert()` i zamiast wpisywać cokolwiek na ślepo. Wartości z magazynu przechodzą przez wzorzec LPN i stacji. Kod ustawień przenosi wyłącznik (`0x0312`).
+- Testy: `tests/46-clear-session.test.js` (16).
+
+### Zmieniono — GRAVIS
+
+- **LPN idzie do GRAVIS dopiero, gdy T-REX pokaże pole skanu przedmiotu** (pyta o ASIN). Dotąd szedł każdy LPN — kilkaset wyszukiwań na zmianę, z których większość była zbędna, bo przedmiot ma ASIN przypięty do LPN. Zeskanowany LPN czeka; pole pojawia się — LPN idzie raz.
+
+### Zmieniono — zadania
+
+- **Początek zadania do pół godziny naprzód:** o 18:25 wpisane `18:30` (pole godziny albo odcinki `18:30-`) zostaje 18:30, a nie przycina się do 18:25. Dalej naprzód — pomyłka w godzinie, przycina się do teraz jak dotąd.
+- **Koniec ostatniego odcinka naprzód, do 12 h:** o 21:39 wpisane `18:30-22:00` jest przyjęte; zegar zadania chodzi do 22:00 i staje sam, jak po pauzie. Paczka po tej godzinie otwiera nowy odcinek od siebie.
+- Przyszłość wolno tylko w ostatnim odcinku bieżącego zadania; zapis z magazynu z końcem dalej niż 12 h (np. za sto lat) albo początkiem dalej niż pół godziny odpada.
+
+### Zmieniono — okno statystyk
+
+- Okno stoi **przy samym dole ekranu** (0 px zamiast 8 px), 20 px od lewej jak dotąd.
+
+### Testy
+
+- `tests/45-panel-layout.test.js`: kolejność sekcji, zwijanie (w tym spreparowane `panelSections`), cel własny z granicami (0, 1, 999, 1000, ujemny, NaN, tekst, ułamek, nieskończoność), pole celu, kod ustawień, scenariusz dwóch zadań z kartami liczonymi do tempa (33 i 110+90, wznowienie, nowe zadanie, wszystkie odznaczone, pole tempa, magazyn ze śmieciami, scalanie kart), zapis bez Enter, fokus po przerysowaniu i po przejęciu przez stronę, godziny naprzód z granicami (30 min / 31 min, 12 h / 12 h 1 min), magazyn, okno przy dole, szerokość panelu.
+
+---
+
 ## 1.7.7 — 2026-10-26
 
 > **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`.

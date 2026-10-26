@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.7.7
+// @version      1.8.0
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.7.7',
+        SCRIPT_VERSION: '1.8.0',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -127,7 +127,7 @@ const PAID_SHIFT_HOURS = 10;
          * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
          * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_7_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_8_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -136,7 +136,7 @@ const PAID_SHIFT_HOURS = 10;
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
                              'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
-                             'statsHelper_v1_6_0_'],
+                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -152,7 +152,7 @@ const PAID_SHIFT_HOURS = 10;
         SETTINGS_PANEL_BACKGROUND_COLOR: 'rgba(245, 245, 245, 0.95)',
         SETTINGS_PANEL_TEXT_COLOR: '#141414',
         SETTINGS_PANEL_ACCENT_COLOR: '#141414',
-        SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
+        SETTINGS_PANEL_INITIAL_WIDTH_PX: 520,
         /**
          * Adres, spod którego zakładka pobiera skrypt. Z niego ConfigCode.link()
          * składa gotową zakładkę z kodem ustawień. Pusty adres znaczy „zakładki
@@ -258,6 +258,37 @@ const PAID_SHIFT_HOURS = 10;
          * procesu.
          */
         TASK_QUICK_OFFSETS_MIN: [0, 2, 5, 15, 30],
+        /**
+         * O ile zadanie aktywne może zaczynać się w przyszłości: człowiek
+         * siada o 18:25, a liczyć chce od 18:30. Dalej niż to — pomyłka
+         * w godzinie, a nie plan; taki początek przycina się do teraz.
+         */
+        TASK_START_AHEAD_MS: 30 * 60000,
+        /**
+         * O ile koniec ostatniego odcinka aktywnego zadania może leżeć
+         * w przyszłości („18:30-22:00” wpisane o 21:39): zegar zadania staje
+         * sam o tej godzinie. Granica to dłużej niż zmiana z zapasem.
+         */
+        TASK_END_AHEAD_MS: 12 * 3600000,
+        /**
+         * Najwyższy cel własny (sztuk na godzinę) wpisywany w panelu. Zero
+         * znaczy „brak celu własnego” — obowiązują cele z RATE_TARGETS.
+         */
+        CUSTOM_TARGET_MAX: 999,
+        /**
+         * Pole panelu zapisuje wartość samo po tylu milisekundach bez
+         * pisania — bez Enter; wyjście z pola zapisuje od razu. Krócej łapałoby
+         * liczbę w połowie wpisywania („1” zamiast „180”), a pole paczek
+         * przyjmuje każdą liczbę na stałe.
+         */
+        PANEL_INPUT_DELAY_MS: 1200,
+        /**
+         * Fokus odebrany polu panelu przez stronę wraca, jeśli w polu pisano
+         * w ciągu tylu milisekund — i najwyżej PANEL_FOCUS_GUARD_TRIES razy
+         * w takim oknie, żeby nie przeciągać się ze stroną bez końca.
+         */
+        PANEL_FOCUS_GUARD_MS: 3000,
+        PANEL_FOCUS_GUARD_TRIES: 3,
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 
@@ -395,6 +426,23 @@ const PAID_SHIFT_HOURS = 10;
         // Po wciśnięciu przycisku: tyle czeka się na Enter, którym skaner kończy
         // LPN — trafiłby w świeże, puste pole nowego LPN.
         AUTO_LPN_SWALLOW_ENTER_MS: 1000,
+        // „Usuń sesję” skrótem: litery wpisane poza polami, przycisk sesji,
+        // potwierdzenie i pole stacji roboczej (data-testid T-REX).
+        CLEAR_SESSION_KEYS: 'us',
+        // Druga litera później niż po tylu ms to już nie skrót, a przypadek.
+        CLEAR_SESSION_KEY_GAP_MS: 1500,
+        CLEAR_SESSION_BUTTON_TESTID: 'clear-session-icon',
+        CLEAR_SESSION_CONTINUE_TESTID: 'button-clear-session-continue-socrates',
+        WORKSTATION_INPUT_TESTID: 'ws-input',
+        // Stacja robocza: „ws” i dalej podkreślnik albo myślnik (ws_12, ws-A3).
+        WORKSTATION_VALUE_REGEX: /^ws[_-][a-z0-9_-]{1,40}$/i,
+        // Ile czekać na kolejne okno po kliknięciu i jak często patrzeć.
+        CLEAR_SESSION_WAIT_CONTINUE_MS: 2000,
+        CLEAR_SESSION_WAIT_LPN_MS: 4000,
+        CLEAR_SESSION_WAIT_STATION_MS: 5000,
+        CLEAR_SESSION_POLL_MS: 150,
+        STORAGE_KEY_WORKSTATION: 'workStation',
+        SESSION_STORAGE_LAST_LPN_KEY: 'lastLpn',
         // Pierwsza litera, po której wpis w polu pojemnika uznaje się za pojemnik.
         AUTO_LPN_TOTE_PREFIXES: ['t', 'w', 'c'],
         /**
@@ -626,7 +674,16 @@ const PAID_SHIFT_HOURS = 10;
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None', TOGGLE_WINDOW: 'None' },
         // Który cel obowiązuje na karcie CRET: CRET albo FAST (ten sam adres).
         cretProfile: 'CRET',
+        /**
+         * Cel własny, sztuk na godzinę; 0 — wyłączony. Gdy jest ustawiony,
+         * zastępuje cel działu na każdej karcie: proces bez wpisu w
+         * RATE_TARGETS działa od pierwszej zmiany, bez nowego wydania. Które
+         * karty liczą się do tempa, mówią pola globalStatsContributionKnown.
+         */
+        customTarget: 0,
         autoLpn: false,
+        // „Usuń sesję” skrótem u+s — domyślnie wyłączone (ClearSession).
+        clearSession: false,
         /**
          * Most GRAVIS — domyślnie włączony (decyzja autora, CHANGELOG): karty
          * rozmawiają przez postMessage w przeglądarce, bez sieci. Włączony most
@@ -637,6 +694,11 @@ const PAID_SHIFT_HOURS = 10;
         triggerMutationDebounceMs: CONFIG.DEFAULT_TRIGGER_MUTATION_DEBOUNCE_MS,
         settingsPanelWidth: CONFIG.SETTINGS_PANEL_INITIAL_WIDTH_PX,
         customTabSettings: {},
+        /**
+         * Sekcje panelu ustawień otwarte (true) albo zwinięte (false) ręką
+         * człowieka. Brak wpisu — stan domyślny sekcji (PANEL_SECTIONS).
+         */
+        panelSections: {},
     };
 
     /**
@@ -661,7 +723,7 @@ const PAID_SHIFT_HOURS = 10;
          * wszystkie karty), liczba zrobionych przedmiotów i procent sprzedaży,
          * np. `17.4 28 14%`. To te same liczby, co w linii 2.
          */
-        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 14 },
         /**
          * LINIA 8 — bieżące zadanie: nazwa i jego własne liczby (paczki,
          * tempo, procent, przepracowany czas). Linie 1, 2 i 7 pokazują całą
@@ -694,7 +756,7 @@ const PAID_SHIFT_HOURS = 10;
          * „przyklejone do dołu” i wtedy liczy się `bottom`; po przeciągnięciu
          * do `top` trafia współrzędna (createDragger, applyPosition).
          */
-        statsWindowPosition: { top: '', left: '20px', bottom: '8px' },
+        statsWindowPosition: { top: '', left: '20px', bottom: '0px' },
         statsWindowBgColorHex: '#ffffff',
         statsWindowBgAlpha: 0,
         priceCard: {
@@ -770,7 +832,7 @@ const PAID_SHIFT_HOURS = 10;
             // widać prawą część, a tam jest legenda z cenami.
             width: 280,
             // Rozmiar jak w linii 7 — karta ma wyglądać jak jedna szara linijka.
-            fontSize: 13,
+            fontSize: 14,
             /**
              * Kolor i przezroczystość wszystkich tekstów karty — jak w linii 7.
              * Kolor jest wyłącznie wyglądem, nie niesie stanu: stan (brak ceny,
@@ -933,8 +995,17 @@ const PAID_SHIFT_HOURS = 10;
             lineSettings_offTaskHint: 'Time since the last tote was closed. Turns red after twice the item time of the target and shows the idle time on top.',
             toggleWindowKey: 'Hide/Show Window Key',
             section_workflow: 'Target and Workstation Helpers',
+            workflow_clearSession: '"Delete session" with the U, S keys',
+            workflow_clearSessionHint: 'Pressed one after the other outside a text field: the script clicks "Delete session" and "Continue", then types back the same LPN and workstation with Enter. Both are remembered from their fields.',
+            clearSession_noLpn: 'No LPN remembered yet on this tab — scan the next item normally.',
+            clearSession_noStation: 'No workstation remembered yet — type it in by hand once.',
+            statsWindow_moreLinesHint: 'Only the lines that are switched on are shown. Click the section title to see all ten lines.',
+            workflow_customTarget: 'Own target, items/h',
+            workflow_customTargetHint: 'A number here replaces the department target on every tab (e.g. 65 for a new process). Empty or 0 — built-in targets: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
+            workflow_rateTabs: 'Rate of task “${name}” counts',
+            workflow_rateTabsHint: 'Each task keeps its own choice. Items from unticked tabs are still shown as done (after “+” in line 8) but do not raise this task’s rate. Earlier tasks keep their rate.',
             workflow_cretProfile: 'CRET tab target',
-            workflow_targetHint: 'Target of this tab: ${value}/h. Targets are edited at the top of the file (RATE_TARGETS).',
+            workflow_targetHint: 'Target of this tab: ${value}/h.',
             workflow_autoLpn: 'Auto-LPN: press "Reassign LPN" when a label is scanned into the tote field',
             workflow_gravis: 'Suggest ASIN from GRAVIS',
             workflow_gravisHowTo: '1. Press the button below — GRAVIS opens in a new tab. 2. On the GRAVIS tab click this script\'s bookmark once. Afterwards every LPN goes to GRAVIS and the ASIN shows up under the item scan field: click it to paste, Enter is yours.',
@@ -1085,8 +1156,17 @@ const PAID_SHIFT_HOURS = 10;
             lineSettings_offTaskHint: 'Czas od ostatniego przybitego pojemnika. Po podwójnym czasie przedmiotu z celu robi się czerwona i dopisuje czas bezczynności.',
             toggleWindowKey: 'Ukryj/pokaż okno',
             section_workflow: 'Cel i pomoce stanowiska',
+            workflow_clearSession: '„Usuń sesję” klawiszami U, S',
+            workflow_clearSessionHint: 'Wciśnięte po sobie poza polem tekstowym: skrypt klika „Usuń sesję” i „Kontynuuj”, potem wpisuje z powrotem ten sam LPN i stację roboczą z Enterem. Oba zapamiętuje z ich pól.',
+            clearSession_noLpn: 'Na tej karcie nie ma jeszcze zapamiętanego LPN — następny przedmiot zeskanuj zwyczajnie.',
+            clearSession_noStation: 'Stacja robocza nie jest jeszcze zapamiętana — wpisz ją raz ręcznie.',
+            statsWindow_moreLinesHint: 'Widać tylko włączone linie. Kliknij tytuł sekcji, żeby zobaczyć wszystkie dziesięć.',
+            workflow_customTarget: 'Cel własny, szt./h',
+            workflow_customTargetHint: 'Liczba tutaj zastępuje cel działu na każdej karcie (np. 65 dla nowego procesu). Puste albo 0 — cele wbudowane: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
+            workflow_rateTabs: 'Do tempa zadania „${name}” liczą się',
+            workflow_rateTabsHint: 'Każde zadanie ma własny wybór. Paczki z kart odznaczonych dalej widać jako zrobione (po „+” w linii 8), ale tempa tego zadania nie podbijają. Zadania wcześniejsze zachowują swoje tempo.',
             workflow_cretProfile: 'Cel karty CRET',
-            workflow_targetHint: 'Cel tej karty: ${value}/h. Cele zmienia się na górze pliku (RATE_TARGETS).',
+            workflow_targetHint: 'Cel tej karty: ${value}/h.',
             workflow_autoLpn: 'Auto-LPN: „Przypisz\u200b ponownie LPN”, gdy w pole pojemnika trafi etykieta',
             workflow_gravis: 'Podpowiadaj ASIN z GRAVIS',
             workflow_gravisHowTo: '1. Naciśnij przycisk niżej — GRAVIS otworzy się w nowej karcie. 2. Na karcie GRAVIS kliknij raz zakładkę tego skryptu. Od tej chwili każdy LPN idzie do GRAVIS, a ASIN pojawia się pod polem skanu przedmiotu: kliknięcie go wstawia, Enter naciskasz sam.',
@@ -1237,8 +1317,17 @@ const PAID_SHIFT_HOURS = 10;
             lineSettings_offTaskHint: 'Час від останньої закритої тари. Після подвійного часу предмета за ціллю червоніє й дописує час простою.',
             toggleWindowKey: 'Сховати/показати вікно',
             section_workflow: 'Ціль і помічники робочого місця',
+            workflow_clearSession: '«Видалити сесію» клавішами U, S',
+            workflow_clearSessionHint: 'Натиснуті одна за одною поза текстовим полем: скрипт натискає «Видалити сесію» і «Продовжити», потім вписує назад той самий LPN і робочу станцію з Enter. Обидва запам\'ятовує з їхніх полів.',
+            clearSession_noLpn: 'На цій вкладці ще немає запам\'ятованого LPN — наступний предмет скануйте звичайно.',
+            clearSession_noStation: 'Робочу станцію ще не запам\'ятовано — впишіть її один раз вручну.',
+            statsWindow_moreLinesHint: 'Видно лише ввімкнені рядки. Натисніть заголовок секції, щоб побачити всі десять.',
+            workflow_customTarget: 'Власна ціль, шт/год',
+            workflow_customTargetHint: 'Число тут замінює ціль відділу на кожній вкладці (напр. 65 для нового процесу). Порожньо або 0 — вбудовані цілі: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
+            workflow_rateTabs: 'У рейт завдання «${name}» ідуть',
+            workflow_rateTabsHint: 'Кожне завдання має власний вибір. Пачки з незазначених вкладок і далі видно як зроблені (після «+» у рядку 8), але рейт цього завдання вони не піднімають. Попередні завдання зберігають свій рейт.',
             workflow_cretProfile: 'Ціль вкладки CRET',
-            workflow_targetHint: 'Ціль цієї вкладки: ${value}/год. Цілі змінюються на початку файлу (RATE_TARGETS).',
+            workflow_targetHint: 'Ціль цієї вкладки: ${value}/год.',
             workflow_autoLpn: 'Авто-LPN: «Перепризначити LPN», якщо в поле тари потрапила етикетка',
             workflow_gravis: 'Підтягувати ASIN з GRAVIS',
             workflow_gravisHowTo: '1. Натисніть кнопку нижче — GRAVIS відкриється в новій вкладці. 2. На вкладці GRAVIS один раз клікніть закладку цього скрипта. Далі кожен LPN іде в GRAVIS, а ASIN з\'являється під полем скану предмета: клік вставляє його, Enter натискаєте самі.',
@@ -1389,8 +1478,17 @@ const PAID_SHIFT_HOURS = 10;
             lineSettings_offTaskHint: 'Время с последнего закрытого тоута. После двойного времени предмета по цели краснеет и дописывает время простоя.',
             toggleWindowKey: 'Скрыть/показать окно',
             section_workflow: 'Цель и помощники рабочего места',
+            workflow_clearSession: '«Удалить сессию» клавишами U, S',
+            workflow_clearSessionHint: 'Нажатые одна за другой вне текстового поля: скрипт нажимает «Удалить сессию» и «Продолжить», потом вписывает обратно тот же LPN и рабочую станцию с Enter. Оба запоминает из их полей.',
+            clearSession_noLpn: 'На этой вкладке ещё нет запомненного LPN — следующий предмет сканируйте как обычно.',
+            clearSession_noStation: 'Рабочая станция ещё не запомнена — впишите её один раз вручную.',
+            statsWindow_moreLinesHint: 'Видны только включённые строки. Нажмите заголовок секции, чтобы увидеть все десять.',
+            workflow_customTarget: 'Свой таргет, шт/ч',
+            workflow_customTargetHint: 'Число здесь заменяет цель отдела на всех вкладках (например, 65 для нового процесса). Пусто или 0 — встроенные цели: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
+            workflow_rateTabs: 'В рейт задачи «${name}» идут',
+            workflow_rateTabsHint: 'У каждой задачи свой выбор. Пачки со снятых вкладок по-прежнему видны как сделанные (после «+» в строке 8), но рейт этой задачи не поднимают. Прошлые задачи сохраняют свой рейт.',
             workflow_cretProfile: 'Цель вкладки CRET',
-            workflow_targetHint: 'Цель этой вкладки: ${value}/ч. Цели меняются в начале файла (RATE_TARGETS).',
+            workflow_targetHint: 'Цель этой вкладки: ${value}/ч.',
             workflow_autoLpn: 'Авто-LPN: «Назначить LPN заново», если в поле тоута попала этикетка',
             workflow_gravis: 'Подтягивать ASIN из GRAVIS',
             workflow_gravisHowTo: '1. Нажмите кнопку ниже — GRAVIS откроется в новой вкладке. 2. На вкладке GRAVIS один раз кликните закладку этого скрипта. Дальше каждый LPN уходит в GRAVIS, а ASIN появляется под полем скана предмета: клик вставляет его, Enter нажимаете сами.',
@@ -2346,6 +2444,10 @@ const PAID_SHIFT_HOURS = 10;
                     id: t.id,
                     name: String(t.name || CONFIG.DEFAULT_TASK_NAME).slice(0, CONFIG.TASK_MAX_NAME_LEN),
                     segments: this.cleanSegments(t.segments),
+                    // Karty pominięte w tempie: same nazwy, bez powtórzeń.
+                    excludedTabs: Array.isArray(t.excludedTabs)
+                        ? [...new Set(t.excludedTabs.filter(k => typeof k === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(k)))]
+                        : [],
                     updated: Number.isFinite(t.updated) ? t.updated : 0,
                 }));
         },
@@ -2353,8 +2455,11 @@ const PAID_SHIFT_HOURS = 10;
          * Odcinki zadania z magazynu. JSON przepuszcza `1e999` (nieskończoność),
          * a ręczna edycja — zero, liczby ujemne i daty z przyszłości.
          *
-         * Odcinek poprawny: początek skończony, dodatni, nie w przyszłości;
-         * koniec pusty albo nie wcześniej niż początek. Resztę się pomija.
+         * Odcinek poprawny: początek skończony, dodatni, w przyszłości
+         * najwyżej o TASK_START_AHEAD_MS; koniec pusty albo nie wcześniej niż
+         * początek i w przyszłości najwyżej o TASK_END_AHEAD_MS (tyle przyjmuje
+         * panel). Resztę się pomija — koniec za sto lat puszczałby zegar
+         * zadania bez końca.
          * Zadanie bez poprawnych odcinków nie znika, tylko dostaje zamknięty
          * odcinek zerowej długości — jego paczki leżą pod osobnymi kluczami
          * i bez zadania wypadłyby z sumy.
@@ -2362,9 +2467,10 @@ const PAID_SHIFT_HOURS = 10;
         cleanSegments(raw) {
             const now = Date.now();
             const ok = (Array.isArray(raw) ? raw : [])
-                .filter(seg => seg && Number.isFinite(seg.from) && seg.from > 0 && seg.from <= now)
+                .filter(seg => seg && Number.isFinite(seg.from) && seg.from > 0
+                    && seg.from <= now + CONFIG.TASK_START_AHEAD_MS)
                 .map(seg => ({ from: seg.from, to: Number.isFinite(seg.to) ? seg.to : null }))
-                .filter(seg => seg.to === null || seg.to >= seg.from);
+                .filter(seg => seg.to === null || (seg.to >= seg.from && seg.to <= now + CONFIG.TASK_END_AHEAD_MS));
             return ok.length ? ok : [{ from: now, to: now }];
         },
         listen() {
@@ -2907,7 +3013,7 @@ const PAID_SHIFT_HOURS = 10;
                 this.el.style.bottom = 'auto';
             } else {
                 this.el.style.top = 'auto';
-                this.el.style.bottom = pos.bottom || '8px';
+                this.el.style.bottom = pos.bottom || '0px';
             }
         },
 
@@ -2995,9 +3101,10 @@ const PAID_SHIFT_HOURS = 10;
          *
          *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
          *
-         *   - tempo BIEŻĄCEGO zadania z celu działu — zadania istnieją właśnie
-         *     po to, żeby procesy o różnych normach nie mieszały się w jedną
-         *     średnią; tempo całej zmiany jest w panelu i w linii 1;
+         *   - tempo BIEŻĄCEGO zadania z celu — zadania istnieją właśnie po to,
+         *     żeby procesy o różnych normach nie mieszały się w jedną średnią;
+         *     liczą się paczki kart, które to zadanie liczy (countedRate); tempo
+         *     całej zmiany jest w panelu i w linii 1;
          *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
          *     (cel × płatne godziny); czas zmiany sprzed pierwszego zadania
          *     dolicza się według celu i liczba dostaje „≈”;
@@ -3012,7 +3119,7 @@ const PAID_SHIFT_HOURS = 10;
             const task = TaskManager.active() || store.tasks[store.tasks.length - 1];
             const target = ToteWatch.targetFor(store.currentTabType);
             const of = I18n.get('statsOf');
-            const rate = (task ? TaskManager.rate(task) : 0).toFixed(1);
+            const rate = (task ? TaskManager.countedRate(task) : 0).toFixed(1);
             // Czas zmiany sprzed pierwszego zadania liczy się po celu działu
             // i paczki są wtedy przybliżone (≈).
             const assumed = target ? Math.round(target * TaskManager.untrackedWorkedMs() / 3600000) : 0;
@@ -3199,6 +3306,8 @@ const PAID_SHIFT_HOURS = 10;
              *
              *     fast_process 12 34.3/h 58% 21m 00s
              *
+             * Paczki z kart, których to zadanie nie liczy do tempa, idą po
+             * plusie: `fast 110+90 110.0/h …` — zrobione, ale bez wpływu na tempo.
              * Zatrzymane zadanie dostaje na końcu znak pauzy — inaczej stojące
              * tempo wyglądałoby jak zepsuty licznik.
              */
@@ -3224,11 +3333,12 @@ const PAID_SHIFT_HOURS = 10;
             if (!task) {
                 this.lines.line8_taskInfo.textContent = '';
             } else {
-                const t = TaskManager.totals(task);
-                const rate = TaskManager.rate(task);
+                // Tempo jak w linii 7 (karty liczone do zadania); paczki
+                // z pozostałych kart po „+”.
+                const rate = TaskManager.countedRate(task);
                 const paused = TaskManager.isRunning(task) ? '' : ' ' + I18n.get('taskPausedMark');
                 this.lines.line8_taskInfo.textContent =
-                    `${task.name} ${t.done} ${rate.toFixed(1)}${I18n.get('statsPerHourUnit')} `
+                    `${task.name} ${TaskManager.packsText(task)} ${rate.toFixed(1)}${I18n.get('statsPerHourUnit')} `
                     + `${TaskManager.percent(task)}% ${Utils.formatDuration(TaskManager.workedMs(task))}${paused}`;
             }
         }
@@ -3236,21 +3346,32 @@ const PAID_SHIFT_HOURS = 10;
 
     // ─── src/11-ui-builder.js ───
     const UIBuilder = {
+        /**
+         * Wiersz: podpis po lewej, kontrolki po prawej, zawsze w jednej
+         * linii. Podpis ma stałą kolumnę i łamie się w niej sam, a kontrolki
+         * biorą resztę (minWidth 0 — długie pole się zwęża, zamiast spychać
+         * wiersz pod podpis). Kolumna jeden pod drugim marnowała pół panelu.
+         */
         row(labelStr, ...controls) {
-            return h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '10px', flexWrap: 'nowrap' } },
-                labelStr ? h('label', { textContent: labelStr + ':', style: { minWidth: '150px', fontWeight: '500', marginRight: '10px' } }) : null,
-                h('div', { style: { display: 'flex', alignItems: 'center', flexGrow: '1', gap: '8px' } }, ...controls)
+            return h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '6px', flexWrap: 'nowrap', gap: '10px' } },
+                labelStr ? h('label', { textContent: labelStr + ':', style: { flex: '0 0 150px', fontWeight: '500', lineHeight: '1.25' } }) : null,
+                h('div', { style: { display: 'flex', alignItems: 'center', flex: '1 1 0', minWidth: '0', flexWrap: 'wrap', gap: '6px' } }, ...controls)
             );
         },
         section(title) {
-            return h('div', { className: 'sh-section', style: { marginBottom: '20px', borderBottom: `1px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}33`, paddingBottom: '15px' } },
-                h('h3', { textContent: title, style: { margin: '0 0 12px 0', fontSize: '1.15em', color: CONFIG.SETTINGS_PANEL_ACCENT_COLOR } })
+            return h('div', { className: 'sh-section', style: { marginBottom: '12px', borderBottom: `1px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}33`, paddingBottom: '8px' } },
+                h('h3', { textContent: title, style: { margin: '0 0 8px 0', fontSize: '1.15em', color: CONFIG.SETTINGS_PANEL_ACCENT_COLOR } })
             );
         },
+        /**
+         * Podpis pod kontrolką. Odstęp od góry dodatni: przycisk ma 44 px
+         * wysokości i nie ma dolnego marginesu, więc podpis przysunięty
+         * ujemnym marginesem wchodziłby mu na krawędź.
+         */
         hint(text) {
             return h('div', {
                 textContent: text,
-                style: { fontSize: '0.85em', color: '#666', margin: '-4px 0 10px 0', lineHeight: '1.35' },
+                style: { fontSize: '0.85em', color: '#666', margin: '4px 0 8px 0', lineHeight: '1.35' },
             });
         },
         slider(min, max, value, onChange, labelFormatter) {
@@ -3273,7 +3394,7 @@ const PAID_SHIFT_HOURS = 10;
         button(text, onClick, cssOverrides = {}) {
             return h('button', {
                 textContent: text, onClick,
-                style: { padding: '6px 12px', background: CONFIG.SETTINGS_PANEL_ACCENT_COLOR, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', ...cssOverrides }
+                style: { padding: '8px 14px', background: CONFIG.SETTINGS_PANEL_ACCENT_COLOR, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', ...cssOverrides }
             });
         },
         select(options, value, onChange) {
@@ -3281,9 +3402,19 @@ const PAID_SHIFT_HOURS = 10;
             options.forEach(opt => sel.appendChild(h('option', { value: opt.value, textContent: opt.text, selected: String(opt.value) === String(value) })));
             return sel;
         },
-        checkbox(label, checked, onChange) {
-            const chk = h('input', { type: 'checkbox', checked, onChange: (e) => onChange(e.target.checked), style: { transform: 'scale(1.2)', marginRight: '8px', cursor: 'pointer' } });
-            return h('label', { style: { display: 'flex', alignItems: 'center', cursor: 'pointer', flexGrow: '1' } }, chk, h('span', { textContent: label }));
+        /**
+         * Pole wyboru z napisem. Podpis (`hint`) stoi pod napisem, po prawej
+         * stronie pola, a nie pod całym wierszem — szerokość panelu idzie na
+         * tekst, a nie na pustą kolumnę pod kwadracikiem.
+         */
+        checkbox(label, checked, onChange, hint) {
+            const chk = h('input', { type: 'checkbox', checked, onChange: (e) => onChange(e.target.checked), style: { marginRight: '10px', cursor: 'pointer' } });
+            const text = hint
+                ? h('span', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } },
+                    h('span', { textContent: label }),
+                    h('span', { textContent: hint, style: { fontSize: '0.85em', color: '#666', lineHeight: '1.35' } }))
+                : h('span', { textContent: label });
+            return h('label', { style: { display: 'flex', alignItems: hint ? 'flex-start' : 'center', cursor: 'pointer', flexGrow: '1', padding: '4px 0' } }, chk, text);
         },
         /**
          * Pole liczby nieujemnej. Pusty tekst nie jest zerem — jedno Backspace
@@ -3291,20 +3422,116 @@ const PAID_SHIFT_HOURS = 10;
          * Zero trzeba wpisać świadomie.
          */
         numberInput(val, onChange) {
-            return h('input', { type: 'number', min: 0, value: val, onChange: (e) => {
-                const n = parseInt(e.target.value, 10);
+            return this.live(h('input', { type: 'number', min: 0, value: val, inputMode: 'numeric',
+                style: { width: '100px', textAlign: 'right' } }), (text) => {
+                const n = parseInt(text, 10);
                 if (Number.isFinite(n)) onChange(Math.max(0, n));
-            }, style: { width: '80px', padding: '4px', textAlign: 'right' }});
-        }
+            });
+        },
+        /**
+         * Pole, które zapisuje się samo: po PANEL_INPUT_DELAY_MS bez pisania
+         * i od razu przy wyjściu z pola (zdarzenie change). Enter nie jest
+         * potrzebny — na ekranie dotykowym często nie ma go pod ręką.
+         * `commit` dostaje tekst pola i musi znosić powtórzenie tej samej
+         * wartości: po zapisie z opóźnienia wyjście z pola woła go jeszcze raz.
+         */
+        live(input, commit) {
+            const later = Utils.debounce(() => commit(input.value), CONFIG.PANEL_INPUT_DELAY_MS);
+            input.addEventListener('input', () => later());
+            input.addEventListener('change', () => { later.cancel(); commit(input.value); });
+            return input;
+        },
     };
 
     // ─── src/12-ui-settings.js ───
+    /**
+     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora
+     * na makiecie: na górze to, co zmienia się co zmianę (przerwa, cel,
+     * zadania), na dole to, co ustawia się raz (język, reset).
+     *
+     * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie; zwinięte
+     * domyślnie jest to, czego nie ustawia się co zmianę (decyzja autora).
+     * `keep` — zwinięta sekcja pokazuje dalej to, co jest włączone (jak kanały
+     * z nieprzeczytanym w zwiniętej kategorii): zwinięte okno statystyk
+     * zostawia na widoku ustawienia samych włączonych linii. Element
+     * z `data-sh-keep` widać zawsze, z `data-sh-collapsed-only` — tylko
+     * w sekcji zwiniętej (podpowiedź „rozwiń, żeby zobaczyć resztę”).
+     */
+    const PANEL_SECTIONS = [
+        { id: 'lunch', open: true },
+        { id: 'workflow', open: true },
+        { id: 'tasks', open: false },
+        { id: 'global', open: true },
+        { id: 'current_tab', open: false },
+        { id: 'visual', open: false },
+        {
+            id: 'window', open: false,
+            keep: (child) => {
+                const key = child.dataset && child.dataset.shLine;
+                const cfg = key && store.localTabConfig.linesConfig[key];
+                return !!(cfg && cfg.visible);
+            },
+        },
+        { id: 'keys', open: false },
+        { id: 'auto', open: false },
+        { id: 'price_module', open: false },
+        { id: 'price_card', open: false },
+        { id: 'value_log', open: true },
+        { id: 'code', open: false },
+        { id: 'language', open: true },
+        { id: 'general', open: true },
+        // Diagnostyka na produkcji nie jest potrzebna: na samym końcu
+        // i zwinięta, ale jest — do zgłaszania usterek z hali (i SH.debug()).
+        { id: 'diag', open: false },
+    ];
+
+    /**
+     * Podpisy linii okna statystyk, przy ich polu wyboru:
+     *   - linia 6 koloruje się według znaczenia (plus zielony, minus
+     *     czerwony), więc picker steruje tylko częścią neutralną — bez
+     *     podpisu wyglądałoby to jak niedziałające ustawienie;
+     *   - linia 7 jest celowo uboga w treść — trzeba powiedzieć, co znaczą liczby;
+     *   - linia 8 opisuje zadanie, a nie zmianę — bez tego wygląda jak
+     *     powtórzenie linii 1;
+     *   - linia 9 — kiedy robi się czerwona.
+     */
+    const LINE_HINTS = {
+        line6_valueSum: 'lineSettings_valueSumHint',
+        line7_compact: 'lineSettings_compactHint',
+        line8_taskInfo: 'lineSettings_taskInfoHint',
+        line9_offTask: 'lineSettings_offTaskHint',
+    };
+
+    /**
+     * Wygląd kontrolek panelu pod palec: pole i przycisk nie niższe niż
+     * 40 px, czcionka 16 px (mniejszą przeglądarki dotykowe powiększają przy
+     * wpisywaniu), pole wyboru 22 px. Stały tekst — żadna wartość z ustawień
+     * do niego nie trafia.
+     */
+    const PANEL_CSS = `
+        .sh-panel input[type=text], .sh-panel input[type=number], .sh-panel select {
+            min-height: 40px; font-size: 16px; padding: 6px 8px; box-sizing: border-box;
+        }
+        .sh-panel button { min-height: 44px; font-size: 15px; touch-action: manipulation; margin-bottom: 6px; }
+        .sh-panel input[type=checkbox] { width: 22px; height: 22px; flex-shrink: 0; }
+        .sh-panel input[type=range] { min-height: 32px; }
+        .sh-panel label { min-height: 40px; color: inherit; }
+        .sh-panel .sh-section-head {
+            display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 4px 0;
+            padding: 6px 6px; background: transparent; color: inherit; border: none;
+            border-radius: 6px; cursor: pointer; text-align: left; font-size: 1.15em; font-weight: bold;
+        }
+        .sh-panel .sh-section-head:hover { background: rgba(0, 0, 0, 0.06); }
+        .sh-panel .sh-section-head:focus-visible { outline: 3px solid #1f6feb; }
+    `;
+
     const SettingsPanel = {
         init() {
             this.el = h('div', {
-                id: 'settingsPanel',
+                id: 'settingsPanel', className: 'sh-panel',
                 style: {
                     position: 'fixed', top: '10px', right: '10px', width: `${store.userConfig.settingsPanelWidth}px`,
+                    maxWidth: 'calc(100vw - 20px)', boxSizing: 'border-box',
                     height: 'calc(100vh - 30px)', backgroundColor: CONFIG.SETTINGS_PANEL_BACKGROUND_COLOR,
                     color: CONFIG.SETTINGS_PANEL_TEXT_COLOR, border: `1px solid ${CONFIG.SETTINGS_PANEL_ACCENT_COLOR}`,
                     zIndex: '2147483646', overflowY: 'auto', padding: '15px', paddingLeft: '25px', display: 'none',
@@ -3312,6 +3539,8 @@ const PAID_SHIFT_HOURS = 10;
                 }
             });
             document.body.appendChild(this.el);
+            this.styleEl = h('style', { id: 'settingsPanelStyles', textContent: PANEL_CSS });
+            document.head.appendChild(this.styleEl);
 
             /**
              * Przyciski przeciągania pokazują stan flag `uiFlags.*Dragging`,
@@ -3337,6 +3566,87 @@ const PAID_SHIFT_HOURS = 10;
             this._rerenderTimer = setTimeout(() => {
                 if (store.uiFlags.isSettingsPanelVisible) this.render();
             }, 0);
+        },
+
+        /** Czy sekcja jest rozwinięta: wybór człowieka, a bez niego stan domyślny. */
+        isOpen(def) {
+            const chosen = store.userConfig.panelSections && store.userConfig.panelSections[def.id];
+            return typeof chosen === 'boolean' ? chosen : def.open;
+        },
+
+        /**
+         * Sekcja ze zwijanym nagłówkiem — jak spojler: zwinięta pokazuje sam
+         * tytuł (i to, co `keep` każe zostawić), klik w tytuł rozwija resztę.
+         * Zwinięcie nie przerysowuje panelu, tylko chowa elementy: przewinięcie
+         * i fokus zostają na miejscu.
+         */
+        collapsible(def, sec) {
+            const [title, ...content] = Array.from(sec.children);
+            const body = h('div');
+            content.forEach(child => body.appendChild(child));
+            const head = h('button', { type: 'button', className: 'sh-section-head' });
+            const wrap = h('div', {
+                className: 'sh-section', dataset: { shSection: def.id },
+                style: { marginBottom: '8px', borderBottom: `1px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}33`, paddingBottom: '6px' },
+            }, head, body);
+            const apply = () => {
+                const open = this.isOpen(def);
+                let hidden = 0;
+                content.forEach(child => {
+                    const data = child.dataset || {};
+                    const show = open
+                        ? !data.shCollapsedOnly
+                        : !!(data.shKeep || data.shCollapsedOnly || (def.keep && def.keep(child)));
+                    // Własny `display` elementu (flex wiersza) zostaje: pusty
+                    // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
+                    if (child._shDisplay === undefined) child._shDisplay = child.style.display;
+                    child.style.display = show ? child._shDisplay : 'none';
+                    if (!show) hidden++;
+                });
+                head.textContent = '';
+                head.appendChild(h('span', { textContent: open ? '▾' : '▸', style: { width: '1em' } }));
+                head.appendChild(h('span', { textContent: title.textContent, style: { flexGrow: '1' } }));
+                if (!open && hidden) head.appendChild(h('span', { textContent: `+${hidden}`, style: { fontSize: '0.8em', opacity: '0.6' } }));
+                head.setAttribute('aria-expanded', String(open));
+            };
+            head.addEventListener('click', () => {
+                // Zapis całym obiektem: spreparowany magazyn mógł zostawić
+                // w tym polu tekst albo liczbę zamiast mapy.
+                const chosen = Utils.isObject(store.userConfig.panelSections) ? store.userConfig.panelSections : {};
+                store.userConfig.panelSections = { ...chosen, [def.id]: !this.isOpen(def) };
+                apply();
+            });
+            apply();
+            return wrap;
+        },
+
+        /**
+         * Fokus przed przerysowaniem: które pole (po kolejności w panelu),
+         * co w nim wpisano i gdzie stał kursor. Przerysowanie składa panel od
+         * nowa, a bez tego pole, w którym człowiek pisze, znikałoby mu spod
+         * palców w połowie liczby.
+         */
+        rememberFocus() {
+            const active = /** @type {HTMLInputElement|null} */ (document.activeElement);
+            if (!active || !this.el.contains(active)) return null;
+            const fields = Array.from(this.el.querySelectorAll('input, select, textarea, button'));
+            const index = fields.indexOf(active);
+            if (index < 0) return null;
+            let caret;
+            try { caret = [active.selectionStart, active.selectionEnd]; } catch { caret = null; }
+            return { index, tag: active.tagName, value: active.value, caret };
+        },
+        restoreFocus(focus) {
+            if (!focus) return;
+            const field = /** @type {HTMLInputElement|undefined} */ (Array.from(this.el.querySelectorAll('input, select, textarea, button'))[focus.index]);
+            if (!field || field.tagName !== focus.tag) return;
+            // Wpisany tekst zostaje: wartość przeliczona (np. tempo osiągalne)
+            // pokaże się po wyjściu z pola, a nie w trakcie pisania.
+            if (field.tagName === 'INPUT' && !field.readOnly && field.type !== 'checkbox') field.value = focus.value;
+            field.focus();
+            if (focus.caret && focus.caret[0] !== null) {
+                try { field.setSelectionRange(focus.caret[0], focus.caret[1]); } catch { /* pole liczbowe nie ma kursora */ }
+            }
         },
         /**
          * Kod Data Matrix na płótnie: czarne moduły na białym tle ze strefą
@@ -3402,6 +3712,8 @@ const PAID_SHIFT_HOURS = 10;
                     e.stopImmediatePropagation();
                     const t = e.target;
                     const editable = ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable;
+                    // Tab to człowiek przechodzący dalej — fokusu nie zawracamy.
+                    if (editable && e.type === 'keydown') this._typedAt = e.key === 'Tab' ? 0 : Date.now();
                     if (e.type === 'keydown' && !editable) InputManager.onKeyDown(e);
                 };
                 this.onOutsideDown = (e) => {
@@ -3409,9 +3721,30 @@ const PAID_SHIFT_HOURS = 10;
                     if (store.uiFlags.isStatsWindowDragging || store.uiFlags.isPriceCardDragging) return;
                     this.toggle();
                 };
+                /**
+                 * FOKUS NIE UCIEKA Z POLA. Klik poza panelem go zamyka, więc
+                 * przejście fokusu z pola panelu na element strony przy otwartym
+                 * panelu robi sama strona (T-REX ustawia fokus na swoim polu
+                 * skanu), a nie człowiek. Wtedy fokus wraca — ale tylko do pola,
+                 * w którym przed chwilą pisano, i najwyżej kilka razy z rzędu,
+                 * żeby nie przeciągać się ze stroną bez końca.
+                 */
+                this.onFocusOut = (e) => {
+                    const field = e.target;
+                    const next = e.relatedTarget;
+                    if (!this.el.contains(field) || !next || this.el.contains(next)) return;
+                    if (field.tagName !== 'INPUT' && field.tagName !== 'TEXTAREA') return;
+                    const now = Date.now();
+                    if (now - (this._typedAt || 0) > CONFIG.PANEL_FOCUS_GUARD_MS) return;
+                    if (now - (this._refocusAt || 0) > CONFIG.PANEL_FOCUS_GUARD_MS) this._refocusCount = 0;
+                    if (++this._refocusCount > CONFIG.PANEL_FOCUS_GUARD_TRIES) return;
+                    this._refocusAt = now;
+                    setTimeout(() => { if (store.uiFlags.isSettingsPanelVisible && field.isConnected) field.focus(); }, 0);
+                };
             }
             const method = on ? 'addEventListener' : 'removeEventListener';
             ['keydown', 'keyup', 'keypress'].forEach(t => window[method](t, this.onPanelKey, true));
+            document[method]('focusout', this.onFocusOut, true);
             // pointerdown, a nie mousedown: stuknięcie palcem daje „mysz” dopiero
             // po puszczeniu, a na części ekranów dotykowych wcale.
             document[method]('pointerdown', this.onOutsideDown, true);
@@ -3432,11 +3765,10 @@ const PAID_SHIFT_HOURS = 10;
 
             if (task) {
                 // --- nazwa bieżącego zadania ---
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_name'), h('input', {
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_name'), UIBuilder.live(h('input', {
                     type: 'text', value: task.name, maxLength: CONFIG.TASK_MAX_NAME_LEN,
-                    onChange: (e) => { TaskManager.rename(task.id, e.target.value); this.rerender(); },
-                    style: { flexGrow: '1', padding: '4px' },
-                })));
+                    style: { flexGrow: '1' },
+                }), text => { TaskManager.rename(task.id, text); this.rerender(); })));
 
                 // --- początek bieżącego odcinka ---
                 // Skróty w minutach wstecz zamiast list godzin i minut: człowiek
@@ -3458,21 +3790,28 @@ const PAID_SHIFT_HOURS = 10;
                         this.rerender();
                     }, { padding: '4px 8px', marginTop: '0' }));
                 }
+                // Godzinę do pół godziny naprzód wolno: o 18:25 wpisane „18:30”
+                // zostaje 18:30 (TASK_START_AHEAD_MS). Pole stoi w jednym
+                // wierszu ze skrótami — to ta sama czynność.
+                quick.appendChild(UIBuilder.live(h('input', {
+                    type: 'text', value: Utils.formatClock(startedAt), placeholder: 'HH:MM', inputMode: 'numeric',
+                    style: { width: '90px', textAlign: 'center' },
+                }), text => {
+                    const ms = TaskManager.parseClock(text);
+                    if (ms === null) return;
+                    TaskManager.setStart(task.id, ms);
+                    this.rerender();
+                }));
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_startedAt'), quick));
-                sec.appendChild(UIBuilder.row('', h('input', {
-                    type: 'text', value: Utils.formatClock(startedAt), placeholder: 'HH:MM',
-                    onChange: (e) => {
-                        const ms = TaskManager.parseClock(e.target.value);
-                        if (ms !== null) TaskManager.setStart(task.id, ms);
-                        this.rerender();
-                    },
-                    style: { width: '70px', padding: '4px', textAlign: 'center' },
-                })));
 
                 // --- odcinki: kilka powrotów do procesu w ciągu zmiany ---
-                const segBox = h('input', {
+                // Poprawny zapis przyjmuje się sam, w trakcie pisania; o błędzie
+                // mówi dopiero przycisk — pół wpisanej godziny to jeszcze nie błąd.
+                const segBox = UIBuilder.live(h('input', {
                     type: 'text', value: TaskManager.formatSegments(task), spellcheck: false,
-                    style: { flexGrow: '1', padding: '4px', fontFamily: 'monospace' },
+                    style: { flexGrow: '1', fontFamily: 'monospace' },
+                }), text => {
+                    if (text !== TaskManager.formatSegments(task) && TaskManager.setSegments(task.id, text)) this.rerender();
                 });
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_segments'), segBox));
                 sec.appendChild(UIBuilder.hint(I18n.get('tasks_segmentsHint')));
@@ -3491,14 +3830,15 @@ const PAID_SHIFT_HOURS = 10;
                     this.syncTabCounters(cid);
                     this.rerender();
                 })));
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), h('input', {
-                    type: 'number', min: 0, step: '0.1', value: TaskManager.rate(task).toFixed(1),
-                    onChange: (e) => {
-                        const applied = TaskManager.setRate(task, parseFloat(e.target.value), cid);
-                        if (applied !== null) this.syncTabCounters(cid);
-                        this.rerender();
-                    },
-                    style: { width: '80px', padding: '4px', textAlign: 'right' },
+                // Tempo to tempo wobec celu: z kart, które liczą się do tego
+                // zadania (to samo, co w linii 7).
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
+                    type: 'number', min: 0, step: '0.1', value: TaskManager.countedRate(task).toFixed(1), inputMode: 'decimal',
+                    style: { width: '100px', textAlign: 'right' },
+                }), text => {
+                    const applied = TaskManager.setRate(task, parseFloat(text), cid);
+                    if (applied !== null) this.syncTabCounters(cid);
+                    this.rerender();
                 })));
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_summary'), h('span', {
                     textContent: `${TaskManager.percent(task)}% · ${Utils.formatDuration(TaskManager.workedMs(task))}`,
@@ -3519,7 +3859,7 @@ const PAID_SHIFT_HOURS = 10;
             // --- nowe zadanie ---
             const nameInput = h('input', {
                 type: 'text', placeholder: I18n.get('tasks_newPlaceholder'), maxLength: CONFIG.TASK_MAX_NAME_LEN,
-                style: { flexGrow: '1', padding: '4px' },
+                style: { flexGrow: '1' },
             });
             const newRow = h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } });
             newRow.appendChild(nameInput);
@@ -3541,7 +3881,6 @@ const PAID_SHIFT_HOURS = 10;
             }
             store.tasks.forEach(t => {
                 const isActive = t.id === store.activeTaskId;
-                const tot = TaskManager.totals(t);
                 const span = TaskManager.span(t);
                 const box = h('div', {
                     style: {
@@ -3555,7 +3894,7 @@ const PAID_SHIFT_HOURS = 10;
                     style: { fontWeight: isActive ? 'bold' : 'normal' },
                 }));
                 box.appendChild(h('div', {
-                    textContent: `${tot.done} · ${TaskManager.rate(t).toFixed(1)}${I18n.get('statsPerHourUnit')} · ${TaskManager.percent(t)}%`,
+                    textContent: `${TaskManager.packsText(t)} · ${TaskManager.countedRate(t).toFixed(1)}${I18n.get('statsPerHourUnit')} · ${TaskManager.percent(t)}%`,
                 }));
                 const buttons = h('div', { style: { display: 'flex', gap: '6px', marginTop: '4px' } });
                 if (!isActive) {
@@ -3599,16 +3938,54 @@ const PAID_SHIFT_HOURS = 10;
          */
         buildWorkflowSection() {
             const sec = UIBuilder.section(I18n.get('section_workflow'));
-            if (store.currentTabType === 'CRET') {
+
+            // Cel własny: nowy proces (np. 65 na godzinę) działa od tej zmiany,
+            // bez czekania na wydanie z nowym wpisem w RATE_TARGETS.
+            const own = Math.floor(Utils.clampNum(store.userConfig.customTarget, 0, CONFIG.CUSTOM_TARGET_MAX, 0));
+            sec.appendChild(UIBuilder.row(I18n.get('workflow_customTarget'), UIBuilder.live(h('input', {
+                type: 'number', min: 0, max: CONFIG.CUSTOM_TARGET_MAX, value: own || '', placeholder: '0',
+                inputMode: 'numeric', style: { width: '100px', textAlign: 'right' },
+            }), text => {
+                // Puste pole to „bez celu własnego” — tu nic się nie liczy na
+                // stałe, więc nie trzeba wpisywać zera świadomie.
+                const n = text.trim() === '' ? 0 : parseInt(text, 10);
+                if (!Number.isFinite(n)) return;
+                const next = Math.max(0, Math.min(CONFIG.CUSTOM_TARGET_MAX, n));
+                if (next === store.userConfig.customTarget) return;
+                store.userConfig.customTarget = next;
+                this.rerender();
+            })));
+            sec.appendChild(UIBuilder.hint(I18n.get('workflow_customTargetHint')));
+
+            // Które karty idą do tempa BIEŻĄCEGO zadania. Każde zadanie ma
+            // własny wybór: proces liczony z CRET i REFURB, choć człowiek robi
+            // też WHD, odznacza WHD tylko w sobie — zadania wcześniejsze
+            // zachowują swoje tempo.
+            const task = TaskManager.active();
+            if (task) {
+                const tabs = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px 14px' } });
+                Object.values(CONFIG.KNOWN_TAB_TYPES).forEach(t => {
+                    const box = UIBuilder.checkbox(t.key, TaskManager.countsFor(task, t.key), v => {
+                        TaskManager.setCounted(task.id, t.key, v);
+                        this.rerender();
+                    });
+                    box.style.flexGrow = '0';
+                    tabs.appendChild(box);
+                });
+                sec.appendChild(UIBuilder.row(I18n.get('workflow_rateTabs', { name: task.name }), tabs));
+                sec.appendChild(UIBuilder.hint(I18n.get('workflow_rateTabsHint')));
+            }
+
+            if (store.currentTabType === 'CRET' && !own) {
                 sec.appendChild(UIBuilder.row(I18n.get('workflow_cretProfile'), UIBuilder.select(
                     ['CRET', 'FAST'].map(k => ({ value: k, text: `${k} (${CONFIG.RATE_TARGETS[k] || 0}/h)` })),
                     store.userConfig.cretProfile, v => { store.userConfig.cretProfile = v; })));
             }
             sec.appendChild(UIBuilder.hint(I18n.get('workflow_targetHint', { value: ToteWatch.targetFor(store.currentTabType) || '—' })));
-            sec.appendChild(UIBuilder.button(I18n.get('diag_open'), () => Diag.toggle(), { width: '100%' }));
-            sec.appendChild(UIBuilder.hint(I18n.get('diag_hint')));
             sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_autoLpn'), !!store.userConfig.autoLpn,
                 v => { store.userConfig.autoLpn = !!v; })));
+            sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_clearSession'), !!store.userConfig.clearSession,
+                v => { store.userConfig.clearSession = !!v; }, I18n.get('workflow_clearSessionHint'))));
             if (CONFIG.GRAVIS_TAB_TYPES.includes(store.currentTabType)) {
                 sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_gravis'), !!store.userConfig.gravisAsin,
                     v => { store.userConfig.gravisAsin = !!v; if (!v) GravisBridge.close(); this.rerender(); })));
@@ -3624,9 +4001,12 @@ const PAID_SHIFT_HOURS = 10;
         buildCountersSection() {
             const sec = UIBuilder.section(I18n.get('section_globalStats'));
             Object.values(CONFIG.KNOWN_TAB_TYPES).forEach(t => {
-                const row = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '5px', gap: '10px' } });
-                row.appendChild(UIBuilder.checkbox(I18n.get('includeInGlobal_known', { tabName: I18n.get(t.displayNameKey) }), store.userConfig.globalStatsContributionKnown[t.key], v => store.userConfig.globalStatsContributionKnown[t.key] = v));
-                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':' }));
+                const row = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '10px' } });
+                row.appendChild(UIBuilder.checkbox(I18n.get('includeInGlobal_known', { tabName: I18n.get(t.displayNameKey) }), store.userConfig.globalStatsContributionKnown[t.key], v => {
+                    store.userConfig.globalStatsContributionKnown[t.key] = v;
+                    this.rerender();
+                }));
+                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':', style: { whiteSpace: 'nowrap' } }));
                 // Różnicę bierze na siebie aktywne zadanie, razem z licznikiem
                 // „poza mianownikiem” — kierunku wpisanych paczek nikt nie zna,
                 // więc nie mają prawa ruszyć procentu sprzedaży.
@@ -3643,17 +4023,23 @@ const PAID_SHIFT_HOURS = 10;
         render() {
             // Panel składa się od nowa, ale pozycja przewinięcia zostaje.
             const scrollTop = this.el.scrollTop;
+            const focus = this.rememberFocus();
             this.el.innerHTML = '';
             this.el.appendChild(h('h2', { textContent: I18n.get('settingsPanelTitle'), style: { textAlign: 'center', marginTop: '0' } }));
 
-            // 0. Zadania i liczniki — na górze, jedyna sekcja używana w trakcie pracy.
-            // Język na samej górze: kto otworzył panel w obcym języku, nie musi
-            // szukać przełącznika wśród napisów, których nie rozumie.
-            this.el.appendChild(UIBuilder.row(I18n.get('language'), UIBuilder.select(CONFIG.AVAILABLE_LANGUAGES.map(l => ({ value: l.code, text: l.name })), store.userConfig.language, v => { store.userConfig.language = v; this.rerender(); })));
-            this.el.appendChild(this.buildTasksSection());
-            this.el.appendChild(this.buildCountersSection());
+            // Sekcje powstają w dowolnej kolejności, a na ekran idą w kolejności
+            // PANEL_SECTIONS — po jednej sekcji na identyfikator.
+            const parts = {};
+            const put = (id, el) => { parts[id] = el; };
 
-            // 1. Ogólne
+            // Język ma własną sekcję: zwinięty pokazuje tylko nagłówek.
+            const secLang = UIBuilder.section(I18n.get('language'));
+            secLang.appendChild(UIBuilder.row('', UIBuilder.select(CONFIG.AVAILABLE_LANGUAGES.map(l => ({ value: l.code, text: l.name })), store.userConfig.language, v => { store.userConfig.language = v; this.rerender(); })));
+            put('language', secLang);
+            put('tasks', this.buildTasksSection());
+            put('global', this.buildCountersSection());
+
+            // Ogólne
             const secGen = UIBuilder.section(I18n.get('section_general'));
             // Pełny reset usuwa wyłącznie klucze skryptu (ownKeys) — resztę
             // localStorage tej domeny trzyma T-REX.
@@ -3673,9 +4059,9 @@ const PAID_SHIFT_HOURS = 10;
                 SessionReset.resetItemData('ręczny reset z panelu ustawień', 'manual');
                 this.rerender();
             }, { background: '#e0a800', color: '#141414', width: '100%', marginTop: '5px' }));
-            this.el.appendChild(secGen);
+            put('general', secGen);
 
-            // 2. Nazwy własne zakładek
+            // Nazwy własne zakładek
             if (store.currentTabType === CONFIG.UNKNOWN_TAB_TYPE_KEY) {
                 const secCur = UIBuilder.section(I18n.get('section_currentTab', { tabInstanceId: store.currentTabInstanceId.substring(0, 8) + '...' }));
                 const cust = store.userConfig.customTabSettings[store.currentTabInstanceId] || { displayName: store.currentTabInstanceId, includeInGlobal: true };
@@ -3687,17 +4073,22 @@ const PAID_SHIFT_HOURS = 10;
                     store.userConfig.customTabSettings[store.currentTabInstanceId] =
                         { ...store.userConfig.customTabSettings[store.currentTabInstanceId] || cust, includeInGlobal: v };
                 })));
-                this.el.appendChild(secCur);
+                put('current_tab', secCur);
             }
 
-            // 3. Efekty wizualne
+            // Efekty wizualne
             const secVis = UIBuilder.section(I18n.get('section_visualAids', { tabName: I18n.getTabName(store.currentTabInstanceId) }));
             secVis.appendChild(UIBuilder.row('', ...UIBuilder.slider(0, CONFIG.MAX_PAGE_OVERLAY_OPACITY_PERCENT, store.localTabConfig.pageOverlayOpacity, v => store.localTabConfig.pageOverlayOpacity = v, v => I18n.get('overlayOpacity', { value: v }))));
             secVis.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('showPageIndicator'), store.localTabConfig.pageIndicatorTextVisible, v => store.localTabConfig.pageIndicatorTextVisible = v)));
-            this.el.appendChild(secVis);
+            put('visual', secVis);
 
-            // 4. Stylizacja okna statystyk
+            // Stylizacja okna statystyk
             const secWin = UIBuilder.section(I18n.get('section_statsWindow'));
+            // Zwinięta sekcja pokazuje tylko linie włączone — trzeba powiedzieć,
+            // gdzie są pozostałe.
+            const moreLines = UIBuilder.hint(I18n.get('statsWindow_moreLinesHint'));
+            moreLines.dataset.shCollapsedOnly = '1';
+            secWin.appendChild(moreLines);
 
             secWin.appendChild(UIBuilder.row(I18n.get('windowBgSettings'), UIBuilder.colorPickerWithAlpha(
                 store.localTabConfig.statsWindowBgColorHex, store.localTabConfig.statsWindowBgAlpha,
@@ -3712,9 +4103,12 @@ const PAID_SHIFT_HOURS = 10;
             Object.keys(DEFAULT_LINE_CONFIG).forEach(lineKey => {
                 const cfg = store.localTabConfig.linesConfig[lineKey];
                 if (!cfg) return;
-                const lineBox = h('div', { style: { border: '1px solid #ddd', padding: '8px', marginBottom: '8px', borderRadius: '4px' } });
+                const lineBox = h('div', { dataset: { shLine: lineKey }, style: { border: '1px solid #ddd', padding: '8px', marginBottom: '8px', borderRadius: '4px' } });
 
-                lineBox.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get(`lineSettings_${lineKey.split('_')[1]}`), cfg.visible, v => store.localTabConfig.linesConfig[lineKey].visible = v)));
+                // Podpis linii stoi przy jej polu wyboru (LINE_HINTS).
+                const hintKey = LINE_HINTS[lineKey];
+                lineBox.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get(`lineSettings_${lineKey.split('_')[1]}`), cfg.visible,
+                    v => store.localTabConfig.linesConfig[lineKey].visible = v, hintKey ? I18n.get(hintKey) : undefined)));
 
                 // Kolor, alfa i rozmiar są na stałe podpięte do DOM, niezależnie
                 // od stanu checkboxa.
@@ -3725,25 +4119,6 @@ const PAID_SHIFT_HOURS = 10;
                 )));
                 lineBox.appendChild(UIBuilder.row('Size', ...UIBuilder.slider(8, 36, cfg.fontSize, v => store.localTabConfig.linesConfig[lineKey].fontSize = v, v => `${v}px`)));
 
-                // Linia 6 koloruje się według znaczenia (plus zielony, minus
-                // czerwony), więc picker steruje tam tylko częścią neutralną.
-                // Bez podpisu wyglądałoby to jak niedziałające ustawienie.
-                if (lineKey === 'line6_valueSum') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_valueSumHint')));
-                }
-                // Linia 7 jest celowo uboga w treść — warto powiedzieć wprost,
-                // co znaczą te trzy liczby.
-                if (lineKey === 'line7_compact') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_compactHint')));
-                }
-                // Linia 8 opisuje zadanie, a nie zmianę — bez tego zdania wygląda
-                // jak powtórzenie linii 1 z innymi liczbami.
-                if (lineKey === 'line9_offTask') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_offTaskHint')));
-                }
-                if (lineKey === 'line8_taskInfo') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_taskInfoHint')));
-                }
 
                 // Obsługa wielokoloru dla linii 2 (podsumowanie globalne)
                 if (lineKey === 'line2_globalSummary') {
@@ -3783,12 +4158,15 @@ const PAID_SHIFT_HOURS = 10;
                 ? { background: '#FFA500', color: '#141414', outline: '2px solid #141414', fontWeight: 'bold' }
                 : {};
 
-            secWin.appendChild(UIBuilder.button(dragBtnText, () => {
+            // Przeciąganie i reset pozycji okna widać zawsze, także w zwiniętej
+            // sekcji — okno przesuwa się częściej niż zmienia kolory.
+            const dragBtn = secWin.appendChild(UIBuilder.button(dragBtnText, () => {
                 store.uiFlags.isStatsWindowDragging = !store.uiFlags.isStatsWindowDragging;
                 this.rerender();
             }, { width: '100%', marginTop: '10px', transition: 'all 0.2s', ...dragBtnOverrides }));
+            dragBtn.dataset.shKeep = '1';
 
-            secWin.appendChild(UIBuilder.button(I18n.get('settings_resetWindowPositionButton'), () => {
+            const resetBtn = secWin.appendChild(UIBuilder.button(I18n.get('settings_resetWindowPositionButton'), () => {
                 store.localTabConfig.statsWindowPosition = Utils.clone(DEFAULT_LOCAL_CONFIG.statsWindowPosition);
                 // Pozycję nakłada renderer (applyPosition): okno bywa
                 // przyklejone do dołu, a ustawienie tu samych top/left
@@ -3799,24 +4177,25 @@ const PAID_SHIFT_HOURS = 10;
                 }
                 this.rerender();
             }, { width: '100%', marginTop: '5px' }));
-            this.el.appendChild(secWin);
+            resetBtn.dataset.shKeep = '1';
+            put('window', secWin);
 
-            // 6. Skróty klawiszowe
+            // Skróty klawiszowe
             const secKeys = UIBuilder.section(I18n.get('section_keyboardShortcuts'));
             const keyOpts = CONFIG.AVAILABLE_SHORTCUT_KEYS.map(k => ({ value: k.code, text: I18n.get(k.name_key) }));
             secKeys.appendChild(UIBuilder.row(I18n.get('incrementKey'), UIBuilder.select(keyOpts, store.userConfig.keyboardShortcuts.INCREMENT, v => store.userConfig.keyboardShortcuts.INCREMENT = v)));
             secKeys.appendChild(UIBuilder.row(I18n.get('decrementKey'), UIBuilder.select(keyOpts, store.userConfig.keyboardShortcuts.DECREMENT, v => store.userConfig.keyboardShortcuts.DECREMENT = v)));
             secKeys.appendChild(UIBuilder.row(I18n.get('toggleWindowKey'), UIBuilder.select(keyOpts, store.userConfig.keyboardShortcuts.TOGGLE_WINDOW, v => store.userConfig.keyboardShortcuts.TOGGLE_WINDOW = v)));
-            this.el.appendChild(secKeys);
-            this.el.appendChild(this.buildWorkflowSection());
+            put('keys', secKeys);
+            put('workflow', this.buildWorkflowSection());
 
-            // 7. Autoinkrementacja
+            // Autoinkrementacja
             const secAuto = UIBuilder.section(I18n.get('section_autoIncrement'));
             secAuto.appendChild(UIBuilder.row('', ...UIBuilder.slider(CONFIG.MIN_TRIGGER_DEBOUNCE_MS, CONFIG.MAX_TRIGGER_DEBOUNCE_MS, store.userConfig.triggerMutationDebounceMs, v => store.userConfig.triggerMutationDebounceMs = v, v => I18n.get('scanIntervalAutoIncrement', { value: v }))));
-            this.el.appendChild(secAuto);
+            put('auto', secAuto);
 
             /**
-             * 7a. GŁÓWNY WYŁĄCZNIK MODUŁU CEN — przed kartą ceny i dziennikiem
+             * GŁÓWNY WYŁĄCZNIK MODUŁU CEN — przed kartą ceny i dziennikiem
              * wartości, bo rozstrzyga o obu. Póki jest wyłączony, sieć śpi.
              *
              * Kliknięcie tutaj (PriceModule.enable) to jedyne miejsce w pliku,
@@ -3832,19 +4211,18 @@ const PAID_SHIFT_HOURS = 10;
                     if (v) PriceModule.enable();
                     else PriceModule.disable();
                     this.rerender();
-                })));
-            secModule.appendChild(UIBuilder.hint(I18n.get('priceModule_hint')));
-            this.el.appendChild(secModule);
+                }, I18n.get('priceModule_hint'))));
+            put('price_module', secModule);
 
             if (!moduleOn) {
                 // Dalszych sekcji nie ma: pokazane ustawienia karty sugerowałyby,
                 // że przy wyłączonym module coś dzieje się w tle.
                 const off = UIBuilder.section(I18n.get('priceCard_section'));
                 off.appendChild(UIBuilder.hint(I18n.get('priceModule_offNotice')));
-                this.el.appendChild(off);
+                put('price_card', off);
             } else {
 
-            // 7b. Karta ceny
+            // Karta ceny
             const secPrice = UIBuilder.section(I18n.get('priceCard_section'));
             const pc = store.localTabConfig.priceCard;
 
@@ -3879,8 +4257,7 @@ const PAID_SHIFT_HOURS = 10;
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_fallback'), pc.marketFallback !== false,
-                v => store.localTabConfig.priceCard.marketFallback = v)));
-            secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_fallbackHint')));
+                v => store.localTabConfig.priceCard.marketFallback = v, I18n.get('priceCard_fallbackHint'))));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_showCard'), pc.visible,
@@ -3924,8 +4301,7 @@ const PAID_SHIFT_HOURS = 10;
                 if (pc.showAsin !== false) {
                     secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                         I18n.get('priceCard_asinClickable'), pc.asinClickable === true,
-                        v => store.localTabConfig.priceCard.asinClickable = v)));
-                    secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_asinClickableHint')));
+                        v => store.localTabConfig.priceCard.asinClickable = v, I18n.get('priceCard_asinClickableHint'))));
                 }
                 secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                     I18n.get('priceCard_showSource'), pc.showSource === true,
@@ -3979,14 +4355,13 @@ const PAID_SHIFT_HOURS = 10;
                     this.rerender();
                 }, { width: '100%', marginTop: '5px' }));
             }
-            this.el.appendChild(secPrice);
+            put('price_card', secPrice);
 
-            // 7c. Dziennik wartości
+            // Dziennik wartości
             const secVal = UIBuilder.section(I18n.get('valueLog_section'));
             secVal.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('valueLog_enabled'), pc.logValues,
-                v => { store.localTabConfig.priceCard.logValues = v; this.rerender(); })));
-            secVal.appendChild(UIBuilder.hint(I18n.get('valueLog_hint')));
+                v => { store.localTabConfig.priceCard.logValues = v; this.rerender(); }, I18n.get('valueLog_hint'))));
 
             const vt = ValueLog.totals();
             // Ta sama waluta co w linii 6 — dwie sumy jednego dziennika
@@ -4022,19 +4397,19 @@ const PAID_SHIFT_HOURS = 10;
                 ValueLog.reset('ręczne czyszczenie z panelu ustawień');
                 this.rerender();
             }, { background: '#e0a800', color: '#141414', width: '100%' }));
-            this.el.appendChild(secVal);
+            put('value_log', secVal);
 
             }   // koniec gałęzi „moduł cen włączony”
 
-            // 8. Wybór przerwy
+            // Wybór przerwy
             const secLunch = UIBuilder.section(I18n.get('section_lunchSelection'));
             const sType = store.sessionConfig.shiftType || 'day';
             const lOpts = CONFIG.LUNCH_OPTIONS_BASE.map((o, i) => ({ value: i, text: I18n.get(o.text_key), type: o.type })).filter(o => o.type === sType);
             secLunch.appendChild(UIBuilder.row('', UIBuilder.select(lOpts, store.sessionConfig.selectedLunchIndex, v => store.sessionConfig.selectedLunchIndex = parseInt(v))));
-            this.el.appendChild(secLunch);
+            put('lunch', secLunch);
 
             /**
-             * 9. KOD USTAWIEŃ
+             * KOD USTAWIEŃ
              *
              * Dwa pola do odczytu i jedno do wklejenia. Pola są `readOnly`,
              * a nie `disabled`: wyłączonego pola nie da się zaznaczyć, a o to
@@ -4101,7 +4476,16 @@ const PAID_SHIFT_HOURS = 10;
                     Notifier.show(String(report['powód']));
                 }
             }, { width: '100%', marginTop: '6px' }));
-            this.el.appendChild(secCode);
+            put('code', secCode);
+
+            const secDiag = UIBuilder.section(I18n.get('diag_open'));
+            secDiag.appendChild(UIBuilder.button(I18n.get('diag_open'), () => Diag.toggle(), { width: '100%' }));
+            secDiag.appendChild(UIBuilder.hint(I18n.get('diag_hint')));
+            put('diag', secDiag);
+
+            PANEL_SECTIONS.forEach(def => {
+                if (parts[def.id]) this.el.appendChild(this.collapsible(def, parts[def.id]));
+            });
 
             /**
              * Zamknięcie przyklejone do dołu panelu (`position: sticky`):
@@ -4128,6 +4512,7 @@ const PAID_SHIFT_HOURS = 10;
                 { width: '100%', padding: '10px', fontSize: '1.1em' })));
 
             this.el.scrollTop = scrollTop;
+            this.restoreFocus(focus);
         }
     };
 
@@ -7292,6 +7677,7 @@ const PAID_SHIFT_HOURS = 10;
             if (AutoLpn.onInput) document.removeEventListener('input', AutoLpn.onInput, true);
             if (AutoLpn.onKeyDown) document.removeEventListener('keydown', AutoLpn.onKeyDown, true);
             if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
+            ClearSession.teardown();
             if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
             if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
@@ -7416,6 +7802,7 @@ const PAID_SHIFT_HOURS = 10;
                 ToteWatch.init();
                 AutoLpn.init();
                 GravisBridge.init();
+                ClearSession.init();
                 AutoTrigger.init();
                 Persistence.listen();
 
@@ -7521,7 +7908,7 @@ const PAID_SHIFT_HOURS = 10;
                     tote: () => ToteWatch.info(),
                     // Okno diagnostyki — to samo co przycisk w panelu.
                     debug: () => Diag.toggle(),
-                    ToteWatch, AutoLpn, GravisBridge, Diag,
+                    ToteWatch, AutoLpn, GravisBridge, Diag, ClearSession, Notifier,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
@@ -7835,6 +8222,8 @@ const PAID_SHIFT_HOURS = 10;
             { id: 0x030d, root: 'user', path: 'cretProfile', type: 'enum', list: 'cretProfile' },
             { id: 0x030f, root: 'user', path: 'autoLpn', type: 'bool' },
             { id: 0x0310, root: 'user', path: 'gravisAsin', type: 'bool' },
+            { id: 0x0311, root: 'user', path: 'customTarget', type: 'u16', min: 0, max: CONFIG.CUSTOM_TARGET_MAX },
+            { id: 0x0312, root: 'user', path: 'clearSession', type: 'bool' },
         ],
 
         // ---------------- pomocnicze ----------------
@@ -8179,10 +8568,14 @@ const PAID_SHIFT_HOURS = 10;
         byId(id) { return store.tasks.find(t => t.id === id) || null; },
         /** Aktywne zadanie albo null, gdy trwa pauza. */
         active() { return this.byId(store.activeTaskId); },
-        /** Czy zegar zadania chodzi (ostatni odcinek jest otwarty). */
+        /**
+         * Czy zegar zadania chodzi: ostatni odcinek jest otwarty albo jego
+         * koniec wpisano naprzód i jeszcze nie nadszedł. Po tej godzinie
+         * zadanie staje samo, jak po pauzie.
+         */
         isRunning(task) {
             const last = task && task.segments[task.segments.length - 1];
-            return !!(last && last.to === null);
+            return !!(last && (last.to === null || last.to > Date.now()));
         },
 
         /**
@@ -8223,7 +8616,7 @@ const PAID_SHIFT_HOURS = 10;
         _removed: {},
         _activeAt: 0,
         _lastActive: null,
-        _signature: (t) => JSON.stringify([t.name, t.segments]),
+        _signature: (t) => JSON.stringify([t.name, t.segments, t.excludedTabs || []]),
         _stamp(list) {
             const now = Date.now();
             const alive = new Set();
@@ -8313,10 +8706,14 @@ const PAID_SHIFT_HOURS = 10;
         create(name, startMs) {
             const from = this.clampStart(startMs);
             this.closeActive(from);
+            // Nowe zadanie liczy do tempa wszystkie karty; co pominąć, mówi
+            // człowiek w nim samym — wybór poprzedniego procesu tu nie
+            // przechodzi, bo proces jest inny.
             const task = {
                 id: Utils.generateId('task_'),
                 name: this.cleanName(name),
                 segments: [{ from, to: null }],
+                excludedTabs: [],
             };
             const list = store.tasks.slice();
             list.push(task);
@@ -8396,7 +8793,11 @@ const PAID_SHIFT_HOURS = 10;
             const asked = Number(ms);
             // Tekst, zero i liczby ujemne nie są chwilą (0 to 1 stycznia 1970).
             if (!task || !Number.isFinite(asked) || asked <= 0) return;
-            const wanted = Math.min(Math.max(asked, this.previousEnd(task)), Date.now());
+            // Naprzód tylko zadanie aktywne i tylko o TASK_START_AHEAD_MS;
+            // dalsza przyszłość to pomyłka w godzinie i przycina się do teraz.
+            const now = Date.now();
+            const ahead = task.id === store.activeTaskId ? CONFIG.TASK_START_AHEAD_MS : 0;
+            const wanted = Math.max(asked > now + ahead ? now : asked, this.previousEnd(task));
             const first = task.segments[0];
             if (wanted <= first.from) {
                 first.from = wanted;
@@ -8440,9 +8841,14 @@ const PAID_SHIFT_HOURS = 10;
          * chodzi dalej; wolno to tylko zadaniu aktywnemu. Obiad odejmuje
          * workedMs, jak przy każdym odcinku.
          *
-         * Odrzucane (null): zły zapis, odcinek w przyszłości, odcinki
-         * nachodzące na siebie albo na odcinki innych zadań — ten sam czas
-         * liczyłby się dwa razy.
+         * Przyszłość wolno wpisać tylko w ostatnim odcinku aktywnego zadania:
+         * początek najwyżej TASK_START_AHEAD_MS naprzód („18:30-” o 18:25),
+         * koniec najwyżej TASK_END_AHEAD_MS („18:30-22:00” o 21:39 — zegar
+         * stanie sam o 22:00).
+         *
+         * Odrzucane (null): zły zapis, przyszłość poza tymi granicami albo
+         * w innym miejscu, odcinki nachodzące na siebie albo na odcinki innych
+         * zadań — ten sam czas liczyłby się dwa razy.
          *
          * @returns {{from: number, to: number|null}[]|null}
          */
@@ -8463,11 +8869,15 @@ const PAID_SHIFT_HOURS = 10;
                 if (!m || +m[1] > 23 || +m[2] > 59 || (m[3] !== undefined && (+m[3] > 23 || +m[4] > 59))) return null;
                 const from = at(+m[1], +m[2], anchor);
                 const to = m[3] === undefined ? null : at(+m[3], +m[4], from + 60000);
-                if (to === null && (i !== items.length - 1 || store.activeTaskId !== id)) return null;
-                if (from > now || (to !== null && to > now)) return null;
+                if (from > now + CONFIG.TASK_START_AHEAD_MS) return null;
+                if (to !== null && to > now + CONFIG.TASK_END_AHEAD_MS) return null;
                 out.push({ from, to });
             }
             out.sort((a, b) => a.from - b.from);
+            // Otwarty koniec i przyszłość: tylko ostatni odcinek aktywnego zadania.
+            const lastSeg = out[out.length - 1];
+            const isLater = (seg) => seg.to === null || seg.to > now || seg.from > now;
+            if (out.some(seg => isLater(seg) && (seg !== lastSeg || store.activeTaskId !== id))) return null;
             const end = (seg) => (seg.to === null ? now : seg.to);
             for (let i = 1; i < out.length; i++) if (out[i].from < end(out[i - 1])) return null;
             for (const other of store.tasks) {
@@ -8542,7 +8952,9 @@ const PAID_SHIFT_HOURS = 10;
             let total = 0;
             for (const seg of task.segments) {
                 const from = Math.max(seg.from, floor);
-                const to = seg.to === null ? now : seg.to;
+                // Koniec wpisany naprzód liczy się do teraz, a początek
+                // w przyszłości nie daje jeszcze ani minuty.
+                const to = seg.to === null ? now : Math.min(seg.to, now);
                 if (to <= from) continue;
                 total += (to - from) - ShiftManager.lunchOverlapMs(from, to);
             }
@@ -8767,6 +9179,56 @@ const PAID_SHIFT_HOURS = 10;
             return this.totals(task).done / (worked / 3600000);
         },
 
+        // ---------------- karty liczone do tempa zadania ----------------
+        /**
+         * KARTY LICZONE DO TEMPA — WYBÓR KAŻDEGO ZADANIA OSOBNO.
+         *
+         * Proces bywa liczony z części kart, choć człowiek obsługuje po drodze
+         * wszystkie: np. tempo z CRET i REFURB, a przedmioty w WHD robi, bo
+         * system je tam kieruje. Paczki WHD są zrobione (linia 8, panel, linia
+         * 1), ale tempa tego zadania nie podbijają.
+         *
+         * Wybór należy do zadania (`excludedTabs`), a nie do ustawień: zmiana
+         * w bieżącym procesie nie przelicza zadań wcześniejszych — zakończone
+         * zadanie zostaje ze swoim tempem, a wznowione wraca ze swoim wyborem.
+         * Paczki zadania leżą per karta (taskcnt_<id>_<karta>), więc wybór
+         * działa także wstecz w obrębie zadania: odznaczenie WHD w połowie
+         * procesu zdejmuje z tempa wszystkie jego paczki WHD.
+         */
+        countsFor(task, tabKey) {
+            return !(task && Array.isArray(task.excludedTabs) && task.excludedTabs.includes(tabKey));
+        },
+        setCounted(id, tabKey, counted) {
+            const task = this.byId(id);
+            if (!task || typeof tabKey !== 'string') return;
+            const rest = (Array.isArray(task.excludedTabs) ? task.excludedTabs : []).filter(k => k !== tabKey);
+            task.excludedTabs = counted ? rest : rest.concat(tabKey);
+            this._commit(store.tasks);
+        },
+        /** Paczki zadania z kart, które liczą się do jego tempa. */
+        countedDone(task) {
+            const byTab = (task && store.taskCounters[task.id]) || {};
+            let done = 0;
+            for (const [tabKey, c] of Object.entries(byTab)) if (this.countsFor(task, tabKey)) done += c.done || 0;
+            return done;
+        },
+        /** Tempo zadania wobec celu: paczki kart liczonych przez jego czas. */
+        countedRate(task, nowMs) {
+            const worked = this.workedMs(task, nowMs);
+            if (worked < CONFIG.RATE_MIN_WORKED_MS) return 0;
+            return this.countedDone(task) / (worked / 3600000);
+        },
+        /**
+         * Paczki do pokazania: `110`, a gdy część kart nie liczy się do tempa —
+         * `110+90` (liczone + pozostałe). Zrobione widać, choć tempa nie
+         * podbija.
+         */
+        packsText(task) {
+            const counted = this.countedDone(task);
+            const other = this.totals(task).done - counted;
+            return other > 0 ? `${counted}+${other}` : String(counted);
+        },
+
         /** Procent sprzedaży zadania: paczki bez tych, których kierunku nie da się znać. */
         percent(task) {
             const t = this.totals(task);
@@ -8877,9 +9339,12 @@ const PAID_SHIFT_HOURS = 10;
          */
         setRate(task, rate, tabKey, nowMs) {
             if (!task) return null;
+            // Tempo to tempo z kart liczonych; paczki dopisane na karcie, która
+            // się nie liczy, tempa by nie ruszyły.
+            if (!this.countsFor(task, tabKey)) return null;
             const target = this.doneForRate(task, rate, nowMs);
             if (target === null) return null;
-            this._applyDelta(task, tabKey, target - this.totals(task).done);
+            this._applyDelta(task, tabKey, target - this.countedDone(task));
             return this.totals(task).done;
         },
 
@@ -8972,11 +9437,15 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         /**
-         * Cel działu (sztuk na godzinę) z RATE_TARGETS w nagłówku pliku.
-         * CRET i FAST dzielą kartę, więc o celu karty CRET decyduje panel.
-         * 0 — działu bez celu; spreparowany wpis (tekst, ujemny, NaN) też daje 0.
+         * Cel (sztuk na godzinę). Cel własny z panelu wygrywa na każdej karcie:
+         * nowy proces dostaje swoją normę bez wydania. Bez niego — cel działu
+         * z RATE_TARGETS w nagłówku pliku; CRET i FAST dzielą kartę, więc o celu
+         * karty CRET decyduje panel. 0 — brak celu; spreparowany wpis (tekst,
+         * ujemny, NaN) też daje 0.
          */
         targetFor(tabType) {
+            const own = Math.floor(Utils.clampNum(store.userConfig.customTarget, 0, CONFIG.CUSTOM_TARGET_MAX, 0));
+            if (own > 0) return own;
             const key = tabType === 'CRET' && store.userConfig.cretProfile === 'FAST' ? 'FAST' : tabType;
             const v = Number(CONFIG.RATE_TARGETS && CONFIG.RATE_TARGETS[key]);
             return Number.isFinite(v) && v > 0 ? v : 0;
@@ -9046,6 +9515,8 @@ const PAID_SHIFT_HOURS = 10;
         lastSeen: 0,
         lastLpn: null,
         pendingLpn: null,
+        /** LPN zeskanowany, a jeszcze niewysłany — czeka na pole ASIN. */
+        candidateLpn: null,
         asin: null,
         chip: null,
         lookupToken: 0,
@@ -9074,7 +9545,15 @@ const PAID_SHIFT_HOURS = 10;
                 const tid = (el.getAttribute('data-testid') || '').toLowerCase();
                 if (!CONFIG.LPN_INPUT_TESTIDS.includes(tid)) return;
                 const lpn = String(el.value || '').trim();
-                if (CONFIG.LPN_VALUE_REGEX.test(lpn)) this.send(lpn);
+                if (!CONFIG.LPN_VALUE_REGEX.test(lpn)) return;
+                // LPN idzie do GRAVIS dopiero, gdy T-REX poprosi o ASIN (pole
+                // skanu przedmiotu na ekranie). Większość przedmiotów ma ASIN
+                // przypięty do LPN i tego pola nie pokazuje — wysyłanie każdego
+                // LPN to setki zbędnych wyszukiwań w GRAVIS na zmianę.
+                this.candidateLpn = lpn;
+                this.asin = null;
+                this.removeChip();
+                this.sendIfAsked();
             };
             this.onMessage = (e) => {
                 if (!this.enabled() || e.origin !== this.origin() || !e.source) return;
@@ -9100,7 +9579,20 @@ const PAID_SHIFT_HOURS = 10;
             };
             document.addEventListener('keydown', this.onKeyDown, true);
             window.addEventListener('message', this.onMessage);
-            bus.on('page:scanned', () => this.place());
+            bus.on('page:scanned', () => { this.sendIfAsked(); this.place(); });
+        },
+        /**
+         * Wysłanie czekającego LPN, gdy na ekranie jest pole ASIN. Woła się
+         * z każdego skanu strony, ale pyta o pole tylko wtedy, gdy jakiś LPN
+         * czeka — po wysłaniu nic już nie kosztuje.
+         */
+        sendIfAsked() {
+            if (!this.candidateLpn || !this.enabled()) return;
+            const input = this.findScanInput();
+            if (!input || input.offsetParent === null) return;
+            const lpn = this.candidateLpn;
+            this.candidateLpn = null;
+            this.send(lpn);
         },
         /** Jedyne miejsce, z którego T-REX otwiera GRAVIS — kliknięcie w panelu. */
         open() {
@@ -9117,7 +9609,7 @@ const PAID_SHIFT_HOURS = 10;
             this.ready = false;
             this.lastSeen = 0;
             this.win = null;
-            this.lastLpn = this.pendingLpn = this.asin = null;
+            this.lastLpn = this.pendingLpn = this.candidateLpn = this.asin = null;
             this.removeChip();
         },
         send(lpn) {
@@ -9639,6 +10131,141 @@ const PAID_SHIFT_HOURS = 10;
         },
     };
 
+    // ─── src/31-clear-session.js ───
+    // ==========================================
+    // 6k. USUŃ SESJĘ SKRÓTEM
+    // ==========================================
+    /**
+     * Przedmiot zacięty w połowie (zły krok, zawieszony formularz) zaczyna
+     * się od nowa przez „Usuń sesję”: przycisk sesji, „Kontynuuj”, potem
+     * T-REX pyta o LPN i o stację roboczą. Ten moduł robi to za człowieka po
+     * literach „u”, „s” wpisanych poza polem tekstowym: klika oba przyciski
+     * i wpisuje ten sam LPN i tę samą stację, z Enterem.
+     *
+     * LPN i stację moduł zapamiętuje sam, z Entera w ich polach: LPN
+     * w sessionStorage (każda karta ma swój przedmiot), stację w localStorage
+     * (jedna na maszynę). Bez zapamiętanego LPN albo stacji kończy na tym
+     * kroku i mówi to w powiadomieniu — wpisanie czegokolwiek „na ślepo”
+     * dałoby cudzy przedmiot.
+     *
+     * Litery w polu tekstowym nie są skrótem (skaner i pisanie), litery
+     * z Ctrl, Alt albo Meta też nie. Domyślnie wyłączone; słuchacze wychodzą
+     * od razu, gdy opcja jest zgaszona. Przerwany przedmiot się nie liczy —
+     * licznik widzi po prostu nowy początek tego samego LPN.
+     */
+    const ClearSession = {
+        keys: '',
+        keyAt: 0,
+        busy: false,
+        /** Numer przebiegu: rozbiórka albo nowy przebieg unieważnia czekające kroki. */
+        run: 0,
+
+        init() {
+            this.onKeyDown = (e) => {
+                if (!store.userConfig.clearSession) return;
+                const el = e.target;
+                if (e.key === 'Enter') { this.remember(el); return; }
+                if (el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable)) { this.keys = ''; return; }
+                if (e.ctrlKey || e.altKey || e.metaKey || typeof e.key !== 'string' || !/^[a-z]$/i.test(e.key)) { this.keys = ''; return; }
+                const now = Date.now();
+                if (now - this.keyAt > CONFIG.CLEAR_SESSION_KEY_GAP_MS) this.keys = '';
+                this.keyAt = now;
+                const want = CONFIG.CLEAR_SESSION_KEYS;
+                this.keys = (this.keys + e.key.toLowerCase()).slice(-want.length);
+                if (this.keys !== want) return;
+                this.keys = '';
+                this.start();
+            };
+            document.addEventListener('keydown', this.onKeyDown, true);
+        },
+
+        /** Enter w polu LPN albo stacji — zapamiętanie wartości. */
+        remember(el) {
+            if (!el || el.tagName !== 'INPUT') return;
+            const tid = (el.getAttribute('data-testid') || '').toLowerCase();
+            const value = String(el.value || '').trim();
+            try {
+                if (CONFIG.LPN_INPUT_TESTIDS.includes(tid) && CONFIG.LPN_VALUE_REGEX.test(value)) {
+                    sessionStorage.setItem(Persistence.getKey(CONFIG.SESSION_STORAGE_LAST_LPN_KEY), value);
+                } else if (tid === CONFIG.WORKSTATION_INPUT_TESTID && CONFIG.WORKSTATION_VALUE_REGEX.test(value)) {
+                    localStorage.setItem(Persistence.getKey(CONFIG.STORAGE_KEY_WORKSTATION), value);
+                }
+            } catch { /* magazyn zablokowany — skrót powie, czego brakuje */ }
+        },
+        /** Zapamiętana wartość, o ile dalej ma właściwy kształt (magazyn mógł ktoś zmienić). */
+        recall(storage, key, regex) {
+            let value;
+            try { value = storage.getItem(Persistence.getKey(key)); } catch { value = null; }
+            return typeof value === 'string' && regex.test(value) ? value : null;
+        },
+
+        /** Widoczny element po data-testid; null, gdy go nie ma albo jest schowany. */
+        find(tag, testId) {
+            const el = /** @type {HTMLElement|null} */ (document.querySelector(`${tag}[data-testid="${testId}"]`));
+            return el && el.offsetParent !== null ? el : null;
+        },
+        /** Czekanie na element do `ms`; null po czasie albo po unieważnieniu przebiegu. */
+        async waitFor(tag, testId, ms, run) {
+            const until = Date.now() + ms;
+            for (;;) {
+                if (run !== this.run) return null;
+                const el = this.find(tag, testId);
+                if (el) return el;
+                if (Date.now() >= until) return null;
+                await new Promise(r => { this.timer = setTimeout(r, CONFIG.CLEAR_SESSION_POLL_MS); });
+            }
+        },
+        /** Pierwsze widoczne pole LPN — każdy dział ma swoje (LPN_INPUT_TESTIDS). */
+        async waitForLpnInput(ms, run) {
+            const until = Date.now() + ms;
+            for (;;) {
+                if (run !== this.run) return null;
+                for (const tid of CONFIG.LPN_INPUT_TESTIDS) {
+                    const el = this.find('input', tid);
+                    if (el) return el;
+                }
+                if (Date.now() >= until) return null;
+                await new Promise(r => { this.timer = setTimeout(r, CONFIG.CLEAR_SESSION_POLL_MS); });
+            }
+        },
+
+        async start() {
+            if (this.busy) return;
+            const button = /** @type {HTMLButtonElement|null} */ (this.find('button', CONFIG.CLEAR_SESSION_BUTTON_TESTID));
+            if (!button || button.disabled) return;
+            this.busy = true;
+            const run = ++this.run;
+            try {
+                const lpn = this.recall(sessionStorage, CONFIG.SESSION_STORAGE_LAST_LPN_KEY, CONFIG.LPN_VALUE_REGEX);
+                Diag.event('usuń sesję', lpn || '—');
+                button.click();
+                const cont = /** @type {HTMLButtonElement|null} */ (await this.waitFor('button', CONFIG.CLEAR_SESSION_CONTINUE_TESTID, CONFIG.CLEAR_SESSION_WAIT_CONTINUE_MS, run));
+                if (cont && !cont.disabled) cont.click();
+                const lpnInput = await this.waitForLpnInput(CONFIG.CLEAR_SESSION_WAIT_LPN_MS, run);
+                if (lpnInput) {
+                    if (!lpn) { Notifier.show(I18n.get('clearSession_noLpn')); return; }
+                    GravisBridge.fill(lpnInput, lpn);
+                    GravisBridge.pressEnter(lpnInput);
+                }
+                const wsInput = await this.waitFor('input', CONFIG.WORKSTATION_INPUT_TESTID, CONFIG.CLEAR_SESSION_WAIT_STATION_MS, run);
+                if (!wsInput) return;
+                const station = this.recall(localStorage, CONFIG.STORAGE_KEY_WORKSTATION, CONFIG.WORKSTATION_VALUE_REGEX);
+                if (!station) { Notifier.show(I18n.get('clearSession_noStation')); return; }
+                GravisBridge.fill(wsInput, station);
+                GravisBridge.pressEnter(wsInput);
+            } finally {
+                if (run === this.run) this.busy = false;
+            }
+        },
+
+        teardown() {
+            if (this.onKeyDown) document.removeEventListener('keydown', this.onKeyDown, true);
+            this.run++;
+            this.busy = false;
+            clearTimeout(this.timer);
+        },
+    };
+
     // ─── src/25-presets.js ───
 // ==========================================
     // 9. USTAWIENIA PRACOWNIKA (KONFIGURACJA OSOBISTA)
@@ -9795,7 +10422,7 @@ const PAID_SHIFT_HOURS = 10;
    line4_lunchInfo       wybrana przerwa                 domyślnie: OFF, #808080, 60%, 14px
    line5_realTimeClock   zegar                           domyślnie: OFF, #808080, 60%, 14px
    line6_valueSum        bilans pieniężny zmiany         domyślnie: OFF, #7CFFA8, 85%, 14px
-   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 13px
+   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 14px
    line8_taskInfo        bieżące zadanie                 domyślnie: OFF, #808080, 60%, 13px
    line9_offTask         czas od ostatniego pojemnika    domyślnie: OFF, #808080, 50%, 13px
    line10_target         cel działu i procent celu       domyślnie: OFF, #808080, 60%, 13px
@@ -9818,7 +10445,7 @@ const PAID_SHIFT_HOURS = 10;
    -----------------------------------------------------------------------------
    OKNO STATYSTYK  (store.localTabConfig)
    -----------------------------------------------------------------------------
-   statsWindowPosition = { top: '', left: '20px', bottom: '8px' }
+   statsWindowPosition = { top: '', left: '20px', bottom: '0px' }
        Domyślnie lewy dolny róg: 20 px od lewej, 8 px od dołu.
        Puste `top` = trzymaj się dołu (liczy się `bottom`).
        Żeby przykleić do góry: { top: '15px', left: '20px', bottom: '' }
@@ -9841,7 +10468,7 @@ const PAID_SHIFT_HOURS = 10;
    showGraph  = true          pokazywać obrazek wykresu (tylko przy source 'graph')
    graphMode  = 'legend'      'legend' (same ceny) | 'right' | 'full'
    width      = 280           170..900 px
-   fontSize   = 13            11..48 px (suwak w panelu)
+   fontSize   = 14            11..48 px (suwak w panelu)
    bgColorHex = '#0a0e18'     tło karty
    bgAlpha    = 0             0..100
    position   = { left: '14px', top: '' }   puste top = przy dole ekranu
@@ -9863,16 +10490,19 @@ const PAID_SHIFT_HOURS = 10;
                               | 'ScrollLock' | 'Pause' | 'Insert' | 'Numpad0'
                               | 'NumpadMultiply' | 'NumpadSubtract' | 'NumpadAdd' | 'F10'
    cretProfile = 'CRET'        'CRET' | 'FAST' — który cel z RATE_TARGETS obowiązuje na karcie CRET
+   customTarget = 0            0..999 — cel własny (sztuk/h) na każdej karcie; 0 = cele z RATE_TARGETS
    autoLpn = false             „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta
+   clearSession = false        litery „u”, „s” poza polem: „Usuń sesję” i ten sam LPN i stacja z powrotem
    gravisAsin = true           most GRAVIS: ASIN pod polem skanu (tylko CRET i UG); bez skryptu w GRAVIS nic nie widać
    triggerMutationDebounceMs = 50     50..200, jak często skanować stronę
-   settingsPanelWidth        = 450    szerokość panelu ustawień w px
+   settingsPanelWidth        = 520    szerokość panelu ustawień w px
+   panelSections = {}         które sekcje panelu człowiek rozwinął (true) albo zwinął (false)
 
    -----------------------------------------------------------------------------
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_7_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_8_0_'
        Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
        Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
        Zmiana prefiksu = start od zera

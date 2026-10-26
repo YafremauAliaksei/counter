@@ -5,8 +5,8 @@ Ten plik jest napisany dla agenta, który przejmie pracę **na maszynie z dział
 
 Zacznij od przeczytania [`CLAUDE.md`](CLAUDE.md) — tam są zasady projektu.
 
-> **Stan na 26.10.2026:** ostatnie wydanie to **1.7.6**, gałąź `release` wskazuje na nie. Następne — **1.7.7** (PATCH: wzorzec LPN — „LPN” i 11 liter albo cyfr) — czeka na wydanie. Prefiks
-> magazynu `statsHelper_v1_7_0_` — zasada: niesie MAJOR i MINOR (CLAUDE.md, §4). Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
+> **Stan na 26.10.2026:** ostatnie wydanie to **1.7.7**, gałąź `release` wskazuje na nie. Następne — **1.8.0** (MINOR: cel własny, panel ułożony przez autora ze zwijanymi sekcjami i polami pod palec, godziny zadania naprzód, okno przy samym dole) — czeka na wydanie. Prefiks
+> magazynu `statsHelper_v1_8_0_` — zasada: niesie MAJOR i MINOR (CLAUDE.md, §4). Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
 > zakładki — adres wydania wpisuje się przy pierwszym wydaniu na docelowym
 > serwerze. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń
 > nie ma, CI na `main` jest zielone, ESLint nie zgłasza ani jednego ostrzeżenia.
@@ -33,9 +33,9 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 |                                                           | Stan                                                                |
 | --------------------------------------------------------- | ------------------------------------------------------------------- |
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
-| 30 modułów w `src/` + cele tempa `src/00-targets.js`      | pocięte z monolitu, zweryfikowane linia po linii                    |
+| 31 modułów w `src/` + cele tempa `src/00-targets.js`      | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 44 pliki testów, 680 sprawdzeń + 18 testów stanowiska     | **wszystkie zielone**                                               |
+| 46 plików testów, 736 sprawdzeń + 18 testów stanowiska    | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |
@@ -354,7 +354,30 @@ Malejąco według pożytku:
    `SettingsPanel.render()` jest sprawdzany tylko pod kątem obecności sekcji;
    `PriceCard.render()` — tylko pośrednio.
 
-7. **Pomyśleć o podziale `src/20-price-card.js`** — ok. 1040 linii, największy moduł.
+7. **Źródło ceny „karta Amazon” — pomysł na przyszłość, NIE wdrażać bez
+   decyzji autora.** Cena prosto ze sklepu zamiast z obrazka Keepa, a karta
+   T-REX nie wysyła niczego na zewnątrz. Budowa jak most GRAVIS:
+   - T-REX otwiera kartę `amazon.de` przyciskiem w panelu (uchwyt okna),
+     człowiek klika tam raz zakładkę; rozmowa przez `postMessage`, każda
+     strona przyjmuje wiadomość tylko ze znanego adresu, sygnał „żyję”
+     i podpowiedź w T-REX, gdy skrypt w karcie Amazon zniknie;
+   - karta Amazon **nie przechodzi pod nowy adres** (przejście zabija skrypt
+     wklejony zakładką): dostaje ASIN i sama pobiera
+     `https://www.amazon.de/dp/<ASIN>` przez `fetch` — zapytanie do tego samego
+     adresu, bez CORS, z ciasteczkami człowieka — wyjmuje cenę z HTML i odsyła;
+   - zapytanie tylko na żądanie (jak LPN do GRAVIS: gdy cena jest naprawdę
+     potrzebna), z ograniczeniem częstości; captcha albo błąd → „brak danych”,
+     bez ponawiania.
+     Ograniczenia: jeden sklep = jedna karta (z `amazon.de` nie da się pobrać
+     `amazon.fr` — CORS); wyjmowanie ceny z HTML trzeba utrzymywać przy zmianach
+     strony (kilka miejsc na cenę, zapisane strony jako próbki w testach);
+     osadzenie Amazon w ramce odpada (X-Frame-Options); po ręcznym przeładowaniu
+     karty Amazon zakładkę klika się ponownie. Przed wdrożeniem: zapisana strona
+     produktu z `amazon.de` (Ctrl+S) jako próbka i potwierdzenie, że regulamin
+     pracy pozwala na automatyczne zapytania do sklepu. Miejsce w kodzie: nowe
+     źródło w `PriceSources` obok Keepa, nie zamiast niego; domyślnie wyłączone.
+
+8. **Pomyśleć o podziale `src/20-price-card.js`** — ok. 1040 linii, największy moduł.
    Uzasadnienie, dlaczego na razie nie jest podzielony, i rozsądny moment na to —
    w `src/README.md`, ostatni rozdział. Bez realnej potrzeby nie ruszać.
 

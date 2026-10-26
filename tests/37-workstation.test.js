@@ -478,13 +478,17 @@ test('pełny przebieg: gotowość, LPN, ASIN pod polem; obce okno i zły ASIN od
     G.open();
     const lpnInput = el(env, 'input', { 'data-testid': 'lpn-input-label', value: 'LPNAB123456789' });
     key(env, lpnInput, 'Enter');
-    eq(sent.length, 0, 'przed gotowością LPN czeka');
     msg({ type: 'sh-gravis-ready' }, fake, 'https://evil.example');
     eq(G.ready, false, 'gotowość z obcego adresu');
     msg({ type: 'sh-gravis-ready' });
-    eq(sent.map(s => [s.msg.lpn, s.origin]), [['LPNAB123456789', GRAVIS_ORIGIN]], 'LPN na znany adres');
+    page(env, '');
+    eq(sent.length, 0, 'bez pola ASIN na ekranie LPN nie idzie do GRAVIS');
 
     const scan = el(env, 'input', { 'data-testid': 'item-scan-input' });
+    page(env, '');
+    eq(sent.map(s => [s.msg.lpn, s.origin]), [['LPNAB123456789', GRAVIS_ORIGIN]], 'pole ASIN się pojawiło — LPN na znany adres');
+    page(env, '');
+    eq(sent.length, 1, 'kolejny skan strony nie wysyła drugi raz');
     msg({ type: 'sh-gravis-asin', lpn: 'LPNAB123456789', asin: 'B0TEST1234' }, fake, 'https://evil.example');
     eq(G.asin, null, 'obcy adres');
     msg({ type: 'sh-gravis-asin', lpn: 'LPNZZ999999999', asin: 'B0TEST1234' });

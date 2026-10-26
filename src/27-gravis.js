@@ -33,6 +33,8 @@
         lastSeen: 0,
         lastLpn: null,
         pendingLpn: null,
+        /** LPN zeskanowany, a jeszcze niewysłany — czeka na pole ASIN. */
+        candidateLpn: null,
         asin: null,
         chip: null,
         lookupToken: 0,
@@ -61,7 +63,15 @@
                 const tid = (el.getAttribute('data-testid') || '').toLowerCase();
                 if (!CONFIG.LPN_INPUT_TESTIDS.includes(tid)) return;
                 const lpn = String(el.value || '').trim();
-                if (CONFIG.LPN_VALUE_REGEX.test(lpn)) this.send(lpn);
+                if (!CONFIG.LPN_VALUE_REGEX.test(lpn)) return;
+                // LPN idzie do GRAVIS dopiero, gdy T-REX poprosi o ASIN (pole
+                // skanu przedmiotu na ekranie). Większość przedmiotów ma ASIN
+                // przypięty do LPN i tego pola nie pokazuje — wysyłanie każdego
+                // LPN to setki zbędnych wyszukiwań w GRAVIS na zmianę.
+                this.candidateLpn = lpn;
+                this.asin = null;
+                this.removeChip();
+                this.sendIfAsked();
             };
             this.onMessage = (e) => {
                 if (!this.enabled() || e.origin !== this.origin() || !e.source) return;
@@ -87,7 +97,20 @@
             };
             document.addEventListener('keydown', this.onKeyDown, true);
             window.addEventListener('message', this.onMessage);
-            bus.on('page:scanned', () => this.place());
+            bus.on('page:scanned', () => { this.sendIfAsked(); this.place(); });
+        },
+        /**
+         * Wysłanie czekającego LPN, gdy na ekranie jest pole ASIN. Woła się
+         * z każdego skanu strony, ale pyta o pole tylko wtedy, gdy jakiś LPN
+         * czeka — po wysłaniu nic już nie kosztuje.
+         */
+        sendIfAsked() {
+            if (!this.candidateLpn || !this.enabled()) return;
+            const input = this.findScanInput();
+            if (!input || input.offsetParent === null) return;
+            const lpn = this.candidateLpn;
+            this.candidateLpn = null;
+            this.send(lpn);
         },
         /** Jedyne miejsce, z którego T-REX otwiera GRAVIS — kliknięcie w panelu. */
         open() {
@@ -104,7 +127,7 @@
             this.ready = false;
             this.lastSeen = 0;
             this.win = null;
-            this.lastLpn = this.pendingLpn = this.asin = null;
+            this.lastLpn = this.pendingLpn = this.candidateLpn = this.asin = null;
             this.removeChip();
         },
         send(lpn) {

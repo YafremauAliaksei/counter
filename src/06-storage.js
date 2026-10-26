@@ -420,6 +420,10 @@
                     id: t.id,
                     name: String(t.name || CONFIG.DEFAULT_TASK_NAME).slice(0, CONFIG.TASK_MAX_NAME_LEN),
                     segments: this.cleanSegments(t.segments),
+                    // Karty pominięte w tempie: same nazwy, bez powtórzeń.
+                    excludedTabs: Array.isArray(t.excludedTabs)
+                        ? [...new Set(t.excludedTabs.filter(k => typeof k === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(k)))]
+                        : [],
                     updated: Number.isFinite(t.updated) ? t.updated : 0,
                 }));
         },
@@ -427,8 +431,11 @@
          * Odcinki zadania z magazynu. JSON przepuszcza `1e999` (nieskończoność),
          * a ręczna edycja — zero, liczby ujemne i daty z przyszłości.
          *
-         * Odcinek poprawny: początek skończony, dodatni, nie w przyszłości;
-         * koniec pusty albo nie wcześniej niż początek. Resztę się pomija.
+         * Odcinek poprawny: początek skończony, dodatni, w przyszłości
+         * najwyżej o TASK_START_AHEAD_MS; koniec pusty albo nie wcześniej niż
+         * początek i w przyszłości najwyżej o TASK_END_AHEAD_MS (tyle przyjmuje
+         * panel). Resztę się pomija — koniec za sto lat puszczałby zegar
+         * zadania bez końca.
          * Zadanie bez poprawnych odcinków nie znika, tylko dostaje zamknięty
          * odcinek zerowej długości — jego paczki leżą pod osobnymi kluczami
          * i bez zadania wypadłyby z sumy.
@@ -436,9 +443,10 @@
         cleanSegments(raw) {
             const now = Date.now();
             const ok = (Array.isArray(raw) ? raw : [])
-                .filter(seg => seg && Number.isFinite(seg.from) && seg.from > 0 && seg.from <= now)
+                .filter(seg => seg && Number.isFinite(seg.from) && seg.from > 0
+                    && seg.from <= now + CONFIG.TASK_START_AHEAD_MS)
                 .map(seg => ({ from: seg.from, to: Number.isFinite(seg.to) ? seg.to : null }))
-                .filter(seg => seg.to === null || seg.to >= seg.from);
+                .filter(seg => seg.to === null || (seg.to >= seg.from && seg.to <= now + CONFIG.TASK_END_AHEAD_MS));
             return ok.length ? ok : [{ from: now, to: now }];
         },
         listen() {

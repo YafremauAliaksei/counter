@@ -90,6 +90,7 @@
             if (AutoLpn.onInput) document.removeEventListener('input', AutoLpn.onInput, true);
             if (AutoLpn.onKeyDown) document.removeEventListener('keydown', AutoLpn.onKeyDown, true);
             if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
+            ClearSession.teardown();
             if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
             if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
@@ -214,6 +215,7 @@
                 ToteWatch.init();
                 AutoLpn.init();
                 GravisBridge.init();
+                ClearSession.init();
                 AutoTrigger.init();
                 Persistence.listen();
 
@@ -319,7 +321,7 @@
                     tote: () => ToteWatch.info(),
                     // Okno diagnostyki — to samo co przycisk w panelu.
                     debug: () => Diag.toggle(),
-                    ToteWatch, AutoLpn, GravisBridge, Diag,
+                    ToteWatch, AutoLpn, GravisBridge, Diag, ClearSession, Notifier,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które

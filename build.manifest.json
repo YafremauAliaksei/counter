@@ -132,6 +132,10 @@
       "file": "src/30-datamatrix.js",
       "desc": "Kod Data Matrix z tekstu zakładki — do zeskanowania zamiast przepisywania."
     },
+    {
+      "file": "src/31-clear-session.js",
+      "desc": "Skrót „u”, „s” wykonuje „Usuń sesję” i wpisuje z powrotem ten sam LPN i stację roboczą."
+    },
     { "file": "src/25-presets.js", "desc": "Blok konfiguracji osobistej i uruchomienie." }
   ]
 }
