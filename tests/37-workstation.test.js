@@ -314,7 +314,7 @@ test('klik poza panelem zamyka go, chyba że trwa przeciąganie okna', () => {
     const env = make();
     const S = env.SH.store;
     const outside = el(env, 'div');
-    const down = (target) => env.sandbox.document.dispatch('mousedown', { target });
+    const down = (target) => env.sandbox.document.dispatch('pointerdown', { target });
     env.SH.SettingsPanel.toggle();
     down(env.SH.SettingsPanel.el);
     eq(S.uiFlags.isSettingsPanelVisible, true, 'klik w panelu');

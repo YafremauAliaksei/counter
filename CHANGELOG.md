@@ -9,6 +9,19 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.7.5 — 2026-10-26
+
+> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają.
+
+### Naprawiono — ekran dotykowy
+
+- **Okno statystyk i kartę ceny da się przeciągnąć palcem.** Na stanowiskach bez myszy, z ekranem dotykowym (Linux + Firefox), przeciąganie nie działało: skrypt słuchał tylko zdarzeń myszy, a przeglądarka zamienia dotyk na „mysz” jedynie przy stuknięciu — ruch palcem przewijał stronę. Teraz przeciąganie idzie przez zdarzenia wskaźnika (`pointerdown/move/up/cancel`) — jedną drogą dla myszy, palca i pióra — z `touch-action: none` na elemencie i przechwyceniem wskaźnika, więc palec zjeżdżający z okna dalej je ciągnie. Drugi palec nie przejmuje okna, a przerwany dotyk kończy przeciąganie jak puszczenie i zapisuje pozycję. Sposób użycia bez zmian: tryb przeciągania w panelu, ruch, puszczenie.
+- **Panel zamyka się stuknięciem obok** — zamknięcie słucha `pointerdown`, a nie `mousedown`, które przy dotyku przychodzi dopiero po puszczeniu palca albo wcale.
+- Rozbiórka skryptu (ponowne wklejenie) w trakcie przeciągania zdejmuje słuchaczy z dokumentu.
+- Testy: `tests/19-drag-button.test.js` — palec, drugi palec, obcy wskaźnik, `pointercancel`, prawy przycisk, rozbiórka w trakcie ruchu; sprawdzone też w Chromium z emulowanym dotykiem. Razem 675 sprawdzeń.
+
+---
+
 ## 1.7.4 — 2026-10-21
 
 > **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają. 1.7.2 i 1.7.3 nie zostały wydane — wszystko, co przygotowano pod te numery, wychodzi w tym wydaniu.

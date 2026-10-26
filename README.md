@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.7.4** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.7.5** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -141,7 +141,7 @@ Zasady, gdy generator odmawia („Invalid code page or invalid characters”):
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.7.4/counter.js`.
+`…/counter/v1.7.5/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -710,7 +710,9 @@ w sekcji „Cel i pomoce stanowiska”.
   ręcznie nie ma połączenia z kartą T-REX.
 - **Skrót „ukryj okno”** — w sekcji skrótów klawiszowych.
 
-Panel zamyka się kliknięciem poza nim (nie w trybie przeciągania), drugim
+Okno i kartę ceny przeciąga się myszą albo palcem na ekranie dotykowym
+(tryb przeciągania w panelu, potem ruch i puszczenie). Panel zamyka się
+kliknięciem albo stuknięciem poza nim (nie w trybie przeciągania), drugim
 kliknięciem zakładki, hasłem albo przyciskiem na dole. Otwarty panel
 zatrzymuje klawisze ze swoich pól, więc cyfry wpisują się mimo skrótów T-REX.
 
@@ -1084,7 +1086,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 44 pliki, 670 sprawdzeń
+├── tests/                  ← 44 pliki, 675 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1104,7 +1106,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 670 sprawdzeń
+npm test             # 675 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1137,7 +1139,7 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1 i 1.7.4 zostają przy nim, 1.8.0
+Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1–1.7.5 zostają przy nim, 1.8.0
 dostanie `statsHelper_v1_8_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 

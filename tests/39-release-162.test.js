@@ -71,7 +71,7 @@ describe('Panel przy starcie');
 test('po uruchomieniu panel jest otwarty; zamyka go klik obok', () => {
     const env = boot({ keepPanel: true });
     eq(env.SH.store.uiFlags.isSettingsPanelVisible, true);
-    env.sandbox.document.dispatch('mousedown', { target: env.sandbox.document.body });
+    env.sandbox.document.dispatch('pointerdown', { target: env.sandbox.document.body });
     eq(env.SH.store.uiFlags.isSettingsPanelVisible, false);
     eq(env.net.fetches, [], 'bez sieci');
 });
