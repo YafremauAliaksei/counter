@@ -1118,7 +1118,7 @@ npm run format       # Prettier (potrzebny npm ci)
 
 `npm test` i `npm run build` działają **bez żadnej instalacji** — nie ma ani jednej
 zależności produkcyjnej. Linter i formatter wymagają `npm ci` (plik blokady leży
-w repozytorium) oraz Node 20.19+, ale bez nich nic się nie psuje.
+w repozytorium) oraz Node 24+, ale bez nich nic się nie psuje.
 
 Szczegółowo o tym, jak dodać moduł, jakie są zasady i jak wygląda przepływ gałęzi
 oraz PR — w [CONTRIBUTING.md](CONTRIBUTING.md).

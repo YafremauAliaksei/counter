@@ -13,7 +13,7 @@ name: CI
 #   stand   — testy stanowiska w prawdziwym Chromium (npm run test:e2e);
 #             potrzebuje rejestru i pobrania przeglądarki;
 #   matrix  — sprawdza, że artefakt buduje się tak samo na Linuksie,
-#             Windowsie i macOS (końce linii!) i na kilku wersjach Node.
+#             Windowsie i macOS (końce linii!) na Node z `engines`.
 
 on:
   push:
@@ -134,10 +134,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        # 20 to dolna granica z `engines` (choć już po końcu wsparcia) —
-        # pilnuje, żeby build i testy nie sięgnęły po nowsze API. Starszych
-        # wersji narzędzia repozytorium nie obsługują.
-        node: [20, 22, 24]
+        # Jedna wersja — ta z `engines`. Skrypt działa w przeglądarce, Node
+        # służy tylko narzędziom repozytorium, a różnice między systemami
+        # (ścieżki, końce linii) łapią trzy systemy.
+        node: [24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

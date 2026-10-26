@@ -189,7 +189,7 @@ npm run ci           # wszystko naraz
 
 `npm test` i `npm run build` działają **bez instalacji** — zależności produkcyjnych
 nie ma. Linter i formatter wymagają `npm ci` (plik blokady leży w repozytorium)
-oraz Node 20.19+, bo tyle wymaga ESLint 10.
+oraz Node 24+ (jedyna wersja sprawdzana w CI).
 
 W `.claude/settings.json` leży lista poleceń, o które nie trzeba dopytywać,
 i hook `Stop`, który po każdej turze sprawdza bramkę językową.
