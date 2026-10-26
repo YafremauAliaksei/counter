@@ -343,6 +343,23 @@
         // Po wciśnięciu przycisku: tyle czeka się na Enter, którym skaner kończy
         // LPN — trafiłby w świeże, puste pole nowego LPN.
         AUTO_LPN_SWALLOW_ENTER_MS: 1000,
+        // „Usuń sesję” skrótem: litery wpisane poza polami, przycisk sesji,
+        // potwierdzenie i pole stacji roboczej (data-testid T-REX).
+        CLEAR_SESSION_KEYS: 'us',
+        // Druga litera później niż po tylu ms to już nie skrót, a przypadek.
+        CLEAR_SESSION_KEY_GAP_MS: 1500,
+        CLEAR_SESSION_BUTTON_TESTID: 'clear-session-icon',
+        CLEAR_SESSION_CONTINUE_TESTID: 'button-clear-session-continue-socrates',
+        WORKSTATION_INPUT_TESTID: 'ws-input',
+        // Stacja robocza: „ws” i dalej podkreślnik albo myślnik (ws_12, ws-A3).
+        WORKSTATION_VALUE_REGEX: /^ws[_-][a-z0-9_-]{1,40}$/i,
+        // Ile czekać na kolejne okno po kliknięciu i jak często patrzeć.
+        CLEAR_SESSION_WAIT_CONTINUE_MS: 2000,
+        CLEAR_SESSION_WAIT_LPN_MS: 4000,
+        CLEAR_SESSION_WAIT_STATION_MS: 5000,
+        CLEAR_SESSION_POLL_MS: 150,
+        STORAGE_KEY_WORKSTATION: 'workStation',
+        SESSION_STORAGE_LAST_LPN_KEY: 'lastLpn',
         // Pierwsza litera, po której wpis w polu pojemnika uznaje się za pojemnik.
         AUTO_LPN_TOTE_PREFIXES: ['t', 'w', 'c'],
         /**
@@ -582,6 +599,8 @@
          */
         customTarget: 0,
         autoLpn: false,
+        // „Usuń sesję” skrótem u+s — domyślnie wyłączone (ClearSession).
+        clearSession: false,
         /**
          * Most GRAVIS — domyślnie włączony (decyzja autora, CHANGELOG): karty
          * rozmawiają przez postMessage w przeglądarce, bez sieci. Włączony most

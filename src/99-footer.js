@@ -142,6 +142,7 @@
    cretProfile = 'CRET'        'CRET' | 'FAST' — który cel z RATE_TARGETS obowiązuje na karcie CRET
    customTarget = 0            0..999 — cel własny (sztuk/h) na każdej karcie; 0 = cele z RATE_TARGETS
    autoLpn = false             „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta
+   clearSession = false        litery „u”, „s” poza polem: „Usuń sesję” i ten sam LPN i stacja z powrotem
    gravisAsin = true           most GRAVIS: ASIN pod polem skanu (tylko CRET i UG); bez skryptu w GRAVIS nic nie widać
    triggerMutationDebounceMs = 50     50..200, jak często skanować stronę
    settingsPanelWidth        = 520    szerokość panelu ustawień w px

@@ -23,8 +23,20 @@ Dla tego projektu SemVer czyta się tak:
 - **Kolejność sekcji z makiety autora:** przerwa, cel i pomoce stanowiska, zadania, statystyki globalne, bieżąca karta, pomoce wizualne, stylizacja okna, skróty, auto-inkrementacja, moduł cen, karta ceny, dziennik wartości, kod ustawień, język, ogólne (reset).
 - **Każdą sekcję da się zwinąć** kliknięciem w tytuł; panel pamięta wybór (`panelSections`). Domyślnie zwinięta jest „Stylizacja okna” — jak zwinięta kategoria kanałów zostawia na widoku ustawienia linii włączonych (domyślnie 7), a tytuł mówi, ile schowano (`+12`).
 - **Pod palec:** panel 520 px (zamiast 450, nie szerszy niż ekran), pola i przyciski co najmniej 40–44 px, czcionka pól 16 px, większe pola wyboru.
+- **Mniej pustego miejsca:** podpis i pole w jednej linii (stała kolumna podpisu, pole bierze resztę), pole godziny początku zadania w wierszu skrótów, opis pola wyboru obok niego zamiast pod całym wierszem, mniejsze odstępy między sekcjami.
+- **Diagnostyka** przeniesiona z sekcji celu do osobnej sekcji na samym końcu panelu, domyślnie zwiniętej. Działa jak dotąd, także `SH.debug()`.
 - **Pola zapisują się bez Enter** — 1,2 s po ostatnim znaku albo od razu po wyjściu z pola: cel własny, nazwa i początek zadania, odcinki, paczki, tempo, liczniki działów.
 - **Fokus zostaje w polu.** Przerysowanie panelu po zapisie przywraca fokus, wpisany tekst i kursor. Gdy strona przejmie fokus z pola, w którym pisano w ostatnich 3 s, wraca on do pola — najwyżej trzy razy z rzędu, żeby nie przeciągać się z T-REX. Tab i klik obok to wybór człowieka.
+
+### Dodano — „Usuń sesję” klawiszami U, S
+
+- Wyłącznik w sekcji „Cel i pomoce stanowiska”, **domyślnie wyłączony**. Litery „u”, „s” (do 1,5 s odstępu) poza polem tekstowym i bez Ctrl/Alt/Meta: skrypt klika „Usuń sesję” i „Kontynuuj”, potem wpisuje z Enterem ten sam LPN i tę samą stację roboczą — przedmiot zaczyna się od nowa bez ręcznego skanowania. Wzorowane na skrypcie alternatywnym (`clear_session`).
+- LPN zapamiętuje się z Entera w polu LPN, osobno w każdej karcie (sessionStorage); stacja — z Entera w polu stacji (`ws_…`/`ws-…`), jedna na maszynę. Bez nich skrypt zatrzymuje się na danym kroku i mówi to w powiadomieniu — zamiast `alert()` i zamiast wpisywać cokolwiek na ślepo. Wartości z magazynu przechodzą przez wzorzec LPN i stacji. Kod ustawień przenosi wyłącznik (`0x0312`).
+- Testy: `tests/46-clear-session.test.js` (16).
+
+### Zmieniono — GRAVIS
+
+- **LPN idzie do GRAVIS dopiero, gdy T-REX pokaże pole skanu przedmiotu** (pyta o ASIN). Dotąd szedł każdy LPN — kilkaset wyszukiwań na zmianę, z których większość była zbędna, bo przedmiot ma ASIN przypięty do LPN. Zeskanowany LPN czeka; pole pojawia się — LPN idzie raz.
 
 ### Zmieniono — zadania
 

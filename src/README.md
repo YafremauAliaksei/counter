@@ -42,6 +42,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
 | 29 | `29-diagnostics.js` | okno diagnostyki na stanowisku bez F12 | ~120 |
 | 30 | `30-datamatrix.js` | kod Data Matrix z tekstu zakładki | ~190 |
+| 31 | `31-clear-session.js` | „Usuń sesję” skrótem u+s, z powrotem ten sam LPN i stacja | ~135 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~190 |
 
 ---

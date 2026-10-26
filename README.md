@@ -718,7 +718,8 @@ w sekcji „Cel i pomoce stanowiska”.
   pojemnika zniknie ze strony.
 - **Linia 10** — cel, procent bieżącego tempa od celu i sztuki wobec celu
   zmiany: `47/h 85% 236/470`.
-- **Diagnostyka** — przycisk w tej sekcji (albo `SH.debug()`) otwiera okno ze
+- **Diagnostyka** — osobna sekcja na samym końcu panelu, domyślnie zwinięta
+  (na produkcji niepotrzebna, ale jest). Przycisk w niej (albo `SH.debug()`) otwiera okno ze
   zdarzeniami cyklu przedmiotu (początek, koniec, pojemnik, zaliczenie,
   naklejka, fraza, kierunek), stanem bieżącego przedmiotu i polami formularzy,
   które widzi skrypt (podpis, `data-testid`, widoczność). Dla stanowisk, na
@@ -731,11 +732,23 @@ w sekcji „Cel i pomoce stanowiska”.
   `LPNAA123456789`, `LPNRRHT5017105`, wielkość liter bez znaczenia) czeka do ostatniej cyfry:
   przycisk idzie dopiero po całym skanie, a Enter skanera nie trafia w nowe
   pole — nie trzeba skanować drugi raz. Inna etykieta — przycisk od razu.
+- **„Usuń sesję” klawiszami U, S** (domyślnie wyłączone). Litery „u”, potem
+  „s” (najwyżej 1,5 s odstępu), wciśnięte poza polem tekstowym, bez Ctrl/Alt:
+  skrypt klika „Usuń sesję” i „Kontynuuj”, potem wpisuje z powrotem ten sam
+  LPN i tę samą stację roboczą, każde z Enterem — przedmiot zaczyna się od
+  nowa bez ręcznego skanowania. LPN zapamiętuje się z Entera w polu LPN
+  (osobno w każdej karcie), stację — z Entera w polu stacji (`ws_…`, jedna na
+  maszynę). Bez zapamiętanego LPN albo stacji skrypt zatrzymuje się na tym
+  kroku i mówi to w powiadomieniu — nic nie wpisuje „na ślepo”. Przerwany
+  przedmiot się nie liczy; licznik widzi nowy początek tego samego LPN.
 - **ASIN z GRAVIS** (tylko CRET i UG, domyślnie włączone). Przycisk „Otwórz
   GRAVIS” w panelu, potem jedno kliknięcie zakładki na karcie GRAVIS — tam
   w lewym górnym rogu pojawia się półprzezroczysty znaczek (przezroczysty dla
-  kliknięć); licznika ani ustawień w GRAVIS nie ma. Każdy LPN idzie do GRAVIS,
-  a ASIN pojawia się wyśrodkowany pod polem skanu przedmiotu jako niebieski
+  kliknięć); licznika ani ustawień w GRAVIS nie ma. LPN idzie do GRAVIS
+  **dopiero wtedy, gdy T-REX pokaże pole skanu przedmiotu** (pyta o ASIN) —
+  większość przedmiotów ma ASIN przypięty do LPN i tego pola nie pokazuje, więc
+  GRAVIS nie dostaje setek zbędnych wyszukiwań na zmianę. ASIN pojawia się
+  wyśrodkowany pod tym polem jako niebieski
   link; kliknięcie wstawia go do pola, Enter naciska człowiek. Brak ASIN — nic
   się nie pokazuje. Gdy karta GRAVIS przeładuje się (np. uśpiona przez
   przeglądarkę) i skrypt w niej zniknie, w tym miejscu pojawia się cicha
@@ -782,7 +795,7 @@ Sekcje w kolejności, w jakiej stoją w panelu (ułożył je autor na makiecie):
 | Sekcja                      | Co się ustawia                                                                                                     |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | Wybór przerwy               | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
-| **Cel i pomoce stanowiska** | **cel własny, karty liczone do tempa, cel karty CRET, diagnostyka, Auto-LPN, GRAVIS**                              |
+| **Cel i pomoce stanowiska** | **cel własny, karty liczone do tempa, cel karty CRET, Auto-LPN, „Usuń sesję” klawiszami, GRAVIS**                  |
 | **Zadania**                 | **bieżący proces pracy: nazwa, początek, paczki, tempo, pauza, historia zmiany — patrz rozdział „Zadania”**        |
 | **Statystyki globalne**     | **które działy wchodzą do sumy i ręczne wpisanie licznika każdego z nich**                                         |
 | Bieżąca karta               | nazwa i udział w sumie — _tylko na karcie nierozpoznanej_                                                          |
@@ -796,6 +809,7 @@ Sekcje w kolejności, w jakiej stoją w panelu (ułożył je autor na makiecie):
 | Kod ustawień                | kod bieżących ustawień, gotowa zakładka z nim i pole na cudzy kod — patrz niżej                                    |
 | Język                       | pl/uk/ru/en                                                                                                        |
 | Ogólne                      | pełny reset danych, reset samych liczników                                                                         |
+| Diagnostyka                 | okno diagnostyki — zwinięte, na samym końcu                                                                        |
 
 **Każdą sekcję da się zwinąć** — klik w tytuł chowa ją pod jedną linię, drugi
 klik rozwija; panel pamięta wybór. Domyślnie zwinięta jest tylko „Stylizacja
@@ -805,7 +819,9 @@ okna”, i to jak zwinięta kategoria kanałów: zostają na widoku ustawienia l
 zostawia na widoku linie 2, 7 i 10.
 
 **Pod palec.** Panel ma 520 px szerokości (nie więcej niż ekran), pola
-i przyciski co najmniej 40–44 px wysokości, czcionka pól 16 px. Pola zapisują
+i przyciski co najmniej 40–44 px wysokości, czcionka pól 16 px. Podpis stoi
+po lewej, pole po prawej, w jednej linii; opis pola wyboru stoi obok niego,
+pod jego napisem — bez pustej kolumny pod kwadracikiem. Pola zapisują
 się same — 1,2 s po ostatnim znaku albo od razu po wyjściu z pola; Enter nie
 jest potrzebny. Przerysowanie panelu nie zabiera fokusu z pola, w którym się
 pisze, a jeśli stronie T-REX zdarzy się przejąć fokus z pola, w którym przed
@@ -1140,7 +1156,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 45 plików, 714 sprawdzeń
+├── tests/                  ← 46 plików, 735 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1160,7 +1176,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 714 sprawdzeń
+npm test             # 735 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)

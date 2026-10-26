@@ -31,7 +31,27 @@
         { id: 'code', open: true },
         { id: 'language', open: true },
         { id: 'general', open: true },
+        // Diagnostyka na produkcji nie jest potrzebna: na samym końcu
+        // i zwinięta, ale jest — do zgłaszania usterek z hali (i SH.debug()).
+        { id: 'diag', open: false },
     ];
+
+    /**
+     * Podpisy linii okna statystyk, przy ich polu wyboru:
+     *   - linia 6 koloruje się według znaczenia (plus zielony, minus
+     *     czerwony), więc picker steruje tylko częścią neutralną — bez
+     *     podpisu wyglądałoby to jak niedziałające ustawienie;
+     *   - linia 7 jest celowo uboga w treść — trzeba powiedzieć, co znaczą liczby;
+     *   - linia 8 opisuje zadanie, a nie zmianę — bez tego wygląda jak
+     *     powtórzenie linii 1;
+     *   - linia 9 — kiedy robi się czerwona.
+     */
+    const LINE_HINTS = {
+        line6_valueSum: 'lineSettings_valueSumHint',
+        line7_compact: 'lineSettings_compactHint',
+        line8_taskInfo: 'lineSettings_taskInfoHint',
+        line9_offTask: 'lineSettings_offTaskHint',
+    };
 
     /**
      * Wygląd kontrolek panelu pod palec: pole i przycisk nie niższe niż
@@ -48,8 +68,8 @@
         .sh-panel input[type=range] { min-height: 32px; }
         .sh-panel label { min-height: 40px; color: inherit; }
         .sh-panel .sh-section-head {
-            display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 8px 0;
-            padding: 10px 6px; background: transparent; color: inherit; border: none;
+            display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 4px 0;
+            padding: 6px 6px; background: transparent; color: inherit; border: none;
             border-radius: 6px; cursor: pointer; text-align: left; font-size: 1.15em; font-weight: bold;
         }
         .sh-panel .sh-section-head:hover { background: rgba(0, 0, 0, 0.06); }
@@ -118,14 +138,17 @@
             const head = h('button', { type: 'button', className: 'sh-section-head' });
             const wrap = h('div', {
                 className: 'sh-section', dataset: { shSection: def.id },
-                style: { marginBottom: '14px', borderBottom: `1px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}33`, paddingBottom: '10px' },
+                style: { marginBottom: '8px', borderBottom: `1px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}33`, paddingBottom: '6px' },
             }, head, body);
             const apply = () => {
                 const open = this.isOpen(def);
                 let hidden = 0;
                 content.forEach(child => {
                     const show = open || (def.keep ? def.keep(child) : false);
-                    child.style.display = show ? '' : 'none';
+                    // Własny `display` elementu (flex wiersza) zostaje: pusty
+                    // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
+                    if (child._shDisplay === undefined) child._shDisplay = child.style.display;
+                    child.style.display = show ? child._shDisplay : 'none';
                     if (!show) hidden++;
                 });
                 head.textContent = '';
@@ -315,10 +338,10 @@
                         this.rerender();
                     }, { padding: '4px 8px', marginTop: '0' }));
                 }
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_startedAt'), quick));
                 // Godzinę do pół godziny naprzód wolno: o 18:25 wpisane „18:30”
-                // zostaje 18:30 (TASK_START_AHEAD_MS).
-                sec.appendChild(UIBuilder.row('', UIBuilder.live(h('input', {
+                // zostaje 18:30 (TASK_START_AHEAD_MS). Pole stoi w jednym
+                // wierszu ze skrótami — to ta sama czynność.
+                quick.appendChild(UIBuilder.live(h('input', {
                     type: 'text', value: Utils.formatClock(startedAt), placeholder: 'HH:MM', inputMode: 'numeric',
                     style: { width: '90px', textAlign: 'center' },
                 }), text => {
@@ -326,7 +349,8 @@
                     if (ms === null) return;
                     TaskManager.setStart(task.id, ms);
                     this.rerender();
-                })));
+                }));
+                sec.appendChild(UIBuilder.row(I18n.get('tasks_startedAt'), quick));
 
                 // --- odcinki: kilka powrotów do procesu w ciągu zmiany ---
                 // Poprawny zapis przyjmuje się sam, w trakcie pisania; o błędzie
@@ -506,10 +530,10 @@
                     store.userConfig.cretProfile, v => { store.userConfig.cretProfile = v; })));
             }
             sec.appendChild(UIBuilder.hint(I18n.get('workflow_targetHint', { value: ToteWatch.targetFor(store.currentTabType) || '—' })));
-            sec.appendChild(UIBuilder.button(I18n.get('diag_open'), () => Diag.toggle(), { width: '100%' }));
-            sec.appendChild(UIBuilder.hint(I18n.get('diag_hint')));
             sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_autoLpn'), !!store.userConfig.autoLpn,
                 v => { store.userConfig.autoLpn = !!v; })));
+            sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_clearSession'), !!store.userConfig.clearSession,
+                v => { store.userConfig.clearSession = !!v; }, I18n.get('workflow_clearSessionHint'))));
             if (CONFIG.GRAVIS_TAB_TYPES.includes(store.currentTabType)) {
                 sec.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get('workflow_gravis'), !!store.userConfig.gravisAsin,
                     v => { store.userConfig.gravisAsin = !!v; if (!v) GravisBridge.close(); this.rerender(); })));
@@ -525,12 +549,12 @@
         buildCountersSection() {
             const sec = UIBuilder.section(I18n.get('section_globalStats'));
             Object.values(CONFIG.KNOWN_TAB_TYPES).forEach(t => {
-                const row = h('div', { style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginBottom: '5px', gap: '6px 10px' } });
+                const row = h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '10px' } });
                 row.appendChild(UIBuilder.checkbox(I18n.get('includeInGlobal_known', { tabName: I18n.get(t.displayNameKey) }), store.userConfig.globalStatsContributionKnown[t.key], v => {
                     store.userConfig.globalStatsContributionKnown[t.key] = v;
                     this.rerender();
                 }));
-                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':', style: { marginLeft: '32px', marginRight: '4px' } }));
+                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':', style: { whiteSpace: 'nowrap' } }));
                 // Różnicę bierze na siebie aktywne zadanie, razem z licznikiem
                 // „poza mianownikiem” — kierunku wpisanych paczek nikt nie zna,
                 // więc nie mają prawa ruszyć procentu sprzedaży.
@@ -624,7 +648,10 @@
                 if (!cfg) return;
                 const lineBox = h('div', { dataset: { shLine: lineKey }, style: { border: '1px solid #ddd', padding: '8px', marginBottom: '8px', borderRadius: '4px' } });
 
-                lineBox.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get(`lineSettings_${lineKey.split('_')[1]}`), cfg.visible, v => store.localTabConfig.linesConfig[lineKey].visible = v)));
+                // Podpis linii stoi przy jej polu wyboru (LINE_HINTS).
+                const hintKey = LINE_HINTS[lineKey];
+                lineBox.appendChild(UIBuilder.row('', UIBuilder.checkbox(I18n.get(`lineSettings_${lineKey.split('_')[1]}`), cfg.visible,
+                    v => store.localTabConfig.linesConfig[lineKey].visible = v, hintKey ? I18n.get(hintKey) : undefined)));
 
                 // Kolor, alfa i rozmiar są na stałe podpięte do DOM, niezależnie
                 // od stanu checkboxa.
@@ -635,25 +662,6 @@
                 )));
                 lineBox.appendChild(UIBuilder.row('Size', ...UIBuilder.slider(8, 36, cfg.fontSize, v => store.localTabConfig.linesConfig[lineKey].fontSize = v, v => `${v}px`)));
 
-                // Linia 6 koloruje się według znaczenia (plus zielony, minus
-                // czerwony), więc picker steruje tam tylko częścią neutralną.
-                // Bez podpisu wyglądałoby to jak niedziałające ustawienie.
-                if (lineKey === 'line6_valueSum') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_valueSumHint')));
-                }
-                // Linia 7 jest celowo uboga w treść — warto powiedzieć wprost,
-                // co znaczą te trzy liczby.
-                if (lineKey === 'line7_compact') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_compactHint')));
-                }
-                // Linia 8 opisuje zadanie, a nie zmianę — bez tego zdania wygląda
-                // jak powtórzenie linii 1 z innymi liczbami.
-                if (lineKey === 'line9_offTask') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_offTaskHint')));
-                }
-                if (lineKey === 'line8_taskInfo') {
-                    lineBox.appendChild(UIBuilder.hint(I18n.get('lineSettings_taskInfoHint')));
-                }
 
                 // Obsługa wielokoloru dla linii 2 (podsumowanie globalne)
                 if (lineKey === 'line2_globalSummary') {
@@ -742,8 +750,7 @@
                     if (v) PriceModule.enable();
                     else PriceModule.disable();
                     this.rerender();
-                })));
-            secModule.appendChild(UIBuilder.hint(I18n.get('priceModule_hint')));
+                }, I18n.get('priceModule_hint'))));
             put('price_module', secModule);
 
             if (!moduleOn) {
@@ -789,8 +796,7 @@
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_fallback'), pc.marketFallback !== false,
-                v => store.localTabConfig.priceCard.marketFallback = v)));
-            secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_fallbackHint')));
+                v => store.localTabConfig.priceCard.marketFallback = v, I18n.get('priceCard_fallbackHint'))));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_showCard'), pc.visible,
@@ -834,8 +840,7 @@
                 if (pc.showAsin !== false) {
                     secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                         I18n.get('priceCard_asinClickable'), pc.asinClickable === true,
-                        v => store.localTabConfig.priceCard.asinClickable = v)));
-                    secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_asinClickableHint')));
+                        v => store.localTabConfig.priceCard.asinClickable = v, I18n.get('priceCard_asinClickableHint'))));
                 }
                 secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                     I18n.get('priceCard_showSource'), pc.showSource === true,
@@ -895,8 +900,7 @@
             const secVal = UIBuilder.section(I18n.get('valueLog_section'));
             secVal.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('valueLog_enabled'), pc.logValues,
-                v => { store.localTabConfig.priceCard.logValues = v; this.rerender(); })));
-            secVal.appendChild(UIBuilder.hint(I18n.get('valueLog_hint')));
+                v => { store.localTabConfig.priceCard.logValues = v; this.rerender(); }, I18n.get('valueLog_hint'))));
 
             const vt = ValueLog.totals();
             // Ta sama waluta co w linii 6 — dwie sumy jednego dziennika
@@ -1012,6 +1016,11 @@
                 }
             }, { width: '100%', marginTop: '6px' }));
             put('code', secCode);
+
+            const secDiag = UIBuilder.section(I18n.get('diag_open'));
+            secDiag.appendChild(UIBuilder.button(I18n.get('diag_open'), () => Diag.toggle(), { width: '100%' }));
+            secDiag.appendChild(UIBuilder.hint(I18n.get('diag_hint')));
+            put('diag', secDiag);
 
             PANEL_SECTIONS.forEach(def => {
                 if (parts[def.id]) this.el.appendChild(this.collapsible(def, parts[def.id]));

@@ -22,7 +22,7 @@ const { bootOnStand } = require('./dom-stub');
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const AUTHOR_ORDER = ['lunch', 'workflow', 'tasks', 'global', 'current_tab', 'visual', 'window',
-                      'keys', 'auto', 'price_module', 'price_card', 'value_log', 'code', 'language', 'general'];
+                      'keys', 'auto', 'price_module', 'price_card', 'value_log', 'code', 'language', 'general', 'diag'];
 
 /** Środowisko z otwartym panelem i natychmiastowym przerysowaniem (jak w 23-task-panel). */
 function panelEnv(opts) {
@@ -79,8 +79,9 @@ test('sekcje stoją w kolejności z makiety: przerwa i cel na górze, język i r
     // i bez dziennika wartości — reszta w kolejności autora.
     eq(ids, AUTHOR_ORDER.filter(id => ids.includes(id)), 'kolejność');
     eq(ids[0], 'lunch');
-    eq(ids[ids.length - 1], 'general', 'reset na samym dole');
-    eq(ids[ids.length - 2], 'language');
+    eq(ids[ids.length - 1], 'diag', 'diagnostyka na samym końcu');
+    eq(ids[ids.length - 2], 'general', 'reset tuż nad nią');
+    eq(ids[ids.length - 3], 'language');
     ok(ids.length >= 12, 'wszystkie sekcje karty CRET: ' + ids.join(','));
 });
 
@@ -550,4 +551,55 @@ test('okno statystyk stoi 0 px od dołu, panel ma 520 px i nie wychodzi poza ekr
     eq(env.SH.SettingsPanel.el.style.width, '520px');
     eq(env.SH.SettingsPanel.el.style.maxWidth, 'calc(100vw - 20px)');
     ok(String(env.SH.SettingsPanel.styleEl.textContent).includes('min-height: 44px'), 'przyciski pod palec');
+});
+
+describe('Diagnostyka na końcu, podpisy przy polach wyboru, wiersze w jednej linii');
+
+test('diagnostyka: osobna sekcja na samym końcu, zwinięta; w sekcji celu jej nie ma', () => {
+    const env = panelEnv();
+    const label = env.SH.I18n.get('diag_open');
+    const sec = section(env, 'diag');
+    ok(sec, 'sekcja jest');
+    ok(content(sec).every(c => !shown(c)), 'zwinięta domyślnie');
+    notOk(nodes(section(env, 'workflow')).some(n => n.tagName === 'BUTTON' && n.textContent === label), 'nie w sekcji celu');
+    sec.children[0].dispatch('click', {});
+    ok(nodes(sec).some(n => n.tagName === 'BUTTON' && n.textContent === label), 'po rozwinięciu przycisk jest');
+});
+
+test('podpis wyłącznika modułu cen stoi w polu wyboru, po prawej, a nie pod całym wierszem', () => {
+    const env = panelEnv();
+    const sec = section(env, 'price_module');
+    const hint = env.SH.I18n.get('priceModule_hint');
+    const label = nodes(sec).find(n => n.tagName === 'LABEL' && String(n.textContent).includes(hint));
+    ok(label, 'podpis wewnątrz etykiety pola wyboru');
+    eq(label.children[0].type, 'checkbox');
+    eq(label.style.alignItems, 'flex-start', 'kwadracik przy pierwszej linii tekstu');
+});
+
+test('podpis linii 7 stoi przy jej polu wyboru — widać go też w zwiniętej sekcji', () => {
+    const env = panelEnv();
+    const box = content(section(env, 'window')).find(c => c.dataset.shLine === 'line7_compact');
+    const hint = env.SH.I18n.get('lineSettings_compactHint');
+    ok(nodes(box).some(n => n.tagName === 'LABEL' && String(n.textContent).includes(hint)));
+});
+
+test('wiersz z podpisem nie łamie się pod podpis: kolumna podpisu stała, pole bierze resztę', () => {
+    const env = panelEnv();
+    const row = env.SH.UIBuilder.row('Cel', env.sandbox.document.createElement('input'));
+    eq(row.style.flexWrap, 'nowrap');
+    eq(row.children[0].style.flex, '0 0 150px');
+    eq(row.children[1].style.minWidth, '0');
+});
+
+test('rozwinięcie sekcji nie zabiera wierszom ich display: flex', () => {
+    // Inaczej wiersz staje się blokiem i podpis spada nad pole — panel
+    // wraca do jednej kolumny z pustym miejscem.
+    const env = panelEnv();
+    const sec = section(env, 'keys');
+    const rows = () => content(sec).filter(c => c.tagName === 'DIV' && c.children.length === 2);
+    ok(rows().length >= 3, 'wiersze skrótów');
+    ok(rows().every(r => r.style.display === 'flex'), 'flex po narysowaniu');
+    sec.children[0].dispatch('click', {});
+    sec.children[0].dispatch('click', {});
+    ok(rows().every(r => r.style.display === 'flex'), 'flex po zwinięciu i rozwinięciu');
 });

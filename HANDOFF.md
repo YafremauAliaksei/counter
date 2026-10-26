@@ -33,9 +33,9 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 |                                                           | Stan                                                                |
 | --------------------------------------------------------- | ------------------------------------------------------------------- |
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
-| 30 modułów w `src/` + cele tempa `src/00-targets.js`      | pocięte z monolitu, zweryfikowane linia po linii                    |
+| 31 modułów w `src/` + cele tempa `src/00-targets.js`      | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 45 plików testów, 714 sprawdzeń + 18 testów stanowiska    | **wszystkie zielone**                                               |
+| 46 plików testów, 735 sprawdzeń + 18 testów stanowiska    | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |
