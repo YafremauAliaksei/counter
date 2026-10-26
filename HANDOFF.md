@@ -5,7 +5,7 @@ Ten plik jest napisany dla agenta, który przejmie pracę **na maszynie z dział
 
 Zacznij od przeczytania [`CLAUDE.md`](CLAUDE.md) — tam są zasady projektu.
 
-> **Stan na 26.10.2026:** ostatnie wydanie to **1.7.4**, gałąź `release` wskazuje na nie. Następne — **1.7.5** (PATCH: przeciąganie palcem na ekranie dotykowym) — czeka na wydanie. Prefiks
+> **Stan na 26.10.2026:** ostatnie wydanie to **1.7.5**, gałąź `release` wskazuje na nie. Następne — **1.7.6** (PATCH: Auto-LPN czeka na cały LPN) — czeka na wydanie. Prefiks
 > magazynu `statsHelper_v1_7_0_` — zasada: niesie MAJOR i MINOR (CLAUDE.md, §4). Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
 > zakładki — adres wydania wpisuje się przy pierwszym wydaniu na docelowym
 > serwerze. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń
@@ -35,7 +35,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
 | 30 modułów w `src/` + cele tempa `src/00-targets.js`      | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 44 pliki testów, 675 sprawdzeń + 18 testów stanowiska     | **wszystkie zielone**                                               |
+| 44 pliki testów, 680 sprawdzeń + 18 testów stanowiska     | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |

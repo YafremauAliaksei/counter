@@ -38,7 +38,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 24 | `24-tasks.js` | menedżer zadań: własny zegar i liczniki procesu pracy | ~680 |
 | 26 | `26-tote-watch.js` | przybicie pojemnika, czas od niego i cel działu | ~110 |
 | 27 | `27-gravis.js` | most GRAVIS: LPN tam, ASIN z powrotem pod pole skanu | ~250 |
-| 28 | `28-auto-lpn.js` | Auto-LPN: „Przypisz ponownie LPN” po etykiecie w polu pojemnika | ~35 |
+| 28 | `28-auto-lpn.js` | Auto-LPN: „Przypisz ponownie LPN” po etykiecie w polu pojemnika | ~55 |
 | 25 | `25-presets.js` | blok ustawień osobistych i start | ~80 |
 | 29 | `29-diagnostics.js` | okno diagnostyki na stanowisku bez F12 | ~120 |
 | 30 | `30-datamatrix.js` | kod Data Matrix z tekstu zakładki | ~190 |

@@ -129,9 +129,9 @@ test('zanim GRAVIS się odezwie, T-REX nie zmienia wyglądu', () => {
 test('ASIN wyśrodkowany pod wąskim polem, kursor jak przy linku', () => {
     const { env, msg, scan, G } = gravis('CRETURN_PRIMARY_GRADING');
     msg({ type: 'sh-gravis-ready' });
-    G.send('LPN0001');
+    G.send('LPNAA000000001');
     env.sandbox.document.body.appendChild(scan);
-    msg({ type: 'sh-gravis-asin', lpn: 'LPN0001', asin: 'B0TEST1234' });
+    msg({ type: 'sh-gravis-asin', lpn: 'LPNAA000000001', asin: 'B0TEST1234' });
     eq([G.chip.style.left, G.chip.style.top, G.chip.style.transform, G.chip.style.cursor],
        ['960px', '434px', 'translateX(-50%)', 'pointer']);
 });
@@ -139,9 +139,9 @@ test('ASIN wyśrodkowany pod wąskim polem, kursor jak przy linku', () => {
 test('brak ASIN w GRAVIS nie pokazuje niczego — ani N/A, ani błędu', () => {
     const { env, msg, scan, G } = gravis();
     msg({ type: 'sh-gravis-ready' });
-    G.send('LPN0002');
+    G.send('LPNAA000000002');
     env.sandbox.document.body.appendChild(scan);
-    msg({ type: 'sh-gravis-asin', lpn: 'LPN0002', asin: null });
+    msg({ type: 'sh-gravis-asin', lpn: 'LPNAA000000002', asin: null });
     page(env, '');
     eq(G.chip, null);
 });
@@ -166,8 +166,8 @@ test('T-REX po przeładowaniu odnajduje okno GRAVIS z jego sygnału', () => {
     eq(G.win, null, 'po starcie uchwytu nie ma');
     msg({ type: 'sh-gravis-ready' });
     eq(G.win, fake);
-    G.send('LPN0003');
-    eq(fake.sent.map(m => m.lpn), ['LPN0003']);
+    G.send('LPNAA000000003');
+    eq(fake.sent.map(m => m.lpn), ['LPNAA000000003']);
 });
 
 test('karta GRAVIS: znaczek przezroczysty dla kliknięć, bez okna statystyk i panelu', () => {

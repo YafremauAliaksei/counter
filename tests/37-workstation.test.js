@@ -352,13 +352,16 @@ function autoLpnPage(env) {
     return { type, clicks: () => clicks, btn };
 }
 
+/** Skaner: znak po znaku, jak w prawdziwym polu. */
+const scanInto = (p, text) => { for (let i = 1; i <= text.length; i++) p.type(text.slice(0, i)); };
+
 test('wyłączone nie klika; etykieta klika raz, pojemnik nie', () => {
     const env = make();
     const p = autoLpnPage(env);
     p.type('L');
     eq(p.clicks(), 0, 'domyślnie wyłączone');
     env.SH.store.userConfig.autoLpn = true;
-    p.type('L'); p.type('LP'); p.type('LPN');
+    scanInto(p, 'LPNAA123456789');
     eq(p.clicks(), 1, 'jedno kliknięcie na skan');
     env.clock.set(env.clock.now() + env.SH.CONFIG.AUTO_LPN_COOLDOWN_MS + 1);
     p.type('t');
@@ -367,6 +370,72 @@ test('wyłączone nie klika; etykieta klika raz, pojemnik nie', () => {
     p.btn.disabled = true;
     p.type('L');
     eq(p.clicks(), 1, 'wyłączony przycisk');
+});
+
+test('LPN: przycisk dopiero po ostatniej cyfrze, nie w połowie skanu', () => {
+    // Wciśnięcie w połowie przenosi fokus na nowe pole — reszta cyfr i Enter
+    // skanera trafiały tam i trzeba było skanować drugi raz.
+    const env = make();
+    env.SH.store.userConfig.autoLpn = true;
+    const p = autoLpnPage(env);
+    const text = 'LPNAA123456789';
+    for (let i = 1; i < text.length; i++) {
+        p.type(text.slice(0, i));
+        eq(p.clicks(), 0, `po ${i} znakach jeszcze nic`);
+    }
+    p.type(text);
+    eq(p.clicks(), 1, 'po czternastym znaku');
+});
+
+test('LPN bez rozróżniania wielkości liter: Aa, aa, lpn — każde to LPN', () => {
+    const env = make();
+    env.SH.store.userConfig.autoLpn = true;
+    const p = autoLpnPage(env);
+    for (const lpn of ['LPNAa123456789', 'lpnaa000000000', 'LpNzZ999999999']) {
+        env.clock.set(env.clock.now() + env.SH.CONFIG.AUTO_LPN_COOLDOWN_MS + 1);
+        const before = p.clicks();
+        scanInto(p, lpn);
+        eq(p.clicks(), before + 1, lpn);
+    }
+});
+
+test('wzorzec LPN: granice długości i miejsca liter oraz cyfr', () => {
+    const re = make().SH.CONFIG.LPN_VALUE_REGEX;
+    const cases = {
+        'LPNAA123456789': true, 'lpnaa123456789': true,
+        'LPNAA12345678': false, 'LPNAA1234567890': false, 'LPNA1123456789': false,
+        'LPN12123456789': false, 'XPNAA123456789': false, ' LPNAA123456789': false, '': false,
+    };
+    for (const [v, want] of Object.entries(cases)) eq(re.test(v), want, JSON.stringify(v));
+});
+
+test('Enter skanera po LPN jest połykany raz, w swoim oknie czasu', () => {
+    const env = make();
+    env.SH.store.userConfig.autoLpn = true;
+    const p = autoLpnPage(env);
+    scanInto(p, 'LPNAA123456789');
+    const enter = () => {
+        let stopped = false;
+        env.sandbox.document.dispatch('keydown', { key: 'Enter', target: env.sandbox.document.body,
+            preventDefault() { stopped = true; }, stopImmediatePropagation() {} });
+        return stopped;
+    };
+    eq(enter(), true, 'Enter skanera nie trafia w nowe pole');
+    eq(enter(), false, 'następny Enter już normalnie');
+    scanInto(p, 'tsAB12');
+    env.clock.set(env.clock.now() + env.SH.CONFIG.AUTO_LPN_SWALLOW_ENTER_MS + 1);
+    eq(enter(), false, 'pojemnik niczego nie połyka');
+});
+
+test('inna etykieta niż LPN i pojemnik — przycisk od razu; pojemnik wielką literą nie', () => {
+    const env = make();
+    env.SH.store.userConfig.autoLpn = true;
+    const p = autoLpnPage(env);
+    p.type('X');
+    eq(p.clicks(), 1, 'etykieta spoza wzorca');
+    env.clock.set(env.clock.now() + env.SH.CONFIG.AUTO_LPN_COOLDOWN_MS + 1);
+    scanInto(p, 'TS12345');
+    eq(p.clicks(), 1, 'pojemnik TS…');
 });
 
 describe('Most GRAVIS');
@@ -385,7 +454,7 @@ test('wyłączony: nie otwiera okna, nie wysyła LPN', () => {
     const { env, sent, opened } = gravisEnv();
     env.SH.store.userConfig.gravisAsin = false;
     env.SH.GravisBridge.open();
-    const input = el(env, 'input', { 'data-testid': 'lpn-input-label', value: 'LPN123ABC' });
+    const input = el(env, 'input', { 'data-testid': 'lpn-input-label', value: 'LPNAB123456789' });
     key(env, input, 'Enter');
     eq([opened.length, sent.length], [0, 0]);
 });
@@ -406,22 +475,22 @@ test('pełny przebieg: gotowość, LPN, ASIN pod polem; obce okno i zły ASIN od
     const msg = (data, source = fake, origin = GRAVIS_ORIGIN) => env.sandbox.window._emit('message', { data, source, origin });
     env.SH.store.userConfig.gravisAsin = true;
     G.open();
-    const lpnInput = el(env, 'input', { 'data-testid': 'lpn-input-label', value: 'LPN123ABC' });
+    const lpnInput = el(env, 'input', { 'data-testid': 'lpn-input-label', value: 'LPNAB123456789' });
     key(env, lpnInput, 'Enter');
     eq(sent.length, 0, 'przed gotowością LPN czeka');
     msg({ type: 'sh-gravis-ready' }, fake, 'https://evil.example');
     eq(G.ready, false, 'gotowość z obcego adresu');
     msg({ type: 'sh-gravis-ready' });
-    eq(sent.map(s => [s.msg.lpn, s.origin]), [['LPN123ABC', GRAVIS_ORIGIN]], 'LPN na znany adres');
+    eq(sent.map(s => [s.msg.lpn, s.origin]), [['LPNAB123456789', GRAVIS_ORIGIN]], 'LPN na znany adres');
 
     const scan = el(env, 'input', { 'data-testid': 'item-scan-input' });
-    msg({ type: 'sh-gravis-asin', lpn: 'LPN123ABC', asin: 'B0TEST1234' }, fake, 'https://evil.example');
+    msg({ type: 'sh-gravis-asin', lpn: 'LPNAB123456789', asin: 'B0TEST1234' }, fake, 'https://evil.example');
     eq(G.asin, null, 'obcy adres');
-    msg({ type: 'sh-gravis-asin', lpn: 'LPN999', asin: 'B0TEST1234' });
+    msg({ type: 'sh-gravis-asin', lpn: 'LPNZZ999999999', asin: 'B0TEST1234' });
     eq(G.asin, null, 'odpowiedź dla innego LPN');
-    msg({ type: 'sh-gravis-asin', lpn: 'LPN123ABC', asin: '<img src=x>' });
+    msg({ type: 'sh-gravis-asin', lpn: 'LPNAB123456789', asin: '<img src=x>' });
     eq(G.asin, null, 'ASIN spoza wzorca');
-    msg({ type: 'sh-gravis-asin', lpn: 'LPN123ABC', asin: 'B0TEST1234' });
+    msg({ type: 'sh-gravis-asin', lpn: 'LPNAB123456789', asin: 'B0TEST1234' });
     eq(G.asin, 'B0TEST1234');
     ok(G.chip, 'link pod polem');
     notOk(/B0TEST1234/.test(G.chip.textContent), 'tekst rozerwany U+200B — skan strony go nie widzi');
