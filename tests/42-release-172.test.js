@@ -144,9 +144,9 @@ test('zablokowane ponowne otwarcie nie gubi LPN zeskanowanego przed sygnałem go
     ok(G.connected(), 'most połączony');
     env.sandbox.window.open = () => null;
     G.open();
-    G.send('LPN0001');
+    G.send('LPNAA000000001');
     msg({ type: 'sh-gravis-ready' });
-    eq(fake.sent.map(m => m.lpn), ['LPN0001'], 'LPN doszedł do GRAVIS po sygnale gotowości');
+    eq(fake.sent.map(m => m.lpn), ['LPNAA000000001'], 'LPN doszedł do GRAVIS po sygnale gotowości');
 });
 
 describe('Pojemnik poprzedniego przedmiotu w klatce z początkiem następnego');

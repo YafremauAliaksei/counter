@@ -9,6 +9,19 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.7.6 — 2026-10-26
+
+> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`.
+
+### Naprawiono — Auto-LPN
+
+- **Auto-LPN czeka, aż LPN wpisze się do końca.** Przycisk „Przypisz ponownie LPN” szedł już po pierwszej literze skanu; fokus przechodził na nowe pole LPN, a reszta cyfr ze skanera i jego Enter trafiały tam — system odrzucał ten urywek i trzeba było skanować drugi raz. Teraz przycisk idzie po ostatniej cyfrze, a Enter, którym skaner kończy kod, jest połykany (przez sekundę od wciśnięcia), więc nie trafia w puste nowe pole. Etykieta, która nie jest ani pojemnikiem, ani początkiem LPN — przycisk od razu, jak dotąd.
+- **Wzorzec LPN:** `LPN` + dwie litery + dziewięć cyfr (`LPNAA123456789`), bez rozróżniania wielkości liter — `LPNAa…` to inna, prawidłowa etykieta. Ten sam wzorzec sprawdza most GRAVIS. Wpis pojemnika wielką literą (`TS…`) też jest pojemnikiem.
+- Testy w `tests/37-workstation.test.js`: znak po znaku (nic do 13. znaku, przycisk po 14.), wielkość liter, granice wzorca (13 i 15 znaków, cyfra w miejscu litery), połknięcie Entera raz i tylko po LPN, inna etykieta, pojemnik wielką literą.
+- Stanowisko `07-long-shift` przy rozjeździe liczby paczek podaje zdarzenia przedmiotów z obu kart.
+
+---
+
 ## 1.7.5 — 2026-10-26
 
 > **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`: liczniki, zadania i ustawienia zostają.

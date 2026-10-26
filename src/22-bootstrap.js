@@ -88,6 +88,7 @@
             if (InputManager.onKeyDown) document.removeEventListener('keydown', InputManager.onKeyDown, true);
             if (ToteWatch.onKeyDown) document.removeEventListener('keydown', ToteWatch.onKeyDown, true);
             if (AutoLpn.onInput) document.removeEventListener('input', AutoLpn.onInput, true);
+            if (AutoLpn.onKeyDown) document.removeEventListener('keydown', AutoLpn.onKeyDown, true);
             if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
             if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);

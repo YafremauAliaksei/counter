@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.7.5
+// @version      1.7.6
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.7.5',
+        SCRIPT_VERSION: '1.7.6',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -380,13 +380,20 @@ const PAID_SHIFT_HOURS = 10;
         DIAG_REFRESH_MS: 1000,
         // Pola, w które wchodzi LPN przedmiotu (most GRAVIS).
         LPN_INPUT_TESTIDS: ['lpn-input-label', 'package-input', 'wd-item-scan-label'],
-        LPN_VALUE_REGEX: /^lpn[a-z0-9]+$/i,
+        // LPN: „LPN”, dwie litery, dziewięć cyfr (LPNAA123456789). Bez rozróżniania
+        // wielkości liter — litery bywają też małe (Aa) i to inna etykieta.
+        LPN_VALUE_REGEX: /^lpn[a-z]{2}\d{9}$/i,
+        // Początek LPN, który jeszcze się wpisuje — skaner podaje znak po znaku.
+        LPN_PARTIAL_REGEX: /^l(?:p(?:n(?:[a-z]{1,2}|[a-z]{2}\d{1,8})?)?)?$/i,
         // Pole skanu przedmiotu, pod którym pokazuje się ASIN z GRAVIS.
         ITEM_SCAN_INPUT_TESTID: 'item-scan-input',
         ASIN_VALUE_REGEX: /^[A-Z0-9]{10}$/,
         // Auto-LPN: przycisk „Przypisz ponownie LPN” i przerwa między wciśnięciami.
         REASSIGN_LPN_BUTTON_TESTID: 'button-reassign-lpn-id',
         AUTO_LPN_COOLDOWN_MS: 10000,
+        // Po wciśnięciu przycisku: tyle czeka się na Enter, którym skaner kończy
+        // LPN — trafiłby w świeże, puste pole nowego LPN.
+        AUTO_LPN_SWALLOW_ENTER_MS: 1000,
         // Pierwsza litera, po której wpis w polu pojemnika uznaje się za pojemnik.
         AUTO_LPN_TOTE_PREFIXES: ['t', 'w', 'c'],
         /**
@@ -7282,6 +7289,7 @@ const PAID_SHIFT_HOURS = 10;
             if (InputManager.onKeyDown) document.removeEventListener('keydown', InputManager.onKeyDown, true);
             if (ToteWatch.onKeyDown) document.removeEventListener('keydown', ToteWatch.onKeyDown, true);
             if (AutoLpn.onInput) document.removeEventListener('input', AutoLpn.onInput, true);
+            if (AutoLpn.onKeyDown) document.removeEventListener('keydown', AutoLpn.onKeyDown, true);
             if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
             if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
@@ -9291,29 +9299,52 @@ const PAID_SHIFT_HOURS = 10;
     /**
      * Na kroku pojemnika człowiek skanuje czasem etykietę LPN zamiast
      * pojemnika — wtedy trzeba wcisnąć „Przypisz ponownie LPN”. Auto-LPN robi
-     * to za niego: o decyzji przesądza pierwszy znak wpisu (t/w/c to
-     * pojemnik, wszystko inne to etykieta), a przerwa po decyzji chroni przed
-     * powtórnym wciśnięciem przy kolejnych znakach tego samego skanu.
-     * Domyślnie wyłączone; słuchacz wychodzi od razu, gdy opcja jest zgaszona.
+     * to za niego. Pierwszy znak t/w/c to pojemnik — nic się nie dzieje.
+     *
+     * LPN czeka się do końca: wciśnięcie w połowie skanu przenosi fokus na
+     * nowe pole, a reszta cyfr i Enter skanera trafiają tam i dają błąd —
+     * trzeba skanować drugi raz. Przycisk idzie więc dopiero, gdy wpis jest
+     * całym LPN (CONFIG.LPN_VALUE_REGEX), a Enter, który skaner dokłada na
+     * końcu, jest połykany. Wpis, który nie jest ani pojemnikiem, ani
+     * początkiem LPN, to inna etykieta — przycisk od razu.
+     *
+     * Przerwa po wciśnięciu chroni przed powtórzeniem przy kolejnych znakach
+     * tego samego skanu. Domyślnie wyłączone; słuchacz wychodzi od razu, gdy
+     * opcja jest zgaszona.
      */
     const AutoLpn = {
         cooldownUntil: 0,
+        swallowEnterUntil: 0,
         init() {
             this.onInput = (e) => {
                 if (!store.userConfig.autoLpn) return;
                 const el = e.target;
                 if (!el || el.tagName !== 'INPUT' || !ToteWatch.isToteInput(el)) return;
-                const value = String(el.value || '').trim().toLowerCase();
+                const value = String(el.value || '').trim();
                 if (!value) return;
                 const now = Date.now();
                 if (now < this.cooldownUntil) return;
+                if (CONFIG.AUTO_LPN_TOTE_PREFIXES.includes(value[0].toLowerCase())) {
+                    this.cooldownUntil = now + CONFIG.AUTO_LPN_COOLDOWN_MS;
+                    return;
+                }
+                // LPN jeszcze się wpisuje — czekamy na resztę znaków.
+                if (CONFIG.LPN_PARTIAL_REGEX.test(value)) return;
                 const btn = /** @type {HTMLButtonElement|null} */ (document.querySelector(`button[data-testid="${CONFIG.REASSIGN_LPN_BUTTON_TESTID}"]`));
                 if (!btn || btn.disabled || btn.offsetParent === null) return;
                 this.cooldownUntil = now + CONFIG.AUTO_LPN_COOLDOWN_MS;
-                if (CONFIG.AUTO_LPN_TOTE_PREFIXES.includes(value[0])) return;
+                if (CONFIG.LPN_VALUE_REGEX.test(value)) this.swallowEnterUntil = now + CONFIG.AUTO_LPN_SWALLOW_ENTER_MS;
+                Diag.event('auto-LPN', value);
                 btn.click();
             };
+            this.onKeyDown = (e) => {
+                if (e.key !== 'Enter' || Date.now() > this.swallowEnterUntil) return;
+                this.swallowEnterUntil = 0;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            };
             document.addEventListener('input', this.onInput, true);
+            document.addEventListener('keydown', this.onKeyDown, true);
         },
     };
 
