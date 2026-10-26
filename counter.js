@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.7.6
+// @version      1.7.7
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.7.6',
+        SCRIPT_VERSION: '1.7.7',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -380,11 +380,12 @@ const PAID_SHIFT_HOURS = 10;
         DIAG_REFRESH_MS: 1000,
         // Pola, w które wchodzi LPN przedmiotu (most GRAVIS).
         LPN_INPUT_TESTIDS: ['lpn-input-label', 'package-input', 'wd-item-scan-label'],
-        // LPN: „LPN”, dwie litery, dziewięć cyfr (LPNAA123456789). Bez rozróżniania
-        // wielkości liter — litery bywają też małe (Aa) i to inna etykieta.
-        LPN_VALUE_REGEX: /^lpn[a-z]{2}\d{9}$/i,
+        // LPN: „LPN” i jedenaście liter albo cyfr (LPNAA123456789, LPNRRHT5017105) —
+        // numery muszą być unikalne, więc po wyczerpaniu cyfr litery wchodzą
+        // dalej. Bez rozróżniania wielkości liter — małe litery to inna etykieta.
+        LPN_VALUE_REGEX: /^lpn[a-z0-9]{11}$/i,
         // Początek LPN, który jeszcze się wpisuje — skaner podaje znak po znaku.
-        LPN_PARTIAL_REGEX: /^l(?:p(?:n(?:[a-z]{1,2}|[a-z]{2}\d{1,8})?)?)?$/i,
+        LPN_PARTIAL_REGEX: /^l(?:p(?:n[a-z0-9]{0,10})?)?$/i,
         // Pole skanu przedmiotu, pod którym pokazuje się ASIN z GRAVIS.
         ITEM_SCAN_INPUT_TESTID: 'item-scan-input',
         ASIN_VALUE_REGEX: /^[A-Z0-9]{10}$/,

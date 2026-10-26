@@ -9,6 +9,17 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.7.7 — 2026-10-26
+
+> **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`.
+
+### Naprawiono — wzorzec LPN
+
+- **LPN to `LPN` i jedenaście liter albo cyfr**, a nie dwie litery i dziewięć cyfr. Numery LPN muszą być unikalne, więc po wyczerpaniu cyfr litery wchodzą dalej — np. `LPNRRHT5017105`. Wzorzec z 1.7.6 takiej etykiety nie uznawał: Auto-LPN czekał na „resztę LPN”, która nie nadchodziła, i przycisk nie szedł; most GRAVIS jej nie wysyłał. Wielkość liter dalej bez znaczenia, Auto-LPN dalej czeka do ostatniego (czternastego) znaku i połyka Enter skanera.
+- Testy: `LPNRRHT5017105`, same cyfry po `LPN`, 13 i 15 znaków, znak spoza liter i cyfr.
+
+---
+
 ## 1.7.6 — 2026-10-26
 
 > Zmiana tylko w repozytorium, skrypt bez zmian: CI sprawdza build i testy wyłącznie na Node 24 (Linux, Windows, macOS), `engines` w `package.json` to `>=24`. Node 20 jest po końcu wsparcia, a skrypt działa w przeglądarce — Node służy tylko narzędziom repozytorium.

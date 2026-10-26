@@ -5,7 +5,7 @@ Ten plik jest napisany dla agenta, który przejmie pracę **na maszynie z dział
 
 Zacznij od przeczytania [`CLAUDE.md`](CLAUDE.md) — tam są zasady projektu.
 
-> **Stan na 26.10.2026:** ostatnie wydanie to **1.7.5**, gałąź `release` wskazuje na nie. Następne — **1.7.6** (PATCH: Auto-LPN czeka na cały LPN) — czeka na wydanie. Prefiks
+> **Stan na 26.10.2026:** ostatnie wydanie to **1.7.6**, gałąź `release` wskazuje na nie. Następne — **1.7.7** (PATCH: wzorzec LPN — „LPN” i 11 liter albo cyfr) — czeka na wydanie. Prefiks
 > magazynu `statsHelper_v1_7_0_` — zasada: niesie MAJOR i MINOR (CLAUDE.md, §4). Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
 > zakładki — adres wydania wpisuje się przy pierwszym wydaniu na docelowym
 > serwerze. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń

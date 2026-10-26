@@ -391,7 +391,7 @@ test('LPN bez rozróżniania wielkości liter: Aa, aa, lpn — każde to LPN', (
     const env = make();
     env.SH.store.userConfig.autoLpn = true;
     const p = autoLpnPage(env);
-    for (const lpn of ['LPNAa123456789', 'lpnaa000000000', 'LpNzZ999999999']) {
+    for (const lpn of ['LPNAa123456789', 'lpnaa000000000', 'LpNzZ999999999', 'LPNRRHT5017105']) {
         env.clock.set(env.clock.now() + env.SH.CONFIG.AUTO_LPN_COOLDOWN_MS + 1);
         const before = p.clicks();
         scanInto(p, lpn);
@@ -403,8 +403,9 @@ test('wzorzec LPN: granice długości i miejsca liter oraz cyfr', () => {
     const re = make().SH.CONFIG.LPN_VALUE_REGEX;
     const cases = {
         'LPNAA123456789': true, 'lpnaa123456789': true,
-        'LPNAA12345678': false, 'LPNAA1234567890': false, 'LPNA1123456789': false,
-        'LPN12123456789': false, 'XPNAA123456789': false, ' LPNAA123456789': false, '': false,
+        'LPNRRHT5017105': true, 'LPN12345678901': true, 'lpnrrht5017105': true,
+        'LPNAA12345678': false, 'LPNAA1234567890': false, 'LPNAA12345678-': false,
+        'XPNAA123456789': false, ' LPNAA123456789': false, 'LPN': false, '': false,
     };
     for (const [v, want] of Object.entries(cases)) eq(re.test(v), want, JSON.stringify(v));
 });
