@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.7.6** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.7.7** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -141,7 +141,7 @@ Zasady, gdy generator odmawia („Invalid code page or invalid characters”):
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.7.6/counter.js`.
+`…/counter/v1.7.7/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -695,8 +695,8 @@ w sekcji „Cel i pomoce stanowiska”.
 - **UG: przedmiot podwójny** — naklejka albo fraza o odsprzedaży ze sprzedażą
   daje +2 (tabela w rozdziale „Co robi domyślnie”).
 - **Auto-LPN** — wciska „Przypisz ponownie LPN”, gdy w pole pojemnika trafi
-  etykieta zamiast pojemnika. LPN (`LPN` + dwie litery + dziewięć cyfr, np.
-  `LPNAA123456789`, wielkość liter bez znaczenia) czeka do ostatniej cyfry:
+  etykieta zamiast pojemnika. LPN (`LPN` + jedenaście liter albo cyfr, np.
+  `LPNAA123456789`, `LPNRRHT5017105`, wielkość liter bez znaczenia) czeka do ostatniej cyfry:
   przycisk idzie dopiero po całym skanie, a Enter skanera nie trafia w nowe
   pole — nie trzeba skanować drugi raz. Inna etykieta — przycisk od razu.
 - **ASIN z GRAVIS** (tylko CRET i UG, domyślnie włączone). Przycisk „Otwórz
@@ -1142,7 +1142,7 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1–1.7.6 zostają przy nim, 1.8.0
+Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1–1.7.7 zostają przy nim, 1.8.0
 dostanie `statsHelper_v1_8_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 
