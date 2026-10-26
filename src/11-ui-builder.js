@@ -1,6 +1,6 @@
     const UIBuilder = {
         row(labelStr, ...controls) {
-            return h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '10px', flexWrap: 'nowrap' } },
+            return h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', rowGap: '6px' } },
                 labelStr ? h('label', { textContent: labelStr + ':', style: { minWidth: '150px', fontWeight: '500', marginRight: '10px' } }) : null,
                 h('div', { style: { display: 'flex', alignItems: 'center', flexGrow: '1', gap: '8px' } }, ...controls)
             );
@@ -36,7 +36,7 @@
         button(text, onClick, cssOverrides = {}) {
             return h('button', {
                 textContent: text, onClick,
-                style: { padding: '6px 12px', background: CONFIG.SETTINGS_PANEL_ACCENT_COLOR, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', ...cssOverrides }
+                style: { padding: '8px 14px', background: CONFIG.SETTINGS_PANEL_ACCENT_COLOR, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', ...cssOverrides }
             });
         },
         select(options, value, onChange) {
@@ -45,8 +45,8 @@
             return sel;
         },
         checkbox(label, checked, onChange) {
-            const chk = h('input', { type: 'checkbox', checked, onChange: (e) => onChange(e.target.checked), style: { transform: 'scale(1.2)', marginRight: '8px', cursor: 'pointer' } });
-            return h('label', { style: { display: 'flex', alignItems: 'center', cursor: 'pointer', flexGrow: '1' } }, chk, h('span', { textContent: label }));
+            const chk = h('input', { type: 'checkbox', checked, onChange: (e) => onChange(e.target.checked), style: { marginRight: '10px', cursor: 'pointer' } });
+            return h('label', { style: { display: 'flex', alignItems: 'center', cursor: 'pointer', flexGrow: '1', padding: '4px 0' } }, chk, h('span', { textContent: label }));
         },
         /**
          * Pole liczby nieujemnej. Pusty tekst nie jest zerem — jedno Backspace
@@ -54,9 +54,23 @@
          * Zero trzeba wpisać świadomie.
          */
         numberInput(val, onChange) {
-            return h('input', { type: 'number', min: 0, value: val, onChange: (e) => {
-                const n = parseInt(e.target.value, 10);
+            return this.live(h('input', { type: 'number', min: 0, value: val, inputMode: 'numeric',
+                style: { width: '100px', textAlign: 'right' } }), (text) => {
+                const n = parseInt(text, 10);
                 if (Number.isFinite(n)) onChange(Math.max(0, n));
-            }, style: { width: '80px', padding: '4px', textAlign: 'right' }});
-        }
+            });
+        },
+        /**
+         * Pole, które zapisuje się samo: po PANEL_INPUT_DELAY_MS bez pisania
+         * i od razu przy wyjściu z pola (zdarzenie change). Enter nie jest
+         * potrzebny — na ekranie dotykowym często nie ma go pod ręką.
+         * `commit` dostaje tekst pola i musi znosić powtórzenie tej samej
+         * wartości: po zapisie z opóźnienia wyjście z pola woła go jeszcze raz.
+         */
+        live(input, commit) {
+            const later = Utils.debounce(() => commit(input.value), CONFIG.PANEL_INPUT_DELAY_MS);
+            input.addEventListener('input', () => later());
+            input.addEventListener('change', () => { later.cancel(); commit(input.value); });
+            return input;
+        },
     };

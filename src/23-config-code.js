@@ -190,6 +190,7 @@
             { id: 0x030d, root: 'user', path: 'cretProfile', type: 'enum', list: 'cretProfile' },
             { id: 0x030f, root: 'user', path: 'autoLpn', type: 'bool' },
             { id: 0x0310, root: 'user', path: 'gravisAsin', type: 'bool' },
+            { id: 0x0311, root: 'user', path: 'customTarget', type: 'u16', min: 0, max: CONFIG.CUSTOM_TARGET_MAX },
         ],
 
         // ---------------- pomocnicze ----------------

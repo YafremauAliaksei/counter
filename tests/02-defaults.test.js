@@ -70,16 +70,17 @@ test('każda linia z LINE_KEYS ma swoją konfigurację i element w DOM', () => {
 
 describe('Położenie i styl okna');
 
-test('okno stoi w lewym dolnym rogu: 20 px od lewej, 8 px od dołu', () => {
+test('okno stoi w lewym dolnym rogu: 20 px od lewej, przy samym dole ekranu', () => {
+    // Zero od dołu — decyzja autora: okno ma nie zabierać pasa nad krawędzią.
     const pos = env.SH.DEFAULT_LOCAL_CONFIG.statsWindowPosition;
     eq(pos.left, '20px');
-    eq(pos.bottom, '8px');
+    eq(pos.bottom, '0px');
     eq(pos.top, '');
 
     const el = env.el('statsWindow');
     ok(el, 'okno statystyk musi być w DOM');
     eq(el.style.left, '20px');
-    eq(el.style.bottom, '8px');
+    eq(el.style.bottom, '0px');
     eq(el.style.top, 'auto');
 });
 
@@ -94,7 +95,7 @@ test('applyPosition przełącza się na górną krawędź, gdy podano top', () =
     env.SH.store.localTabConfig.statsWindowPosition =
         env.SH.Utils.clone(env.SH.DEFAULT_LOCAL_CONFIG.statsWindowPosition);
     env.SH.StatsWindowRenderer.applyPosition();
-    eq(el.style.bottom, '8px');
+    eq(el.style.bottom, '0px');
 });
 
 describe('Wersja, magazyn i hasło');
@@ -117,7 +118,7 @@ const PREFIX_HISTORY = [
     'statsHelper_v8_0_0_', 'statsHelper_v8_1_0_', 'statsHelper_v8_2_0_', 'statsHelper_v8_3_0_',
     'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_', 'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_',
     'statsHelper_v9_2_0_', 'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
-    'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_',
+    'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_', 'statsHelper_v1_8_0_',
 ];
 
 test('prefiks niesie MAJOR i MINOR z package.json, a PATCH go nie rusza', () => {

@@ -74,7 +74,7 @@
                 this.el.style.bottom = 'auto';
             } else {
                 this.el.style.top = 'auto';
-                this.el.style.bottom = pos.bottom || '8px';
+                this.el.style.bottom = pos.bottom || '0px';
             }
         },
 
@@ -162,9 +162,10 @@
          *
          *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
          *
-         *   - tempo BIEŻĄCEGO zadania z celu działu — zadania istnieją właśnie
-         *     po to, żeby procesy o różnych normach nie mieszały się w jedną
-         *     średnią; tempo całej zmiany jest w panelu i w linii 1;
+         *   - tempo BIEŻĄCEGO zadania z celu — zadania istnieją właśnie po to,
+         *     żeby procesy o różnych normach nie mieszały się w jedną średnią;
+         *     liczą się paczki kart, które to zadanie liczy (countedRate); tempo
+         *     całej zmiany jest w panelu i w linii 1;
          *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
          *     (cel × płatne godziny); czas zmiany sprzed pierwszego zadania
          *     dolicza się według celu i liczba dostaje „≈”;
@@ -179,7 +180,7 @@
             const task = TaskManager.active() || store.tasks[store.tasks.length - 1];
             const target = ToteWatch.targetFor(store.currentTabType);
             const of = I18n.get('statsOf');
-            const rate = (task ? TaskManager.rate(task) : 0).toFixed(1);
+            const rate = (task ? TaskManager.countedRate(task) : 0).toFixed(1);
             // Czas zmiany sprzed pierwszego zadania liczy się po celu działu
             // i paczki są wtedy przybliżone (≈).
             const assumed = target ? Math.round(target * TaskManager.untrackedWorkedMs() / 3600000) : 0;
@@ -366,6 +367,8 @@
              *
              *     fast_process 12 34.3/h 58% 21m 00s
              *
+             * Paczki z kart, których to zadanie nie liczy do tempa, idą po
+             * plusie: `fast 110+90 110.0/h …` — zrobione, ale bez wpływu na tempo.
              * Zatrzymane zadanie dostaje na końcu znak pauzy — inaczej stojące
              * tempo wyglądałoby jak zepsuty licznik.
              */
@@ -391,11 +394,12 @@
             if (!task) {
                 this.lines.line8_taskInfo.textContent = '';
             } else {
-                const t = TaskManager.totals(task);
-                const rate = TaskManager.rate(task);
+                // Tempo jak w linii 7 (karty liczone do zadania); paczki
+                // z pozostałych kart po „+”.
+                const rate = TaskManager.countedRate(task);
                 const paused = TaskManager.isRunning(task) ? '' : ' ' + I18n.get('taskPausedMark');
                 this.lines.line8_taskInfo.textContent =
-                    `${task.name} ${t.done} ${rate.toFixed(1)}${I18n.get('statsPerHourUnit')} `
+                    `${task.name} ${TaskManager.packsText(task)} ${rate.toFixed(1)}${I18n.get('statsPerHourUnit')} `
                     + `${TaskManager.percent(task)}% ${Utils.formatDuration(TaskManager.workedMs(task))}${paused}`;
             }
         }

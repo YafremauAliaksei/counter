@@ -56,10 +56,14 @@
         byId(id) { return store.tasks.find(t => t.id === id) || null; },
         /** Aktywne zadanie albo null, gdy trwa pauza. */
         active() { return this.byId(store.activeTaskId); },
-        /** Czy zegar zadania chodzi (ostatni odcinek jest otwarty). */
+        /**
+         * Czy zegar zadania chodzi: ostatni odcinek jest otwarty albo jego
+         * koniec wpisano naprzód i jeszcze nie nadszedł. Po tej godzinie
+         * zadanie staje samo, jak po pauzie.
+         */
         isRunning(task) {
             const last = task && task.segments[task.segments.length - 1];
-            return !!(last && last.to === null);
+            return !!(last && (last.to === null || last.to > Date.now()));
         },
 
         /**
@@ -100,7 +104,7 @@
         _removed: {},
         _activeAt: 0,
         _lastActive: null,
-        _signature: (t) => JSON.stringify([t.name, t.segments]),
+        _signature: (t) => JSON.stringify([t.name, t.segments, t.excludedTabs || []]),
         _stamp(list) {
             const now = Date.now();
             const alive = new Set();
@@ -190,10 +194,14 @@
         create(name, startMs) {
             const from = this.clampStart(startMs);
             this.closeActive(from);
+            // Nowe zadanie liczy do tempa wszystkie karty; co pominąć, mówi
+            // człowiek w nim samym — wybór poprzedniego procesu tu nie
+            // przechodzi, bo proces jest inny.
             const task = {
                 id: Utils.generateId('task_'),
                 name: this.cleanName(name),
                 segments: [{ from, to: null }],
+                excludedTabs: [],
             };
             const list = store.tasks.slice();
             list.push(task);
@@ -273,7 +281,11 @@
             const asked = Number(ms);
             // Tekst, zero i liczby ujemne nie są chwilą (0 to 1 stycznia 1970).
             if (!task || !Number.isFinite(asked) || asked <= 0) return;
-            const wanted = Math.min(Math.max(asked, this.previousEnd(task)), Date.now());
+            // Naprzód tylko zadanie aktywne i tylko o TASK_START_AHEAD_MS;
+            // dalsza przyszłość to pomyłka w godzinie i przycina się do teraz.
+            const now = Date.now();
+            const ahead = task.id === store.activeTaskId ? CONFIG.TASK_START_AHEAD_MS : 0;
+            const wanted = Math.max(asked > now + ahead ? now : asked, this.previousEnd(task));
             const first = task.segments[0];
             if (wanted <= first.from) {
                 first.from = wanted;
@@ -317,9 +329,14 @@
          * chodzi dalej; wolno to tylko zadaniu aktywnemu. Obiad odejmuje
          * workedMs, jak przy każdym odcinku.
          *
-         * Odrzucane (null): zły zapis, odcinek w przyszłości, odcinki
-         * nachodzące na siebie albo na odcinki innych zadań — ten sam czas
-         * liczyłby się dwa razy.
+         * Przyszłość wolno wpisać tylko w ostatnim odcinku aktywnego zadania:
+         * początek najwyżej TASK_START_AHEAD_MS naprzód („18:30-” o 18:25),
+         * koniec najwyżej TASK_END_AHEAD_MS („18:30-22:00” o 21:39 — zegar
+         * stanie sam o 22:00).
+         *
+         * Odrzucane (null): zły zapis, przyszłość poza tymi granicami albo
+         * w innym miejscu, odcinki nachodzące na siebie albo na odcinki innych
+         * zadań — ten sam czas liczyłby się dwa razy.
          *
          * @returns {{from: number, to: number|null}[]|null}
          */
@@ -340,11 +357,15 @@
                 if (!m || +m[1] > 23 || +m[2] > 59 || (m[3] !== undefined && (+m[3] > 23 || +m[4] > 59))) return null;
                 const from = at(+m[1], +m[2], anchor);
                 const to = m[3] === undefined ? null : at(+m[3], +m[4], from + 60000);
-                if (to === null && (i !== items.length - 1 || store.activeTaskId !== id)) return null;
-                if (from > now || (to !== null && to > now)) return null;
+                if (from > now + CONFIG.TASK_START_AHEAD_MS) return null;
+                if (to !== null && to > now + CONFIG.TASK_END_AHEAD_MS) return null;
                 out.push({ from, to });
             }
             out.sort((a, b) => a.from - b.from);
+            // Otwarty koniec i przyszłość: tylko ostatni odcinek aktywnego zadania.
+            const lastSeg = out[out.length - 1];
+            const isLater = (seg) => seg.to === null || seg.to > now || seg.from > now;
+            if (out.some(seg => isLater(seg) && (seg !== lastSeg || store.activeTaskId !== id))) return null;
             const end = (seg) => (seg.to === null ? now : seg.to);
             for (let i = 1; i < out.length; i++) if (out[i].from < end(out[i - 1])) return null;
             for (const other of store.tasks) {
@@ -419,7 +440,9 @@
             let total = 0;
             for (const seg of task.segments) {
                 const from = Math.max(seg.from, floor);
-                const to = seg.to === null ? now : seg.to;
+                // Koniec wpisany naprzód liczy się do teraz, a początek
+                // w przyszłości nie daje jeszcze ani minuty.
+                const to = seg.to === null ? now : Math.min(seg.to, now);
                 if (to <= from) continue;
                 total += (to - from) - ShiftManager.lunchOverlapMs(from, to);
             }
@@ -644,6 +667,56 @@
             return this.totals(task).done / (worked / 3600000);
         },
 
+        // ---------------- karty liczone do tempa zadania ----------------
+        /**
+         * KARTY LICZONE DO TEMPA — WYBÓR KAŻDEGO ZADANIA OSOBNO.
+         *
+         * Proces bywa liczony z części kart, choć człowiek obsługuje po drodze
+         * wszystkie: np. tempo z CRET i REFURB, a przedmioty w WHD robi, bo
+         * system je tam kieruje. Paczki WHD są zrobione (linia 8, panel, linia
+         * 1), ale tempa tego zadania nie podbijają.
+         *
+         * Wybór należy do zadania (`excludedTabs`), a nie do ustawień: zmiana
+         * w bieżącym procesie nie przelicza zadań wcześniejszych — zakończone
+         * zadanie zostaje ze swoim tempem, a wznowione wraca ze swoim wyborem.
+         * Paczki zadania leżą per karta (taskcnt_<id>_<karta>), więc wybór
+         * działa także wstecz w obrębie zadania: odznaczenie WHD w połowie
+         * procesu zdejmuje z tempa wszystkie jego paczki WHD.
+         */
+        countsFor(task, tabKey) {
+            return !(task && Array.isArray(task.excludedTabs) && task.excludedTabs.includes(tabKey));
+        },
+        setCounted(id, tabKey, counted) {
+            const task = this.byId(id);
+            if (!task || typeof tabKey !== 'string') return;
+            const rest = (Array.isArray(task.excludedTabs) ? task.excludedTabs : []).filter(k => k !== tabKey);
+            task.excludedTabs = counted ? rest : rest.concat(tabKey);
+            this._commit(store.tasks);
+        },
+        /** Paczki zadania z kart, które liczą się do jego tempa. */
+        countedDone(task) {
+            const byTab = (task && store.taskCounters[task.id]) || {};
+            let done = 0;
+            for (const [tabKey, c] of Object.entries(byTab)) if (this.countsFor(task, tabKey)) done += c.done || 0;
+            return done;
+        },
+        /** Tempo zadania wobec celu: paczki kart liczonych przez jego czas. */
+        countedRate(task, nowMs) {
+            const worked = this.workedMs(task, nowMs);
+            if (worked < CONFIG.RATE_MIN_WORKED_MS) return 0;
+            return this.countedDone(task) / (worked / 3600000);
+        },
+        /**
+         * Paczki do pokazania: `110`, a gdy część kart nie liczy się do tempa —
+         * `110+90` (liczone + pozostałe). Zrobione widać, choć tempa nie
+         * podbija.
+         */
+        packsText(task) {
+            const counted = this.countedDone(task);
+            const other = this.totals(task).done - counted;
+            return other > 0 ? `${counted}+${other}` : String(counted);
+        },
+
         /** Procent sprzedaży zadania: paczki bez tych, których kierunku nie da się znać. */
         percent(task) {
             const t = this.totals(task);
@@ -754,9 +827,12 @@
          */
         setRate(task, rate, tabKey, nowMs) {
             if (!task) return null;
+            // Tempo to tempo z kart liczonych; paczki dopisane na karcie, która
+            // się nie liczy, tempa by nie ruszyły.
+            if (!this.countsFor(task, tabKey)) return null;
             const target = this.doneForRate(task, rate, nowMs);
             if (target === null) return null;
-            this._applyDelta(task, tabKey, target - this.totals(task).done);
+            this._applyDelta(task, tabKey, target - this.countedDone(task));
             return this.totals(task).done;
         },
 

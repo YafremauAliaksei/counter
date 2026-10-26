@@ -44,7 +44,7 @@
          * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
          * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_7_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_8_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -53,7 +53,7 @@
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
                              'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
-                             'statsHelper_v1_6_0_'],
+                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -69,7 +69,7 @@
         SETTINGS_PANEL_BACKGROUND_COLOR: 'rgba(245, 245, 245, 0.95)',
         SETTINGS_PANEL_TEXT_COLOR: '#141414',
         SETTINGS_PANEL_ACCENT_COLOR: '#141414',
-        SETTINGS_PANEL_INITIAL_WIDTH_PX: 450,
+        SETTINGS_PANEL_INITIAL_WIDTH_PX: 520,
         /**
          * Adres, spod którego zakładka pobiera skrypt. Z niego ConfigCode.link()
          * składa gotową zakładkę z kodem ustawień. Pusty adres znaczy „zakładki
@@ -175,6 +175,37 @@
          * procesu.
          */
         TASK_QUICK_OFFSETS_MIN: [0, 2, 5, 15, 30],
+        /**
+         * O ile zadanie aktywne może zaczynać się w przyszłości: człowiek
+         * siada o 18:25, a liczyć chce od 18:30. Dalej niż to — pomyłka
+         * w godzinie, a nie plan; taki początek przycina się do teraz.
+         */
+        TASK_START_AHEAD_MS: 30 * 60000,
+        /**
+         * O ile koniec ostatniego odcinka aktywnego zadania może leżeć
+         * w przyszłości („18:30-22:00” wpisane o 21:39): zegar zadania staje
+         * sam o tej godzinie. Granica to dłużej niż zmiana z zapasem.
+         */
+        TASK_END_AHEAD_MS: 12 * 3600000,
+        /**
+         * Najwyższy cel własny (sztuk na godzinę) wpisywany w panelu. Zero
+         * znaczy „brak celu własnego” — obowiązują cele z RATE_TARGETS.
+         */
+        CUSTOM_TARGET_MAX: 999,
+        /**
+         * Pole panelu zapisuje wartość samo po tylu milisekundach bez
+         * pisania — bez Enter; wyjście z pola zapisuje od razu. Krócej łapałoby
+         * liczbę w połowie wpisywania („1” zamiast „180”), a pole paczek
+         * przyjmuje każdą liczbę na stałe.
+         */
+        PANEL_INPUT_DELAY_MS: 1200,
+        /**
+         * Fokus odebrany polu panelu przez stronę wraca, jeśli w polu pisano
+         * w ciągu tylu milisekund — i najwyżej PANEL_FOCUS_GUARD_TRIES razy
+         * w takim oknie, żeby nie przeciągać się ze stroną bez końca.
+         */
+        PANEL_FOCUS_GUARD_MS: 3000,
+        PANEL_FOCUS_GUARD_TRIES: 3,
         SESSION_STORAGE_TAB_INSTANCE_ID_KEY: 'tabInstanceId',
         STORAGE_KEY_VALUE_LOG: 'valueLog',
 
@@ -543,6 +574,13 @@
         keyboardShortcuts: { INCREMENT: 'None', DECREMENT: 'None', TOGGLE_WINDOW: 'None' },
         // Który cel obowiązuje na karcie CRET: CRET albo FAST (ten sam adres).
         cretProfile: 'CRET',
+        /**
+         * Cel własny, sztuk na godzinę; 0 — wyłączony. Gdy jest ustawiony,
+         * zastępuje cel działu na każdej karcie: proces bez wpisu w
+         * RATE_TARGETS działa od pierwszej zmiany, bez nowego wydania. Które
+         * karty liczą się do tempa, mówią pola globalStatsContributionKnown.
+         */
+        customTarget: 0,
         autoLpn: false,
         /**
          * Most GRAVIS — domyślnie włączony (decyzja autora, CHANGELOG): karty
@@ -554,6 +592,11 @@
         triggerMutationDebounceMs: CONFIG.DEFAULT_TRIGGER_MUTATION_DEBOUNCE_MS,
         settingsPanelWidth: CONFIG.SETTINGS_PANEL_INITIAL_WIDTH_PX,
         customTabSettings: {},
+        /**
+         * Sekcje panelu ustawień otwarte (true) albo zwinięte (false) ręką
+         * człowieka. Brak wpisu — stan domyślny sekcji (PANEL_SECTIONS).
+         */
+        panelSections: {},
     };
 
     /**
@@ -611,7 +654,7 @@
          * „przyklejone do dołu” i wtedy liczy się `bottom`; po przeciągnięciu
          * do `top` trafia współrzędna (createDragger, applyPosition).
          */
-        statsWindowPosition: { top: '', left: '20px', bottom: '8px' },
+        statsWindowPosition: { top: '', left: '20px', bottom: '0px' },
         statsWindowBgColorHex: '#ffffff',
         statsWindowBgAlpha: 0,
         priceCard: {

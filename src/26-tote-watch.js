@@ -61,11 +61,15 @@
         },
 
         /**
-         * Cel działu (sztuk na godzinę) z RATE_TARGETS w nagłówku pliku.
-         * CRET i FAST dzielą kartę, więc o celu karty CRET decyduje panel.
-         * 0 — działu bez celu; spreparowany wpis (tekst, ujemny, NaN) też daje 0.
+         * Cel (sztuk na godzinę). Cel własny z panelu wygrywa na każdej karcie:
+         * nowy proces dostaje swoją normę bez wydania. Bez niego — cel działu
+         * z RATE_TARGETS w nagłówku pliku; CRET i FAST dzielą kartę, więc o celu
+         * karty CRET decyduje panel. 0 — brak celu; spreparowany wpis (tekst,
+         * ujemny, NaN) też daje 0.
          */
         targetFor(tabType) {
+            const own = Math.floor(Utils.clampNum(store.userConfig.customTarget, 0, CONFIG.CUSTOM_TARGET_MAX, 0));
+            if (own > 0) return own;
             const key = tabType === 'CRET' && store.userConfig.cretProfile === 'FAST' ? 'FAST' : tabType;
             const v = Number(CONFIG.RATE_TARGETS && CONFIG.RATE_TARGETS[key]);
             return Number.isFinite(v) && v > 0 ? v : 0;

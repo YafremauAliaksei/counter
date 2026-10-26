@@ -165,6 +165,11 @@ function makeEnv(opts = {}) {
             return null;
         }
         focus() { document.activeElement = this; }
+        /** W dokumencie, czyli pod body albo head — jak Node.isConnected. */
+        get isConnected() {
+            for (let c = this; c; c = c.parentElement) if (c === document.body || c === document.head) return true;
+            return false;
+        }
         contains(n) {
             for (let c = n; c; c = c.parentElement) if (c === this) return true;
             return false;
@@ -197,6 +202,8 @@ function makeEnv(opts = {}) {
         // tag[atrybut="wartość"] — pola i przyciski T-REX po data-testid.
         const attr = sel.match(/^(\w+)\[([\w-]+)="(.*)"\]$/);
         if (attr) return el.tagName === attr[1].toUpperCase() && el.getAttribute(attr[2]) === attr[3];
+        // Sama nazwa znacznika: „input”, „button” — panel zbiera tak swoje pola.
+        if (/^[a-z]+$/i.test(sel)) return el.tagName === sel.toUpperCase();
         return false;
     }
 

@@ -4,7 +4,7 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.7.7** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.8.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
 34.3 z 47 · 236 z 470 · 14% · 2m 41s
@@ -141,7 +141,7 @@ Zasady, gdy generator odmawia („Invalid code page or invalid characters”):
 
 Żeby przypiąć się do konkretnej wersji i nie dostawać następnych automatycznie,
 zamienić `release` na numer wersji z literą `v`:
-`…/counter/v1.7.7/counter.js`.
+`…/counter/v1.8.0/counter.js`.
 
 ### Wklejenie do konsoli
 
@@ -176,7 +176,7 @@ Hasło stoi w jednej linii na początku pliku i można je zmienić dowolnie.
 | Zapytań sieciowych po uruchomieniu | **0**                                             |
 | Linii w konsoli po uruchomieniu    | **0**                                             |
 | Widocznych elementów na ekranie    | jedna linia, 13 px, szara, alfa 50 %, i panel (¹) |
-| Położenie                          | lewy dolny róg, 20 px od lewej, 8 px od dołu      |
+| Położenie                          | lewy dolny róg, 20 px od lewej, przy samym dole   |
 | Co jest liczone                    | przedmioty ze **wszystkich** otwartych kart T-REX |
 
 (¹) Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora);
@@ -362,8 +362,20 @@ samego procesu. W panelu, w polu „Odcinki”, wpisuje się je po przecinku:
 
 Odcinek może przechodzić przez północ; obiad się nie liczy (odejmuje go ten sam
 rachunek co zawsze). Pusty koniec ostatniego odcinka znaczy „zegar chodzi
-dalej” — tylko dla bieżącego zadania. Zapis odrzucony (zły format, przyszłość,
-odcinki nachodzące na siebie albo na inne zadanie) niczego nie zmienia.
+dalej” — tylko dla bieżącego zadania.
+
+Ostatni odcinek bieżącego zadania może sięgać w przyszłość:
+
+- **początek do pół godziny naprzód** — o 18:25 wpisane `18:30-` liczy się od
+  18:30; do tej chwili zadanie ma zero minut;
+- **koniec do 12 godzin naprzód** — o 21:39 wpisane `18:30-22:00`: zegar chodzi
+  do 22:00 i staje sam, jak po pauzie. Paczka po 22:00 otwiera nowy odcinek od
+  tej paczki.
+
+Zapis odrzucony (zły format, przyszłość poza tymi granicami albo w innym
+odcinku czy innym zadaniu, odcinki nachodzące na siebie albo na inne zadanie)
+niczego nie zmienia. Pole przyjmuje poprawny zapis samo, w trakcie pisania;
+przycisk „Zapisz odcinki” mówi, że zapis jest błędny.
 
 ### Wznowienie zamiast drugiego zadania o tej samej nazwie
 
@@ -437,9 +449,9 @@ pół paczki na godzinę.
 
 ### W panelu ustawień
 
-Sekcja **Zadania** stoi na samej górze panelu, razem z licznikami działów — to
-jedyne miejsce otwierane _w trakcie_ pracy, reszta panelu to ustawienia, do
-których przez całą zmianę się nie wraca.
+Sekcja **Zadania** stoi na górze panelu, pod przerwą i celem, razem
+z licznikami działów — to miejsce otwierane _w trakcie_ pracy, reszta panelu to
+ustawienia, do których przez całą zmianę się nie wraca.
 
 | Co                       | Jak                                                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -454,7 +466,8 @@ Skróty w minutach wstecz, a nie listy godzin i minut, biorą się z tego, jak t
 wygląda na hali: o nowym procesie człowiek wie z wyprzedzeniem, zbiera narzędzia
 i siada do skryptu kilka minut po faktycznym starcie. Godzina późniejsza niż
 bieżąca znaczy „wczoraj” — na nocnej zmianie o 00:40 wpisane `23:30` to pół
-godziny temu.
+godziny temu. Wyjątek: do pół godziny naprzód to dziś — o 18:25 wpisane
+`18:30` zostaje 18:30 (zadanie zaczyna się razem ze zmianą).
 
 **Paczki i tempo to dwa pola opisujące to samo.** Kto pamięta „zrobiłem 259
 paczek”, wpisuje paczki; kto pamięta „miałem jakieś 29,5”, wpisuje tempo —
@@ -679,6 +692,25 @@ w sekcji „Cel i pomoce stanowiska”.
   `PAID_SHIFT_HOURS`). Cel zmiany to cel × 10 płatnych godzin — obiad jest
   niepłatny, więc przy celu 30 jest to 300 sztuk. Karta CRET służy też FAST,
   dlatego jej cel (CRET 47 albo FAST 80) wybiera się w panelu.
+- **Cel własny** — pole „Cel własny, szt./h” w tej sekcji. Liczba tam
+  wpisana (np. 65 dla nowego procesu) zastępuje cel działu na **każdej**
+  karcie: linia 7, linia 10 i czas od pojemnika liczą się od niej. Nowy proces
+  działa od pierwszej zmiany, bez czekania na wydanie. Puste pole albo 0 — cele
+  wbudowane. Wartość 1–999, wspólna dla kart, jedzie w kodzie ustawień.
+- **Do tempa zadania liczą się** — zaraz pod celem własnym: CRET, UG, REFURB,
+  WHD, OTHER. **Wybór należy do bieżącego zadania**, nie do całej zmiany.
+  Przykład: zadanie „stare” — godzina, CRET 20, WHD 10, REFURB 3, wszystko
+  liczone: tempo 33. Przełączenie na zadanie „nowe”, w którym liczy się tylko
+  CRET i REFURB, a WHD człowiek robi, bo system go tam kieruje: w nowym
+  zadaniu odznacza się WHD. Po godzinie CRET 100, WHD 90, REFURB 10 — linia 7
+  pokazuje tempo **110**, linia 8 `nowe 110+90 110.0/h …` (90 z WHD zrobione,
+  ale bez wpływu na tempo). Zadanie „stare” zostaje z tempem 33 — wybór w nowym
+  zadaniu go nie dotyka, a wznowione stare wraca ze swoim wyborem. Nowe zadanie
+  zaczyna zawsze z wszystkimi kartami zaznaczonymi. Wybór działa na wszystkie
+  paczki zadania, także zrobione przed odznaczeniem. Pole „Tempo” w zadaniach
+  pokazuje to samo tempo co linia 7.
+- Sumy zmiany (linie 2, 10 i paczki zmiany w linii 7) dalej idą po polach
+  „Statystyki globalne” — to osobny wybór, dla całej zmiany.
 - **Czas od pojemnika** — na końcu linii 7, a osobno w linii 9 (wyłączona). Po
   podwójnym czasie przedmiotu z celu (REFURB: 2 min na przedmiot, więc po
   4 min) robi się czerwona i dopisuje bezczynność: `7m 00s +3m 00s`. Pojemnik
@@ -745,20 +777,39 @@ je powtarzają: ten rozdział README (linia z listą i hasła w zdaniu wyżej) i
 w `src/99-footer.js` — test pilnuje, żeby się zgadzały. W kopii samego `counter.js`
 (bez repozytorium i testów) wystarczy poprawić linię z listą na górze pliku.
 
-| Sekcja                  | Co się ustawia                                                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Zadania**             | **bieżący proces pracy: nazwa, początek, paczki, tempo, pauza, historia zmiany — patrz rozdział „Zadania”**        |
-| **Statystyki globalne** | **które działy wchodzą do sumy i ręczne wpisanie licznika każdego z nich**                                         |
-| Ogólne                  | język (pl/uk/ru/en), pełny reset danych, reset samych liczników                                                    |
-| Pomoce wizualne         | kolorowa nakładka na stronę, duży napis z nazwą działu                                                             |
-| Stylizacja okna         | tło okna, czcionka, **wszystkie dziesięć linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji               |
-| Skróty klawiszowe       | klawisze `+1` i `−1`                                                                                               |
-| Auto-inkrementacja      | odstęp skanowania strony (50–200 ms)                                                                               |
-| **Moduł cen**           | **główny wyłącznik sieci**                                                                                         |
-| Karta ceny              | sklep, źródło ceny, co pokazać, klikalność kodu, kolor tekstu, krój, rozmiary, tło — _tylko przy włączonym module_ |
-| Dziennik wartości       | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_                  |
-| Wybór przerwy           | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
-| Kod ustawień            | kod bieżących ustawień, gotowa zakładka z nim i pole na cudzy kod — patrz niżej                                    |
+Sekcje w kolejności, w jakiej stoją w panelu (ułożył je autor na makiecie):
+
+| Sekcja                      | Co się ustawia                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Wybór przerwy               | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
+| **Cel i pomoce stanowiska** | **cel własny, karty liczone do tempa, cel karty CRET, diagnostyka, Auto-LPN, GRAVIS**                              |
+| **Zadania**                 | **bieżący proces pracy: nazwa, początek, paczki, tempo, pauza, historia zmiany — patrz rozdział „Zadania”**        |
+| **Statystyki globalne**     | **które działy wchodzą do sumy i ręczne wpisanie licznika każdego z nich**                                         |
+| Bieżąca karta               | nazwa i udział w sumie — _tylko na karcie nierozpoznanej_                                                          |
+| Pomoce wizualne             | kolorowa nakładka na stronę, duży napis z nazwą działu                                                             |
+| Stylizacja okna             | tło okna, czcionka, **wszystkie dziesięć linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji               |
+| Skróty klawiszowe           | klawisze `+1`, `−1` i ukrycia okna                                                                                 |
+| Auto-inkrementacja          | odstęp skanowania strony (50–200 ms)                                                                               |
+| **Moduł cen**               | **główny wyłącznik sieci**                                                                                         |
+| Karta ceny                  | sklep, źródło ceny, co pokazać, klikalność kodu, kolor tekstu, krój, rozmiary, tło — _tylko przy włączonym module_ |
+| Dziennik wartości           | czy prowadzić dziennik, podsumowania, kursy, eksport, czyszczenie — _tylko przy włączonym module_                  |
+| Kod ustawień                | kod bieżących ustawień, gotowa zakładka z nim i pole na cudzy kod — patrz niżej                                    |
+| Język                       | pl/uk/ru/en                                                                                                        |
+| Ogólne                      | pełny reset danych, reset samych liczników                                                                         |
+
+**Każdą sekcję da się zwinąć** — klik w tytuł chowa ją pod jedną linię, drugi
+klik rozwija; panel pamięta wybór. Domyślnie zwinięta jest tylko „Stylizacja
+okna”, i to jak zwinięta kategoria kanałów: zostają na widoku ustawienia linii
+**włączonych** (domyślnie linia 7), reszta czeka pod tytułem z liczbą schowanych
+(`+12`). Włączenie linii 2 i 10 w rozwiniętej sekcji i zwinięcie jej z powrotem
+zostawia na widoku linie 2, 7 i 10.
+
+**Pod palec.** Panel ma 520 px szerokości (nie więcej niż ekran), pola
+i przyciski co najmniej 40–44 px wysokości, czcionka pól 16 px. Pola zapisują
+się same — 1,2 s po ostatnim znaku albo od razu po wyjściu z pola; Enter nie
+jest potrzebny. Przerysowanie panelu nie zabiera fokusu z pola, w którym się
+pisze, a jeśli stronie T-REX zdarzy się przejąć fokus z pola, w którym przed
+chwilą pisano, wraca on do pola (najwyżej trzy razy z rzędu).
 
 Język interfejsu domyślnie polski; na liście dalej ukraiński, rosyjski
 i angielski.
@@ -810,7 +861,7 @@ spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
 `Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
-javascript:(async()=>{try{window['statsHelper_v1_7_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper: '+e.message)}})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_8_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -1089,7 +1140,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 44 pliki, 680 sprawdzeń
+├── tests/                  ← 45 plików, 714 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1109,7 +1160,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 680 sprawdzeń
+npm test             # 714 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1142,8 +1193,8 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_7_0_`; wydania 1.7.1–1.7.7 zostają przy nim, 1.8.0
-dostanie `statsHelper_v1_8_0_`. Zakładki z kodem ustawień rozdane przy starszym
+Obecnie jest to `statsHelper_v1_8_0_` (od 1.8.0); wydania 1.8.x zostają przy nim,
+1.9.0 dostanie `statsHelper_v1_9_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 
 ---

@@ -95,7 +95,7 @@
    -----------------------------------------------------------------------------
    OKNO STATYSTYK  (store.localTabConfig)
    -----------------------------------------------------------------------------
-   statsWindowPosition = { top: '', left: '20px', bottom: '8px' }
+   statsWindowPosition = { top: '', left: '20px', bottom: '0px' }
        Domyślnie lewy dolny róg: 20 px od lewej, 8 px od dołu.
        Puste `top` = trzymaj się dołu (liczy się `bottom`).
        Żeby przykleić do góry: { top: '15px', left: '20px', bottom: '' }
@@ -140,16 +140,18 @@
                               | 'ScrollLock' | 'Pause' | 'Insert' | 'Numpad0'
                               | 'NumpadMultiply' | 'NumpadSubtract' | 'NumpadAdd' | 'F10'
    cretProfile = 'CRET'        'CRET' | 'FAST' — który cel z RATE_TARGETS obowiązuje na karcie CRET
+   customTarget = 0            0..999 — cel własny (sztuk/h) na każdej karcie; 0 = cele z RATE_TARGETS
    autoLpn = false             „Przypisz ponownie LPN”, gdy w pole pojemnika trafi etykieta
    gravisAsin = true           most GRAVIS: ASIN pod polem skanu (tylko CRET i UG); bez skryptu w GRAVIS nic nie widać
    triggerMutationDebounceMs = 50     50..200, jak często skanować stronę
-   settingsPanelWidth        = 450    szerokość panelu ustawień w px
+   settingsPanelWidth        = 520    szerokość panelu ustawień w px
+   panelSections = {}         które sekcje panelu człowiek rozwinął (true) albo zwinął (false)
 
    -----------------------------------------------------------------------------
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_7_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_8_0_'
        Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
        Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
        Zmiana prefiksu = start od zera
