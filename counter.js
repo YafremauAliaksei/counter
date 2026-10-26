@@ -3318,10 +3318,15 @@ const PAID_SHIFT_HOURS = 10;
                 h('h3', { textContent: title, style: { margin: '0 0 12px 0', fontSize: '1.15em', color: CONFIG.SETTINGS_PANEL_ACCENT_COLOR } })
             );
         },
+        /**
+         * Podpis pod kontrolką. Odstęp od góry dodatni: przycisk ma 44 px
+         * wysokości i nie ma dolnego marginesu, więc podpis przysunięty
+         * ujemnym marginesem wchodziłby mu na krawędź.
+         */
         hint(text) {
             return h('div', {
                 textContent: text,
-                style: { fontSize: '0.85em', color: '#666', margin: '-4px 0 10px 0', lineHeight: '1.35' },
+                style: { fontSize: '0.85em', color: '#666', margin: '6px 0 12px 0', lineHeight: '1.4' },
             });
         },
         slider(min, max, value, onChange, labelFormatter) {
@@ -3429,7 +3434,7 @@ const PAID_SHIFT_HOURS = 10;
         .sh-panel input[type=text], .sh-panel input[type=number], .sh-panel select {
             min-height: 40px; font-size: 16px; padding: 6px 8px; box-sizing: border-box;
         }
-        .sh-panel button { min-height: 44px; font-size: 15px; touch-action: manipulation; }
+        .sh-panel button { min-height: 44px; font-size: 15px; touch-action: manipulation; margin-bottom: 6px; }
         .sh-panel input[type=checkbox] { width: 22px; height: 22px; flex-shrink: 0; }
         .sh-panel input[type=range] { min-height: 32px; }
         .sh-panel label { min-height: 40px; color: inherit; }
@@ -3916,7 +3921,7 @@ const PAID_SHIFT_HOURS = 10;
                     store.userConfig.globalStatsContributionKnown[t.key] = v;
                     this.rerender();
                 }));
-                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':' }));
+                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':', style: { marginLeft: '32px', marginRight: '4px' } }));
                 // Różnicę bierze na siebie aktywne zadanie, razem z licznikiem
                 // „poza mianownikiem” — kierunku wpisanych paczek nikt nie zna,
                 // więc nie mają prawa ruszyć procentu sprzedaży.

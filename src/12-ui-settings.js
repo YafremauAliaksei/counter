@@ -43,7 +43,7 @@
         .sh-panel input[type=text], .sh-panel input[type=number], .sh-panel select {
             min-height: 40px; font-size: 16px; padding: 6px 8px; box-sizing: border-box;
         }
-        .sh-panel button { min-height: 44px; font-size: 15px; touch-action: manipulation; }
+        .sh-panel button { min-height: 44px; font-size: 15px; touch-action: manipulation; margin-bottom: 6px; }
         .sh-panel input[type=checkbox] { width: 22px; height: 22px; flex-shrink: 0; }
         .sh-panel input[type=range] { min-height: 32px; }
         .sh-panel label { min-height: 40px; color: inherit; }
@@ -530,7 +530,7 @@
                     store.userConfig.globalStatsContributionKnown[t.key] = v;
                     this.rerender();
                 }));
-                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':' }));
+                row.appendChild(h('span', { textContent: I18n.get('settings_manualCounterInputLabel') + ':', style: { marginLeft: '32px', marginRight: '4px' } }));
                 // Różnicę bierze na siebie aktywne zadanie, razem z licznikiem
                 // „poza mianownikiem” — kierunku wpisanych paczek nikt nie zna,
                 // więc nie mają prawa ruszyć procentu sprzedaży.

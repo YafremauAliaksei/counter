@@ -10,10 +10,15 @@
                 h('h3', { textContent: title, style: { margin: '0 0 12px 0', fontSize: '1.15em', color: CONFIG.SETTINGS_PANEL_ACCENT_COLOR } })
             );
         },
+        /**
+         * Podpis pod kontrolką. Odstęp od góry dodatni: przycisk ma 44 px
+         * wysokości i nie ma dolnego marginesu, więc podpis przysunięty
+         * ujemnym marginesem wchodziłby mu na krawędź.
+         */
         hint(text) {
             return h('div', {
                 textContent: text,
-                style: { fontSize: '0.85em', color: '#666', margin: '-4px 0 10px 0', lineHeight: '1.35' },
+                style: { fontSize: '0.85em', color: '#666', margin: '6px 0 12px 0', lineHeight: '1.4' },
             });
         },
         slider(min, max, value, onChange, labelFormatter) {
