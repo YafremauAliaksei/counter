@@ -175,7 +175,7 @@ Hasło stoi w jednej linii na początku pliku i można je zmienić dowolnie.
 | ---------------------------------- | ------------------------------------------------- |
 | Zapytań sieciowych po uruchomieniu | **0**                                             |
 | Linii w konsoli po uruchomieniu    | **0**                                             |
-| Widocznych elementów na ekranie    | jedna linia, 13 px, szara, alfa 50 %, i panel (¹) |
+| Widocznych elementów na ekranie    | jedna linia, 14 px, szara, alfa 50 %, i panel (¹) |
 | Położenie                          | lewy dolny róg, 20 px od lewej, przy samym dole   |
 | Co jest liczone                    | przedmioty ze **wszystkich** otwartych kart T-REX |
 
@@ -812,10 +812,12 @@ Sekcje w kolejności, w jakiej stoją w panelu (ułożył je autor na makiecie):
 | Diagnostyka                 | okno diagnostyki — zwinięte, na samym końcu                                                                        |
 
 **Każdą sekcję da się zwinąć** — klik w tytuł chowa ją pod jedną linię, drugi
-klik rozwija; panel pamięta wybór. Domyślnie zwinięta jest tylko „Stylizacja
-okna”, i to jak zwinięta kategoria kanałów: zostają na widoku ustawienia linii
-**włączonych** (domyślnie linia 7), reszta czeka pod tytułem z liczbą schowanych
-(`+12`). Włączenie linii 2 i 10 w rozwiniętej sekcji i zwinięcie jej z powrotem
+klik rozwija; panel pamięta wybór. Domyślnie rozwinięte są tylko: przerwa,
+cel i pomoce stanowiska, statystyki globalne, dziennik wartości, język i ogólne.
+„Stylizacja okna” jest zwinięta jak zwinięta kategoria kanałów: zostają na
+widoku ustawienia linii **włączonych** (domyślnie linia 7), przyciski
+przeciągania i resetu pozycji okna oraz podpowiedź, że reszta linii czeka pod
+tytułem z liczbą schowanych. Włączenie linii 2 i 10 w rozwiniętej sekcji i zwinięcie jej z powrotem
 zostawia na widoku linie 2, 7 i 10.
 
 **Pod palec.** Panel ma 520 px szerokości (nie więcej niż ekran), pola
@@ -1156,7 +1158,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 46 plików, 735 sprawdzeń
+├── tests/                  ← 46 plików, 736 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1176,7 +1178,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 735 sprawdzeń
+npm test             # 736 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)

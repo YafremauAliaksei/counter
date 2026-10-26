@@ -72,7 +72,7 @@
    line4_lunchInfo       wybrana przerwa                 domyślnie: OFF, #808080, 60%, 14px
    line5_realTimeClock   zegar                           domyślnie: OFF, #808080, 60%, 14px
    line6_valueSum        bilans pieniężny zmiany         domyślnie: OFF, #7CFFA8, 85%, 14px
-   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 13px
+   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 14px
    line8_taskInfo        bieżące zadanie                 domyślnie: OFF, #808080, 60%, 13px
    line9_offTask         czas od ostatniego pojemnika    domyślnie: OFF, #808080, 50%, 13px
    line10_target         cel działu i procent celu       domyślnie: OFF, #808080, 60%, 13px
@@ -118,7 +118,7 @@
    showGraph  = true          pokazywać obrazek wykresu (tylko przy source 'graph')
    graphMode  = 'legend'      'legend' (same ceny) | 'right' | 'full'
    width      = 280           170..900 px
-   fontSize   = 13            11..48 px (suwak w panelu)
+   fontSize   = 14            11..48 px (suwak w panelu)
    bgColorHex = '#0a0e18'     tło karty
    bgAlpha    = 0             0..100
    position   = { left: '14px', top: '' }   puste top = przy dole ekranu

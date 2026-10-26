@@ -24,6 +24,9 @@ Dla tego projektu SemVer czyta się tak:
 - **Każdą sekcję da się zwinąć** kliknięciem w tytuł; panel pamięta wybór (`panelSections`). Domyślnie zwinięta jest „Stylizacja okna” — jak zwinięta kategoria kanałów zostawia na widoku ustawienia linii włączonych (domyślnie 7), a tytuł mówi, ile schowano (`+12`).
 - **Pod palec:** panel 520 px (zamiast 450, nie szerszy niż ekran), pola i przyciski co najmniej 40–44 px, czcionka pól 16 px, większe pola wyboru.
 - **Mniej pustego miejsca:** podpis i pole w jednej linii (stała kolumna podpisu, pole bierze resztę), pole godziny początku zadania w wierszu skrótów, opis pola wyboru obok niego zamiast pod całym wierszem, mniejsze odstępy między sekcjami.
+- **Domyślnie zwinięte** (decyzja autora): Zadania, Ustawienia bieżącej karty, Pomoce wizualne, Skróty klawiszowe, Moduł cen, Karta ceny, Auto-inkrementacja, Kod ustawień, Diagnostyka. Rozwinięte: przerwa, cel i pomoce, statystyki globalne, dziennik wartości, język, ogólne.
+- **Zwinięta „Stylizacja okna”** pokazuje zawsze przyciski przeciągania i resetu pozycji okna oraz podpowiedź, że pozostałe linie są pod tytułem sekcji.
+- **Linia 7 i karta ceny: czcionka 14 px** zamiast 13 (decyzja autora; karta ma ten sam rozmiar co linia 7).
 - **Diagnostyka** przeniesiona z sekcji celu do osobnej sekcji na samym końcu panelu, domyślnie zwiniętej. Działa jak dotąd, także `SH.debug()`.
 - **Pola zapisują się bez Enter** — 1,2 s po ostatnim znaku albo od razu po wyjściu z pola: cel własny, nazwa i początek zadania, odcinki, paczki, tempo, liczniki działów.
 - **Fokus zostaje w polu.** Przerysowanie panelu po zapisie przywraca fokus, wpisany tekst i kursor. Gdy strona przejmie fokus z pola, w którym pisano w ostatnich 3 s, wraca on do pola — najwyżej trzy razy z rzędu, żeby nie przeciągać się z T-REX. Tab i klik obok to wybór człowieka.

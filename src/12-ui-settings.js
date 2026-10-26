@@ -3,18 +3,21 @@
      * na makiecie: na górze to, co zmienia się co zmianę (przerwa, cel,
      * zadania), na dole to, co ustawia się raz (język, reset).
      *
-     * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie. `keep` —
-     * zwinięta sekcja pokazuje dalej to, co jest włączone (jak kanały
+     * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie; zwinięte
+     * domyślnie jest to, czego nie ustawia się co zmianę (decyzja autora).
+     * `keep` — zwinięta sekcja pokazuje dalej to, co jest włączone (jak kanały
      * z nieprzeczytanym w zwiniętej kategorii): zwinięte okno statystyk
-     * zostawia na widoku ustawienia samych włączonych linii.
+     * zostawia na widoku ustawienia samych włączonych linii. Element
+     * z `data-sh-keep` widać zawsze, z `data-sh-collapsed-only` — tylko
+     * w sekcji zwiniętej (podpowiedź „rozwiń, żeby zobaczyć resztę”).
      */
     const PANEL_SECTIONS = [
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
-        { id: 'tasks', open: true },
+        { id: 'tasks', open: false },
         { id: 'global', open: true },
-        { id: 'current_tab', open: true },
-        { id: 'visual', open: true },
+        { id: 'current_tab', open: false },
+        { id: 'visual', open: false },
         {
             id: 'window', open: false,
             keep: (child) => {
@@ -23,12 +26,12 @@
                 return !!(cfg && cfg.visible);
             },
         },
-        { id: 'keys', open: true },
-        { id: 'auto', open: true },
-        { id: 'price_module', open: true },
-        { id: 'price_card', open: true },
+        { id: 'keys', open: false },
+        { id: 'auto', open: false },
+        { id: 'price_module', open: false },
+        { id: 'price_card', open: false },
         { id: 'value_log', open: true },
-        { id: 'code', open: true },
+        { id: 'code', open: false },
         { id: 'language', open: true },
         { id: 'general', open: true },
         // Diagnostyka na produkcji nie jest potrzebna: na samym końcu
@@ -144,7 +147,10 @@
                 const open = this.isOpen(def);
                 let hidden = 0;
                 content.forEach(child => {
-                    const show = open || (def.keep ? def.keep(child) : false);
+                    const data = child.dataset || {};
+                    const show = open
+                        ? !data.shCollapsedOnly
+                        : !!(data.shKeep || data.shCollapsedOnly || (def.keep && def.keep(child)));
                     // Własny `display` elementu (flex wiersza) zostaje: pusty
                     // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
                     if (child._shDisplay === undefined) child._shDisplay = child.style.display;
@@ -632,6 +638,11 @@
 
             // Stylizacja okna statystyk
             const secWin = UIBuilder.section(I18n.get('section_statsWindow'));
+            // Zwinięta sekcja pokazuje tylko linie włączone — trzeba powiedzieć,
+            // gdzie są pozostałe.
+            const moreLines = UIBuilder.hint(I18n.get('statsWindow_moreLinesHint'));
+            moreLines.dataset.shCollapsedOnly = '1';
+            secWin.appendChild(moreLines);
 
             secWin.appendChild(UIBuilder.row(I18n.get('windowBgSettings'), UIBuilder.colorPickerWithAlpha(
                 store.localTabConfig.statsWindowBgColorHex, store.localTabConfig.statsWindowBgAlpha,
@@ -701,12 +712,15 @@
                 ? { background: '#FFA500', color: '#141414', outline: '2px solid #141414', fontWeight: 'bold' }
                 : {};
 
-            secWin.appendChild(UIBuilder.button(dragBtnText, () => {
+            // Przeciąganie i reset pozycji okna widać zawsze, także w zwiniętej
+            // sekcji — okno przesuwa się częściej niż zmienia kolory.
+            const dragBtn = secWin.appendChild(UIBuilder.button(dragBtnText, () => {
                 store.uiFlags.isStatsWindowDragging = !store.uiFlags.isStatsWindowDragging;
                 this.rerender();
             }, { width: '100%', marginTop: '10px', transition: 'all 0.2s', ...dragBtnOverrides }));
+            dragBtn.dataset.shKeep = '1';
 
-            secWin.appendChild(UIBuilder.button(I18n.get('settings_resetWindowPositionButton'), () => {
+            const resetBtn = secWin.appendChild(UIBuilder.button(I18n.get('settings_resetWindowPositionButton'), () => {
                 store.localTabConfig.statsWindowPosition = Utils.clone(DEFAULT_LOCAL_CONFIG.statsWindowPosition);
                 // Pozycję nakłada renderer (applyPosition): okno bywa
                 // przyklejone do dołu, a ustawienie tu samych top/left
@@ -717,6 +731,7 @@
                 }
                 this.rerender();
             }, { width: '100%', marginTop: '5px' }));
+            resetBtn.dataset.shKeep = '1';
             put('window', secWin);
 
             // Skróty klawiszowe

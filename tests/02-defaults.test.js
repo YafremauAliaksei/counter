@@ -40,7 +40,7 @@ test('włączona jest tylko linia 7 — ona niesie też czas od pojemnika', () =
     eq(l7.visible, true, 'visible');
     eq(l7.colorHex, '#808080', 'kolor szary');
     eq(l7.alpha, 50, 'alfa 50%');
-    eq(l7.fontSize, 13, 'czcionka 13px');
+    eq(l7.fontSize, 14, 'czcionka 14px (decyzja autora)');
 
     const on = Object.keys(env.SH.DEFAULT_LINE_CONFIG)
         .filter(k => env.SH.DEFAULT_LINE_CONFIG[k].visible);

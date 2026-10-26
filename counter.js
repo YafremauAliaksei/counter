@@ -723,7 +723,7 @@ const PAID_SHIFT_HOURS = 10;
          * wszystkie karty), liczba zrobionych przedmiotów i procent sprzedaży,
          * np. `17.4 28 14%`. To te same liczby, co w linii 2.
          */
-        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 14 },
         /**
          * LINIA 8 — bieżące zadanie: nazwa i jego własne liczby (paczki,
          * tempo, procent, przepracowany czas). Linie 1, 2 i 7 pokazują całą
@@ -832,7 +832,7 @@ const PAID_SHIFT_HOURS = 10;
             // widać prawą część, a tam jest legenda z cenami.
             width: 280,
             // Rozmiar jak w linii 7 — karta ma wyglądać jak jedna szara linijka.
-            fontSize: 13,
+            fontSize: 14,
             /**
              * Kolor i przezroczystość wszystkich tekstów karty — jak w linii 7.
              * Kolor jest wyłącznie wyglądem, nie niesie stanu: stan (brak ceny,
@@ -999,6 +999,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Pressed one after the other outside a text field: the script clicks "Delete session" and "Continue", then types back the same LPN and workstation with Enter. Both are remembered from their fields.',
             clearSession_noLpn: 'No LPN remembered yet on this tab — scan the next item normally.',
             clearSession_noStation: 'No workstation remembered yet — type it in by hand once.',
+            statsWindow_moreLinesHint: 'Only the lines that are switched on are shown. Click the section title to see all ten lines.',
             workflow_customTarget: 'Own target, items/h',
             workflow_customTargetHint: 'A number here replaces the department target on every tab (e.g. 65 for a new process). Empty or 0 — built-in targets: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'Rate of task “${name}” counts',
@@ -1159,6 +1160,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Wciśnięte po sobie poza polem tekstowym: skrypt klika „Usuń sesję” i „Kontynuuj”, potem wpisuje z powrotem ten sam LPN i stację roboczą z Enterem. Oba zapamiętuje z ich pól.',
             clearSession_noLpn: 'Na tej karcie nie ma jeszcze zapamiętanego LPN — następny przedmiot zeskanuj zwyczajnie.',
             clearSession_noStation: 'Stacja robocza nie jest jeszcze zapamiętana — wpisz ją raz ręcznie.',
+            statsWindow_moreLinesHint: 'Widać tylko włączone linie. Kliknij tytuł sekcji, żeby zobaczyć wszystkie dziesięć.',
             workflow_customTarget: 'Cel własny, szt./h',
             workflow_customTargetHint: 'Liczba tutaj zastępuje cel działu na każdej karcie (np. 65 dla nowego procesu). Puste albo 0 — cele wbudowane: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'Do tempa zadania „${name}” liczą się',
@@ -1319,6 +1321,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Натиснуті одна за одною поза текстовим полем: скрипт натискає «Видалити сесію» і «Продовжити», потім вписує назад той самий LPN і робочу станцію з Enter. Обидва запам\'ятовує з їхніх полів.',
             clearSession_noLpn: 'На цій вкладці ще немає запам\'ятованого LPN — наступний предмет скануйте звичайно.',
             clearSession_noStation: 'Робочу станцію ще не запам\'ятовано — впишіть її один раз вручну.',
+            statsWindow_moreLinesHint: 'Видно лише ввімкнені рядки. Натисніть заголовок секції, щоб побачити всі десять.',
             workflow_customTarget: 'Власна ціль, шт/год',
             workflow_customTargetHint: 'Число тут замінює ціль відділу на кожній вкладці (напр. 65 для нового процесу). Порожньо або 0 — вбудовані цілі: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'У рейт завдання «${name}» ідуть',
@@ -1479,6 +1482,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Нажатые одна за другой вне текстового поля: скрипт нажимает «Удалить сессию» и «Продолжить», потом вписывает обратно тот же LPN и рабочую станцию с Enter. Оба запоминает из их полей.',
             clearSession_noLpn: 'На этой вкладке ещё нет запомненного LPN — следующий предмет сканируйте как обычно.',
             clearSession_noStation: 'Рабочая станция ещё не запомнена — впишите её один раз вручную.',
+            statsWindow_moreLinesHint: 'Видны только включённые строки. Нажмите заголовок секции, чтобы увидеть все десять.',
             workflow_customTarget: 'Свой таргет, шт/ч',
             workflow_customTargetHint: 'Число здесь заменяет цель отдела на всех вкладках (например, 65 для нового процесса). Пусто или 0 — встроенные цели: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'В рейт задачи «${name}» идут',
@@ -3445,18 +3449,21 @@ const PAID_SHIFT_HOURS = 10;
      * na makiecie: na górze to, co zmienia się co zmianę (przerwa, cel,
      * zadania), na dole to, co ustawia się raz (język, reset).
      *
-     * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie. `keep` —
-     * zwinięta sekcja pokazuje dalej to, co jest włączone (jak kanały
+     * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie; zwinięte
+     * domyślnie jest to, czego nie ustawia się co zmianę (decyzja autora).
+     * `keep` — zwinięta sekcja pokazuje dalej to, co jest włączone (jak kanały
      * z nieprzeczytanym w zwiniętej kategorii): zwinięte okno statystyk
-     * zostawia na widoku ustawienia samych włączonych linii.
+     * zostawia na widoku ustawienia samych włączonych linii. Element
+     * z `data-sh-keep` widać zawsze, z `data-sh-collapsed-only` — tylko
+     * w sekcji zwiniętej (podpowiedź „rozwiń, żeby zobaczyć resztę”).
      */
     const PANEL_SECTIONS = [
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
-        { id: 'tasks', open: true },
+        { id: 'tasks', open: false },
         { id: 'global', open: true },
-        { id: 'current_tab', open: true },
-        { id: 'visual', open: true },
+        { id: 'current_tab', open: false },
+        { id: 'visual', open: false },
         {
             id: 'window', open: false,
             keep: (child) => {
@@ -3465,12 +3472,12 @@ const PAID_SHIFT_HOURS = 10;
                 return !!(cfg && cfg.visible);
             },
         },
-        { id: 'keys', open: true },
-        { id: 'auto', open: true },
-        { id: 'price_module', open: true },
-        { id: 'price_card', open: true },
+        { id: 'keys', open: false },
+        { id: 'auto', open: false },
+        { id: 'price_module', open: false },
+        { id: 'price_card', open: false },
         { id: 'value_log', open: true },
-        { id: 'code', open: true },
+        { id: 'code', open: false },
         { id: 'language', open: true },
         { id: 'general', open: true },
         // Diagnostyka na produkcji nie jest potrzebna: na samym końcu
@@ -3586,7 +3593,10 @@ const PAID_SHIFT_HOURS = 10;
                 const open = this.isOpen(def);
                 let hidden = 0;
                 content.forEach(child => {
-                    const show = open || (def.keep ? def.keep(child) : false);
+                    const data = child.dataset || {};
+                    const show = open
+                        ? !data.shCollapsedOnly
+                        : !!(data.shKeep || data.shCollapsedOnly || (def.keep && def.keep(child)));
                     // Własny `display` elementu (flex wiersza) zostaje: pusty
                     // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
                     if (child._shDisplay === undefined) child._shDisplay = child.style.display;
@@ -4074,6 +4084,11 @@ const PAID_SHIFT_HOURS = 10;
 
             // Stylizacja okna statystyk
             const secWin = UIBuilder.section(I18n.get('section_statsWindow'));
+            // Zwinięta sekcja pokazuje tylko linie włączone — trzeba powiedzieć,
+            // gdzie są pozostałe.
+            const moreLines = UIBuilder.hint(I18n.get('statsWindow_moreLinesHint'));
+            moreLines.dataset.shCollapsedOnly = '1';
+            secWin.appendChild(moreLines);
 
             secWin.appendChild(UIBuilder.row(I18n.get('windowBgSettings'), UIBuilder.colorPickerWithAlpha(
                 store.localTabConfig.statsWindowBgColorHex, store.localTabConfig.statsWindowBgAlpha,
@@ -4143,12 +4158,15 @@ const PAID_SHIFT_HOURS = 10;
                 ? { background: '#FFA500', color: '#141414', outline: '2px solid #141414', fontWeight: 'bold' }
                 : {};
 
-            secWin.appendChild(UIBuilder.button(dragBtnText, () => {
+            // Przeciąganie i reset pozycji okna widać zawsze, także w zwiniętej
+            // sekcji — okno przesuwa się częściej niż zmienia kolory.
+            const dragBtn = secWin.appendChild(UIBuilder.button(dragBtnText, () => {
                 store.uiFlags.isStatsWindowDragging = !store.uiFlags.isStatsWindowDragging;
                 this.rerender();
             }, { width: '100%', marginTop: '10px', transition: 'all 0.2s', ...dragBtnOverrides }));
+            dragBtn.dataset.shKeep = '1';
 
-            secWin.appendChild(UIBuilder.button(I18n.get('settings_resetWindowPositionButton'), () => {
+            const resetBtn = secWin.appendChild(UIBuilder.button(I18n.get('settings_resetWindowPositionButton'), () => {
                 store.localTabConfig.statsWindowPosition = Utils.clone(DEFAULT_LOCAL_CONFIG.statsWindowPosition);
                 // Pozycję nakłada renderer (applyPosition): okno bywa
                 // przyklejone do dołu, a ustawienie tu samych top/left
@@ -4159,6 +4177,7 @@ const PAID_SHIFT_HOURS = 10;
                 }
                 this.rerender();
             }, { width: '100%', marginTop: '5px' }));
+            resetBtn.dataset.shKeep = '1';
             put('window', secWin);
 
             // Skróty klawiszowe
@@ -10403,7 +10422,7 @@ const PAID_SHIFT_HOURS = 10;
    line4_lunchInfo       wybrana przerwa                 domyślnie: OFF, #808080, 60%, 14px
    line5_realTimeClock   zegar                           domyślnie: OFF, #808080, 60%, 14px
    line6_valueSum        bilans pieniężny zmiany         domyślnie: OFF, #7CFFA8, 85%, 14px
-   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 13px
+   line7_compact         trzy liczby: tempo, sztuki, %   domyślnie: ON,  #808080, 50%, 14px
    line8_taskInfo        bieżące zadanie                 domyślnie: OFF, #808080, 60%, 13px
    line9_offTask         czas od ostatniego pojemnika    domyślnie: OFF, #808080, 50%, 13px
    line10_target         cel działu i procent celu       domyślnie: OFF, #808080, 60%, 13px
@@ -10449,7 +10468,7 @@ const PAID_SHIFT_HOURS = 10;
    showGraph  = true          pokazywać obrazek wykresu (tylko przy source 'graph')
    graphMode  = 'legend'      'legend' (same ceny) | 'right' | 'full'
    width      = 280           170..900 px
-   fontSize   = 13            11..48 px (suwak w panelu)
+   fontSize   = 14            11..48 px (suwak w panelu)
    bgColorHex = '#0a0e18'     tło karty
    bgAlpha    = 0             0..100
    position   = { left: '14px', top: '' }   puste top = przy dole ekranu

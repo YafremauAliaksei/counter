@@ -640,7 +640,7 @@
          * wszystkie karty), liczba zrobionych przedmiotów i procent sprzedaży,
          * np. `17.4 28 14%`. To te same liczby, co w linii 2.
          */
-        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 13 },
+        line7_compact: { visible: true, colorHex: '#808080', alpha: 50, fontSize: 14 },
         /**
          * LINIA 8 — bieżące zadanie: nazwa i jego własne liczby (paczki,
          * tempo, procent, przepracowany czas). Linie 1, 2 i 7 pokazują całą
@@ -749,7 +749,7 @@
             // widać prawą część, a tam jest legenda z cenami.
             width: 280,
             // Rozmiar jak w linii 7 — karta ma wyglądać jak jedna szara linijka.
-            fontSize: 13,
+            fontSize: 14,
             /**
              * Kolor i przezroczystość wszystkich tekstów karty — jak w linii 7.
              * Kolor jest wyłącznie wyglądem, nie niesie stanu: stan (brak ceny,

@@ -94,12 +94,17 @@ test('karta nierozpoznana ma swoją sekcję między licznikami a efektami', () =
 
 describe('Zwijanie sekcji');
 
-test('okno statystyk zwinięte domyślnie: widać tylko włączoną linię 7, reszta schowana', () => {
+test('okno statystyk zwinięte domyślnie: linia 7, podpowiedź o reszcie, przeciąganie i reset pozycji', () => {
     const env = panelEnv();
     const sec = section(env, 'window');
     const items = content(sec);
-    const visibleLines = items.filter(shown).map(c => c.dataset.shLine);
+    const visibleLines = items.filter(shown).filter(c => c.dataset.shLine).map(c => c.dataset.shLine);
     eq(visibleLines, ['line7_compact'], 'tylko linia 7 (domyślnie jedyna włączona)');
+    const texts = items.filter(shown).map(c => String(c.textContent));
+    ok(texts.includes(env.SH.I18n.get('statsWindow_moreLinesHint')), 'podpowiedź, że reszta jest pod tytułem');
+    ok(texts.includes(env.SH.I18n.get('dragStatsWindowButton')), 'przeciąganie zawsze widać');
+    ok(texts.includes(env.SH.I18n.get('settings_resetWindowPositionButton')), 'reset pozycji zawsze widać');
+    eq(items.filter(shown).length, 4, 'nic więcej');
     // Nagłówek mówi, ile schowano.
     const hidden = items.filter(c => !shown(c)).length;
     ok(String(sec.children[0].textContent).includes('+' + hidden), sec.children[0].textContent);
@@ -111,28 +116,44 @@ test('rozwinięcie pokazuje wszystko; włączone 2 i 10, po zwinięciu zostają 
     const S = env.SH.store;
     let sec = section(env, 'window');
     sec.children[0].dispatch('click', {});
-    ok(content(sec).every(shown), 'rozwinięta sekcja pokazuje wszystkie elementy');
+    const hint = env.SH.I18n.get('statsWindow_moreLinesHint');
+    ok(content(sec).every(c => shown(c) === (String(c.textContent) !== hint)),
+       'rozwinięta: wszystko poza podpowiedzią o zwiniętej sekcji');
     eq(S.userConfig.panelSections.window, true, 'wybór zapamiętany');
     S.localTabConfig.linesConfig.line2_globalSummary.visible = true;
     S.localTabConfig.linesConfig.line10_target.visible = true;
     sec.children[0].dispatch('click', {});
-    eq(content(sec).filter(shown).map(c => c.dataset.shLine).sort(),
+    eq(content(sec).filter(shown).filter(c => c.dataset.shLine).map(c => c.dataset.shLine).sort(),
        ['line10_target', 'line2_globalSummary', 'line7_compact']);
     // Stan przetrwa przerysowanie panelu.
     env.SH.SettingsPanel.render();
     sec = section(env, 'window');
-    eq(content(sec).filter(shown).length, 3);
+    eq(content(sec).filter(shown).filter(c => c.dataset.shLine).length, 3);
 });
 
 test('zwykła sekcja zwinięta chowa wszystko poza nagłówkiem i pamięta to po przerysowaniu', () => {
     const env = panelEnv();
-    let sec = section(env, 'keys');
+    let sec = section(env, 'global');
     ok(content(sec).every(shown), 'domyślnie rozwinięta');
     sec.children[0].dispatch('click', {});
     ok(content(sec).every(c => !shown(c)), 'zwinięta');
     env.SH.SettingsPanel.render();
-    sec = section(env, 'keys');
+    sec = section(env, 'global');
     ok(content(sec).every(c => !shown(c)), 'po przerysowaniu dalej zwinięta');
+});
+
+test('domyślnie zwinięte (decyzja autora): zadania, karta, pomoce wizualne, skróty, moduł cen, karta ceny, auto-inkrementacja, kod, diagnostyka', () => {
+    const env = panelEnv({ href: 'https://trex-prod-eu.aka.amazon.com/?gradingMode=COS_NIEZNANEGO' });
+    const closed = ['tasks', 'current_tab', 'visual', 'keys', 'auto', 'price_module', 'price_card', 'code', 'diag'];
+    for (const id of closed) {
+        const sec = section(env, id);
+        ok(sec, 'sekcja ' + id);
+        eq(sec.children[0].getAttribute('aria-expanded'), 'false', id);
+        ok(content(sec).every(c => !shown(c)), id + ': nic poza tytułem');
+    }
+    for (const id of ['lunch', 'workflow', 'global', 'language', 'general']) {
+        eq(section(env, id).children[0].getAttribute('aria-expanded'), 'true', id);
+    }
 });
 
 test('spreparowane panelSections (tekst, liczba, null) nie psują panelu', () => {
@@ -142,7 +163,7 @@ test('spreparowane panelSections (tekst, liczba, null) nie psują panelu', () =>
         env.SH.SettingsPanel.render();
         const sec = section(env, 'window');
         ok(sec, 'panel narysowany przy ' + JSON.stringify(junk));
-        eq(content(sec).filter(shown).length, 1, 'stan domyślny przy ' + JSON.stringify(junk));
+        eq(content(sec).filter(shown).filter(c => c.dataset.shLine).length, 1, 'stan domyślny przy ' + JSON.stringify(junk));
         sec.children[0].dispatch('click', {});
         eq(env.SH.store.userConfig.panelSections.window, true, 'klik zapisuje mapę zamiast śmiecia');
     }
@@ -598,7 +619,8 @@ test('rozwinięcie sekcji nie zabiera wierszom ich display: flex', () => {
     const sec = section(env, 'keys');
     const rows = () => content(sec).filter(c => c.tagName === 'DIV' && c.children.length === 2);
     ok(rows().length >= 3, 'wiersze skrótów');
-    ok(rows().every(r => r.style.display === 'flex'), 'flex po narysowaniu');
+    sec.children[0].dispatch('click', {});
+    ok(rows().every(r => r.style.display === 'flex'), 'flex po rozwinięciu');
     sec.children[0].dispatch('click', {});
     sec.children[0].dispatch('click', {});
     ok(rows().every(r => r.style.display === 'flex'), 'flex po zwinięciu i rozwinięciu');
