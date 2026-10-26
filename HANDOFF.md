@@ -61,7 +61,7 @@ npm run verify
 Świeża sesja (chmura, nowa maszyna, nowy czat) potrzebuje dokładnie dwóch rzeczy:
 
 ```bash
-node --version      # potrzebny >= 20.19 (tyle wymaga ESLint 10)
+node --version      # potrzebny >= 24 (jedyna wersja sprawdzana w CI)
 npm ci              # instaluje linter i formatter z package-lock.json
 ```
 
@@ -126,7 +126,7 @@ Po pierwszym pushu powinny wykonać się trzy zadania z `.github/workflows/ci.ym
 | -------- | ------------------------------------------------------------------ | ------------------------ |
 | `verify` | `build:check` + `test` + kontrola, że przebudowa nie zmienia pliku | brak                     |
 | `lint`   | ESLint + Prettier                                                  | `npm ci` z pliku blokady |
-| `matrix` | budowanie i testy na Node 20/22/24 × Linux/Windows/macOS           | brak                     |
+| `matrix` | budowanie i testy na Node 24 × Linux/Windows/macOS                 | brak                     |
 
 Jeśli `matrix` pada na Windowsie z powodu końców linii — sprawdzić, czy
 `.gitattributes` się zastosował (`git add --renormalize .`).

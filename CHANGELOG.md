@@ -11,6 +11,8 @@ Dla tego projektu SemVer czyta się tak:
 
 ## 1.7.6 — 2026-10-26
 
+> Zmiana tylko w repozytorium, skrypt bez zmian: CI sprawdza build i testy wyłącznie na Node 24 (Linux, Windows, macOS), `engines` w `package.json` to `>=24`. Node 20 jest po końcu wsparcia, a skrypt działa w przeglądarce — Node służy tylko narzędziom repozytorium.
+
 > **Wydanie PATCH — można aktualizować w trakcie zmiany.** Prefiks magazynu zostaje `statsHelper_v1_7_0_`.
 
 ### Naprawiono — Auto-LPN

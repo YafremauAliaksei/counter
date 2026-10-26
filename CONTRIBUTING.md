@@ -235,7 +235,7 @@ dokładnie.
 `npm run ci` uruchamia wszystko naraz — dokładnie to samo robi GitHub Actions.
 
 Linter, sprawdzanie typów i formatter wymagają `npm ci` (plik blokady `package-lock.json` leży
-w repozytorium) oraz Node 20.19+, bo tyle wymaga ESLint 10. Same `npm run build`
+w repozytorium) oraz Node 24+ (tylko na tej wersji repozytorium jest sprawdzane w CI). Same `npm run build`
 i `npm test` nadal działają bez żadnej instalacji.
 
 Prettier świadomie omija `src/` i `tests/` (patrz `.prettierignore`): moduły
