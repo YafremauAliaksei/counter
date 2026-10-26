@@ -126,10 +126,21 @@ test('dwie karty, trzy zadania: ostatni cykl kosztuje tyle co drugi', async ({ c
 
     // Przedmiot zalicza się w chwili pojemnika, czyli skanem po zniknięciu
     // jego pola — ostatni może przyjść chwilę po kroku stanowiska.
-    await expect.poll(async () =>
+    const packs = async () =>
         (await cret.evaluate(() => window.SH.store.tabCounters.CRET || 0))
-        + (await whd.evaluate(() => window.SH.store.tabCounters.WHD || 0)),
-    { message: 'paczki po obu kartach' }).toBe(CYCLE * CYCLES);
+        + (await whd.evaluate(() => window.SH.store.tabCounters.WHD || 0));
+    try {
+        await expect.poll(packs).toBe(CYCLE * CYCLES);
+    } catch (e) {
+        // Rozjazd zdarza się tylko pod obciążeniem CI: w raporcie ostatnie
+        // zdarzenia cyklu przedmiotu z obu kart, żeby było widać, który
+        // przedmiot przepadł i na jakim kroku (przerwany, bez końca, bez pojemnika).
+        const events = (p) => p.evaluate(() => window.SH.Diag.events
+            .map(x => `${x.t % 100000} ${x.what}${x.detail ? ' ' + x.detail : ''}`).slice(-40));
+        throw new Error(`paczki po obu kartach: ${await packs()} zamiast ${CYCLE * CYCLES}\n`
+            + `CRET:\n${(await events(cret)).join('\n')}\nWHD:\n${(await events(whd)).join('\n')}`,
+        { cause: e });
+    }
 
     // Jeden odczyt tekstu strony na skan, przez całą zmianę.
     for (const c of cycles) expect(c.reads, 'odczyty innerText = skany').toBe(c.scans);
