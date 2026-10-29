@@ -31,6 +31,20 @@
  *   3. powtórzenie zapytań sieciowych zapisanych przy ostatnim udanym
  *      resecie wykonanym ręcznie.
  *
+ * NAGRYWANIE RĘCZNE. „Nagraj reset” zaczyna ślad bez limitu czasu, „Stop”
+ * go kończy. W tym czasie zapisuje się wszystko, z pełnymi treściami
+ * zapytań i odpowiedzi: przycisk sesji, okno potwierdzenia, skan stacji.
+ * Każde zapytanie jest rozbite na pola (JSON, formularz, parametry adresu),
+ * a przy każdej wartości stoi, gdzie na stronie leży ta sama wartość: adres,
+ * pole formularza, localStorage, sessionStorage, ciasteczko, meta, tekst
+ * strony, odpowiedź wcześniejszego zapytania. Raport porównuje nagrania
+ * między sobą: pole stałe da się wpisać na sztywno, zmienne trzeba skądś
+ * wziąć, a zmienne bez źródła na stronie (jednorazowy token) — nie da się.
+ *
+ * POLA STACJI I LPN. Enter w polu z wartością `ws…` albo `LPN…` zapisuje
+ * opis pola (data-testid, aria-label, placeholder, name) dla działu z adresu
+ * — skąd skrót „u, s” licznika ma wziąć pole stacji w REFURB i WHD.
+ *
  * RAPORT. „Kopiuj raport” kładzie JSON do schowka (albo pokazuje pole do
  * zaznaczenia), „Zapisz plik” pobiera go jako plik. Wartości nagłówków, które
  * wyglądają na tajne (authorization, cookie, csrf, token), są w raporcie
@@ -54,6 +68,11 @@
     const MAX_TRACE_ITEMS = 200;
     const MAX_REQUESTS = 60;
     const MAX_TEXT = 2000;
+    const MAX_TEXT_MANUAL = 20000;
+    const MAX_FIELDS = 60;
+    // Pola treści zapytania, których wartości raport nie pokazuje — tylko
+    // odcisk i długość, żeby było widać, czy zmieniają się między nagraniami.
+    const SECRET_FIELD = /token|nonce|csrf|xsrf|signature|secret|password|passwd|auth/i;
     const MAX_STORE_CHARS = 2500000;
     const SECRET_HEADER = /authorization|cookie|csrf|xsrf|token|secret|session/i;
     const COUNTER_ID = /^statsHelper_/;
@@ -75,6 +94,9 @@
         requests: [],
         replay: null,
         ui: { panel: { left: 12, top: 12 }, clone: null, collapsed: false },
+        manual: null,
+        stationFields: {},
+        lpnFields: {},
     });
     let data = blank();
     try {
@@ -374,21 +396,37 @@
 
     // ---------------- ślad po kliknięciu ----------------
     let trace = null;
-    function startTrace(reason, isTrusted) {
+    function startTrace(reason, isTrusted, manual) {
         if (trace) finishTrace();
         trace = {
             reason,
             trusted: !!isTrusted,
+            manual: !!manual,
             at: Date.now(),
             department: department(),
+            url: location.pathname + location.search,
             before: screenFields(),
             items: [],
             requests: [],
         };
         data.traces.push(trace);
         if (data.traces.length > MAX_TRACES) data.traces.shift();
-        trace.timer = setTimeout(finishTrace, TRACE_MS);
+        // Nagranie ręczne trwa do „Stop”; ślad po kliknięciu — TRACE_MS.
+        if (!manual) trace.timer = setTimeout(finishTrace, TRACE_MS);
         render();
+    }
+    function startManual() {
+        data.manual = { at: Date.now(), department: department() };
+        startTrace('reczny', true, true);
+        note('reczny', 'start');
+        saveNow();
+    }
+    function stopManual() {
+        note('reczny', 'stop');
+        data.manual = null;
+        finishTrace();
+        saveNow();
+        flash('nagranie zapisane — „Kopiuj raport” albo „Zapisz plik”');
     }
     function finishTrace() {
         if (!trace) return;
@@ -400,7 +438,8 @@
         render();
     }
     function traceItem(item) {
-        if (!trace || trace.items.length >= MAX_TRACE_ITEMS) return;
+        if (!trace || trace.items.length >= (trace.manual ? MAX_TRACE_ITEMS * 5 : MAX_TRACE_ITEMS))
+            return;
         trace.items.push(Object.assign({ t: Date.now() - trace.at }, item));
     }
     /** Element wart zapisania w śladzie: ma data-testid, rolę albo jest polem lub przyciskiem. */
@@ -457,8 +496,23 @@
     document.addEventListener(
         'click',
         (e) => {
-            const t = e.target && e.target.closest && e.target.closest('button[data-testid]');
-            if (!t || isOurs(t)) return;
+            const any =
+                e.target && e.target.closest && e.target.closest('button, [role="button"], a');
+            if (!any || isOurs(any)) return;
+            // W nagraniu ręcznym liczy się każde kliknięcie, także przycisków
+            // bez data-testid — okno potwierdzenia bywa zbudowane inaczej.
+            if (trace && trace.manual) {
+                traceItem({
+                    click: selectorOf(any),
+                    text: cut((any.innerText || '').trim(), 80),
+                    trusted: e.isTrusted,
+                    framework: frameworkInfo(any),
+                });
+                if (any.getAttribute('data-testid') === CONTINUE_TESTID) snapshot('continue', any);
+                return;
+            }
+            const t = any.closest('button[data-testid]');
+            if (!t) return;
             const tid = t.getAttribute('data-testid');
             if (tid !== BUTTON_TESTID && tid !== CONTINUE_TESTID) return;
             if (tid === CONTINUE_TESTID) snapshot('continue', t);
@@ -467,6 +521,115 @@
         },
         true
     );
+
+    /** Opis pola tak, żeby dało się je znaleźć bez tekstu: data-testid, aria, placeholder, name. */
+    function fieldInfo(el) {
+        return {
+            selector: selectorOf(el),
+            testid: el.getAttribute('data-testid'),
+            ariaLabel: el.getAttribute('aria-label'),
+            placeholder: el.getAttribute('placeholder'),
+            name: el.getAttribute('name'),
+            type: el.getAttribute('type'),
+        };
+    }
+    function rememberField(map, info) {
+        const dept = department();
+        const list = map[dept] || (map[dept] = []);
+        if (!list.some((f) => f.selector === info.selector)) list.push(info);
+        if (list.length > 6) list.shift();
+    }
+    document.addEventListener(
+        'keydown',
+        (e) => {
+            if (e.key !== 'Enter') return;
+            const el = e.target;
+            if (!el || el.tagName !== 'INPUT' || isOurs(el)) return;
+            const value = String(el.value || '').trim();
+            const info = fieldInfo(el);
+            if (/^ws[_-]/i.test(value)) rememberField(data.stationFields, info);
+            else if (/^lpn/i.test(value)) rememberField(data.lpnFields, info);
+            if (trace) traceItem(Object.assign({ enter: true, value: cut(value, 80) }, info));
+            save();
+        },
+        true
+    );
+
+    // ---------------- pola zapytania i ich źródła ----------------
+    /** Treść zapytania rozbita na pola: JSON, formularz albo tekst; do tego parametry adresu. */
+    function requestFields(url, body) {
+        const out = {};
+        const add = (k, v) => {
+            if (Object.keys(out).length < MAX_FIELDS) out[k] = v;
+        };
+        const walk = (v, path) => {
+            if (v && typeof v === 'object') {
+                for (const [k, x] of Object.entries(v)) walk(x, path ? path + '.' + k : k);
+            } else add(path || '(wartosc)', v);
+        };
+        try {
+            const u = new URL(url, location.href);
+            u.searchParams.forEach((v, k) => add('query.' + k, v));
+        } catch (e) {
+            /* adres względny bez bazy — pomijamy parametry */
+        }
+        const text = typeof body === 'string' ? body : '';
+        if (!text) return out;
+        try {
+            walk(JSON.parse(text), 'body');
+            return out;
+        } catch (e) {
+            /* nie JSON */
+        }
+        if (/^[^=&\s]+=[^&]*(&[^=&\s]+=[^&]*)*$/.test(text)) {
+            new URLSearchParams(text).forEach((v, k) => add('form.' + k, v));
+        } else add('body(tekst)', cut(text, 300));
+        return out;
+    }
+    /** Gdzie na stronie leży ta sama wartość — skąd emulacja może ją wziąć. */
+    function sourcesOf(value) {
+        const v = String(value == null ? '' : value);
+        if (v.length < 3 || /^(true|false|null)$/.test(v)) return [];
+        const out = [];
+        const has = (t) => typeof t === 'string' && t.includes(v);
+        if (has(location.href)) out.push('adres strony');
+        document.querySelectorAll('input, textarea, select').forEach((el) => {
+            if (!isOurs(el) && has(el.value)) out.push('pole ' + selectorOf(el));
+        });
+        for (const [name, store] of [
+            ['localStorage', window.localStorage],
+            ['sessionStorage', window.sessionStorage],
+        ]) {
+            try {
+                for (let i = 0; i < store.length; i++) {
+                    const k = store.key(i);
+                    if (k !== PROBE_KEY && has(store.getItem(k))) out.push(name + ' ' + k);
+                }
+            } catch (e) {
+                /* magazyn zablokowany */
+            }
+        }
+        if (has(document.cookie)) out.push('ciasteczko (bez HttpOnly)');
+        document.querySelectorAll('meta[content]').forEach((m) => {
+            if (has(m.getAttribute('content')))
+                out.push('meta ' + (m.getAttribute('name') || m.getAttribute('property') || ''));
+        });
+        if (trace) {
+            for (const r of trace.requests) {
+                if (has(r.response)) out.push('odpowiedz ' + r.method + ' ' + pathOf(r.url));
+            }
+        }
+        if (has(document.body.innerText)) out.push('tekst strony');
+        return out.slice(0, 12);
+    }
+    function pathOf(url) {
+        try {
+            const u = new URL(url, location.href);
+            return u.origin + u.pathname;
+        } catch (e) {
+            return String(url).split('?')[0];
+        }
+    }
 
     // ---------------- sieć ----------------
     function logRequest(entry) {
@@ -484,6 +647,20 @@
         );
         // Zapis do magazynu tylko w trakcie śladu: T-REX potrafi odpytywać
         // serwer co chwilę, a każdy zapis to serializacja całej sondy.
+        if (trace && trace.manual) {
+            entry.fields = requestFields(entry.url, entry.fullBody);
+            entry.sources = {};
+            for (const [k, v] of Object.entries(entry.fields)) {
+                const src = sourcesOf(v);
+                if (src.length) entry.sources[k] = src;
+            }
+            entry.headerSources = {};
+            for (const [k, v] of Object.entries(entry.headers || {})) {
+                const src = sourcesOf(v);
+                if (src.length) entry.headerSources[k] = src;
+            }
+        }
+        delete entry.fullBody;
         if (trace) {
             trace.requests.push(entry);
             if (trace.requests.length > 60) trace.requests.shift();
@@ -519,6 +696,7 @@
             const headers = headersOf((init && init.headers) || (input && input.headers));
             const p = origFetch.apply(this, arguments);
             const traced = !!trace;
+            const cap = trace && trace.manual ? MAX_TEXT_MANUAL : MAX_TEXT;
             p.then(
                 (res) => {
                     const entry = {
@@ -528,15 +706,17 @@
                         url: String(url),
                         status: res.status,
                         ms: Date.now() - started,
-                        body: cut(body),
+                        body: cut(body, cap),
+                        fullBody: body,
                         headers,
+                        responseHeaders: headersOf(res.headers),
                     };
                     if (traced) {
                         res.clone()
                             .text()
                             .then(
                                 (t) => {
-                                    entry.response = cut(t);
+                                    entry.response = cut(t, cap);
                                     logRequest(entry);
                                 },
                                 () => logRequest(entry)
@@ -575,16 +755,20 @@
             const info = this.__probe;
             if (info) {
                 info.at = Date.now();
+                const cap = trace && trace.manual ? MAX_TEXT_MANUAL : MAX_TEXT;
+                info.fullBody = typeof body === 'string' ? body : '';
                 info.body = cut(
-                    typeof body === 'string' ? body : body ? '[' + typeof body + ']' : ''
+                    typeof body === 'string' ? body : body ? '[' + typeof body + ']' : '',
+                    cap
                 );
                 const traced = !!trace;
                 this.addEventListener('loadend', () => {
                     info.status = this.status;
                     info.ms = Date.now() - info.at;
                     if (traced) {
+                        info.responseHeaders = this.getAllResponseHeaders();
                         try {
-                            info.response = cut(this.responseText);
+                            info.response = cut(this.responseText, cap);
                         } catch (e) {
                             info.response = '[' + this.responseType + ']';
                         }
@@ -607,7 +791,11 @@
                     url: String(this.url),
                     status: '',
                     ms: 0,
-                    body: cut(typeof msg === 'string' ? msg : '[' + typeof msg + ']'),
+                    body: cut(
+                        typeof msg === 'string' ? msg : '[' + typeof msg + ']',
+                        MAX_TEXT_MANUAL
+                    ),
+                    fullBody: typeof msg === 'string' ? msg : '',
                 });
             return wsSend.apply(this, arguments);
         };
@@ -624,11 +812,96 @@
     );
 
     // ---------------- raport ----------------
+    /** Wartość zakryta: odcisk i długość — widać, czy się zmienia, a nie co to jest. */
+    function hidden(v) {
+        const t = String(v == null ? '' : v);
+        return '[ukryte #' + hash(t) + ' dl. ' + t.length + ']';
+    }
+    /**
+     * Porównanie nagrań ręcznych: zapytania zapisujące (nie GET) pogrupowane
+     * po metodzie i ścieżce; dla każdego pola — wartości ze wszystkich
+     * nagrań, czy jest stałe i gdzie jego wartość leżała na stronie.
+     */
+    function analysis() {
+        const groups = {};
+        data.traces
+            .filter((t) => t.manual)
+            .forEach((t, n) => {
+                t.requests
+                    .filter((r) => String(r.method).toUpperCase() !== 'GET')
+                    .forEach((r) => {
+                        const key = r.method + ' ' + pathOf(r.url);
+                        const g =
+                            groups[key] ||
+                            (groups[key] = { departments: [], count: 0, fields: {}, headers: {} });
+                        g.count++;
+                        if (!g.departments.includes(t.department)) g.departments.push(t.department);
+                        for (const [k, v] of Object.entries(r.fields || {})) {
+                            const f = g.fields[k] || (g.fields[k] = { values: [], sources: [] });
+                            f.values.push(
+                                (SECRET_FIELD.test(k) ? hidden(v) : cut(v, 120)) +
+                                    ' (nagranie ' +
+                                    (n + 1) +
+                                    ')'
+                            );
+                            for (const s of (r.sources || {})[k] || [])
+                                if (!f.sources.includes(s)) f.sources.push(s);
+                        }
+                        for (const [k, v] of Object.entries(r.headers || {})) {
+                            const h =
+                                g.headers[k] ||
+                                (g.headers[k] = { values: [], seen: 0, sources: [] });
+                            const shown = SECRET_HEADER.test(k) ? hidden(v) : cut(v, 120);
+                            h.seen++;
+                            if (!h.values.includes(shown)) h.values.push(shown);
+                            for (const src of (r.headerSources || {})[k] || [])
+                                if (!h.sources.includes(src)) h.sources.push(src);
+                        }
+                    });
+            });
+        for (const g of Object.values(groups)) {
+            for (const f of Object.values(g.fields)) {
+                const bare = new Set(f.values.map((x) => x.replace(/ \(nagranie \d+\)$/, '')));
+                f.constant = bare.size === 1 && f.values.length > 1;
+                // Liczba blisko „teraz” (sekundy albo milisekundy) to znacznik
+                // czasu — emulacja wstawi własny, to nie jest token.
+                const looksLikeTime = [...bare].every((x) => {
+                    const n = Number(x);
+                    const now = Date.now();
+                    return (
+                        Number.isFinite(n) &&
+                        (Math.abs(n - now) < 864e5 * 30 || Math.abs(n * 1000 - now) < 864e5 * 30)
+                    );
+                });
+                f.verdict =
+                    f.values.length < 2
+                        ? 'jedno nagranie — nagraj jeszcze raz, żeby porównać'
+                        : f.constant
+                          ? 'stałe — można wpisać na sztywno'
+                          : f.sources.length
+                            ? 'zmienne — do wzięcia ze strony: ' + f.sources.join(', ')
+                            : looksLikeTime
+                              ? 'zmienne — znacznik czasu, emulacja wstawi bieżący'
+                              : 'zmienne bez źródła na stronie — możliwy jednorazowy token';
+            }
+            for (const h of Object.values(g.headers)) {
+                h.verdict =
+                    h.seen < 2
+                        ? 'jedno nagranie — nagraj jeszcze raz, żeby porównać'
+                        : h.values.length === 1
+                          ? 'stały'
+                          : h.sources.length
+                            ? 'zmienny — do wzięcia ze strony: ' + h.sources.join(', ')
+                            : 'zmienny bez źródła na stronie (' + h.values.length + ' różnych)';
+            }
+        }
+        return groups;
+    }
     function report() {
         const redact = (h) => {
             const out = {};
             for (const [k, v] of Object.entries(h || {}))
-                out[k] = SECRET_HEADER.test(k) ? '[ukryte]' : v;
+                out[k] = SECRET_HEADER.test(k) ? hidden(v) : v;
             return out;
         };
         const traces = data.traces.map((t) =>
@@ -651,6 +924,9 @@
                 snapshots: data.snapshotOrder.map((k) =>
                     Object.assign({ key: k }, data.snapshots[k])
                 ),
+                manualAnalysis: analysis(),
+                stationFields: data.stationFields,
+                lpnFields: data.lpnFields,
                 traces,
                 recentRequests: data.requests,
             },
@@ -747,6 +1023,7 @@
         const isTrace = (t, testId) => t && t.trusted && t.reason === 'klik ' + testId;
         for (let i = data.traces.length - 1; i >= 0; i--) {
             const t = data.traces[i];
+            if (t.manual && writes(t).length) return { trace: t, reqs: writes(t) };
             // „Kontynuuj” kończy reset zaczęty przyciskiem sesji chwilę
             // wcześniej — oba ślady to jeden reset, w tej kolejności.
             if (isTrace(t, CONTINUE_TESTID)) {
@@ -875,6 +1152,11 @@
         (parent || buttons).appendChild(b);
         return b;
     }
+    const recBtn = btn('Nagraj reset', () => {
+        if (trace && trace.manual) stopManual();
+        else startManual();
+        render();
+    });
     btn('Kopiuj raport', copyReport);
     btn('Zapisz plik', downloadReport);
     btn('Klon', () => {
@@ -945,9 +1227,13 @@
             'zdarzenia ' + data.events.length,
             'ślady ' + data.traces.length,
         ];
-        if (trace) parts.push('nagrywam ślad…');
+        if (trace) parts.push(trace.manual ? 'NAGRYWAM RĘCZNIE' : 'nagrywam ślad…');
         const text = parts.join(' · ');
         if (status.textContent !== text) status.textContent = text;
+        const rec = trace && trace.manual;
+        const label = rec ? '■ Stop nagrywania' : 'Nagraj reset';
+        if (recBtn.textContent !== label) recBtn.textContent = label;
+        recBtn.style.background = rec ? '#d93025' : '#1a73e8';
     }
 
     // ---------------- klon ----------------
@@ -1079,6 +1365,8 @@
     });
     const poll = setInterval(check, POLL_MS);
     note('start', location.pathname + location.search);
+    // Nagranie ręczne przerwane przeładowaniem strony trwa dalej, w nowym śladzie.
+    if (data.manual) startTrace('reczny (po przeladowaniu)', true, true);
     check();
     render();
 
