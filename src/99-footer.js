@@ -110,7 +110,8 @@
    KARTA CENY  (store.localTabConfig.priceCard) — działa tylko przy moduleEnabled
    -----------------------------------------------------------------------------
    visible    = true          pokazywać kartę na ekranie
-   source     = 'ocr'         'ocr' (cena tekstem z wykresu) | 'graph' | 'jina'
+   source     = 'amazon'      'amazon' (karta amazon.de obok, bez sieci z T-REX)
+                              | 'ocr' | 'graph' | 'jina' (dawne źródła sieciowe, poza panelem)
    logValues  = true          prowadzić dziennik wartości
    marketFallback = true      szukać ceny w innych sklepach, gdy w wybranym brak
    showPrice  = true          pokazywać aktualną cenę

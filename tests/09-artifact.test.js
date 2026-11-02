@@ -224,6 +224,7 @@ const NETWORK_SITES = {
     render: { guard: 'self' },                          // PriceCard: obrazek wykresu na karcie
     readCsp: { guard: 'none', why: 'własna domena strony, tylko z SH.cspReport() wpisanego ręcznie' },
     link: { guard: 'none', why: 'tekst zakładki do skopiowania — łańcuch znaków, a nie wywołanie' },
+    lookup: { guard: 'none', why: 'karta amazon.de pobiera stronę produktu z własnego adresu (/dp/…); na karcie T-REX ten kod się nie wykonuje — tam idzie tylko postMessage' },
 };
 
 /**
@@ -237,7 +238,8 @@ const NETWORK_SITES = {
  *   - wymieniać hostów ani nazw serwisów (keepa, jina);
  *   - sięgać po nastawy źródeł (PRICE_OCR_*, keepa_ok, PRICE_KEEPA_*);
  *   - wychodzić do sieci inaczej niż przez PriceNet — `new Image(` wcale,
- *     `fetch(` tylko do własnej strony (readCsp) i w tekście zakładki.
+ *     `fetch(` tylko do własnej strony: readCsp (location.href), karta
+ *     amazon.de mostu cen (ścieżka względna '/…') i tekst zakładki.
  * Nazwa obiektu KeepaOCR w konsolowym API (SH) jest dozwolona — to narzędzie
  * diagnostyczne, a nie logika. Dozwolona jest też lista trybów źródła
  * w ConfigCode.ENUMS: to format kodu ustawień (kolejność = indeks), więc
@@ -266,7 +268,8 @@ function adapterLeaks() {
             : /PRICE_OCR_/.test(code) ? 'nastawa źródła'
             : /https?:\/\/[A-Za-z]/.test(code) ? 'adres hosta'
             : /new\s+Image\s*\(/.test(code) ? 'obrazek poza PriceNet'
-            : (/\bfetch\s*\(/.test(code) && !/location\.href/.test(code) && owner[i] !== 'src/23-config-code.js')
+            : (/\bfetch\s*\(/.test(code) && !/location\.href/.test(code) && !/\bfetch\s*\(\s*'\//.test(code)
+               && owner[i] !== 'src/23-config-code.js')
                 ? 'fetch poza PriceNet' : null;
         if (why) bad.push(`${owner[i]} (${why}): ${l.trim().slice(0, 70)}`);
     });

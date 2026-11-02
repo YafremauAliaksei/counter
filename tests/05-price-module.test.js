@@ -84,7 +84,18 @@ test('przed włączeniem: zero zapytań', () => {
     eq(on.net.fetches.length, 0);
 });
 
-test('PriceModule.enable() wysyła zapytanie o kursy walut', () => {
+test('z kartą amazon.de (domyślnie) włączenie modułu nie wysyła z T-REX niczego', () => {
+    // Cena przychodzi z sąsiedniej karty przez postMessage; ceny są w euro,
+    // a waluta wyświetlania liczy się z kursów wbudowanych.
+    eq(on.SH.store.localTabConfig.priceCard.source, 'amazon');
+    on.SH.PriceModule.enable();
+    eq(on.net.fetches, [], 'zero zapytań');
+    eq(on.net.images, [], 'zero obrazków');
+    on.SH.PriceModule.disable();
+});
+
+test('dawne źródło sieciowe (ocr): PriceModule.enable() wysyła zapytanie o kursy walut', () => {
+    on.SH.store.localTabConfig.priceCard.source = 'ocr';
     on.SH.PriceModule.enable();
     ok(on.net.fetches.length >= 1, 'po włączeniu musi polecieć zapytanie o kursy');
     ok(/currency|er-api|floatrates/.test(on.net.fetches.join(' ')),
@@ -114,7 +125,8 @@ test('panel ustawień pokazuje pełną konfigurację karty ceny', () => {
     on.SH.store.uiFlags.isSettingsPanelVisible = true;
     on.SH.SettingsPanel.render();
     const txt = on.el('settingsPanel').textContent;
-    ok(txt.includes('Sklep Amazon'), 'wybór sklepu');
+    ok(txt.includes(on.SH.I18n.get('amazon_open')), 'przycisk karty amazon.de');
+    ok(!txt.includes('Sklep Amazon'), 'wyboru sklepu nie ma — tylko amazon.de');
     ok(txt.includes('Dziennik wartości'), 'sekcja dziennika');
     on.SH.store.uiFlags.isSettingsPanelVisible = false;
 });

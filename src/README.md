@@ -12,7 +12,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | # | Moduł | Odpowiada za | Linii |
 |---|---|---|---|
 | — | `00-banner.js` | nagłówek `==UserScript==`, hasło, wyłącznik logów | ~55 |
-| 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~585 |
+| 01 | `01-config.js` | wszystkie stałe, wartości domyślne linii i karty | ~790 |
 | 02 | `02-i18n-strings.js` | cztery słowniki tłumaczeń (pl, uk, ru, en) | ~590 |
 | 03 | `03-utils.js` | `deepMerge`, `clampNum`, `hexToRgb`, generator DOM `h()` | ~215 |
 | 04 | `04-core-state.js` | `EventBus`, reaktywny `store`, `priceModuleOn()`, liczniki kosztu `Perf` | ~260 |
@@ -43,6 +43,7 @@ zadeklarowanej w [`../build.manifest.json`](../build.manifest.json).
 | 29 | `29-diagnostics.js` | okno diagnostyki na stanowisku bez F12 | ~120 |
 | 30 | `30-datamatrix.js` | kod Data Matrix z tekstu zakładki | ~190 |
 | 31 | `31-clear-session.js` | „Usuń sesję” skrótem u+s, z powrotem ten sam LPN i stacja | ~135 |
+| 32 | `32-amazon-bridge.js` | most do karty amazon.de: ASIN tam, cena z powrotem | ~215 |
 | — | `99-footer.js` | zakomentowana ściąga po wszystkich ustawieniach | ~190 |
 
 ---

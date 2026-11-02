@@ -463,6 +463,22 @@ const PAID_SHIFT_HOURS = 10;
         // podpowiada wtedy, żeby kliknąć tam zakładkę jeszcze raz.
         GRAVIS_HEARTBEAT_MS: 10000,
         GRAVIS_STALE_MS: 30000,
+        /**
+         * KARTA AMAZON.DE — cena produktu z samej strony sklepu, bez żadnego
+         * zapytania z karty T-REX. T-REX otwiera amazon.de (uchwyt okna),
+         * skrypt kliknięty tam zakładką odpowiada przez window.opener: dostaje
+         * ASIN, pobiera /dp/<ASIN> z własnego adresu (zwykłe zapytanie
+         * przeglądarki, z jej ciasteczkami) i odsyła liczby. Tylko amazon.de:
+         * ceny są w euro, a do szacunku wartości przedmiotu inne sklepy nic
+         * nie dodają.
+         */
+        AMAZON_URL: 'https://www.amazon.de/',
+        AMAZON_ORIGIN: 'https://www.amazon.de',
+        AMAZON_WINDOW_NAME: 'statsHelperAmazon',
+        AMAZON_HEARTBEAT_MS: 10000,
+        AMAZON_STALE_MS: 30000,
+        // Najwyższa cena przyjmowana od karty Amazon — większa to błąd rozbioru.
+        AMAZON_MAX_PRICE_EUR: 100000,
         // Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora).
         OPEN_SETTINGS_ON_START: true,
         // Linia 9 po przekroczeniu podwójnego czasu przedmiotu.
@@ -778,13 +794,13 @@ const PAID_SHIFT_HOURS = 10;
             moduleEnabled: false,
             visible: true,
             // ŹRÓDŁO CENY:
-            //   'ocr'   — obrazek Keepa ładuje się w tle i jest rozpoznawany;
-            //             na kartę trafia sama liczba. Domyślnie.
-            //   'graph' — pokazywać sam obrazek wykresu.
-            //   'jina'  — zapytanie tekstowe do r.jina.ai.
-            // 'ocr' też potrzebuje graph.keepa.com; gdy CSP strony tnie
-            // img-src, tryb nie działa i karta mówi o tym wprost.
-            source: 'ocr',
+            //   'amazon' — karta amazon.de obok (AmazonBridge); karta T-REX nie
+            //              wysyła niczego na zewnątrz. Domyślnie i jedyne
+            //              w panelu.
+            //   'ocr', 'graph', 'jina' — dawne źródła sieciowe (Keepa,
+            //              r.jina.ai); nieobecne w panelu, wchodzą tylko
+            //              z kodu ustawień albo z konsoli.
+            source: 'amazon',
             // Prowadzić dziennik wartości (tylko z modułem cen — ValueLog.add()).
             logValues: true,
             // Szukać ceny w innych sklepach, gdy w wybranym jej nie ma.
@@ -947,7 +963,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'found on ${host}',
             priceCard_marketNoData: 'Keepa has no chart for this store — link works, price will not',
             priceCard_displayCurrency: 'Show amounts in',
-            priceCard_displayCurrencyHint: 'Every price and every total is shown in this currency, euro by default; prices from other stores are converted at the daily rate and marked with ≈. Totals are always counted in euro, so switching mid-shift loses nothing.',
+            priceCard_displayCurrencyHint: 'Every price and every total is shown in this currency, euro by default. Prices come from amazon.de in euro; other currencies use built-in rates. Totals are always counted in euro, so switching mid-shift loses nothing.',
             priceCard_openHint: 'Click the ASIN to open the product page',
             priceCard_hiddenHint: 'Card hidden — price is still read and added to the sum',
             priceCard_showCard: 'Show the card on screen',
@@ -956,6 +972,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Price as text (recognised from chart)',
             priceCard_src_graph: 'Keepa chart image',
             priceCard_src_jina: 'Text request (r.jina.ai)',
+            priceCard_src_amazon: 'amazon.de tab', amazon_open: 'Open amazon.de', amazon_connected: 'amazon.de connected — open again', amazon_howTo: 'Prices come from an amazon.de tab next to this one; this tab sends nothing to the internet. 1. Press the button — amazon.de opens in a new tab. 2. On that tab click this script\'s bookmark once. Leave the tab open.', amazon_notConnected: 'amazon.de tab not connected — open it from the panel', amazon_badgeOk: 'StatsHelper: prices for T-REX', amazon_badgeNoOpener: 'StatsHelper: open this tab from the T-REX panel',
             priceCard_ocrFail: 'could not read price off the chart',
             priceCard_cspOcr: 'Page CSP blocks the Keepa image — cannot read price',
             priceCard_fromCache: 'from cache',
@@ -1108,7 +1125,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'znaleziono na ${host}',
             priceCard_marketNoData: 'Keepa nie ma wykresu dla tego sklepu — link działa, ceny nie będzie',
             priceCard_displayCurrency: 'Kwoty pokazywać w',
-            priceCard_displayCurrencyHint: 'Każda cena i każda suma pokazuje się w tej walucie, domyślnie w euro; ceny z innych sklepów są przeliczane po kursie dziennym i mają znak ≈. Sumy liczone są zawsze w euro, więc zmiana w trakcie zmiany niczego nie gubi.',
+            priceCard_displayCurrencyHint: 'Każda cena i każda suma pokazuje się w tej walucie, domyślnie w euro. Ceny przychodzą z amazon.de w euro; inne waluty liczą się z kursów wbudowanych. Sumy liczone są zawsze w euro, więc zmiana w trakcie zmiany niczego nie gubi.',
             priceCard_openHint: 'Kliknij ASIN, aby otworzyć stronę produktu',
             priceCard_hiddenHint: 'Karta ukryta — cena nadal jest odczytywana i wliczana do sumy',
             priceCard_showCard: 'Pokazuj kartę na ekranie',
@@ -1117,6 +1134,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Cena tekstem (odczyt z wykresu)',
             priceCard_src_graph: 'Obrazek wykresu Keepa',
             priceCard_src_jina: 'Zapytanie tekstowe (r.jina.ai)',
+            priceCard_src_amazon: 'Karta amazon.de', amazon_open: 'Otwórz amazon.de', amazon_connected: 'amazon.de połączony — otwórz ponownie', amazon_howTo: 'Ceny przychodzą z karty amazon.de obok; ta karta nie wysyła niczego do internetu. 1. Naciśnij przycisk — amazon.de otworzy się w nowej karcie. 2. Na tamtej karcie kliknij raz zakładkę tego skryptu. Kartę zostaw otwartą.', amazon_notConnected: 'karta amazon.de niepołączona — otwórz ją z panelu', amazon_badgeOk: 'StatsHelper: ceny dla T-REX', amazon_badgeNoOpener: 'StatsHelper: otwórz tę kartę z panelu T-REX',
             priceCard_ocrFail: 'nie udało się odczytać ceny z wykresu',
             priceCard_cspOcr: 'CSP strony blokuje obrazek Keepa — nie da się odczytać ceny',
             priceCard_fromCache: 'z pamięci',
@@ -1269,7 +1287,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'знайдено на ${host}',
             priceCard_marketNoData: 'У Keepa немає графіка для цього магазину — посилання працює, ціни не буде',
             priceCard_displayCurrency: 'Показувати суми в',
-            priceCard_displayCurrencyHint: 'Кожна ціна і кожна сума показується в цій валюті, типово в євро; ціни з інших магазинів перераховуються за денним курсом і позначені знаком ≈. Суми завжди рахуються в євро, тож зміна посеред зміни нічого не втрачає.',
+            priceCard_displayCurrencyHint: 'Кожна ціна і кожна сума показується в цій валюті, типово в євро. Ціни приходять з amazon.de в євро; інші валюти рахуються за вбудованими курсами. Суми завжди рахуються в євро, тож зміна посеред зміни нічого не втрачає.',
             priceCard_openHint: 'Клік по ASIN відкриває сторінку товару',
             priceCard_hiddenHint: 'Картку приховано — ціна все одно читається й іде в суму',
             priceCard_showCard: 'Показувати картку на екрані',
@@ -1278,6 +1296,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Ціна текстом (розпізнана з графіка)',
             priceCard_src_graph: 'Зображення графіка Keepa',
             priceCard_src_jina: 'Текстовий запит (r.jina.ai)',
+            priceCard_src_amazon: 'Вкладка amazon.de', amazon_open: 'Відкрити amazon.de', amazon_connected: 'amazon.de підключено — відкрити знову', amazon_howTo: 'Ціни приходять із сусідньої вкладки amazon.de; ця вкладка нічого не надсилає в інтернет. 1. Натисніть кнопку — amazon.de відкриється в новій вкладці. 2. На тій вкладці один раз клікніть закладку цього скрипта. Вкладку залиште відкритою.', amazon_notConnected: 'вкладку amazon.de не підключено — відкрийте її з панелі', amazon_badgeOk: 'StatsHelper: ціни для T-REX', amazon_badgeNoOpener: 'StatsHelper: відкрийте цю вкладку з панелі T-REX',
             priceCard_ocrFail: 'не вдалося прочитати ціну з графіка',
             priceCard_cspOcr: 'CSP сторінки блокує зображення Keepa — ціну не прочитати',
             priceCard_fromCache: 'з кешу',
@@ -1430,7 +1449,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'найдено на ${host}',
             priceCard_marketNoData: 'У Keepa нет графика для этого магазина — ссылка работает, цены не будет',
             priceCard_displayCurrency: 'Показывать суммы в',
-            priceCard_displayCurrencyHint: 'Каждая цена и каждая сумма показывается в этой валюте, по умолчанию в евро; цены из других магазинов пересчитываются по дневному курсу и помечены знаком ≈. Суммы всегда считаются в евро, поэтому смена посреди смены ничего не теряет.',
+            priceCard_displayCurrencyHint: 'Каждая цена и каждая сумма показывается в этой валюте, по умолчанию в евро. Цены приходят с amazon.de в евро; другие валюты считаются по встроенным курсам. Суммы всегда считаются в евро, поэтому смена посреди смены ничего не теряет.',
             priceCard_openHint: 'Клик по ASIN открывает страницу товара',
             priceCard_hiddenHint: 'Карточка скрыта — цена всё равно читается и идёт в сумму',
             priceCard_showCard: 'Показывать карточку на экране',
@@ -1439,6 +1458,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Цена текстом (распознана с графика)',
             priceCard_src_graph: 'Картинка графика Keepa',
             priceCard_src_jina: 'Текстовый запрос (r.jina.ai)',
+            priceCard_src_amazon: 'Вкладка amazon.de', amazon_open: 'Открыть amazon.de', amazon_connected: 'amazon.de подключён — открыть снова', amazon_howTo: 'Цены приходят с соседней вкладки amazon.de; эта вкладка ничего не отправляет в интернет. 1. Нажмите кнопку — amazon.de откроется в новой вкладке. 2. На той вкладке один раз кликните закладку этого скрипта. Вкладку оставьте открытой.', amazon_notConnected: 'вкладка amazon.de не подключена — откройте её из панели', amazon_badgeOk: 'StatsHelper: цены для T-REX', amazon_badgeNoOpener: 'StatsHelper: откройте эту вкладку из панели T-REX',
             priceCard_ocrFail: 'не удалось прочитать цену с графика',
             priceCard_cspOcr: 'CSP страницы блокирует картинку Keepa — цену не прочитать',
             priceCard_fromCache: 'из кэша',
@@ -3475,7 +3495,7 @@ const PAID_SHIFT_HOURS = 10;
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
         { id: 'tasks', open: false },
-        { id: 'global', open: true },
+        { id: 'global', open: false },
         { id: 'current_tab', open: false },
         { id: 'visual', open: false },
         {
@@ -4244,18 +4264,14 @@ const PAID_SHIFT_HOURS = 10;
             const secPrice = UIBuilder.section(I18n.get('priceCard_section'));
             const pc = store.localTabConfig.priceCard;
 
-            // Sklep: jedno ustawienie na link, wykres i walutę.
-            const mkKey = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_marketplace'), UIBuilder.select(
-                Object.entries(CONFIG.MARKETPLACES).map(([k, m]) => ({
-                    value: k, text: m.host.replace(/^www\./, '') + (PriceSources.coversMarket(k) ? '' : '  ⚠'),
-                })), mkKey, v => { store.userConfig.marketplace = v; this.rerender(); })));
-            if (!PriceSources.coversMarket(mkKey)) {
-                secPrice.appendChild(h('div', {
-                    textContent: '⚠ ' + I18n.get('priceCard_marketNoData'),
-                    style: { fontSize: '0.85em', color: '#b06a00', margin: '-4px 0 10px 0', lineHeight: '1.35' },
-                }));
-            }
+            // Cena z karty amazon.de obok: jedyne źródło w panelu. Dawne
+            // źródła sieciowe (Keepa, r.jina.ai) i wybór sklepu nie mają tu
+            // kontrolek — wchodzą tylko z kodu ustawień albo z konsoli.
+            const amazonOk = AmazonBridge.connected();
+            secPrice.appendChild(UIBuilder.hint(I18n.get('amazon_howTo')));
+            secPrice.appendChild(UIBuilder.button(I18n.get(amazonOk ? 'amazon_connected' : 'amazon_open'),
+                () => { AmazonBridge.open(); this.rerender(); },
+                { width: '100%', background: amazonOk ? '#2E7D32' : CONFIG.SETTINGS_PANEL_ACCENT_COLOR }));
 
             // Waluta, w której kwoty się pokazuje. Liczy się zawsze w euro,
             // więc przełączenie w trakcie zmiany niczego nie gubi. Ustawienie
@@ -4268,14 +4284,6 @@ const PAID_SHIFT_HOURS = 10;
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
-            // Źródło ceny — tryby z PriceSources, od zalecanego do zapasowych.
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select(
-                PriceSources.modes.map(m => ({ value: m.value, text: I18n.get(m.labelKey) })),
-                pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
-
-            secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
-                I18n.get('priceCard_fallback'), pc.marketFallback !== false,
-                v => store.localTabConfig.priceCard.marketFallback = v, I18n.get('priceCard_fallbackHint'))));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_showCard'), pc.visible,
@@ -5059,6 +5067,8 @@ const PAID_SHIFT_HOURS = 10;
          *                „nie ma skąd przeczytać ceny”, a nie „nie ma wykresu”.
          */
         modes: [
+            // Jedyny tryb w panelu: karta amazon.de, bez sieci z karty T-REX.
+            { value: 'amazon', labelKey: 'priceCard_src_amazon', viaTab: true },
             { value: 'ocr',   labelKey: 'priceCard_src_ocr', readsImage: true },
             { value: 'graph', labelKey: 'priceCard_src_graph', showsChart: true },
             { value: 'jina',  labelKey: 'priceCard_src_jina' },
@@ -5209,6 +5219,23 @@ const PAID_SHIFT_HOURS = 10;
             return [
                 {
                     /**
+                     * Cena z karty amazon.de obok (AmazonBridge). Rodzaj 'tab':
+                     * nie jest zapytaniem sieciowym karty T-REX, więc blokady
+                     * CSP go nie dotyczą. Ceny amazon.de są w euro.
+                     */
+                    name: 'amazon.de',
+                    kind: 'tab',
+                    get available() { return store.localTabConfig.priceCard.source === 'amazon'; },
+                    marketSearch: false,
+                    async run(asin, signal) {
+                        const d = await AmazonBridge.request(asin, signal);
+                        if (d.error && d.current === null && d.rrp === null) throw new Error(d.error);
+                        const mk = (v) => v === null ? null : self.money(v, 'EUR');
+                        return { current: mk(d.current), rrp: mk(d.rrp), stale: false, market: 'de' };
+                    },
+                },
+                {
+                    /**
                      * Cena odczytana z obrazka wykresu — pierwsza i domyślna:
                      * nie wymaga klucza ani obcego proxy, tylko obrazka
                      * z graph.keepa.com. Działa też w trybie 'graph' (różnica
@@ -5219,7 +5246,9 @@ const PAID_SHIFT_HOURS = 10;
                     kind: 'image',
                     get available() {
                         const pc = store.localTabConfig.priceCard;
-                        return pc.source === 'ocr' || pc.source === 'graph' || !!pc.logValues;
+                        // Dziennik wartości nie budzi Keepa, gdy cena idzie z karty
+                        // amazon.de — inaczej karta T-REX ładowałaby obrazki z sieci.
+                        return pc.source === 'ocr' || pc.source === 'graph' || (!!pc.logValues && pc.source !== 'amazon');
                     },
                     // r.jina.ai rozbiera szablon konkretnej witryny — gonienie
                     // go po obcych rynkach nie ma sensu, więc w trybie 'jina'
@@ -6373,8 +6402,12 @@ const PAID_SHIFT_HOURS = 10;
             store.localTabConfig.priceCard.moduleEnabled = true;
             Persistence.saveState();
             Utils.log('[MODUŁ CEN] włączony ręcznie — od tej chwili zapytania sieciowe są dozwolone.');
-            // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę.
-            FxRates.init().then(() => bus.emit('valueLog:changed'));
+            // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę. Z kartą
+            // amazon.de karta T-REX nie wychodzi do sieci wcale — ceny są
+            // w euro, a waluta wyświetlania liczy się z kursów wbudowanych.
+            if (store.localTabConfig.priceCard.source !== 'amazon') {
+                FxRates.init().then(() => bus.emit('valueLog:changed'));
+            }
             // Karta mogła być schowana — pokazujemy i pytamy o cenę tego, co na ekranie.
             if (PriceCard.el) PriceCard.applyStyle();
             PriceCard.check();
@@ -6650,6 +6683,11 @@ const PAID_SHIFT_HOURS = 10;
 
                 if (limitHit && result.status !== 'ok') {
                     result = { status: 'fail', reason: I18n.get('priceCard_limit') };
+                }
+                // Bez połączonej karty amazon.de mówimy wprost, co zrobić.
+                if (result.status !== 'ok' && store.localTabConfig.priceCard.source === 'amazon'
+                    && !AmazonBridge.connected()) {
+                    result = { status: 'fail', reason: I18n.get('amazon_notConnected') };
                 }
 
                 // Ceny na wybranym rynku nie ma — próbujemy pozostałych,
@@ -6974,7 +7012,10 @@ const PAID_SHIFT_HOURS = 10;
             // Stronę skanuje AutoTrigger, osobnego obserwatora nie zakładamy.
             bus.on('page:scanned', (d) => this.check(d && d.text));
             // Karta zależy tylko od własnych ustawień i języka.
-            onStorePaths(['localTabConfig.priceCard', 'userConfig.language'], () => this.applyStyle());
+            // Linie i położenie okna statystyk zmieniają jego wysokość albo
+            // przyklejenie — karta nad nim przesuwa się razem z nim.
+            onStorePaths(['localTabConfig.priceCard', 'userConfig.language', 'localTabConfig.linesConfig',
+                          'localTabConfig.statsWindowPosition'], () => this.applyStyle());
 
             this.check();
         },
@@ -7000,7 +7041,15 @@ const PAID_SHIFT_HOURS = 10;
             this.el.style.width = `${Utils.clampNum(pc.width, 120, 1600, 280)}px`;
             this.el.style.left = pc.position.left || '14px';
             if (pc.position.top) { this.el.style.top = pc.position.top; this.el.style.bottom = 'auto'; }
-            else { this.el.style.top = 'auto'; this.el.style.bottom = '14px'; }
+            else {
+                // Przyklejona do dołu karta stoi nad oknem statystyk, gdy i ono
+                // trzyma się dołu ekranu — inaczej przykryłaby linię 7.
+                const win = StatsWindowRenderer.el;
+                const winAtBottom = win && !(store.localTabConfig.statsWindowPosition || {}).top;
+                const lift = winAtBottom ? Math.round(Number(win.offsetHeight) || 0) : 0;
+                this.el.style.top = 'auto';
+                this.el.style.bottom = `${lift + 4}px`;
+            }
 
             // Tło, ramka i cień idą razem: przy przezroczystym tle ramka i cień
             // zostawiłyby pustą obwódkę nad stroną. Nie ma tła — zostaje sam
@@ -7696,6 +7745,7 @@ const PAID_SHIFT_HOURS = 10;
             if (AutoLpn.onKeyDown) document.removeEventListener('keydown', AutoLpn.onKeyDown, true);
             if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
             ClearSession.teardown();
+            AmazonBridge.teardown();
             if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
             if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
@@ -7740,6 +7790,8 @@ const PAID_SHIFT_HOURS = 10;
             // Na karcie GRAVIS skrypt nie liczy niczego — jest tylko drugą
             // stroną mostu (GravisBridge).
             if (GravisBridge.isGravisPage()) { GravisBridge.initRemote(); return; }
+            // Na karcie amazon.de — druga strona mostu cen (AmazonBridge).
+            if (AmazonBridge.isAmazonPage()) { AmazonBridge.initRemote(); return; }
             if (window[CONFIG.SCRIPT_ID_PREFIX + 'INIT']) {
                 /**
                  * Skrypt już działa, ale kod ustawień z zakładki i tak wchodzi —
@@ -7820,6 +7872,7 @@ const PAID_SHIFT_HOURS = 10;
                 ToteWatch.init();
                 AutoLpn.init();
                 GravisBridge.init();
+                AmazonBridge.init();
                 ClearSession.init();
                 AutoTrigger.init();
                 Persistence.listen();
@@ -7926,7 +7979,7 @@ const PAID_SHIFT_HOURS = 10;
                     tote: () => ToteWatch.info(),
                     // Okno diagnostyki — to samo co przycisk w panelu.
                     debug: () => Diag.toggle(),
-                    ToteWatch, AutoLpn, GravisBridge, Diag, ClearSession, Notifier,
+                    ToteWatch, AutoLpn, GravisBridge, AmazonBridge, Diag, ClearSession, Notifier,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
@@ -8119,7 +8172,7 @@ const PAID_SHIFT_HOURS = 10;
          */
         ENUMS: {
             font: ['default', 'monospace', 'sans_serif_thin'],
-            source: ['ocr', 'graph', 'jina'],
+            source: ['ocr', 'graph', 'jina', 'amazon'],
             graphMode: ['legend', 'right', 'full'],
             language: ['pl', 'en', 'ru', 'uk'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
@@ -10154,6 +10207,226 @@ const PAID_SHIFT_HOURS = 10;
         },
     };
 
+    // ─── src/32-amazon-bridge.js ───
+    // ==========================================
+    // 6l. MOST AMAZON.DE — CENA Z KARTY SKLEPU
+    // ==========================================
+    /**
+     * Dwie karty, jeden plik — jak most GRAVIS. Karta T-REX otwiera amazon.de
+     * przez window.open i dostaje uchwyt okna; ten sam skrypt kliknięty na
+     * karcie amazon.de rozpoznaje stronę (isAmazonPage) i staje się drugą
+     * stroną mostu. Rozmowa idzie przez postMessage, w przeglądarce.
+     *
+     * KARTA T-REX NIE WYSYŁA NICZEGO NA ZEWNĄTRZ. Wysyła ASIN do sąsiedniej
+     * karty; zapytanie /dp/<ASIN> robi karta amazon.de pod własnym adresem —
+     * zwykłe zapytanie przeglądarki, z jej ciasteczkami, więc ani CORS, ani
+     * blokady pośredników go nie dotyczą.
+     *
+     * Obie strony przyjmują wiadomość wyłącznie od znanego okna (e.source)
+     * i znanego adresu (e.origin) i wysyłają ją wyłącznie na znany adres.
+     * Karta amazon.de przyjmuje tylko ASIN pasujący do wzorca i pobiera tylko
+     * ścieżkę /dp/<ASIN> własnego adresu; odsyła same liczby, które T-REX
+     * jeszcze raz sprawdza (skończone, dodatnie, poniżej AMAZON_MAX_PRICE_EUR).
+     *
+     * Rozbiór strony produktu to algorytm z dawnego skryptu działu PS:
+     * cena katalogowa z bloku „basisPrice” (przekreślona), cena do zapłaty
+     * z „apex-pricetopay” i dawnych bloków priceblock; w bloku najpierw
+     * .a-offscreen, potem symbol + część całkowita + grosze, na końcu tekst
+     * (amazon drukuje go czasem dwa razy z rzędu).
+     */
+    const AmazonBridge = {
+        win: null,
+        ready: false,
+        /** Chwila ostatniego sygnału z karty amazon.de; 0 — jeszcze żadnego. */
+        lastSeen: 0,
+        /** Zapytania czekające na odpowiedź: id → { resolve, reject }. */
+        pending: new Map(),
+        nextId: 1,
+
+        isAmazonPage() {
+            return window.location.origin === CONFIG.AMAZON_ORIGIN;
+        },
+        connected() {
+            return !!(this.win && !this.win.closed && this.ready
+                && Date.now() - this.lastSeen <= CONFIG.AMAZON_STALE_MS);
+        },
+
+        // --- strona T-REX ---
+        init() {
+            this.onMessage = (e) => {
+                if (e.origin !== CONFIG.AMAZON_ORIGIN || !e.source) return;
+                const d = e.data;
+                if (!d || typeof d !== 'object') return;
+                // Okno przyjmuje się z sygnału gotowości ze znanego adresu —
+                // także po przeładowaniu T-REX, gdy uchwytu z window.open już nie ma.
+                if (d.type === 'sh-amazon-ready') {
+                    this.win = /** @type {Window} */ (e.source);
+                    this.ready = true;
+                    this.lastSeen = Date.now();
+                    return;
+                }
+                if (e.source !== this.win || d.type !== 'sh-amazon-price') return;
+                this.lastSeen = Date.now();
+                const wait = this.pending.get(d.id);
+                if (!wait) return;
+                this.pending.delete(d.id);
+                wait.resolve({ current: this.price(d.current), rrp: this.price(d.rrp), error: typeof d.error === 'string' ? d.error.slice(0, 120) : null });
+            };
+            window.addEventListener('message', this.onMessage);
+        },
+        /** Liczba od karty Amazon albo null: tylko skończona, dodatnia i rozsądna. */
+        price(v) {
+            const n = typeof v === 'number' ? v : NaN;
+            return Number.isFinite(n) && n > 0 && n < CONFIG.AMAZON_MAX_PRICE_EUR ? Math.round(n * 100) / 100 : null;
+        },
+        /** Jedyne miejsce, z którego T-REX otwiera amazon.de — kliknięcie w panelu. */
+        open() {
+            const win = window.open(CONFIG.AMAZON_URL, CONFIG.AMAZON_WINDOW_NAME);
+            // Blokada wyskakujących okien zwraca null: działające połączenie zostaje.
+            if (!win) return;
+            this.ready = false;
+            this.win = win;
+        },
+        /**
+         * Cena dla ASIN z karty amazon.de: { current, rrp, error } w euro albo
+         * wyjątek, gdy karta nie jest połączona albo zapytanie przerwano
+         * (`signal` — limit czasu karty ceny).
+         */
+        request(asin, signal) {
+            if (!this.connected()) return Promise.reject(new Error('karta amazon.de niepodłączona'));
+            const id = this.nextId++;
+            return new Promise((resolve, reject) => {
+                this.pending.set(id, { resolve, reject });
+                if (signal) {
+                    signal.addEventListener('abort', () => {
+                        if (this.pending.delete(id)) reject(new Error('przekroczony czas'));
+                    });
+                }
+                this.win.postMessage({ type: 'sh-amazon-asin', id, asin: String(asin) }, CONFIG.AMAZON_ORIGIN);
+            });
+        },
+        teardown() {
+            if (this.onMessage) window.removeEventListener('message', this.onMessage);
+            for (const wait of this.pending.values()) wait.reject(new Error('skrypt zdjęty'));
+            this.pending.clear();
+        },
+
+        // --- strona amazon.de ---
+        /**
+         * Na amazon.de skrypt nie liczy i nie ma ustawień: odpowiada na ASIN
+         * i co AMAZON_HEARTBEAT_MS daje znać, że żyje. Znaczek w lewym górnym
+         * rogu jest przezroczysty dla kliknięć.
+         */
+        initRemote() {
+            const flag = CONFIG.SCRIPT_ID_PREFIX + 'AMAZON';
+            if (window[flag]) return;
+            if (!window.opener) { this.badge(I18n.get('amazon_badgeNoOpener'), '#C62828'); return; }
+            window[flag] = true;
+            this.onRemoteMessage = async (e) => {
+                if (e.source !== window.opener || e.origin !== CONFIG.TREX_ORIGIN) return;
+                const d = e.data;
+                if (!d || d.type !== 'sh-amazon-asin' || !CONFIG.ASIN_VALUE_REGEX.test(String(d.asin))) return;
+                const out = await this.lookup(d.asin);
+                if (!window.opener) return;
+                window.opener.postMessage({ type: 'sh-amazon-price', id: d.id, asin: d.asin, ...out }, CONFIG.TREX_ORIGIN);
+            };
+            window.addEventListener('message', this.onRemoteMessage);
+            const beat = () => {
+                if (window.opener) window.opener.postMessage({ type: 'sh-amazon-ready' }, CONFIG.TREX_ORIGIN);
+            };
+            beat();
+            this.heartbeatTimer = setInterval(beat, CONFIG.AMAZON_HEARTBEAT_MS);
+            this.badge(I18n.get('amazon_badgeOk'), '#2E7D32');
+        },
+        badge(text, color) {
+            const old = document.getElementById(CONFIG.SCRIPT_ID_PREFIX + 'amazonBadge');
+            if (old) old.remove();
+            document.body.appendChild(h('div', {
+                id: 'amazonBadge', textContent: text,
+                style: { position: 'fixed', left: '6px', top: '6px', zIndex: '2147483646',
+                         pointerEvents: 'none', opacity: '0.55', background: color, color: '#fff',
+                         padding: '2px 8px', borderRadius: '10px', font: '11px sans-serif' },
+            }));
+        },
+        /** Pobranie strony produktu z własnego adresu i rozbiór ceny. */
+        async lookup(asin) {
+            try {
+                const r = await fetch('/dp/' + encodeURIComponent(asin), { credentials: 'include' });
+                if (!r.ok) return { current: null, rrp: null, error: 'HTTP ' + r.status };
+                const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+                return this.parsePage(doc);
+            } catch (e) {
+                return { current: null, rrp: null, error: String(e && e.message) };
+            }
+        },
+        /** Selektory bloków ceny — w kolejności pytania. */
+        RRP_SELECTORS: [
+            '#corePriceDisplay_desktop_feature_div .basisPrice .a-price[data-a-strike="true"]',
+            '#corePriceDisplay_desktop_feature_div .apex-basisprice-value',
+            '#corePrice_desktop .apex-basisprice-value',
+            '.basisPrice .a-price[data-a-strike="true"]',
+            '#priceblock_ourprice_lbl + td .a-text-strike',
+        ],
+        PRICE_SELECTORS: [
+            '#corePriceDisplay_desktop_feature_div .apex-pricetopay-value',
+            '#corePrice_desktop .apex-pricetopay-value',
+            '#price_inside_buybox',
+            '#corePrice_feature_div .a-price',
+            '.apex-pricetopay-value',
+            'span.priceToPay',
+            '#priceblock_ourprice',
+            '#priceblock_dealprice',
+        ],
+        /** { current, rrp } z dokumentu strony produktu; brak bloku — null. */
+        parsePage(doc) {
+            const area = doc.querySelector('#dp-container') || doc.querySelector('#dp') || doc.body;
+            if (!area) return { current: null, rrp: null, error: 'pusta strona' };
+            const rrp = this.amount(this.blockText(area, this.RRP_SELECTORS));
+            const current = this.amount(this.blockText(area, this.PRICE_SELECTORS));
+            return { current, rrp, error: current || rrp ? null : 'na stronie nie ma ceny' };
+        },
+        /** Tekst pierwszego bloku ceny, który coś zawiera. */
+        blockText(area, selectors) {
+            for (const s of selectors) {
+                for (const el of area.querySelectorAll(s)) {
+                    const off = el.querySelector('.a-offscreen');
+                    if (off && off.textContent.trim().length > 1) return off.textContent.trim();
+                    const whole = el.querySelector('.a-price-whole');
+                    const fraction = el.querySelector('.a-price-fraction');
+                    if (whole && fraction) return whole.textContent.replace(/[^0-9]/g, '') + '.' + fraction.textContent.trim();
+                    const txt = el.textContent.replace(/\s+/g, '').trim();
+                    if (txt) {
+                        // Amazon drukuje cenę czasem dwa razy z rzędu („12,99€12,99€”).
+                        const half = txt.length / 2;
+                        return txt.length % 2 === 0 && txt.slice(0, half) === txt.slice(half) ? txt.slice(0, half) : txt;
+                    }
+                }
+            }
+            return null;
+        },
+        /**
+         * Kwota z tekstu ceny („1.299,00 €”, „1,299.00”, „12,99”, „1.299”):
+         * ostatni z dwóch separatorów to grosze; pojedynczy separator z trzema
+         * cyframi po nim to tysiące.
+         */
+        amount(text) {
+            if (!text) return null;
+            let v = String(text).replace(/[^\d.,]/g, '');
+            if (!v) return null;
+            if (v.includes('.') && v.includes(',')) {
+                v = v.lastIndexOf('.') > v.lastIndexOf(',') ? v.replace(/,/g, '') : v.replace(/\./g, '').replace(',', '.');
+            } else if (v.includes(',')) {
+                const parts = v.split(',');
+                v = parts[parts.length - 1].length === 3 ? v.replace(/,/g, '') : v.replace(/,/g, '.');
+            } else if (v.includes('.')) {
+                const parts = v.split('.');
+                if (parts[parts.length - 1].length === 3) v = v.replace(/\./g, '');
+            }
+            const n = parseFloat(v);
+            return Number.isFinite(n) && n > 0 ? n : null;
+        },
+    };
+
     // ─── src/31-clear-session.js ───
     // ==========================================
     // 6k. USUŃ SESJĘ SKRÓTEM
@@ -10483,7 +10756,8 @@ const PAID_SHIFT_HOURS = 10;
    KARTA CENY  (store.localTabConfig.priceCard) — działa tylko przy moduleEnabled
    -----------------------------------------------------------------------------
    visible    = true          pokazywać kartę na ekranie
-   source     = 'ocr'         'ocr' (cena tekstem z wykresu) | 'graph' | 'jina'
+   source     = 'amazon'      'amazon' (karta amazon.de obok, bez sieci z T-REX)
+                              | 'ocr' | 'graph' | 'jina' (dawne źródła sieciowe, poza panelem)
    logValues  = true          prowadzić dziennik wartości
    marketFallback = true      szukać ceny w innych sklepach, gdy w wybranym brak
    showPrice  = true          pokazywać aktualną cenę

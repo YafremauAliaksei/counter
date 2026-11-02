@@ -69,7 +69,7 @@
          */
         ENUMS: {
             font: ['default', 'monospace', 'sans_serif_thin'],
-            source: ['ocr', 'graph', 'jina'],
+            source: ['ocr', 'graph', 'jina', 'amazon'],
             graphMode: ['legend', 'right', 'full'],
             language: ['pl', 'en', 'ru', 'uk'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],

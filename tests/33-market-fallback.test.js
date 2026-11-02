@@ -23,6 +23,9 @@ const { boot } = require('./dom-stub');
 
 const env = boot();
 const SH = env.SH;
+// Przegląd sklepów dotyczy dawnego źródła sieciowego (Keepa); panel go nie
+// pokazuje, ale kod zostaje i jest sprawdzany na tym trybie.
+SH.store.localTabConfig.priceCard.source = 'ocr';
 const P = SH.PriceCard;
 const doc = env.sandbox.document;
 const ASIN = 'B0FJ6K5H5V';

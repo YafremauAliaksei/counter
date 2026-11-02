@@ -133,18 +133,18 @@ test('rozwinięcie pokazuje wszystko; włączone 2 i 10, po zwinięciu zostają 
 
 test('zwykła sekcja zwinięta chowa wszystko poza nagłówkiem i pamięta to po przerysowaniu', () => {
     const env = panelEnv();
-    let sec = section(env, 'global');
+    let sec = section(env, 'lunch');
     ok(content(sec).every(shown), 'domyślnie rozwinięta');
     sec.children[0].dispatch('click', {});
     ok(content(sec).every(c => !shown(c)), 'zwinięta');
     env.SH.SettingsPanel.render();
-    sec = section(env, 'global');
+    sec = section(env, 'lunch');
     ok(content(sec).every(c => !shown(c)), 'po przerysowaniu dalej zwinięta');
 });
 
-test('domyślnie zwinięte (decyzja autora): zadania, karta, pomoce wizualne, skróty, moduł cen, karta ceny, auto-inkrementacja, kod, diagnostyka', () => {
+test('domyślnie zwinięte (decyzja autora): zadania, statystyki globalne, karta, pomoce wizualne, skróty, moduł cen, karta ceny, auto-inkrementacja, kod, diagnostyka', () => {
     const env = panelEnv({ href: 'https://trex-prod-eu.aka.amazon.com/?gradingMode=COS_NIEZNANEGO' });
-    const closed = ['tasks', 'current_tab', 'visual', 'keys', 'auto', 'price_module', 'price_card', 'code', 'diag'];
+    const closed = ['tasks', 'global', 'current_tab', 'visual', 'keys', 'auto', 'price_module', 'price_card', 'code', 'diag'];
     for (const id of closed) {
         const sec = section(env, id);
         ok(sec, 'sekcja ' + id);
@@ -153,7 +153,7 @@ test('domyślnie zwinięte (decyzja autora): zadania, karta, pomoce wizualne, sk
         const keep = id === 'tasks' ? 2 : 0;
         eq(content(sec).filter(shown).length, keep, id + ': nic poza tytułem' + (keep ? ' i dwoma polami' : ''));
     }
-    for (const id of ['lunch', 'workflow', 'global', 'language', 'general']) {
+    for (const id of ['lunch', 'workflow', 'language', 'general']) {
         eq(section(env, id).children[0].getAttribute('aria-expanded'), 'true', id);
     }
 });

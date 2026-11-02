@@ -517,6 +517,40 @@ Wyłączony domyślnie. Dopóki jest wyłączony, skrypt **w ogóle nie wchodzi 
 Włącza się w panelu ustawień (sekcja „Moduł cen”) albo poleceniem `SH.priceOn()`.
 Stan jest zapisywany i przeżywa przeładowanie strony.
 
+### Cena z karty amazon.de — karta T-REX nie wysyła niczego na zewnątrz
+
+Ceny bierze się z **karty amazon.de otwartej obok**, jak ASIN z GRAVIS:
+
+1. W panelu, w sekcji „Karta ceny”, przycisk **„Otwórz amazon.de”** — sklep
+   otwiera się w nowej karcie.
+2. Na tamtej karcie raz kliknąć zakładkę tego skryptu. W lewym górnym rogu
+   pojawia się zielony znaczek „StatsHelper: ceny dla T-REX”, a przycisk
+   w panelu zmienia się na „amazon.de połączony”. Kartę zostawić otwartą.
+
+Dalej karta T-REX wysyła do karty amazon.de **sam ASIN** (`postMessage`,
+w przeglądarce), a karta amazon.de pobiera `amazon.de/dp/<ASIN>` **z własnego
+adresu** — zwykłe zapytanie przeglądarki z jej ciasteczkami — rozbiera cenę
+i odsyła dwie liczby. Karta T-REX nie wysyła do internetu nic, nie pobiera też
+kursów walut (ceny amazon.de są w euro; waluta wyświetlania liczy się z kursów
+wbudowanych). Każda strona przyjmuje wiadomość tylko ze znanego adresu i okna.
+
+Rozbiór ceny to algorytm z dawnego skryptu działu PS: cena katalogowa
+z przekreślonego bloku „basisPrice”, cena do zapłaty z „apex-pricetopay”
+i dawnych bloków `priceblock`; w bloku najpierw `.a-offscreen`, potem symbol +
+część całkowita + grosze, na końcu tekst. Kwota: `1.299,00 €`, `1,299.00`,
+`12,99` — ostatni z dwóch separatorów to grosze, pojedynczy z trzema cyframi po
+nim to tysiące.
+
+Tylko amazon.de, z dopisanym ASIN — wyboru sklepu w panelu nie ma: do
+szacunku wartości przedmiotu inne sklepy nic nie dodają, a amazon.de oddaje
+ceny w euro. Karta amazon.de otwarta ręcznie (nie z panelu T-REX) nie
+odpowiada — mówi o tym czerwony znaczek. Bez połączonej karty karta ceny
+pokazuje „karta amazon.de niepołączona — otwórz ją z panelu”.
+
+Dawne źródła sieciowe (obrazek Keepa, r.jina.ai, przegląd innych sklepów) nie
+mają już kontrolek w panelu; kod zostaje i wchodzi tylko z kodu ustawień albo
+z konsoli (`priceCard.source`).
+
 ### Co pojawia się po włączeniu
 
 **Karta ceny** — cena towaru, który jest właśnie obsługiwany. Domyślnie to
@@ -1168,7 +1202,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 46 plików, 744 sprawdzeń
+├── tests/                  ← 47 plików, 759 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1188,7 +1222,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 744 sprawdzeń
+npm test             # 759 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)

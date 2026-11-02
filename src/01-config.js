@@ -380,6 +380,22 @@
         // podpowiada wtedy, żeby kliknąć tam zakładkę jeszcze raz.
         GRAVIS_HEARTBEAT_MS: 10000,
         GRAVIS_STALE_MS: 30000,
+        /**
+         * KARTA AMAZON.DE — cena produktu z samej strony sklepu, bez żadnego
+         * zapytania z karty T-REX. T-REX otwiera amazon.de (uchwyt okna),
+         * skrypt kliknięty tam zakładką odpowiada przez window.opener: dostaje
+         * ASIN, pobiera /dp/<ASIN> z własnego adresu (zwykłe zapytanie
+         * przeglądarki, z jej ciasteczkami) i odsyła liczby. Tylko amazon.de:
+         * ceny są w euro, a do szacunku wartości przedmiotu inne sklepy nic
+         * nie dodają.
+         */
+        AMAZON_URL: 'https://www.amazon.de/',
+        AMAZON_ORIGIN: 'https://www.amazon.de',
+        AMAZON_WINDOW_NAME: 'statsHelperAmazon',
+        AMAZON_HEARTBEAT_MS: 10000,
+        AMAZON_STALE_MS: 30000,
+        // Najwyższa cena przyjmowana od karty Amazon — większa to błąd rozbioru.
+        AMAZON_MAX_PRICE_EUR: 100000,
         // Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora).
         OPEN_SETTINGS_ON_START: true,
         // Linia 9 po przekroczeniu podwójnego czasu przedmiotu.
@@ -695,13 +711,13 @@
             moduleEnabled: false,
             visible: true,
             // ŹRÓDŁO CENY:
-            //   'ocr'   — obrazek Keepa ładuje się w tle i jest rozpoznawany;
-            //             na kartę trafia sama liczba. Domyślnie.
-            //   'graph' — pokazywać sam obrazek wykresu.
-            //   'jina'  — zapytanie tekstowe do r.jina.ai.
-            // 'ocr' też potrzebuje graph.keepa.com; gdy CSP strony tnie
-            // img-src, tryb nie działa i karta mówi o tym wprost.
-            source: 'ocr',
+            //   'amazon' — karta amazon.de obok (AmazonBridge); karta T-REX nie
+            //              wysyła niczego na zewnątrz. Domyślnie i jedyne
+            //              w panelu.
+            //   'ocr', 'graph', 'jina' — dawne źródła sieciowe (Keepa,
+            //              r.jina.ai); nieobecne w panelu, wchodzą tylko
+            //              z kodu ustawień albo z konsoli.
+            source: 'amazon',
             // Prowadzić dziennik wartości (tylko z modułem cen — ValueLog.add()).
             logValues: true,
             // Szukać ceny w innych sklepach, gdy w wybranym jej nie ma.

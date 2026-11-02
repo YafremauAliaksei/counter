@@ -91,6 +91,7 @@
             if (AutoLpn.onKeyDown) document.removeEventListener('keydown', AutoLpn.onKeyDown, true);
             if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
             ClearSession.teardown();
+            AmazonBridge.teardown();
             if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
             if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
@@ -135,6 +136,8 @@
             // Na karcie GRAVIS skrypt nie liczy niczego — jest tylko drugą
             // stroną mostu (GravisBridge).
             if (GravisBridge.isGravisPage()) { GravisBridge.initRemote(); return; }
+            // Na karcie amazon.de — druga strona mostu cen (AmazonBridge).
+            if (AmazonBridge.isAmazonPage()) { AmazonBridge.initRemote(); return; }
             if (window[CONFIG.SCRIPT_ID_PREFIX + 'INIT']) {
                 /**
                  * Skrypt już działa, ale kod ustawień z zakładki i tak wchodzi —
@@ -215,6 +218,7 @@
                 ToteWatch.init();
                 AutoLpn.init();
                 GravisBridge.init();
+                AmazonBridge.init();
                 ClearSession.init();
                 AutoTrigger.init();
                 Persistence.listen();
@@ -321,7 +325,7 @@
                     tote: () => ToteWatch.info(),
                     // Okno diagnostyki — to samo co przycisk w panelu.
                     debug: () => Diag.toggle(),
-                    ToteWatch, AutoLpn, GravisBridge, Diag, ClearSession, Notifier,
+                    ToteWatch, AutoLpn, GravisBridge, AmazonBridge, Diag, ClearSession, Notifier,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które

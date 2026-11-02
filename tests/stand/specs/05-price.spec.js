@@ -33,10 +33,15 @@ function fixtures() {
     return f;
 }
 
-/** Moduł włączony tak jak z panelu; przerwa między zapytaniami skrócona. */
+/**
+ * Moduł włączony z dawnym źródłem sieciowym (obrazek Keepa) — ten plik
+ * sprawdza właśnie je; domyślne źródło, karta amazon.de, ma własny plik
+ * 09-amazon-bridge. Przerwa między zapytaniami skrócona.
+ */
 async function priceOn(page) {
     await page.evaluate(() => {
         window.SH.CONFIG.PRICE_MIN_REQUEST_GAP_MS = 0;
+        window.SH.store.localTabConfig.priceCard.source = 'ocr';
         window.SH.priceOn();
     });
 }

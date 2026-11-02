@@ -22,8 +22,18 @@ Dla tego projektu SemVer czyta się tak:
 - Koniec zmiany = początek + 10 płatnych godzin + wybrany obiad (06:30 → 17:00, 18:30 → 05:00). Bez rozpoznanej zmiany człon „z …” znika, w linii 10 zamiast celu zadania stoi `—`.
 - Usunięto przybliżenie `≈` („czas zmiany sprzed pierwszego zadania doliczany według celu”) — opisywało cel całej zmiany, którego linia 7 już nie pokazuje.
 
+### Dodano — cena z karty amazon.de, bez sieci z karty T-REX
+
+- **Most do karty amazon.de** (`src/32-amazon-bridge.js`), jak most GRAVIS: przycisk „Otwórz amazon.de” w panelu, jedno kliknięcie zakładki na tamtej karcie. Karta T-REX wysyła sam ASIN przez `postMessage`; karta amazon.de pobiera `/dp/<ASIN>` z własnego adresu i odsyła dwie liczby (cena do zapłaty i katalogowa, w euro). Karta T-REX nie wysyła do internetu nic — także kursów walut nie pobiera (waluta wyświetlania z kursów wbudowanych).
+- Rozbiór ceny — algorytm dawnego skryptu działu PS: bloki `basisPrice` (przekreślona, katalogowa) i `apex-pricetopay` / `priceblock` (do zapłaty), w bloku `.a-offscreen`, potem symbol + całość + grosze, potem tekst (także podwojony); kwota w obu zapisach separatorów.
+- Obie strony przyjmują wiadomość tylko ze znanego adresu i okna; karta amazon.de bierze tylko ASIN pasujący do wzorca i pobiera tylko ścieżkę `/dp/<ASIN>`; T-REX sprawdza liczby jeszcze raz (skończone, dodatnie, poniżej 100 000 €). Karta otwarta ręcznie, nie z T-REX, nie odpowiada.
+- **Domyślne źródło ceny: karta amazon.de.** Tylko amazon.de — wyboru sklepu w panelu nie ma. Dawne źródła sieciowe (Keepa, r.jina.ai, przegląd innych sklepów) zniknęły z panelu; kod zostaje, wchodzi tylko z kodu ustawień (`source`: wartość `amazon` dopisana na końcu listy) albo z konsoli. Dziennik wartości przy karcie amazon.de nie budzi już obrazków Keepa.
+- Testy: `tests/47-amazon-bridge.test.js` (protokół, adresy i okna, sprawdzenie liczb, limit czasu, rozbiórka, karta ceny, kwota z tekstu, panel) i `tests/stand/specs/09-amazon-bridge.spec.js` (dwie karty w Chromium pod prawdziwymi adresami, cztery układy bloku ceny, brak ceny, zero zapytań T-REX do amazon.de, karta otwarta ręcznie).
+
 ### Zmieniono — panel
 
+- **Statystyki globalne** domyślnie zwinięte (decyzja autora).
+- **Karta ceny przyklejona do dołu stoi nad oknem statystyk** i przesuwa się razem z nim (okno stoi przy samym dole od 1.8.0 i karta przykrywała linię 7).
 - **Pola Paczki i Tempo widać zawsze**, także przy zwiniętej sekcji Zadania — to jedyne, co poprawia się w trakcie zmiany.
 
 ### Testy

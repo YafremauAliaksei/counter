@@ -15,7 +15,7 @@
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
         { id: 'tasks', open: false },
-        { id: 'global', open: true },
+        { id: 'global', open: false },
         { id: 'current_tab', open: false },
         { id: 'visual', open: false },
         {
@@ -784,18 +784,14 @@
             const secPrice = UIBuilder.section(I18n.get('priceCard_section'));
             const pc = store.localTabConfig.priceCard;
 
-            // Sklep: jedno ustawienie na link, wykres i walutę.
-            const mkKey = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_marketplace'), UIBuilder.select(
-                Object.entries(CONFIG.MARKETPLACES).map(([k, m]) => ({
-                    value: k, text: m.host.replace(/^www\./, '') + (PriceSources.coversMarket(k) ? '' : '  ⚠'),
-                })), mkKey, v => { store.userConfig.marketplace = v; this.rerender(); })));
-            if (!PriceSources.coversMarket(mkKey)) {
-                secPrice.appendChild(h('div', {
-                    textContent: '⚠ ' + I18n.get('priceCard_marketNoData'),
-                    style: { fontSize: '0.85em', color: '#b06a00', margin: '-4px 0 10px 0', lineHeight: '1.35' },
-                }));
-            }
+            // Cena z karty amazon.de obok: jedyne źródło w panelu. Dawne
+            // źródła sieciowe (Keepa, r.jina.ai) i wybór sklepu nie mają tu
+            // kontrolek — wchodzą tylko z kodu ustawień albo z konsoli.
+            const amazonOk = AmazonBridge.connected();
+            secPrice.appendChild(UIBuilder.hint(I18n.get('amazon_howTo')));
+            secPrice.appendChild(UIBuilder.button(I18n.get(amazonOk ? 'amazon_connected' : 'amazon_open'),
+                () => { AmazonBridge.open(); this.rerender(); },
+                { width: '100%', background: amazonOk ? '#2E7D32' : CONFIG.SETTINGS_PANEL_ACCENT_COLOR }));
 
             // Waluta, w której kwoty się pokazuje. Liczy się zawsze w euro,
             // więc przełączenie w trakcie zmiany niczego nie gubi. Ustawienie
@@ -808,14 +804,6 @@
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
-            // Źródło ceny — tryby z PriceSources, od zalecanego do zapasowych.
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select(
-                PriceSources.modes.map(m => ({ value: m.value, text: I18n.get(m.labelKey) })),
-                pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
-
-            secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
-                I18n.get('priceCard_fallback'), pc.marketFallback !== false,
-                v => store.localTabConfig.priceCard.marketFallback = v, I18n.get('priceCard_fallbackHint'))));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_showCard'), pc.visible,

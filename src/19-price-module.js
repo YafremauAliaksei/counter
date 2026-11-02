@@ -15,8 +15,12 @@
             store.localTabConfig.priceCard.moduleEnabled = true;
             Persistence.saveState();
             Utils.log('[MODUŁ CEN] włączony ręcznie — od tej chwili zapytania sieciowe są dozwolone.');
-            // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę.
-            FxRates.init().then(() => bus.emit('valueLog:changed'));
+            // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę. Z kartą
+            // amazon.de karta T-REX nie wychodzi do sieci wcale — ceny są
+            // w euro, a waluta wyświetlania liczy się z kursów wbudowanych.
+            if (store.localTabConfig.priceCard.source !== 'amazon') {
+                FxRates.init().then(() => bus.emit('valueLog:changed'));
+            }
             // Karta mogła być schowana — pokazujemy i pytamy o cenę tego, co na ekranie.
             if (PriceCard.el) PriceCard.applyStyle();
             PriceCard.check();
