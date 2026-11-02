@@ -1,7 +1,8 @@
     /**
-     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora
-     * na makiecie: na górze to, co zmienia się co zmianę (przerwa, cel,
-     * zadania), na dole to, co ustawia się raz (język, reset).
+     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora:
+     * na górze to, co zmienia się co zmianę i częściowo widać od razu
+     * (przerwa, cel, pola zadania, włączone linie okna), niżej sekcje
+     * zwinięte w całości, na dole to, co ustawia się raz (język, reset).
      *
      * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie; zwinięte
      * domyślnie jest to, czego nie ustawia się co zmianę (decyzja autora).
@@ -9,15 +10,13 @@
      * z nieprzeczytanym w zwiniętej kategorii): zwinięte okno statystyk
      * zostawia na widoku ustawienia samych włączonych linii. Element
      * z `data-sh-keep` widać zawsze, z `data-sh-collapsed-only` — tylko
-     * w sekcji zwiniętej (podpowiedź „rozwiń, żeby zobaczyć resztę”).
+     * w sekcji zwiniętej (przycisk „pokaż pozostałe linie”), z
+     * `data-sh-expand` — rozwija sekcję jak tytuł.
      */
     const PANEL_SECTIONS = [
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
         { id: 'tasks', open: false },
-        { id: 'global', open: false },
-        { id: 'current_tab', open: false },
-        { id: 'visual', open: false },
         {
             id: 'window', open: false,
             keep: (child) => {
@@ -26,6 +25,9 @@
                 return !!(cfg && cfg.visible);
             },
         },
+        { id: 'global', open: false },
+        { id: 'current_tab', open: false },
+        { id: 'visual', open: false },
         { id: 'keys', open: false },
         { id: 'auto', open: false },
         { id: 'price_module', open: false },
@@ -151,6 +153,8 @@
                     const show = open
                         ? !data.shCollapsedOnly
                         : !!(data.shKeep || data.shCollapsedOnly || (def.keep && def.keep(child)));
+                    // Napis liczony przy każdym zwinięciu (np. ile linii wyłączono).
+                    if (show && typeof child._shLabel === 'function') child.textContent = child._shLabel();
                     // Własny `display` elementu (flex wiersza) zostaje: pusty
                     // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
                     if (child._shDisplay === undefined) child._shDisplay = child.style.display;
@@ -163,13 +167,15 @@
                 if (!open && hidden) head.appendChild(h('span', { textContent: `+${hidden}`, style: { fontSize: '0.8em', opacity: '0.6' } }));
                 head.setAttribute('aria-expanded', String(open));
             };
-            head.addEventListener('click', () => {
+            const toggle = () => {
                 // Zapis całym obiektem: spreparowany magazyn mógł zostawić
                 // w tym polu tekst albo liczbę zamiast mapy.
                 const chosen = Utils.isObject(store.userConfig.panelSections) ? store.userConfig.panelSections : {};
                 store.userConfig.panelSections = { ...chosen, [def.id]: !this.isOpen(def) };
                 apply();
-            });
+            };
+            head.addEventListener('click', toggle);
+            content.forEach(c => { if (c.dataset && c.dataset.shExpand) c.addEventListener('click', toggle); });
             apply();
             return wrap;
         },
@@ -642,11 +648,6 @@
 
             // Stylizacja okna statystyk
             const secWin = UIBuilder.section(I18n.get('section_statsWindow'));
-            // Zwinięta sekcja pokazuje tylko linie włączone — trzeba powiedzieć,
-            // gdzie są pozostałe.
-            const moreLines = UIBuilder.hint(I18n.get('statsWindow_moreLinesHint'));
-            moreLines.dataset.shCollapsedOnly = '1';
-            secWin.appendChild(moreLines);
 
             secWin.appendChild(UIBuilder.row(I18n.get('windowBgSettings'), UIBuilder.colorPickerWithAlpha(
                 store.localTabConfig.statsWindowBgColorHex, store.localTabConfig.statsWindowBgAlpha,
@@ -709,6 +710,22 @@
 
                 secWin.appendChild(lineBox);
             });
+
+            // Zwinięta sekcja pokazuje tylko linie włączone. Sam tytuł z „+N”
+            // nie mówi, że pod spodem są pozostałe linie — mówi to przycisk na
+            // całą szerokość, tuż pod włączonymi liniami, i rozwija sekcję.
+            const showAll = UIBuilder.button('', () => {}, {
+                width: '100%', background: 'transparent', color: CONFIG.SETTINGS_PANEL_TEXT_COLOR,
+                border: `2px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}66`, fontWeight: 'bold',
+            });
+            showAll.dataset.shCollapsedOnly = '1';
+            showAll.dataset.shExpand = '1';
+            showAll._shLabel = () => {
+                const off = Object.keys(DEFAULT_LINE_CONFIG)
+                    .filter(k => store.localTabConfig.linesConfig[k] && !store.localTabConfig.linesConfig[k].visible).length;
+                return off ? I18n.get('statsWindow_showAll', { n: off }) : I18n.get('statsWindow_showSettings');
+            };
+            secWin.appendChild(showAll);
 
             const isDragActive = store.uiFlags.isStatsWindowDragging;
             const dragBtnText = isDragActive ? I18n.get('dragStatsWindowActiveButton') : I18n.get('dragStatsWindowButton');

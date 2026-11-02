@@ -1016,7 +1016,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Pressed one after the other outside a text field: the script clicks "Delete session" and "Continue", then types back the same LPN and workstation with Enter. Both are remembered from their fields.',
             clearSession_noLpn: 'No LPN remembered yet on this tab — scan the next item normally.',
             clearSession_noStation: 'No workstation remembered yet — type it in by hand once.',
-            statsWindow_moreLinesHint: 'Only the lines that are switched on are shown. Click the section title to see all ten lines.',
+            statsWindow_showAll: '▾ Show the other window lines — switched off: ${n}', statsWindow_showSettings: '▾ Show all window settings',
             workflow_customTarget: 'Own target, items/h',
             workflow_customTargetHint: 'A number here replaces the department target on every tab (e.g. 65 for a new process). Empty or 0 — built-in targets: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'Rate of task “${name}” counts',
@@ -1178,7 +1178,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Wciśnięte po sobie poza polem tekstowym: skrypt klika „Usuń sesję” i „Kontynuuj”, potem wpisuje z powrotem ten sam LPN i stację roboczą z Enterem. Oba zapamiętuje z ich pól.',
             clearSession_noLpn: 'Na tej karcie nie ma jeszcze zapamiętanego LPN — następny przedmiot zeskanuj zwyczajnie.',
             clearSession_noStation: 'Stacja robocza nie jest jeszcze zapamiętana — wpisz ją raz ręcznie.',
-            statsWindow_moreLinesHint: 'Widać tylko włączone linie. Kliknij tytuł sekcji, żeby zobaczyć wszystkie dziesięć.',
+            statsWindow_showAll: '▾ Pokaż pozostałe linie okna — wyłączonych: ${n}', statsWindow_showSettings: '▾ Pokaż wszystkie ustawienia okna',
             workflow_customTarget: 'Cel własny, szt./h',
             workflow_customTargetHint: 'Liczba tutaj zastępuje cel działu na każdej karcie (np. 65 dla nowego procesu). Puste albo 0 — cele wbudowane: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'Do tempa zadania „${name}” liczą się',
@@ -1340,7 +1340,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Натиснуті одна за одною поза текстовим полем: скрипт натискає «Видалити сесію» і «Продовжити», потім вписує назад той самий LPN і робочу станцію з Enter. Обидва запам\'ятовує з їхніх полів.',
             clearSession_noLpn: 'На цій вкладці ще немає запам\'ятованого LPN — наступний предмет скануйте звичайно.',
             clearSession_noStation: 'Робочу станцію ще не запам\'ятовано — впишіть її один раз вручну.',
-            statsWindow_moreLinesHint: 'Видно лише ввімкнені рядки. Натисніть заголовок секції, щоб побачити всі десять.',
+            statsWindow_showAll: '▾ Показати інші рядки вікна — вимкнених: ${n}', statsWindow_showSettings: '▾ Показати всі налаштування вікна',
             workflow_customTarget: 'Власна ціль, шт/год',
             workflow_customTargetHint: 'Число тут замінює ціль відділу на кожній вкладці (напр. 65 для нового процесу). Порожньо або 0 — вбудовані цілі: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'У рейт завдання «${name}» ідуть',
@@ -1502,7 +1502,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Нажатые одна за другой вне текстового поля: скрипт нажимает «Удалить сессию» и «Продолжить», потом вписывает обратно тот же LPN и рабочую станцию с Enter. Оба запоминает из их полей.',
             clearSession_noLpn: 'На этой вкладке ещё нет запомненного LPN — следующий предмет сканируйте как обычно.',
             clearSession_noStation: 'Рабочая станция ещё не запомнена — впишите её один раз вручную.',
-            statsWindow_moreLinesHint: 'Видны только включённые строки. Нажмите заголовок секции, чтобы увидеть все десять.',
+            statsWindow_showAll: '▾ Показать остальные строки окна — выключенных: ${n}', statsWindow_showSettings: '▾ Показать все настройки окна',
             workflow_customTarget: 'Свой таргет, шт/ч',
             workflow_customTargetHint: 'Число здесь заменяет цель отдела на всех вкладках (например, 65 для нового процесса). Пусто или 0 — встроенные цели: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'В рейт задачи «${name}» идут',
@@ -3479,9 +3479,10 @@ const PAID_SHIFT_HOURS = 10;
 
     // ─── src/12-ui-settings.js ───
     /**
-     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora
-     * na makiecie: na górze to, co zmienia się co zmianę (przerwa, cel,
-     * zadania), na dole to, co ustawia się raz (język, reset).
+     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora:
+     * na górze to, co zmienia się co zmianę i częściowo widać od razu
+     * (przerwa, cel, pola zadania, włączone linie okna), niżej sekcje
+     * zwinięte w całości, na dole to, co ustawia się raz (język, reset).
      *
      * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie; zwinięte
      * domyślnie jest to, czego nie ustawia się co zmianę (decyzja autora).
@@ -3489,15 +3490,13 @@ const PAID_SHIFT_HOURS = 10;
      * z nieprzeczytanym w zwiniętej kategorii): zwinięte okno statystyk
      * zostawia na widoku ustawienia samych włączonych linii. Element
      * z `data-sh-keep` widać zawsze, z `data-sh-collapsed-only` — tylko
-     * w sekcji zwiniętej (podpowiedź „rozwiń, żeby zobaczyć resztę”).
+     * w sekcji zwiniętej (przycisk „pokaż pozostałe linie”), z
+     * `data-sh-expand` — rozwija sekcję jak tytuł.
      */
     const PANEL_SECTIONS = [
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
         { id: 'tasks', open: false },
-        { id: 'global', open: false },
-        { id: 'current_tab', open: false },
-        { id: 'visual', open: false },
         {
             id: 'window', open: false,
             keep: (child) => {
@@ -3506,6 +3505,9 @@ const PAID_SHIFT_HOURS = 10;
                 return !!(cfg && cfg.visible);
             },
         },
+        { id: 'global', open: false },
+        { id: 'current_tab', open: false },
+        { id: 'visual', open: false },
         { id: 'keys', open: false },
         { id: 'auto', open: false },
         { id: 'price_module', open: false },
@@ -3631,6 +3633,8 @@ const PAID_SHIFT_HOURS = 10;
                     const show = open
                         ? !data.shCollapsedOnly
                         : !!(data.shKeep || data.shCollapsedOnly || (def.keep && def.keep(child)));
+                    // Napis liczony przy każdym zwinięciu (np. ile linii wyłączono).
+                    if (show && typeof child._shLabel === 'function') child.textContent = child._shLabel();
                     // Własny `display` elementu (flex wiersza) zostaje: pusty
                     // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
                     if (child._shDisplay === undefined) child._shDisplay = child.style.display;
@@ -3643,13 +3647,15 @@ const PAID_SHIFT_HOURS = 10;
                 if (!open && hidden) head.appendChild(h('span', { textContent: `+${hidden}`, style: { fontSize: '0.8em', opacity: '0.6' } }));
                 head.setAttribute('aria-expanded', String(open));
             };
-            head.addEventListener('click', () => {
+            const toggle = () => {
                 // Zapis całym obiektem: spreparowany magazyn mógł zostawić
                 // w tym polu tekst albo liczbę zamiast mapy.
                 const chosen = Utils.isObject(store.userConfig.panelSections) ? store.userConfig.panelSections : {};
                 store.userConfig.panelSections = { ...chosen, [def.id]: !this.isOpen(def) };
                 apply();
-            });
+            };
+            head.addEventListener('click', toggle);
+            content.forEach(c => { if (c.dataset && c.dataset.shExpand) c.addEventListener('click', toggle); });
             apply();
             return wrap;
         },
@@ -4122,11 +4128,6 @@ const PAID_SHIFT_HOURS = 10;
 
             // Stylizacja okna statystyk
             const secWin = UIBuilder.section(I18n.get('section_statsWindow'));
-            // Zwinięta sekcja pokazuje tylko linie włączone — trzeba powiedzieć,
-            // gdzie są pozostałe.
-            const moreLines = UIBuilder.hint(I18n.get('statsWindow_moreLinesHint'));
-            moreLines.dataset.shCollapsedOnly = '1';
-            secWin.appendChild(moreLines);
 
             secWin.appendChild(UIBuilder.row(I18n.get('windowBgSettings'), UIBuilder.colorPickerWithAlpha(
                 store.localTabConfig.statsWindowBgColorHex, store.localTabConfig.statsWindowBgAlpha,
@@ -4189,6 +4190,22 @@ const PAID_SHIFT_HOURS = 10;
 
                 secWin.appendChild(lineBox);
             });
+
+            // Zwinięta sekcja pokazuje tylko linie włączone. Sam tytuł z „+N”
+            // nie mówi, że pod spodem są pozostałe linie — mówi to przycisk na
+            // całą szerokość, tuż pod włączonymi liniami, i rozwija sekcję.
+            const showAll = UIBuilder.button('', () => {}, {
+                width: '100%', background: 'transparent', color: CONFIG.SETTINGS_PANEL_TEXT_COLOR,
+                border: `2px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}66`, fontWeight: 'bold',
+            });
+            showAll.dataset.shCollapsedOnly = '1';
+            showAll.dataset.shExpand = '1';
+            showAll._shLabel = () => {
+                const off = Object.keys(DEFAULT_LINE_CONFIG)
+                    .filter(k => store.localTabConfig.linesConfig[k] && !store.localTabConfig.linesConfig[k].visible).length;
+                return off ? I18n.get('statsWindow_showAll', { n: off }) : I18n.get('statsWindow_showSettings');
+            };
+            secWin.appendChild(showAll);
 
             const isDragActive = store.uiFlags.isStatsWindowDragging;
             const dragBtnText = isDragActive ? I18n.get('dragStatsWindowActiveButton') : I18n.get('dragStatsWindowButton');

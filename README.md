@@ -840,10 +840,10 @@ Sekcje w kolejności, w jakiej stoją w panelu (ułożył je autor na makiecie):
 | Wybór przerwy               | który obiad jest wybrany (wpływa na liczenie godzin)                                                               |
 | **Cel i pomoce stanowiska** | **cel własny, karty liczone do tempa, cel karty CRET, Auto-LPN, „Usuń sesję” klawiszami, GRAVIS**                  |
 | **Zadania**                 | **bieżący proces pracy: nazwa, początek, paczki, tempo, pauza, historia zmiany — patrz rozdział „Zadania”**        |
+| Stylizacja okna             | tło okna, czcionka, **wszystkie dziesięć linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji               |
 | **Statystyki globalne**     | **które działy wchodzą do sumy i ręczne wpisanie licznika każdego z nich**                                         |
 | Bieżąca karta               | nazwa i udział w sumie — _tylko na karcie nierozpoznanej_                                                          |
 | Pomoce wizualne             | kolorowa nakładka na stronę, duży napis z nazwą działu                                                             |
-| Stylizacja okna             | tło okna, czcionka, **wszystkie dziesięć linii** (kolor, alfa, rozmiar), przeciąganie, reset pozycji               |
 | Skróty klawiszowe           | klawisze `+1`, `−1` i ukrycia okna                                                                                 |
 | Auto-inkrementacja          | odstęp skanowania strony (50–200 ms)                                                                               |
 | **Moduł cen**               | **główny wyłącznik sieci**                                                                                         |
@@ -1202,7 +1202,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 47 plików, 759 sprawdzeń
+├── tests/                  ← 47 plików, 760 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1222,7 +1222,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 759 sprawdzeń
+npm test             # 760 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)

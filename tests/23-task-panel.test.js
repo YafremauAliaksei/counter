@@ -90,17 +90,18 @@ function reset(minutesAgo) {
 
 describe('Kolejność sekcji');
 
-test('zadania i liczniki stoją PRZED ustawieniami wyglądu', () => {
-    // Panel otwiera się w trakcie pracy, a nie przed nią: to, co robi się co
-    // zmianę, nie ma prawa być pod trzema ekranami kolorów.
+test('zadania stoją przed oknem statystyk, statystyki globalne — pod nim', () => {
+    // Panel otwiera się w trakcie pracy: na górze to, co częściowo widać od
+    // razu (pola zadania, włączone linie okna); statystyki globalne są
+    // zwinięte w całości, więc stoją niżej (decyzja autora).
     reset(60);
     const text = SH.SettingsPanel.el.textContent;
     const tasksAt = text.indexOf(label('section_tasks'));
     const countersAt = text.indexOf(label('section_globalStats'));
     const windowAt = text.indexOf(label('section_statsWindow'));
     ok(tasksAt >= 0 && countersAt >= 0 && windowAt >= 0, 'wszystkie trzy sekcje są w panelu');
-    ok(tasksAt < countersAt, 'zadania przed licznikami działów');
-    ok(countersAt < windowAt, 'liczniki przed stylizacją okna');
+    ok(tasksAt < windowAt, 'zadania przed oknem statystyk');
+    ok(windowAt < countersAt, 'okno statystyk przed statystykami globalnymi');
 });
 
 describe('Nowe zadanie i wznowienie');

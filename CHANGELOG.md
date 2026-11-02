@@ -32,7 +32,8 @@ Dla tego projektu SemVer czyta się tak:
 
 ### Zmieniono — panel
 
-- **Statystyki globalne** domyślnie zwinięte (decyzja autora).
+- **Statystyki globalne** domyślnie zwinięte (decyzja autora); razem z bieżącą kartą i pomocami wizualnymi stoją **pod** stylizacją okna — na górze sekcje częściowo widoczne od razu (cel, pola zadania, włączone linie okna).
+- **Zwinięta stylizacja okna** ma pod włączonymi liniami przycisk na całą szerokość „▾ Pokaż pozostałe linie okna — wyłączonych: N”, który rozwija sekcję (sam tytuł z „+N” mówił o tym za mało).
 - **Karta ceny przyklejona do dołu stoi nad oknem statystyk** i przesuwa się razem z nim (okno stoi przy samym dole od 1.8.0 i karta przykrywała linię 7).
 - **Pola Paczki i Tempo widać zawsze**, także przy zwiniętej sekcji Zadania — to jedyne, co poprawia się w trakcie zmiany.
 
