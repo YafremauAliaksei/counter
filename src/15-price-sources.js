@@ -407,6 +407,8 @@
          *                „nie ma skąd przeczytać ceny”, a nie „nie ma wykresu”.
          */
         modes: [
+            // Jedyny tryb w panelu: karta amazon.de, bez sieci z karty T-REX.
+            { value: 'amazon', labelKey: 'priceCard_src_amazon', viaTab: true },
             { value: 'ocr',   labelKey: 'priceCard_src_ocr', readsImage: true },
             { value: 'graph', labelKey: 'priceCard_src_graph', showsChart: true },
             { value: 'jina',  labelKey: 'priceCard_src_jina' },
@@ -557,6 +559,23 @@
             return [
                 {
                     /**
+                     * Cena z karty amazon.de obok (AmazonBridge). Rodzaj 'tab':
+                     * nie jest zapytaniem sieciowym karty T-REX, więc blokady
+                     * CSP go nie dotyczą. Ceny amazon.de są w euro.
+                     */
+                    name: 'amazon.de',
+                    kind: 'tab',
+                    get available() { return store.localTabConfig.priceCard.source === 'amazon'; },
+                    marketSearch: false,
+                    async run(asin, signal) {
+                        const d = await AmazonBridge.request(asin, signal);
+                        if (d.error && d.current === null && d.rrp === null) throw new Error(d.error);
+                        const mk = (v) => v === null ? null : self.money(v, 'EUR');
+                        return { current: mk(d.current), rrp: mk(d.rrp), stale: false, market: 'de' };
+                    },
+                },
+                {
+                    /**
                      * Cena odczytana z obrazka wykresu — pierwsza i domyślna:
                      * nie wymaga klucza ani obcego proxy, tylko obrazka
                      * z graph.keepa.com. Działa też w trybie 'graph' (różnica
@@ -567,7 +586,9 @@
                     kind: 'image',
                     get available() {
                         const pc = store.localTabConfig.priceCard;
-                        return pc.source === 'ocr' || pc.source === 'graph' || !!pc.logValues;
+                        // Dziennik wartości nie budzi Keepa, gdy cena idzie z karty
+                        // amazon.de — inaczej karta T-REX ładowałaby obrazki z sieci.
+                        return pc.source === 'ocr' || pc.source === 'graph' || (!!pc.logValues && pc.source !== 'amazon');
                     },
                     // r.jina.ai rozbiera szablon konkretnej witryny — gonienie
                     // go po obcych rynkach nie ma sensu, więc w trybie 'jina'

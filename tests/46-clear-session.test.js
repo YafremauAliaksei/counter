@@ -17,6 +17,16 @@ const { bootOnStand } = require('./dom-stub');
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
 /**
+ * Czekanie na warunek zamiast stałej przerwy: przebieg skrótu to kilka
+ * oczekiwań z odpytywaniem, a na wolnej maszynie stała przerwa kończy się
+ * tuż przed nim. Granica `ms` — przebieg, który się nie kończy, jest błędem.
+ */
+async function until(cond, ms = 2000) {
+    const end = Date.now() + ms;
+    while (!cond() && Date.now() < end) await wait(10);
+}
+
+/**
  * T-REX w miniaturze: przycisk sesji → okno z „Kontynuuj” → pole LPN →
  * po Enterze pole stacji. Zapisuje, co i gdzie wpisano.
  */
@@ -222,9 +232,9 @@ test('„Kontynuuj” nie przyszło w 2 s — dalej czeka na pole LPN, a po 4 s 
     env.SH.CONFIG.CLEAR_SESSION_WAIT_LPN_MS = 20;
     env.SH.CONFIG.CLEAR_SESSION_WAIT_STATION_MS = 20;
     press(env, 'u'); press(env, 's');
-    await wait(150);
+    await until(() => !env.SH.ClearSession.busy);
     eq(log, ['klik clear-session-icon']);
-    notOk(env.SH.ClearSession.busy);
+    notOk(env.SH.ClearSession.busy, 'przebieg skończył się sam po czasie oczekiwań');
 });
 
 test('drugie u+s w trakcie przebiegu nie zaczyna drugiego', async () => {

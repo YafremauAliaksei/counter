@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.8.0
+// @version      1.9.0
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.8.0',
+        SCRIPT_VERSION: '1.9.0',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -127,7 +127,7 @@ const PAID_SHIFT_HOURS = 10;
          * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
          * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_8_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_9_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -136,7 +136,7 @@ const PAID_SHIFT_HOURS = 10;
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
                              'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
-                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_'],
+                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_', 'statsHelper_v1_8_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -463,6 +463,22 @@ const PAID_SHIFT_HOURS = 10;
         // podpowiada wtedy, żeby kliknąć tam zakładkę jeszcze raz.
         GRAVIS_HEARTBEAT_MS: 10000,
         GRAVIS_STALE_MS: 30000,
+        /**
+         * KARTA AMAZON.DE — cena produktu z samej strony sklepu, bez żadnego
+         * zapytania z karty T-REX. T-REX otwiera amazon.de (uchwyt okna),
+         * skrypt kliknięty tam zakładką odpowiada przez window.opener: dostaje
+         * ASIN, pobiera /dp/<ASIN> z własnego adresu (zwykłe zapytanie
+         * przeglądarki, z jej ciasteczkami) i odsyła liczby. Tylko amazon.de:
+         * ceny są w euro, a do szacunku wartości przedmiotu inne sklepy nic
+         * nie dodają.
+         */
+        AMAZON_URL: 'https://www.amazon.de/',
+        AMAZON_ORIGIN: 'https://www.amazon.de',
+        AMAZON_WINDOW_NAME: 'statsHelperAmazon',
+        AMAZON_HEARTBEAT_MS: 10000,
+        AMAZON_STALE_MS: 30000,
+        // Najwyższa cena przyjmowana od karty Amazon — większa to błąd rozbioru.
+        AMAZON_MAX_PRICE_EUR: 100000,
         // Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora).
         OPEN_SETTINGS_ON_START: true,
         // Linia 9 po przekroczeniu podwójnego czasu przedmiotu.
@@ -778,13 +794,13 @@ const PAID_SHIFT_HOURS = 10;
             moduleEnabled: false,
             visible: true,
             // ŹRÓDŁO CENY:
-            //   'ocr'   — obrazek Keepa ładuje się w tle i jest rozpoznawany;
-            //             na kartę trafia sama liczba. Domyślnie.
-            //   'graph' — pokazywać sam obrazek wykresu.
-            //   'jina'  — zapytanie tekstowe do r.jina.ai.
-            // 'ocr' też potrzebuje graph.keepa.com; gdy CSP strony tnie
-            // img-src, tryb nie działa i karta mówi o tym wprost.
-            source: 'ocr',
+            //   'amazon' — karta amazon.de obok (AmazonBridge); karta T-REX nie
+            //              wysyła niczego na zewnątrz. Domyślnie i jedyne
+            //              w panelu.
+            //   'ocr', 'graph', 'jina' — dawne źródła sieciowe (Keepa,
+            //              r.jina.ai); nieobecne w panelu, wchodzą tylko
+            //              z kodu ustawień albo z konsoli.
+            source: 'amazon',
             // Prowadzić dziennik wartości (tylko z modułem cen — ValueLog.add()).
             logValues: true,
             // Szukać ceny w innych sklepach, gdy w wybranym jej nie ma.
@@ -947,7 +963,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'found on ${host}',
             priceCard_marketNoData: 'Keepa has no chart for this store — link works, price will not',
             priceCard_displayCurrency: 'Show amounts in',
-            priceCard_displayCurrencyHint: 'Every price and every total is shown in this currency, euro by default; prices from other stores are converted at the daily rate and marked with ≈. Totals are always counted in euro, so switching mid-shift loses nothing.',
+            priceCard_displayCurrencyHint: 'Every price and every total is shown in this currency, euro by default. Prices come from amazon.de in euro; other currencies use built-in rates. Totals are always counted in euro, so switching mid-shift loses nothing.',
             priceCard_openHint: 'Click the ASIN to open the product page',
             priceCard_hiddenHint: 'Card hidden — price is still read and added to the sum',
             priceCard_showCard: 'Show the card on screen',
@@ -956,6 +972,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Price as text (recognised from chart)',
             priceCard_src_graph: 'Keepa chart image',
             priceCard_src_jina: 'Text request (r.jina.ai)',
+            priceCard_src_amazon: 'amazon.de tab', amazon_open: 'Open amazon.de', amazon_connected: 'amazon.de connected — open again', amazon_howTo: 'Prices come from an amazon.de tab next to this one; this tab sends nothing to the internet. 1. Press the button — amazon.de opens in a new tab. 2. On that tab click this script\'s bookmark once. Leave the tab open.', amazon_notConnected: 'amazon.de tab not connected — open it from the panel', amazon_badgeOk: 'StatsHelper: prices for T-REX', amazon_badgeNoOpener: 'StatsHelper: open this tab from the T-REX panel',
             priceCard_ocrFail: 'could not read price off the chart',
             priceCard_cspOcr: 'Page CSP blocks the Keepa image — cannot read price',
             priceCard_fromCache: 'from cache',
@@ -999,7 +1016,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Pressed one after the other outside a text field: the script clicks "Delete session" and "Continue", then types back the same LPN and workstation with Enter. Both are remembered from their fields.',
             clearSession_noLpn: 'No LPN remembered yet on this tab — scan the next item normally.',
             clearSession_noStation: 'No workstation remembered yet — type it in by hand once.',
-            statsWindow_moreLinesHint: 'Only the lines that are switched on are shown. Click the section title to see all ten lines.',
+            statsWindow_showAll: '▾ Show the other window lines — switched off: ${n}', statsWindow_showSettings: '▾ Show all window settings',
             workflow_customTarget: 'Own target, items/h',
             workflow_customTargetHint: 'A number here replaces the department target on every tab (e.g. 65 for a new process). Empty or 0 — built-in targets: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'Rate of task “${name}” counts',
@@ -1108,7 +1125,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'znaleziono na ${host}',
             priceCard_marketNoData: 'Keepa nie ma wykresu dla tego sklepu — link działa, ceny nie będzie',
             priceCard_displayCurrency: 'Kwoty pokazywać w',
-            priceCard_displayCurrencyHint: 'Każda cena i każda suma pokazuje się w tej walucie, domyślnie w euro; ceny z innych sklepów są przeliczane po kursie dziennym i mają znak ≈. Sumy liczone są zawsze w euro, więc zmiana w trakcie zmiany niczego nie gubi.',
+            priceCard_displayCurrencyHint: 'Każda cena i każda suma pokazuje się w tej walucie, domyślnie w euro. Ceny przychodzą z amazon.de w euro; inne waluty liczą się z kursów wbudowanych. Sumy liczone są zawsze w euro, więc zmiana w trakcie zmiany niczego nie gubi.',
             priceCard_openHint: 'Kliknij ASIN, aby otworzyć stronę produktu',
             priceCard_hiddenHint: 'Karta ukryta — cena nadal jest odczytywana i wliczana do sumy',
             priceCard_showCard: 'Pokazuj kartę na ekranie',
@@ -1117,6 +1134,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Cena tekstem (odczyt z wykresu)',
             priceCard_src_graph: 'Obrazek wykresu Keepa',
             priceCard_src_jina: 'Zapytanie tekstowe (r.jina.ai)',
+            priceCard_src_amazon: 'Karta amazon.de', amazon_open: 'Otwórz amazon.de', amazon_connected: 'amazon.de połączony — otwórz ponownie', amazon_howTo: 'Ceny przychodzą z karty amazon.de obok; ta karta nie wysyła niczego do internetu. 1. Naciśnij przycisk — amazon.de otworzy się w nowej karcie. 2. Na tamtej karcie kliknij raz zakładkę tego skryptu. Kartę zostaw otwartą.', amazon_notConnected: 'karta amazon.de niepołączona — otwórz ją z panelu', amazon_badgeOk: 'StatsHelper: ceny dla T-REX', amazon_badgeNoOpener: 'StatsHelper: otwórz tę kartę z panelu T-REX',
             priceCard_ocrFail: 'nie udało się odczytać ceny z wykresu',
             priceCard_cspOcr: 'CSP strony blokuje obrazek Keepa — nie da się odczytać ceny',
             priceCard_fromCache: 'z pamięci',
@@ -1160,7 +1178,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Wciśnięte po sobie poza polem tekstowym: skrypt klika „Usuń sesję” i „Kontynuuj”, potem wpisuje z powrotem ten sam LPN i stację roboczą z Enterem. Oba zapamiętuje z ich pól.',
             clearSession_noLpn: 'Na tej karcie nie ma jeszcze zapamiętanego LPN — następny przedmiot zeskanuj zwyczajnie.',
             clearSession_noStation: 'Stacja robocza nie jest jeszcze zapamiętana — wpisz ją raz ręcznie.',
-            statsWindow_moreLinesHint: 'Widać tylko włączone linie. Kliknij tytuł sekcji, żeby zobaczyć wszystkie dziesięć.',
+            statsWindow_showAll: '▾ Pokaż pozostałe linie okna — wyłączonych: ${n}', statsWindow_showSettings: '▾ Pokaż wszystkie ustawienia okna',
             workflow_customTarget: 'Cel własny, szt./h',
             workflow_customTargetHint: 'Liczba tutaj zastępuje cel działu na każdej karcie (np. 65 dla nowego procesu). Puste albo 0 — cele wbudowane: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'Do tempa zadania „${name}” liczą się',
@@ -1269,7 +1287,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'знайдено на ${host}',
             priceCard_marketNoData: 'У Keepa немає графіка для цього магазину — посилання працює, ціни не буде',
             priceCard_displayCurrency: 'Показувати суми в',
-            priceCard_displayCurrencyHint: 'Кожна ціна і кожна сума показується в цій валюті, типово в євро; ціни з інших магазинів перераховуються за денним курсом і позначені знаком ≈. Суми завжди рахуються в євро, тож зміна посеред зміни нічого не втрачає.',
+            priceCard_displayCurrencyHint: 'Кожна ціна і кожна сума показується в цій валюті, типово в євро. Ціни приходять з amazon.de в євро; інші валюти рахуються за вбудованими курсами. Суми завжди рахуються в євро, тож зміна посеред зміни нічого не втрачає.',
             priceCard_openHint: 'Клік по ASIN відкриває сторінку товару',
             priceCard_hiddenHint: 'Картку приховано — ціна все одно читається й іде в суму',
             priceCard_showCard: 'Показувати картку на екрані',
@@ -1278,6 +1296,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Ціна текстом (розпізнана з графіка)',
             priceCard_src_graph: 'Зображення графіка Keepa',
             priceCard_src_jina: 'Текстовий запит (r.jina.ai)',
+            priceCard_src_amazon: 'Вкладка amazon.de', amazon_open: 'Відкрити amazon.de', amazon_connected: 'amazon.de підключено — відкрити знову', amazon_howTo: 'Ціни приходять із сусідньої вкладки amazon.de; ця вкладка нічого не надсилає в інтернет. 1. Натисніть кнопку — amazon.de відкриється в новій вкладці. 2. На тій вкладці один раз клікніть закладку цього скрипта. Вкладку залиште відкритою.', amazon_notConnected: 'вкладку amazon.de не підключено — відкрийте її з панелі', amazon_badgeOk: 'StatsHelper: ціни для T-REX', amazon_badgeNoOpener: 'StatsHelper: відкрийте цю вкладку з панелі T-REX',
             priceCard_ocrFail: 'не вдалося прочитати ціну з графіка',
             priceCard_cspOcr: 'CSP сторінки блокує зображення Keepa — ціну не прочитати',
             priceCard_fromCache: 'з кешу',
@@ -1321,7 +1340,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Натиснуті одна за одною поза текстовим полем: скрипт натискає «Видалити сесію» і «Продовжити», потім вписує назад той самий LPN і робочу станцію з Enter. Обидва запам\'ятовує з їхніх полів.',
             clearSession_noLpn: 'На цій вкладці ще немає запам\'ятованого LPN — наступний предмет скануйте звичайно.',
             clearSession_noStation: 'Робочу станцію ще не запам\'ятовано — впишіть її один раз вручну.',
-            statsWindow_moreLinesHint: 'Видно лише ввімкнені рядки. Натисніть заголовок секції, щоб побачити всі десять.',
+            statsWindow_showAll: '▾ Показати інші рядки вікна — вимкнених: ${n}', statsWindow_showSettings: '▾ Показати всі налаштування вікна',
             workflow_customTarget: 'Власна ціль, шт/год',
             workflow_customTargetHint: 'Число тут замінює ціль відділу на кожній вкладці (напр. 65 для нового процесу). Порожньо або 0 — вбудовані цілі: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'У рейт завдання «${name}» ідуть',
@@ -1430,7 +1449,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_foundIn: 'найдено на ${host}',
             priceCard_marketNoData: 'У Keepa нет графика для этого магазина — ссылка работает, цены не будет',
             priceCard_displayCurrency: 'Показывать суммы в',
-            priceCard_displayCurrencyHint: 'Каждая цена и каждая сумма показывается в этой валюте, по умолчанию в евро; цены из других магазинов пересчитываются по дневному курсу и помечены знаком ≈. Суммы всегда считаются в евро, поэтому смена посреди смены ничего не теряет.',
+            priceCard_displayCurrencyHint: 'Каждая цена и каждая сумма показывается в этой валюте, по умолчанию в евро. Цены приходят с amazon.de в евро; другие валюты считаются по встроенным курсам. Суммы всегда считаются в евро, поэтому смена посреди смены ничего не теряет.',
             priceCard_openHint: 'Клик по ASIN открывает страницу товара',
             priceCard_hiddenHint: 'Карточка скрыта — цена всё равно читается и идёт в сумму',
             priceCard_showCard: 'Показывать карточку на экране',
@@ -1439,6 +1458,7 @@ const PAID_SHIFT_HOURS = 10;
             priceCard_src_ocr: 'Цена текстом (распознана с графика)',
             priceCard_src_graph: 'Картинка графика Keepa',
             priceCard_src_jina: 'Текстовый запрос (r.jina.ai)',
+            priceCard_src_amazon: 'Вкладка amazon.de', amazon_open: 'Открыть amazon.de', amazon_connected: 'amazon.de подключён — открыть снова', amazon_howTo: 'Цены приходят с соседней вкладки amazon.de; эта вкладка ничего не отправляет в интернет. 1. Нажмите кнопку — amazon.de откроется в новой вкладке. 2. На той вкладке один раз кликните закладку этого скрипта. Вкладку оставьте открытой.', amazon_notConnected: 'вкладка amazon.de не подключена — откройте её из панели', amazon_badgeOk: 'StatsHelper: цены для T-REX', amazon_badgeNoOpener: 'StatsHelper: откройте эту вкладку из панели T-REX',
             priceCard_ocrFail: 'не удалось прочитать цену с графика',
             priceCard_cspOcr: 'CSP страницы блокирует картинку Keepa — цену не прочитать',
             priceCard_fromCache: 'из кэша',
@@ -1482,7 +1502,7 @@ const PAID_SHIFT_HOURS = 10;
             workflow_clearSessionHint: 'Нажатые одна за другой вне текстового поля: скрипт нажимает «Удалить сессию» и «Продолжить», потом вписывает обратно тот же LPN и рабочую станцию с Enter. Оба запоминает из их полей.',
             clearSession_noLpn: 'На этой вкладке ещё нет запомненного LPN — следующий предмет сканируйте как обычно.',
             clearSession_noStation: 'Рабочая станция ещё не запомнена — впишите её один раз вручную.',
-            statsWindow_moreLinesHint: 'Видны только включённые строки. Нажмите заголовок секции, чтобы увидеть все десять.',
+            statsWindow_showAll: '▾ Показать остальные строки окна — выключенных: ${n}', statsWindow_showSettings: '▾ Показать все настройки окна',
             workflow_customTarget: 'Свой таргет, шт/ч',
             workflow_customTargetHint: 'Число здесь заменяет цель отдела на всех вкладках (например, 65 для нового процесса). Пусто или 0 — встроенные цели: CRET 47, FAST 80, UG 47, REFURB 30, WHD 25.',
             workflow_rateTabs: 'В рейт задачи «${name}» идут',
@@ -2776,6 +2796,20 @@ const PAID_SHIFT_HOURS = 10;
             const aEnd = Math.min(to, lEndObj.getTime());
             return aEnd > aStart ? aEnd - aStart : 0;
         },
+        /**
+         * Koniec zmiany: początek, PAID_SHIFT_HOURS płatnych godzin i wybrany
+         * obiad (06:30 → 17:00, 18:30 → 05:00). Ten sam rachunek co cel
+         * zmiany „cel × płatne godziny”, więc obie liczby się zgadzają.
+         * null — zmiana nierozpoznana.
+         */
+        shiftEndMs() {
+            const start = store.sessionConfig.shiftCalculatedStartTime;
+            if (typeof start !== 'number') return null;
+            const paidEnd = start + CONFIG.PAID_SHIFT_HOURS * 3600000;
+            // Obiad wypada w środku zmiany; okno szukania sięga godzinę za
+            // płatny koniec, bo przesunięty obiadem koniec leży właśnie tam.
+            return paidEnd + this.lunchOverlapMs(start, paidEnd + 3600000);
+        },
         getWorkTime() {
             if (!store.sessionConfig.shiftCalculatedStartTime) return { workedMs: 0, lunchMs: 0 };
             const now = Date.now();
@@ -3097,37 +3131,35 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         /**
-         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy:
+         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy,
+         * wyłącznie o BIEŻĄCYM zadaniu:
          *
-         *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
+         *     34.3 z 47 · 12 z 30 · 14% · 2m 41s
          *
-         *   - tempo BIEŻĄCEGO zadania z celu — zadania istnieją właśnie po to,
-         *     żeby procesy o różnych normach nie mieszały się w jedną średnią;
-         *     liczą się paczki kart, które to zadanie liczy (countedRate); tempo
-         *     całej zmiany jest w panelu i w linii 1;
-         *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
-         *     (cel × płatne godziny); czas zmiany sprzed pierwszego zadania
-         *     dolicza się według celu i liczba dostaje „≈”;
-         *   - procent sprzedaży zmiany;
+         *   - tempo zadania z celu — zadania istnieją po to, żeby procesy
+         *     o różnych normach nie mieszały się w jedną średnią; liczą się
+         *     paczki kart, które to zadanie liczy (countedRate);
+         *   - paczki zadania z celu zadania (TaskManager.taskGoal): zaczęte
+         *     o 16:00 przy końcu zmiany o 17:00 i celu 30 to „0 z 30”;
+         *   - procent sprzedaży zadania;
          *   - czas od ostatniego pojemnika, czerwony po przekroczeniu limitu
          *     (jak linia 9); do pierwszego pojemnika go nie ma.
-         * Bez celu działu znika „z …”. Spójnik („z”, „of” i odpowiedniki
-         * ukraiński i rosyjski) idzie ze słownika (statsOf).
+         * Paczek innych zadań tu nie ma — całą zmianę opisują linie 1 i 2.
+         * Bez celu albo bez rozpoznanej zmiany znika „z …”. Spójnik („z”,
+         * „of” i odpowiedniki ukraiński i rosyjski) idzie ze słownika (statsOf).
          */
-        renderCompact(gTotal, gSold, gRated) {
+        renderCompact() {
             const line = this.lines.line7_compact;
             const task = TaskManager.active() || store.tasks[store.tasks.length - 1];
             const target = ToteWatch.targetFor(store.currentTabType);
             const of = I18n.get('statsOf');
             const rate = (task ? TaskManager.countedRate(task) : 0).toFixed(1);
-            // Czas zmiany sprzed pierwszego zadania liczy się po celu działu
-            // i paczki są wtedy przybliżone (≈).
-            const assumed = target ? Math.round(target * TaskManager.untrackedWorkedMs() / 3600000) : 0;
-            const packs = assumed > 0 ? `≈${gTotal + assumed}` : String(gTotal);
+            const done = task ? TaskManager.countedDone(task) : 0;
+            const goal = TaskManager.taskGoal(task, target);
             const parts = [
                 target ? `${rate} ${of} ${target}` : rate,
-                target ? `${packs} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
-                `${Utils.percentFloor(gSold, gRated)}%`,
+                goal !== null ? `${done} ${of} ${goal}` : String(done),
+                `${task ? TaskManager.percent(task) : 0}%`,
             ];
             line.innerHTML = '';
             line.appendChild(document.createTextNode(parts.join(' · ')));
@@ -3298,7 +3330,7 @@ const PAID_SHIFT_HOURS = 10;
             if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
             else this.lines.line6_valueSum.innerHTML = '';
 
-            this.renderCompact(gTotal, gSold, gRated);
+            this.renderCompact();
 
             /**
              * LINIA 8 — bieżące zadanie i jego własne liczby, z własnym
@@ -3314,19 +3346,21 @@ const PAID_SHIFT_HOURS = 10;
             this.renderOffTask();
 
             /**
-             * LINIA 10 — cel działu z RATE_TARGETS: cel, procent bieżącego
-             * tempa zmiany od celu i sztuki wobec celu zmiany (cel × płatne
-             * godziny, bez niepłatnego obiadu):
+             * LINIA 10 — cel bieżącego zadania: cel, procent tempa zadania od
+             * celu i paczki zadania wobec celu zadania (jak linia 7):
              *
-             *     47/h 85% 236/470
+             *     47/h 85% 12/30
              */
             const target = ToteWatch.targetFor(store.currentTabType);
+            const goalTask = TaskManager.active() || store.tasks[store.tasks.length - 1];
             if (!target) {
                 this.lines.line10_target.textContent = '';
             } else {
-                const pct = workedMs >= CONFIG.RATE_MIN_WORKED_MS ? Math.floor(gTotal / hWorked / target * 100) : 0;
+                const pct = goalTask ? Math.floor(TaskManager.countedRate(goalTask) / target * 100) : 0;
+                const goal = TaskManager.taskGoal(goalTask, target);
+                const done = goalTask ? TaskManager.countedDone(goalTask) : 0;
                 this.lines.line10_target.textContent =
-                    `${target}${I18n.get('statsPerHourUnit')} ${pct}% ${gTotal}/${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}`;
+                    `${target}${I18n.get('statsPerHourUnit')} ${pct}% ${done}/${goal !== null ? goal : '—'}`;
             }
 
             const task = TaskManager.active();
@@ -3445,9 +3479,10 @@ const PAID_SHIFT_HOURS = 10;
 
     // ─── src/12-ui-settings.js ───
     /**
-     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora
-     * na makiecie: na górze to, co zmienia się co zmianę (przerwa, cel,
-     * zadania), na dole to, co ustawia się raz (język, reset).
+     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora:
+     * na górze to, co zmienia się co zmianę i częściowo widać od razu
+     * (przerwa, cel, pola zadania, włączone linie okna), niżej sekcje
+     * zwinięte w całości, na dole to, co ustawia się raz (język, reset).
      *
      * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie; zwinięte
      * domyślnie jest to, czego nie ustawia się co zmianę (decyzja autora).
@@ -3455,15 +3490,13 @@ const PAID_SHIFT_HOURS = 10;
      * z nieprzeczytanym w zwiniętej kategorii): zwinięte okno statystyk
      * zostawia na widoku ustawienia samych włączonych linii. Element
      * z `data-sh-keep` widać zawsze, z `data-sh-collapsed-only` — tylko
-     * w sekcji zwiniętej (podpowiedź „rozwiń, żeby zobaczyć resztę”).
+     * w sekcji zwiniętej (przycisk „pokaż pozostałe linie”), z
+     * `data-sh-expand` — rozwija sekcję jak tytuł.
      */
     const PANEL_SECTIONS = [
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
         { id: 'tasks', open: false },
-        { id: 'global', open: true },
-        { id: 'current_tab', open: false },
-        { id: 'visual', open: false },
         {
             id: 'window', open: false,
             keep: (child) => {
@@ -3472,6 +3505,9 @@ const PAID_SHIFT_HOURS = 10;
                 return !!(cfg && cfg.visible);
             },
         },
+        { id: 'global', open: false },
+        { id: 'current_tab', open: false },
+        { id: 'visual', open: false },
         { id: 'keys', open: false },
         { id: 'auto', open: false },
         { id: 'price_module', open: false },
@@ -3597,6 +3633,8 @@ const PAID_SHIFT_HOURS = 10;
                     const show = open
                         ? !data.shCollapsedOnly
                         : !!(data.shKeep || data.shCollapsedOnly || (def.keep && def.keep(child)));
+                    // Napis liczony przy każdym zwinięciu (np. ile linii wyłączono).
+                    if (show && typeof child._shLabel === 'function') child.textContent = child._shLabel();
                     // Własny `display` elementu (flex wiersza) zostaje: pusty
                     // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
                     if (child._shDisplay === undefined) child._shDisplay = child.style.display;
@@ -3609,13 +3647,15 @@ const PAID_SHIFT_HOURS = 10;
                 if (!open && hidden) head.appendChild(h('span', { textContent: `+${hidden}`, style: { fontSize: '0.8em', opacity: '0.6' } }));
                 head.setAttribute('aria-expanded', String(open));
             };
-            head.addEventListener('click', () => {
+            const toggle = () => {
                 // Zapis całym obiektem: spreparowany magazyn mógł zostawić
                 // w tym polu tekst albo liczbę zamiast mapy.
                 const chosen = Utils.isObject(store.userConfig.panelSections) ? store.userConfig.panelSections : {};
                 store.userConfig.panelSections = { ...chosen, [def.id]: !this.isOpen(def) };
                 apply();
-            });
+            };
+            head.addEventListener('click', toggle);
+            content.forEach(c => { if (c.dataset && c.dataset.shExpand) c.addEventListener('click', toggle); });
             apply();
             return wrap;
         },
@@ -3824,15 +3864,18 @@ const PAID_SHIFT_HOURS = 10;
                 // Wpisuje się jedno, drugie przelicza się samo. Po wpisaniu
                 // tempa pokazuje się wartość osiągalna przy całych paczkach:
                 // przy 1:17 pracy „118” to 151 paczek, czyli 117,7 na godzinę.
+                // Oba pola widać także w zwiniętej sekcji (data-sh-keep): to
+                // jedyne, co poprawia się w trakcie zmiany.
                 const totals = TaskManager.totals(task);
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
+                const packsRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
                     TaskManager.applyTaskTotal(task, cid, v);
                     this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                packsRow.dataset.shKeep = '1';
                 // Tempo to tempo wobec celu: z kart, które liczą się do tego
                 // zadania (to samo, co w linii 7).
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
+                const rateRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
                     type: 'number', min: 0, step: '0.1', value: TaskManager.countedRate(task).toFixed(1), inputMode: 'decimal',
                     style: { width: '100px', textAlign: 'right' },
                 }), text => {
@@ -3840,6 +3883,7 @@ const PAID_SHIFT_HOURS = 10;
                     if (applied !== null) this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                rateRow.dataset.shKeep = '1';
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_summary'), h('span', {
                     textContent: `${TaskManager.percent(task)}% · ${Utils.formatDuration(TaskManager.workedMs(task))}`,
                 })));
@@ -4084,11 +4128,6 @@ const PAID_SHIFT_HOURS = 10;
 
             // Stylizacja okna statystyk
             const secWin = UIBuilder.section(I18n.get('section_statsWindow'));
-            // Zwinięta sekcja pokazuje tylko linie włączone — trzeba powiedzieć,
-            // gdzie są pozostałe.
-            const moreLines = UIBuilder.hint(I18n.get('statsWindow_moreLinesHint'));
-            moreLines.dataset.shCollapsedOnly = '1';
-            secWin.appendChild(moreLines);
 
             secWin.appendChild(UIBuilder.row(I18n.get('windowBgSettings'), UIBuilder.colorPickerWithAlpha(
                 store.localTabConfig.statsWindowBgColorHex, store.localTabConfig.statsWindowBgAlpha,
@@ -4151,6 +4190,22 @@ const PAID_SHIFT_HOURS = 10;
 
                 secWin.appendChild(lineBox);
             });
+
+            // Zwinięta sekcja pokazuje tylko linie włączone. Sam tytuł z „+N”
+            // nie mówi, że pod spodem są pozostałe linie — mówi to przycisk na
+            // całą szerokość, tuż pod włączonymi liniami, i rozwija sekcję.
+            const showAll = UIBuilder.button('', () => {}, {
+                width: '100%', background: 'transparent', color: CONFIG.SETTINGS_PANEL_TEXT_COLOR,
+                border: `2px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}66`, fontWeight: 'bold',
+            });
+            showAll.dataset.shCollapsedOnly = '1';
+            showAll.dataset.shExpand = '1';
+            showAll._shLabel = () => {
+                const off = Object.keys(DEFAULT_LINE_CONFIG)
+                    .filter(k => store.localTabConfig.linesConfig[k] && !store.localTabConfig.linesConfig[k].visible).length;
+                return off ? I18n.get('statsWindow_showAll', { n: off }) : I18n.get('statsWindow_showSettings');
+            };
+            secWin.appendChild(showAll);
 
             const isDragActive = store.uiFlags.isStatsWindowDragging;
             const dragBtnText = isDragActive ? I18n.get('dragStatsWindowActiveButton') : I18n.get('dragStatsWindowButton');
@@ -4226,18 +4281,14 @@ const PAID_SHIFT_HOURS = 10;
             const secPrice = UIBuilder.section(I18n.get('priceCard_section'));
             const pc = store.localTabConfig.priceCard;
 
-            // Sklep: jedno ustawienie na link, wykres i walutę.
-            const mkKey = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_marketplace'), UIBuilder.select(
-                Object.entries(CONFIG.MARKETPLACES).map(([k, m]) => ({
-                    value: k, text: m.host.replace(/^www\./, '') + (PriceSources.coversMarket(k) ? '' : '  ⚠'),
-                })), mkKey, v => { store.userConfig.marketplace = v; this.rerender(); })));
-            if (!PriceSources.coversMarket(mkKey)) {
-                secPrice.appendChild(h('div', {
-                    textContent: '⚠ ' + I18n.get('priceCard_marketNoData'),
-                    style: { fontSize: '0.85em', color: '#b06a00', margin: '-4px 0 10px 0', lineHeight: '1.35' },
-                }));
-            }
+            // Cena z karty amazon.de obok: jedyne źródło w panelu. Dawne
+            // źródła sieciowe (Keepa, r.jina.ai) i wybór sklepu nie mają tu
+            // kontrolek — wchodzą tylko z kodu ustawień albo z konsoli.
+            const amazonOk = AmazonBridge.connected();
+            secPrice.appendChild(UIBuilder.hint(I18n.get('amazon_howTo')));
+            secPrice.appendChild(UIBuilder.button(I18n.get(amazonOk ? 'amazon_connected' : 'amazon_open'),
+                () => { AmazonBridge.open(); this.rerender(); },
+                { width: '100%', background: amazonOk ? '#2E7D32' : CONFIG.SETTINGS_PANEL_ACCENT_COLOR }));
 
             // Waluta, w której kwoty się pokazuje. Liczy się zawsze w euro,
             // więc przełączenie w trakcie zmiany niczego nie gubi. Ustawienie
@@ -4250,14 +4301,6 @@ const PAID_SHIFT_HOURS = 10;
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
-            // Źródło ceny — tryby z PriceSources, od zalecanego do zapasowych.
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select(
-                PriceSources.modes.map(m => ({ value: m.value, text: I18n.get(m.labelKey) })),
-                pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
-
-            secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
-                I18n.get('priceCard_fallback'), pc.marketFallback !== false,
-                v => store.localTabConfig.priceCard.marketFallback = v, I18n.get('priceCard_fallbackHint'))));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_showCard'), pc.visible,
@@ -5041,6 +5084,8 @@ const PAID_SHIFT_HOURS = 10;
          *                „nie ma skąd przeczytać ceny”, a nie „nie ma wykresu”.
          */
         modes: [
+            // Jedyny tryb w panelu: karta amazon.de, bez sieci z karty T-REX.
+            { value: 'amazon', labelKey: 'priceCard_src_amazon', viaTab: true },
             { value: 'ocr',   labelKey: 'priceCard_src_ocr', readsImage: true },
             { value: 'graph', labelKey: 'priceCard_src_graph', showsChart: true },
             { value: 'jina',  labelKey: 'priceCard_src_jina' },
@@ -5191,6 +5236,23 @@ const PAID_SHIFT_HOURS = 10;
             return [
                 {
                     /**
+                     * Cena z karty amazon.de obok (AmazonBridge). Rodzaj 'tab':
+                     * nie jest zapytaniem sieciowym karty T-REX, więc blokady
+                     * CSP go nie dotyczą. Ceny amazon.de są w euro.
+                     */
+                    name: 'amazon.de',
+                    kind: 'tab',
+                    get available() { return store.localTabConfig.priceCard.source === 'amazon'; },
+                    marketSearch: false,
+                    async run(asin, signal) {
+                        const d = await AmazonBridge.request(asin, signal);
+                        if (d.error && d.current === null && d.rrp === null) throw new Error(d.error);
+                        const mk = (v) => v === null ? null : self.money(v, 'EUR');
+                        return { current: mk(d.current), rrp: mk(d.rrp), stale: false, market: 'de' };
+                    },
+                },
+                {
+                    /**
                      * Cena odczytana z obrazka wykresu — pierwsza i domyślna:
                      * nie wymaga klucza ani obcego proxy, tylko obrazka
                      * z graph.keepa.com. Działa też w trybie 'graph' (różnica
@@ -5201,7 +5263,9 @@ const PAID_SHIFT_HOURS = 10;
                     kind: 'image',
                     get available() {
                         const pc = store.localTabConfig.priceCard;
-                        return pc.source === 'ocr' || pc.source === 'graph' || !!pc.logValues;
+                        // Dziennik wartości nie budzi Keepa, gdy cena idzie z karty
+                        // amazon.de — inaczej karta T-REX ładowałaby obrazki z sieci.
+                        return pc.source === 'ocr' || pc.source === 'graph' || (!!pc.logValues && pc.source !== 'amazon');
                     },
                     // r.jina.ai rozbiera szablon konkretnej witryny — gonienie
                     // go po obcych rynkach nie ma sensu, więc w trybie 'jina'
@@ -6355,8 +6419,12 @@ const PAID_SHIFT_HOURS = 10;
             store.localTabConfig.priceCard.moduleEnabled = true;
             Persistence.saveState();
             Utils.log('[MODUŁ CEN] włączony ręcznie — od tej chwili zapytania sieciowe są dozwolone.');
-            // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę.
-            FxRates.init().then(() => bus.emit('valueLog:changed'));
+            // Kursy walut: jedno zapytanie, dalej z pamięci przez dobę. Z kartą
+            // amazon.de karta T-REX nie wychodzi do sieci wcale — ceny są
+            // w euro, a waluta wyświetlania liczy się z kursów wbudowanych.
+            if (store.localTabConfig.priceCard.source !== 'amazon') {
+                FxRates.init().then(() => bus.emit('valueLog:changed'));
+            }
             // Karta mogła być schowana — pokazujemy i pytamy o cenę tego, co na ekranie.
             if (PriceCard.el) PriceCard.applyStyle();
             PriceCard.check();
@@ -6632,6 +6700,11 @@ const PAID_SHIFT_HOURS = 10;
 
                 if (limitHit && result.status !== 'ok') {
                     result = { status: 'fail', reason: I18n.get('priceCard_limit') };
+                }
+                // Bez połączonej karty amazon.de mówimy wprost, co zrobić.
+                if (result.status !== 'ok' && store.localTabConfig.priceCard.source === 'amazon'
+                    && !AmazonBridge.connected()) {
+                    result = { status: 'fail', reason: I18n.get('amazon_notConnected') };
                 }
 
                 // Ceny na wybranym rynku nie ma — próbujemy pozostałych,
@@ -6956,7 +7029,10 @@ const PAID_SHIFT_HOURS = 10;
             // Stronę skanuje AutoTrigger, osobnego obserwatora nie zakładamy.
             bus.on('page:scanned', (d) => this.check(d && d.text));
             // Karta zależy tylko od własnych ustawień i języka.
-            onStorePaths(['localTabConfig.priceCard', 'userConfig.language'], () => this.applyStyle());
+            // Linie i położenie okna statystyk zmieniają jego wysokość albo
+            // przyklejenie — karta nad nim przesuwa się razem z nim.
+            onStorePaths(['localTabConfig.priceCard', 'userConfig.language', 'localTabConfig.linesConfig',
+                          'localTabConfig.statsWindowPosition'], () => this.applyStyle());
 
             this.check();
         },
@@ -6982,7 +7058,15 @@ const PAID_SHIFT_HOURS = 10;
             this.el.style.width = `${Utils.clampNum(pc.width, 120, 1600, 280)}px`;
             this.el.style.left = pc.position.left || '14px';
             if (pc.position.top) { this.el.style.top = pc.position.top; this.el.style.bottom = 'auto'; }
-            else { this.el.style.top = 'auto'; this.el.style.bottom = '14px'; }
+            else {
+                // Przyklejona do dołu karta stoi nad oknem statystyk, gdy i ono
+                // trzyma się dołu ekranu — inaczej przykryłaby linię 7.
+                const win = StatsWindowRenderer.el;
+                const winAtBottom = win && !(store.localTabConfig.statsWindowPosition || {}).top;
+                const lift = winAtBottom ? Math.round(Number(win.offsetHeight) || 0) : 0;
+                this.el.style.top = 'auto';
+                this.el.style.bottom = `${lift + 4}px`;
+            }
 
             // Tło, ramka i cień idą razem: przy przezroczystym tle ramka i cień
             // zostawiłyby pustą obwódkę nad stroną. Nie ma tła — zostaje sam
@@ -7678,6 +7762,7 @@ const PAID_SHIFT_HOURS = 10;
             if (AutoLpn.onKeyDown) document.removeEventListener('keydown', AutoLpn.onKeyDown, true);
             if (GravisBridge.onKeyDown) document.removeEventListener('keydown', GravisBridge.onKeyDown, true);
             ClearSession.teardown();
+            AmazonBridge.teardown();
             if (GravisBridge.onMessage) window.removeEventListener('message', GravisBridge.onMessage);
             if (SettingsPanel.onPanelKey) SettingsPanel.captureInput(false);
             if (Persistence.onStorage) window.removeEventListener('storage', Persistence.onStorage);
@@ -7722,6 +7807,8 @@ const PAID_SHIFT_HOURS = 10;
             // Na karcie GRAVIS skrypt nie liczy niczego — jest tylko drugą
             // stroną mostu (GravisBridge).
             if (GravisBridge.isGravisPage()) { GravisBridge.initRemote(); return; }
+            // Na karcie amazon.de — druga strona mostu cen (AmazonBridge).
+            if (AmazonBridge.isAmazonPage()) { AmazonBridge.initRemote(); return; }
             if (window[CONFIG.SCRIPT_ID_PREFIX + 'INIT']) {
                 /**
                  * Skrypt już działa, ale kod ustawień z zakładki i tak wchodzi —
@@ -7802,6 +7889,7 @@ const PAID_SHIFT_HOURS = 10;
                 ToteWatch.init();
                 AutoLpn.init();
                 GravisBridge.init();
+                AmazonBridge.init();
                 ClearSession.init();
                 AutoTrigger.init();
                 Persistence.listen();
@@ -7908,7 +7996,7 @@ const PAID_SHIFT_HOURS = 10;
                     tote: () => ToteWatch.info(),
                     // Okno diagnostyki — to samo co przycisk w panelu.
                     debug: () => Diag.toggle(),
-                    ToteWatch, AutoLpn, GravisBridge, Diag, ClearSession, Notifier,
+                    ToteWatch, AutoLpn, GravisBridge, AmazonBridge, Diag, ClearSession, Notifier,
                     Perf,
                     // Przeciąganie okna i karty — wystawione dla diagnostyki
                     // („czemu nie da się przesunąć okna”) i dla testów, które
@@ -8101,7 +8189,7 @@ const PAID_SHIFT_HOURS = 10;
          */
         ENUMS: {
             font: ['default', 'monospace', 'sans_serif_thin'],
-            source: ['ocr', 'graph', 'jina'],
+            source: ['ocr', 'graph', 'jina', 'amazon'],
             graphMode: ['legend', 'right', 'full'],
             language: ['pl', 'en', 'ru', 'uk'],
             marketplace: ['de', 'co.uk', 'com', 'it', 'fr', 'es', 'nl', 'ca', 'se', 'com.be', 'pl'],
@@ -8979,23 +9067,28 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         /**
-         * Przepracowany czas zmiany sprzed pierwszego odcinka wszystkich zadań
-         * (bez obiadu). Skrypt uruchomiony w połowie zmiany — inne stanowisko,
-         * czysta przeglądarka — nie ma danych o tym czasie, a człowiek przez
-         * niego pracował. Linia 7 dolicza za niego paczki według celu działu,
-         * żeby „z celu zmiany” nie zaczynało się od zera o północy.
-         * Przerwy między zadaniami się nie liczą — to były pauzy.
+         * CEL ZADANIA — ile paczek to zadanie ma dać do końca zmiany.
+         *
+         * Cel × (czas już przepracowany w zadaniu + czas, który zostaje do
+         * końca, bez obiadu). Kto zaczyna o 16:00, a zmiana kończy się o 17:00,
+         * przy celu 30 dostaje „0 z 30”, a nie „0 z 300” całej zmiany.
+         *   - pauza i praca w innym zadaniu nie wchodzą do przepracowanego
+         *     czasu, a czas do końca i tak płynie — cel maleje w tempie celu:
+         *     półtorej godziny poza zadaniem przy celu 30 to 45 paczek mniej;
+         *   - koniec ostatniego odcinka wpisany naprzód („18:30-22:00”)
+         *     kończy rachunek wcześniej niż zmiana;
+         *   - początek wpisany naprzód — czas do końca liczy się od niego.
+         * null — bez celu albo bez rozpoznanej zmiany (nie wiadomo, kiedy koniec).
          */
-        untrackedWorkedMs(nowMs) {
-            const floor = this.countedFrom();
-            if (!Number.isFinite(floor)) return 0;
+        taskGoal(task, target, nowMs) {
+            const end = ShiftManager.shiftEndMs();
+            if (!task || !target || end === null) return null;
             const now = Number(nowMs) || Date.now();
-            let first = now;
-            for (const task of store.tasks) {
-                for (const seg of task.segments) if (seg.from < first) first = seg.from;
-            }
-            if (first <= floor) return 0;
-            return Math.max(0, (first - floor) - ShiftManager.lunchOverlapMs(floor, first));
+            const last = task.segments[task.segments.length - 1];
+            const until = last.to !== null && last.to > now ? Math.min(last.to, end) : end;
+            const from = Math.max(now, task.segments[0].from, this.countedFrom());
+            const ahead = until > from ? (until - from) - ShiftManager.lunchOverlapMs(from, until) : 0;
+            return Math.round(target * (this.workedMs(task, now) + ahead) / 3600000);
         },
 
         /**
@@ -10131,6 +10224,226 @@ const PAID_SHIFT_HOURS = 10;
         },
     };
 
+    // ─── src/32-amazon-bridge.js ───
+    // ==========================================
+    // 6l. MOST AMAZON.DE — CENA Z KARTY SKLEPU
+    // ==========================================
+    /**
+     * Dwie karty, jeden plik — jak most GRAVIS. Karta T-REX otwiera amazon.de
+     * przez window.open i dostaje uchwyt okna; ten sam skrypt kliknięty na
+     * karcie amazon.de rozpoznaje stronę (isAmazonPage) i staje się drugą
+     * stroną mostu. Rozmowa idzie przez postMessage, w przeglądarce.
+     *
+     * KARTA T-REX NIE WYSYŁA NICZEGO NA ZEWNĄTRZ. Wysyła ASIN do sąsiedniej
+     * karty; zapytanie /dp/<ASIN> robi karta amazon.de pod własnym adresem —
+     * zwykłe zapytanie przeglądarki, z jej ciasteczkami, więc ani CORS, ani
+     * blokady pośredników go nie dotyczą.
+     *
+     * Obie strony przyjmują wiadomość wyłącznie od znanego okna (e.source)
+     * i znanego adresu (e.origin) i wysyłają ją wyłącznie na znany adres.
+     * Karta amazon.de przyjmuje tylko ASIN pasujący do wzorca i pobiera tylko
+     * ścieżkę /dp/<ASIN> własnego adresu; odsyła same liczby, które T-REX
+     * jeszcze raz sprawdza (skończone, dodatnie, poniżej AMAZON_MAX_PRICE_EUR).
+     *
+     * Rozbiór strony produktu to algorytm z dawnego skryptu działu PS:
+     * cena katalogowa z bloku „basisPrice” (przekreślona), cena do zapłaty
+     * z „apex-pricetopay” i dawnych bloków priceblock; w bloku najpierw
+     * .a-offscreen, potem symbol + część całkowita + grosze, na końcu tekst
+     * (amazon drukuje go czasem dwa razy z rzędu).
+     */
+    const AmazonBridge = {
+        win: null,
+        ready: false,
+        /** Chwila ostatniego sygnału z karty amazon.de; 0 — jeszcze żadnego. */
+        lastSeen: 0,
+        /** Zapytania czekające na odpowiedź: id → { resolve, reject }. */
+        pending: new Map(),
+        nextId: 1,
+
+        isAmazonPage() {
+            return window.location.origin === CONFIG.AMAZON_ORIGIN;
+        },
+        connected() {
+            return !!(this.win && !this.win.closed && this.ready
+                && Date.now() - this.lastSeen <= CONFIG.AMAZON_STALE_MS);
+        },
+
+        // --- strona T-REX ---
+        init() {
+            this.onMessage = (e) => {
+                if (e.origin !== CONFIG.AMAZON_ORIGIN || !e.source) return;
+                const d = e.data;
+                if (!d || typeof d !== 'object') return;
+                // Okno przyjmuje się z sygnału gotowości ze znanego adresu —
+                // także po przeładowaniu T-REX, gdy uchwytu z window.open już nie ma.
+                if (d.type === 'sh-amazon-ready') {
+                    this.win = /** @type {Window} */ (e.source);
+                    this.ready = true;
+                    this.lastSeen = Date.now();
+                    return;
+                }
+                if (e.source !== this.win || d.type !== 'sh-amazon-price') return;
+                this.lastSeen = Date.now();
+                const wait = this.pending.get(d.id);
+                if (!wait) return;
+                this.pending.delete(d.id);
+                wait.resolve({ current: this.price(d.current), rrp: this.price(d.rrp), error: typeof d.error === 'string' ? d.error.slice(0, 120) : null });
+            };
+            window.addEventListener('message', this.onMessage);
+        },
+        /** Liczba od karty Amazon albo null: tylko skończona, dodatnia i rozsądna. */
+        price(v) {
+            const n = typeof v === 'number' ? v : NaN;
+            return Number.isFinite(n) && n > 0 && n < CONFIG.AMAZON_MAX_PRICE_EUR ? Math.round(n * 100) / 100 : null;
+        },
+        /** Jedyne miejsce, z którego T-REX otwiera amazon.de — kliknięcie w panelu. */
+        open() {
+            const win = window.open(CONFIG.AMAZON_URL, CONFIG.AMAZON_WINDOW_NAME);
+            // Blokada wyskakujących okien zwraca null: działające połączenie zostaje.
+            if (!win) return;
+            this.ready = false;
+            this.win = win;
+        },
+        /**
+         * Cena dla ASIN z karty amazon.de: { current, rrp, error } w euro albo
+         * wyjątek, gdy karta nie jest połączona albo zapytanie przerwano
+         * (`signal` — limit czasu karty ceny).
+         */
+        request(asin, signal) {
+            if (!this.connected()) return Promise.reject(new Error('karta amazon.de niepodłączona'));
+            const id = this.nextId++;
+            return new Promise((resolve, reject) => {
+                this.pending.set(id, { resolve, reject });
+                if (signal) {
+                    signal.addEventListener('abort', () => {
+                        if (this.pending.delete(id)) reject(new Error('przekroczony czas'));
+                    });
+                }
+                this.win.postMessage({ type: 'sh-amazon-asin', id, asin: String(asin) }, CONFIG.AMAZON_ORIGIN);
+            });
+        },
+        teardown() {
+            if (this.onMessage) window.removeEventListener('message', this.onMessage);
+            for (const wait of this.pending.values()) wait.reject(new Error('skrypt zdjęty'));
+            this.pending.clear();
+        },
+
+        // --- strona amazon.de ---
+        /**
+         * Na amazon.de skrypt nie liczy i nie ma ustawień: odpowiada na ASIN
+         * i co AMAZON_HEARTBEAT_MS daje znać, że żyje. Znaczek w lewym górnym
+         * rogu jest przezroczysty dla kliknięć.
+         */
+        initRemote() {
+            const flag = CONFIG.SCRIPT_ID_PREFIX + 'AMAZON';
+            if (window[flag]) return;
+            if (!window.opener) { this.badge(I18n.get('amazon_badgeNoOpener'), '#C62828'); return; }
+            window[flag] = true;
+            this.onRemoteMessage = async (e) => {
+                if (e.source !== window.opener || e.origin !== CONFIG.TREX_ORIGIN) return;
+                const d = e.data;
+                if (!d || d.type !== 'sh-amazon-asin' || !CONFIG.ASIN_VALUE_REGEX.test(String(d.asin))) return;
+                const out = await this.lookup(d.asin);
+                if (!window.opener) return;
+                window.opener.postMessage({ type: 'sh-amazon-price', id: d.id, asin: d.asin, ...out }, CONFIG.TREX_ORIGIN);
+            };
+            window.addEventListener('message', this.onRemoteMessage);
+            const beat = () => {
+                if (window.opener) window.opener.postMessage({ type: 'sh-amazon-ready' }, CONFIG.TREX_ORIGIN);
+            };
+            beat();
+            this.heartbeatTimer = setInterval(beat, CONFIG.AMAZON_HEARTBEAT_MS);
+            this.badge(I18n.get('amazon_badgeOk'), '#2E7D32');
+        },
+        badge(text, color) {
+            const old = document.getElementById(CONFIG.SCRIPT_ID_PREFIX + 'amazonBadge');
+            if (old) old.remove();
+            document.body.appendChild(h('div', {
+                id: 'amazonBadge', textContent: text,
+                style: { position: 'fixed', left: '6px', top: '6px', zIndex: '2147483646',
+                         pointerEvents: 'none', opacity: '0.55', background: color, color: '#fff',
+                         padding: '2px 8px', borderRadius: '10px', font: '11px sans-serif' },
+            }));
+        },
+        /** Pobranie strony produktu z własnego adresu i rozbiór ceny. */
+        async lookup(asin) {
+            try {
+                const r = await fetch('/dp/' + encodeURIComponent(asin), { credentials: 'include' });
+                if (!r.ok) return { current: null, rrp: null, error: 'HTTP ' + r.status };
+                const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+                return this.parsePage(doc);
+            } catch (e) {
+                return { current: null, rrp: null, error: String(e && e.message) };
+            }
+        },
+        /** Selektory bloków ceny — w kolejności pytania. */
+        RRP_SELECTORS: [
+            '#corePriceDisplay_desktop_feature_div .basisPrice .a-price[data-a-strike="true"]',
+            '#corePriceDisplay_desktop_feature_div .apex-basisprice-value',
+            '#corePrice_desktop .apex-basisprice-value',
+            '.basisPrice .a-price[data-a-strike="true"]',
+            '#priceblock_ourprice_lbl + td .a-text-strike',
+        ],
+        PRICE_SELECTORS: [
+            '#corePriceDisplay_desktop_feature_div .apex-pricetopay-value',
+            '#corePrice_desktop .apex-pricetopay-value',
+            '#price_inside_buybox',
+            '#corePrice_feature_div .a-price',
+            '.apex-pricetopay-value',
+            'span.priceToPay',
+            '#priceblock_ourprice',
+            '#priceblock_dealprice',
+        ],
+        /** { current, rrp } z dokumentu strony produktu; brak bloku — null. */
+        parsePage(doc) {
+            const area = doc.querySelector('#dp-container') || doc.querySelector('#dp') || doc.body;
+            if (!area) return { current: null, rrp: null, error: 'pusta strona' };
+            const rrp = this.amount(this.blockText(area, this.RRP_SELECTORS));
+            const current = this.amount(this.blockText(area, this.PRICE_SELECTORS));
+            return { current, rrp, error: current || rrp ? null : 'na stronie nie ma ceny' };
+        },
+        /** Tekst pierwszego bloku ceny, który coś zawiera. */
+        blockText(area, selectors) {
+            for (const s of selectors) {
+                for (const el of area.querySelectorAll(s)) {
+                    const off = el.querySelector('.a-offscreen');
+                    if (off && off.textContent.trim().length > 1) return off.textContent.trim();
+                    const whole = el.querySelector('.a-price-whole');
+                    const fraction = el.querySelector('.a-price-fraction');
+                    if (whole && fraction) return whole.textContent.replace(/[^0-9]/g, '') + '.' + fraction.textContent.trim();
+                    const txt = el.textContent.replace(/\s+/g, '').trim();
+                    if (txt) {
+                        // Amazon drukuje cenę czasem dwa razy z rzędu („12,99€12,99€”).
+                        const half = txt.length / 2;
+                        return txt.length % 2 === 0 && txt.slice(0, half) === txt.slice(half) ? txt.slice(0, half) : txt;
+                    }
+                }
+            }
+            return null;
+        },
+        /**
+         * Kwota z tekstu ceny („1.299,00 €”, „1,299.00”, „12,99”, „1.299”):
+         * ostatni z dwóch separatorów to grosze; pojedynczy separator z trzema
+         * cyframi po nim to tysiące.
+         */
+        amount(text) {
+            if (!text) return null;
+            let v = String(text).replace(/[^\d.,]/g, '');
+            if (!v) return null;
+            if (v.includes('.') && v.includes(',')) {
+                v = v.lastIndexOf('.') > v.lastIndexOf(',') ? v.replace(/,/g, '') : v.replace(/\./g, '').replace(',', '.');
+            } else if (v.includes(',')) {
+                const parts = v.split(',');
+                v = parts[parts.length - 1].length === 3 ? v.replace(/,/g, '') : v.replace(/,/g, '.');
+            } else if (v.includes('.')) {
+                const parts = v.split('.');
+                if (parts[parts.length - 1].length === 3) v = v.replace(/\./g, '');
+            }
+            const n = parseFloat(v);
+            return Number.isFinite(n) && n > 0 ? n : null;
+        },
+    };
+
     // ─── src/31-clear-session.js ───
     // ==========================================
     // 6k. USUŃ SESJĘ SKRÓTEM
@@ -10460,7 +10773,8 @@ const PAID_SHIFT_HOURS = 10;
    KARTA CENY  (store.localTabConfig.priceCard) — działa tylko przy moduleEnabled
    -----------------------------------------------------------------------------
    visible    = true          pokazywać kartę na ekranie
-   source     = 'ocr'         'ocr' (cena tekstem z wykresu) | 'graph' | 'jina'
+   source     = 'amazon'      'amazon' (karta amazon.de obok, bez sieci z T-REX)
+                              | 'ocr' | 'graph' | 'jina' (dawne źródła sieciowe, poza panelem)
    logValues  = true          prowadzić dziennik wartości
    marketFallback = true      szukać ceny w innych sklepach, gdy w wybranym brak
    showPrice  = true          pokazywać aktualną cenę
@@ -10502,7 +10816,7 @@ const PAID_SHIFT_HOURS = 10;
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_8_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_9_0_'
        Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
        Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
        Zmiana prefiksu = start od zera

@@ -158,37 +158,35 @@
         },
 
         /**
-         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy:
+         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy,
+         * wyłącznie o BIEŻĄCYM zadaniu:
          *
-         *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
+         *     34.3 z 47 · 12 z 30 · 14% · 2m 41s
          *
-         *   - tempo BIEŻĄCEGO zadania z celu — zadania istnieją właśnie po to,
-         *     żeby procesy o różnych normach nie mieszały się w jedną średnią;
-         *     liczą się paczki kart, które to zadanie liczy (countedRate); tempo
-         *     całej zmiany jest w panelu i w linii 1;
-         *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
-         *     (cel × płatne godziny); czas zmiany sprzed pierwszego zadania
-         *     dolicza się według celu i liczba dostaje „≈”;
-         *   - procent sprzedaży zmiany;
+         *   - tempo zadania z celu — zadania istnieją po to, żeby procesy
+         *     o różnych normach nie mieszały się w jedną średnią; liczą się
+         *     paczki kart, które to zadanie liczy (countedRate);
+         *   - paczki zadania z celu zadania (TaskManager.taskGoal): zaczęte
+         *     o 16:00 przy końcu zmiany o 17:00 i celu 30 to „0 z 30”;
+         *   - procent sprzedaży zadania;
          *   - czas od ostatniego pojemnika, czerwony po przekroczeniu limitu
          *     (jak linia 9); do pierwszego pojemnika go nie ma.
-         * Bez celu działu znika „z …”. Spójnik („z”, „of” i odpowiedniki
-         * ukraiński i rosyjski) idzie ze słownika (statsOf).
+         * Paczek innych zadań tu nie ma — całą zmianę opisują linie 1 i 2.
+         * Bez celu albo bez rozpoznanej zmiany znika „z …”. Spójnik („z”,
+         * „of” i odpowiedniki ukraiński i rosyjski) idzie ze słownika (statsOf).
          */
-        renderCompact(gTotal, gSold, gRated) {
+        renderCompact() {
             const line = this.lines.line7_compact;
             const task = TaskManager.active() || store.tasks[store.tasks.length - 1];
             const target = ToteWatch.targetFor(store.currentTabType);
             const of = I18n.get('statsOf');
             const rate = (task ? TaskManager.countedRate(task) : 0).toFixed(1);
-            // Czas zmiany sprzed pierwszego zadania liczy się po celu działu
-            // i paczki są wtedy przybliżone (≈).
-            const assumed = target ? Math.round(target * TaskManager.untrackedWorkedMs() / 3600000) : 0;
-            const packs = assumed > 0 ? `≈${gTotal + assumed}` : String(gTotal);
+            const done = task ? TaskManager.countedDone(task) : 0;
+            const goal = TaskManager.taskGoal(task, target);
             const parts = [
                 target ? `${rate} ${of} ${target}` : rate,
-                target ? `${packs} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
-                `${Utils.percentFloor(gSold, gRated)}%`,
+                goal !== null ? `${done} ${of} ${goal}` : String(done),
+                `${task ? TaskManager.percent(task) : 0}%`,
             ];
             line.innerHTML = '';
             line.appendChild(document.createTextNode(parts.join(' · ')));
@@ -359,7 +357,7 @@
             if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
             else this.lines.line6_valueSum.innerHTML = '';
 
-            this.renderCompact(gTotal, gSold, gRated);
+            this.renderCompact();
 
             /**
              * LINIA 8 — bieżące zadanie i jego własne liczby, z własnym
@@ -375,19 +373,21 @@
             this.renderOffTask();
 
             /**
-             * LINIA 10 — cel działu z RATE_TARGETS: cel, procent bieżącego
-             * tempa zmiany od celu i sztuki wobec celu zmiany (cel × płatne
-             * godziny, bez niepłatnego obiadu):
+             * LINIA 10 — cel bieżącego zadania: cel, procent tempa zadania od
+             * celu i paczki zadania wobec celu zadania (jak linia 7):
              *
-             *     47/h 85% 236/470
+             *     47/h 85% 12/30
              */
             const target = ToteWatch.targetFor(store.currentTabType);
+            const goalTask = TaskManager.active() || store.tasks[store.tasks.length - 1];
             if (!target) {
                 this.lines.line10_target.textContent = '';
             } else {
-                const pct = workedMs >= CONFIG.RATE_MIN_WORKED_MS ? Math.floor(gTotal / hWorked / target * 100) : 0;
+                const pct = goalTask ? Math.floor(TaskManager.countedRate(goalTask) / target * 100) : 0;
+                const goal = TaskManager.taskGoal(goalTask, target);
+                const done = goalTask ? TaskManager.countedDone(goalTask) : 0;
                 this.lines.line10_target.textContent =
-                    `${target}${I18n.get('statsPerHourUnit')} ${pct}% ${gTotal}/${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}`;
+                    `${target}${I18n.get('statsPerHourUnit')} ${pct}% ${done}/${goal !== null ? goal : '—'}`;
             }
 
             const task = TaskManager.active();

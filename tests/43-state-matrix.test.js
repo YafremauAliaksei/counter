@@ -93,7 +93,9 @@ function runShift(cfg) {
     }
     const show = (t, text) => { t.page.textContent = text; t.SH.AutoTrigger.scan(); };
 
-    if (cfg.price) for (const t of tabs) t.SH.priceOn();
+    // Macierz sprawdza dawne źródło sieciowe (Keepa) przy pełnym ruchu —
+    // karta amazon.de nie wysyła z T-REX niczego, więc nie byłoby czego mierzyć.
+    if (cfg.price) for (const t of tabs) { t.SH.store.localTabConfig.priceCard.source = 'ocr'; t.SH.priceOn(); }
     if (cfg.panel) tabs[0].SH.settings();
     if (cfg.diag) tabs[0].SH.debug();
     settle();

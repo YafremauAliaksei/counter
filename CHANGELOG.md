@@ -9,6 +9,42 @@ Dla tego projektu SemVer czyta się tak:
 
 ---
 
+## 1.9.0 — 2026-11-02
+
+> **Wydanie MINOR — aktualizować wyłącznie między zmianami.** Nowy prefiks magazynu `statsHelper_v1_9_0_`: liczniki, zadania i ustawienia startują od zera. Kod ustawień i zakładki z kodem działają dalej.
+
+### Zmieniono — linie 7 i 10 mówią o bieżącym zadaniu
+
+- **Cel zadania zamiast celu zmiany.** Linia 7: `tempo z celu · paczki zadania z celu zadania · procent sprzedaży zadania · czas od pojemnika`. Cel zadania = cel działu × (czas już przepracowany w zadaniu + czas do końca zmiany, bez obiadu). Przyjście o 16:00 na godzinę przed końcem przy celu 30 daje `0 z 30`, a nie `0 z 300`.
+- **Pauza i praca w innym zadaniu zmniejszają cel** w tempie celu: półtorej godziny poza zadaniem przy celu 30 to 45 paczek mniej. Koniec odcinka wpisany naprzód (`18:30-22:00`) kończy cel o tej godzinie, początek wpisany naprzód — liczy się od niego. Obiad celu nie zabiera.
+- **Paczek innych zadań linia 7 nie pokazuje** — ani paczek kart spoza zadania. Sumę zmiany pokazuje linia 2 (bez zmian). Procent w linii 7 to procent sprzedaży zadania.
+- **Linia 10** tak samo: `cel/h, procent tempa zadania od celu, paczki zadania/cel zadania`, np. `30/h 100% 15/30`.
+- Koniec zmiany = początek + 10 płatnych godzin + wybrany obiad (06:30 → 17:00, 18:30 → 05:00). Bez rozpoznanej zmiany człon „z …” znika, w linii 10 zamiast celu zadania stoi `—`.
+- Usunięto przybliżenie `≈` („czas zmiany sprzed pierwszego zadania doliczany według celu”) — opisywało cel całej zmiany, którego linia 7 już nie pokazuje.
+
+### Dodano — cena z karty amazon.de, bez sieci z karty T-REX
+
+- **Most do karty amazon.de** (`src/32-amazon-bridge.js`), jak most GRAVIS: przycisk „Otwórz amazon.de” w panelu, jedno kliknięcie zakładki na tamtej karcie. Karta T-REX wysyła sam ASIN przez `postMessage`; karta amazon.de pobiera `/dp/<ASIN>` z własnego adresu i odsyła dwie liczby (cena do zapłaty i katalogowa, w euro). Karta T-REX nie wysyła do internetu nic — także kursów walut nie pobiera (waluta wyświetlania z kursów wbudowanych).
+- Rozbiór ceny — algorytm dawnego skryptu działu PS: bloki `basisPrice` (przekreślona, katalogowa) i `apex-pricetopay` / `priceblock` (do zapłaty), w bloku `.a-offscreen`, potem symbol + całość + grosze, potem tekst (także podwojony); kwota w obu zapisach separatorów.
+- Obie strony przyjmują wiadomość tylko ze znanego adresu i okna; karta amazon.de bierze tylko ASIN pasujący do wzorca i pobiera tylko ścieżkę `/dp/<ASIN>`; T-REX sprawdza liczby jeszcze raz (skończone, dodatnie, poniżej 100 000 €). Karta otwarta ręcznie, nie z T-REX, nie odpowiada.
+- **Domyślne źródło ceny: karta amazon.de.** Tylko amazon.de — wyboru sklepu w panelu nie ma. Dawne źródła sieciowe (Keepa, r.jina.ai, przegląd innych sklepów) zniknęły z panelu; kod zostaje, wchodzi tylko z kodu ustawień (`source`: wartość `amazon` dopisana na końcu listy) albo z konsoli. Dziennik wartości przy karcie amazon.de nie budzi już obrazków Keepa.
+- Testy: `tests/47-amazon-bridge.test.js` (protokół, adresy i okna, sprawdzenie liczb, limit czasu, rozbiórka, karta ceny, kwota z tekstu, panel) i `tests/stand/specs/09-amazon-bridge.spec.js` (dwie karty w Chromium pod prawdziwymi adresami, cztery układy bloku ceny, brak ceny, zero zapytań T-REX do amazon.de, karta otwarta ręcznie).
+
+### Zmieniono — panel
+
+- **Statystyki globalne** domyślnie zwinięte (decyzja autora); razem z bieżącą kartą i pomocami wizualnymi stoją **pod** stylizacją okna — na górze sekcje częściowo widoczne od razu (cel, pola zadania, włączone linie okna).
+- **Zwinięta stylizacja okna** ma pod włączonymi liniami przycisk na całą szerokość „▾ Pokaż pozostałe linie okna — wyłączonych: N”, który rozwija sekcję (sam tytuł z „+N” mówił o tym za mało).
+- **Karta ceny przyklejona do dołu stoi nad oknem statystyk** i przesuwa się razem z nim (okno stoi przy samym dole od 1.8.0 i karta przykrywała linię 7).
+- **Pola Paczki i Tempo widać zawsze**, także przy zwiniętej sekcji Zadania — to jedyne, co poprawia się w trakcie zmiany.
+
+### Testy
+
+- `tests/41-task-goal.test.js` (zamiast `41-adaptive-target`): koniec zmiany z obiadem, bez, nocą i z obiadem po północy; 16:00 → `0 z 30` → `15 z 30`; pauza 1,5 h = −45; inne zadanie jak pauza i bez jego paczek; obiad; koniec i początek naprzód; po końcu zmiany; minuta do końca; cel 0/NaN; zmiana nierozpoznana; linia 10.
+- Sumę zmiany z dwóch kart i procent zmiany (testy 04, 17, 21) sprawdza się teraz na linii 2, która ją pokazuje. Linia 7 i 10 w testach 03 i 37 — na zadaniu.
+- Test „Kontynuuj nie przyszło” (46) czeka na koniec przebiegu zamiast stałych 150 ms — na wolnej maszynie stała przerwa kończyła się tuż przed nim.
+
+---
+
 ## 1.8.0 — 2026-10-26
 
 > **Wydanie MINOR — aktualizować wyłącznie między zmianami.** Nowy prefiks magazynu `statsHelper_v1_8_0_`: liczniki, zadania i ustawienia startują od zera. Kod ustawień i zakładki z kodem działają dalej.

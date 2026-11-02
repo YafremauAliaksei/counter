@@ -4,11 +4,13 @@
  * Linia 7 to jedyne, co widać domyślnie, więc jej format jest częścią umowy
  * z użytkownikiem:
  *
- *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
+ *     34.3 z 47 · 12 z 30 · 14% · 2m 41s
  *
- * tempo BIEŻĄCEGO zadania z celu działu, paczki zmiany z celu zmiany, procent
- * sprzedaży zmiany i czas od ostatniego pojemnika. Testy trzymają ten format
- * dosłownie, a paczki porównują z linią 2, bo obie liczą to samo.
+ * wszystko o BIEŻĄCYM zadaniu: tempo z celu działu, paczki z celu zadania
+ * (cel × czas zadania do końca zmiany), procent sprzedaży zadania i czas od
+ * ostatniego pojemnika. Paczki innych zadań i innych kart spoza zadania tu
+ * nie wchodzą. Testy trzymają ten format dosłownie; cel zadania w szczegółach
+ * sprawdza 41-task-goal.
  */
 
 'use strict';
@@ -32,54 +34,53 @@ function work(hours, items) {
 
 describe('Linia 7 — dokładny format wyjścia');
 
-test('na starcie: zero z celu, zero z celu zmiany, 0%', () => {
+test('na starcie: zadanie od początku zmiany ma cel całej zmiany (47 × 10)', () => {
     render();
     eq(line7(), '0.0 z 47 · 0 z 470 · 0%');
 });
 
-test('tempo zadania z celu, paczki zmiany z celu zmiany', () => {
+test('tempo zadania z celu, paczki zadania z celu zadania', () => {
     work(2, 20);
     render();
-    eq(line7(), '10.0 z 47 · 20 z 470 · 0%', '20 paczek przez 2 h zadania; cel zmiany 47 × 10');
+    eq(line7(), '10.0 z 47 · 20 z 470 · 0%', '20 paczek przez 2 h zadania; zadanie trwa całą zmianę');
 });
 
-test('paczki są ze wszystkich wliczanych kart, tempo — tylko z zadania', () => {
-    // WHD ma 15 paczek spoza bieżącego zadania tej karty: wchodzą do paczek
-    // zmiany, ale nie do tempa zadania.
+test('paczki karty spoza zadania nie wchodzą do linii 7', () => {
+    // WHD ma 15 paczek na liczniku karty, ale żadnej w bieżącym zadaniu —
+    // linia 7 mówi wyłącznie o zadaniu. Sumę zmiany pokazuje linia 2.
     S.tabCounters.WHD = 15;
     S.sessionConfig.activeTabInstances = { CRET: Date.now(), WHD: Date.now() };
     render();
-    eq(line7(), '10.0 z 47 · 35 z 470 · 0%');
-    S.userConfig.globalStatsContributionKnown.WHD = false;
-    render();
-    eq(line7(), '10.0 z 47 · 20 z 470 · 0%', 'dział wyłączony z sumy');
-    S.userConfig.globalStatsContributionKnown.WHD = true;
+    eq(line7(), '10.0 z 47 · 20 z 470 · 0%');
+    S.tabCounters.WHD = 0;
 });
 
-test('paczki zgadzają się z sumą linii 2', () => {
-    const cfg = S.localTabConfig.linesConfig.line2_globalSummary;
+test('paczki linii 7 to paczki zadania z linii 8', () => {
+    const cfg = S.localTabConfig.linesConfig.line8_taskInfo;
     cfg.visible = true;
     render();
     const packs = line7().split(' · ')[1].split(' ')[0];
-    ok(SH.StatsWindowRenderer.lines.line2_globalSummary.textContent.includes('(' + packs + ')'),
-       'suma paczek z linii 7 musi być w linii 2');
+    eq(SH.StatsWindowRenderer.lines.line8_taskInfo.textContent.split(' ')[1], packs);
     cfg.visible = false;
     render();
 });
 
-test('nowe zadanie ma własne tempo, niezależne od reszty zmiany', () => {
-    // Pół godziny nowego procesu i 10 paczek to 20/h, choć zmiana ma ich 45.
+test('nowe zadanie: własne tempo, własne paczki, cel od jego początku do końca zmiany', () => {
+    // Pół godziny nowego procesu i 10 paczek to 20/h; 20 paczek poprzedniego
+    // zadania tu nie ma. Cel: 47 × (pół godziny + 8 h do końca zmiany).
     SH.TaskManager.create('fast', Date.now() - 30 * 60000);
     for (let i = 0; i < 10; i++) SH.InputManager.modifyCounter(1);
     render();
-    eq(line7(), '20.0 z 47 · 45 z 470 · 0%');
+    const goal = SH.TaskManager.taskGoal(SH.TaskManager.active(), 47);
+    ok(Math.abs(goal - 47 * 8.5) <= 1, 'cel 47 × 8,5 h: ' + goal);
+    eq(line7(), `20.0 z 47 · 10 z ${goal} · 0%`);
 });
 
 test('bez celu działu (0, NaN, tekst) znika „z …”', () => {
     for (const bad of [0, NaN, 'x']) {
         SH.CONFIG.RATE_TARGETS.CRET = bad;
         render();
-        eq(line7(), '20.0 · 45 · 0%', String(bad));
+        eq(line7(), '20.0 · 10 · 0%', String(bad));
     }
     SH.CONFIG.RATE_TARGETS.CRET = 47;
 });

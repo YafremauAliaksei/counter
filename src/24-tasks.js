@@ -467,23 +467,28 @@
         },
 
         /**
-         * Przepracowany czas zmiany sprzed pierwszego odcinka wszystkich zadań
-         * (bez obiadu). Skrypt uruchomiony w połowie zmiany — inne stanowisko,
-         * czysta przeglądarka — nie ma danych o tym czasie, a człowiek przez
-         * niego pracował. Linia 7 dolicza za niego paczki według celu działu,
-         * żeby „z celu zmiany” nie zaczynało się od zera o północy.
-         * Przerwy między zadaniami się nie liczą — to były pauzy.
+         * CEL ZADANIA — ile paczek to zadanie ma dać do końca zmiany.
+         *
+         * Cel × (czas już przepracowany w zadaniu + czas, który zostaje do
+         * końca, bez obiadu). Kto zaczyna o 16:00, a zmiana kończy się o 17:00,
+         * przy celu 30 dostaje „0 z 30”, a nie „0 z 300” całej zmiany.
+         *   - pauza i praca w innym zadaniu nie wchodzą do przepracowanego
+         *     czasu, a czas do końca i tak płynie — cel maleje w tempie celu:
+         *     półtorej godziny poza zadaniem przy celu 30 to 45 paczek mniej;
+         *   - koniec ostatniego odcinka wpisany naprzód („18:30-22:00”)
+         *     kończy rachunek wcześniej niż zmiana;
+         *   - początek wpisany naprzód — czas do końca liczy się od niego.
+         * null — bez celu albo bez rozpoznanej zmiany (nie wiadomo, kiedy koniec).
          */
-        untrackedWorkedMs(nowMs) {
-            const floor = this.countedFrom();
-            if (!Number.isFinite(floor)) return 0;
+        taskGoal(task, target, nowMs) {
+            const end = ShiftManager.shiftEndMs();
+            if (!task || !target || end === null) return null;
             const now = Number(nowMs) || Date.now();
-            let first = now;
-            for (const task of store.tasks) {
-                for (const seg of task.segments) if (seg.from < first) first = seg.from;
-            }
-            if (first <= floor) return 0;
-            return Math.max(0, (first - floor) - ShiftManager.lunchOverlapMs(floor, first));
+            const last = task.segments[task.segments.length - 1];
+            const until = last.to !== null && last.to > now ? Math.min(last.to, end) : end;
+            const from = Math.max(now, task.segments[0].from, this.countedFrom());
+            const ahead = until > from ? (until - from) - ShiftManager.lunchOverlapMs(from, until) : 0;
+            return Math.round(target * (this.workedMs(task, now) + ahead) / 3600000);
         },
 
         /**

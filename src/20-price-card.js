@@ -255,6 +255,11 @@
                 if (limitHit && result.status !== 'ok') {
                     result = { status: 'fail', reason: I18n.get('priceCard_limit') };
                 }
+                // Bez połączonej karty amazon.de mówimy wprost, co zrobić.
+                if (result.status !== 'ok' && store.localTabConfig.priceCard.source === 'amazon'
+                    && !AmazonBridge.connected()) {
+                    result = { status: 'fail', reason: I18n.get('amazon_notConnected') };
+                }
 
                 // Ceny na wybranym rynku nie ma — próbujemy pozostałych,
                 // o ile któreś źródło nadaje się do przeglądu (marketSearch).
@@ -578,7 +583,10 @@
             // Stronę skanuje AutoTrigger, osobnego obserwatora nie zakładamy.
             bus.on('page:scanned', (d) => this.check(d && d.text));
             // Karta zależy tylko od własnych ustawień i języka.
-            onStorePaths(['localTabConfig.priceCard', 'userConfig.language'], () => this.applyStyle());
+            // Linie i położenie okna statystyk zmieniają jego wysokość albo
+            // przyklejenie — karta nad nim przesuwa się razem z nim.
+            onStorePaths(['localTabConfig.priceCard', 'userConfig.language', 'localTabConfig.linesConfig',
+                          'localTabConfig.statsWindowPosition'], () => this.applyStyle());
 
             this.check();
         },
@@ -604,7 +612,15 @@
             this.el.style.width = `${Utils.clampNum(pc.width, 120, 1600, 280)}px`;
             this.el.style.left = pc.position.left || '14px';
             if (pc.position.top) { this.el.style.top = pc.position.top; this.el.style.bottom = 'auto'; }
-            else { this.el.style.top = 'auto'; this.el.style.bottom = '14px'; }
+            else {
+                // Przyklejona do dołu karta stoi nad oknem statystyk, gdy i ono
+                // trzyma się dołu ekranu — inaczej przykryłaby linię 7.
+                const win = StatsWindowRenderer.el;
+                const winAtBottom = win && !(store.localTabConfig.statsWindowPosition || {}).top;
+                const lift = winAtBottom ? Math.round(Number(win.offsetHeight) || 0) : 0;
+                this.el.style.top = 'auto';
+                this.el.style.bottom = `${lift + 4}px`;
+            }
 
             // Tło, ramka i cień idą razem: przy przezroczystym tle ramka i cień
             // zostawiłyby pustą obwódkę nad stroną. Nie ma tła — zostaje sam

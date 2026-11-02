@@ -110,7 +110,8 @@
    KARTA CENY  (store.localTabConfig.priceCard) — działa tylko przy moduleEnabled
    -----------------------------------------------------------------------------
    visible    = true          pokazywać kartę na ekranie
-   source     = 'ocr'         'ocr' (cena tekstem z wykresu) | 'graph' | 'jina'
+   source     = 'amazon'      'amazon' (karta amazon.de obok, bez sieci z T-REX)
+                              | 'ocr' | 'graph' | 'jina' (dawne źródła sieciowe, poza panelem)
    logValues  = true          prowadzić dziennik wartości
    marketFallback = true      szukać ceny w innych sklepach, gdy w wybranym brak
    showPrice  = true          pokazywać aktualną cenę
@@ -152,7 +153,7 @@
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_8_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_9_0_'
        Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
        Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
        Zmiana prefiksu = start od zera

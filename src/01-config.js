@@ -44,7 +44,7 @@
          * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
          * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_8_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_9_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -53,7 +53,7 @@
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
                              'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
-                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_'],
+                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_', 'statsHelper_v1_8_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -380,6 +380,22 @@
         // podpowiada wtedy, żeby kliknąć tam zakładkę jeszcze raz.
         GRAVIS_HEARTBEAT_MS: 10000,
         GRAVIS_STALE_MS: 30000,
+        /**
+         * KARTA AMAZON.DE — cena produktu z samej strony sklepu, bez żadnego
+         * zapytania z karty T-REX. T-REX otwiera amazon.de (uchwyt okna),
+         * skrypt kliknięty tam zakładką odpowiada przez window.opener: dostaje
+         * ASIN, pobiera /dp/<ASIN> z własnego adresu (zwykłe zapytanie
+         * przeglądarki, z jej ciasteczkami) i odsyła liczby. Tylko amazon.de:
+         * ceny są w euro, a do szacunku wartości przedmiotu inne sklepy nic
+         * nie dodają.
+         */
+        AMAZON_URL: 'https://www.amazon.de/',
+        AMAZON_ORIGIN: 'https://www.amazon.de',
+        AMAZON_WINDOW_NAME: 'statsHelperAmazon',
+        AMAZON_HEARTBEAT_MS: 10000,
+        AMAZON_STALE_MS: 30000,
+        // Najwyższa cena przyjmowana od karty Amazon — większa to błąd rozbioru.
+        AMAZON_MAX_PRICE_EUR: 100000,
         // Panel ustawień otwiera się przy każdym uruchomieniu (decyzja autora).
         OPEN_SETTINGS_ON_START: true,
         // Linia 9 po przekroczeniu podwójnego czasu przedmiotu.
@@ -695,13 +711,13 @@
             moduleEnabled: false,
             visible: true,
             // ŹRÓDŁO CENY:
-            //   'ocr'   — obrazek Keepa ładuje się w tle i jest rozpoznawany;
-            //             na kartę trafia sama liczba. Domyślnie.
-            //   'graph' — pokazywać sam obrazek wykresu.
-            //   'jina'  — zapytanie tekstowe do r.jina.ai.
-            // 'ocr' też potrzebuje graph.keepa.com; gdy CSP strony tnie
-            // img-src, tryb nie działa i karta mówi o tym wprost.
-            source: 'ocr',
+            //   'amazon' — karta amazon.de obok (AmazonBridge); karta T-REX nie
+            //              wysyła niczego na zewnątrz. Domyślnie i jedyne
+            //              w panelu.
+            //   'ocr', 'graph', 'jina' — dawne źródła sieciowe (Keepa,
+            //              r.jina.ai); nieobecne w panelu, wchodzą tylko
+            //              z kodu ustawień albo z konsoli.
+            source: 'amazon',
             // Prowadzić dziennik wartości (tylko z modułem cen — ValueLog.add()).
             logValues: true,
             // Szukać ceny w innych sklepach, gdy w wybranym jej nie ma.

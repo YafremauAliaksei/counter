@@ -21,7 +21,7 @@ const { bootOnStand } = require('./dom-stub');
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
-const AUTHOR_ORDER = ['lunch', 'workflow', 'tasks', 'global', 'current_tab', 'visual', 'window',
+const AUTHOR_ORDER = ['lunch', 'workflow', 'tasks', 'window', 'global', 'current_tab', 'visual',
                       'keys', 'auto', 'price_module', 'price_card', 'value_log', 'code', 'language', 'general', 'diag'];
 
 /** Środowisko z otwartym panelem i natychmiastowym przerysowaniem (jak w 23-task-panel). */
@@ -101,7 +101,7 @@ test('okno statystyk zwinięte domyślnie: linia 7, podpowiedź o reszcie, przec
     const visibleLines = items.filter(shown).filter(c => c.dataset.shLine).map(c => c.dataset.shLine);
     eq(visibleLines, ['line7_compact'], 'tylko linia 7 (domyślnie jedyna włączona)');
     const texts = items.filter(shown).map(c => String(c.textContent));
-    ok(texts.includes(env.SH.I18n.get('statsWindow_moreLinesHint')), 'podpowiedź, że reszta jest pod tytułem');
+    ok(texts.includes(env.SH.I18n.get('statsWindow_showAll', { n: 9 })), 'przycisk: pozostałe linie, wyłączonych 9');
     ok(texts.includes(env.SH.I18n.get('dragStatsWindowButton')), 'przeciąganie zawsze widać');
     ok(texts.includes(env.SH.I18n.get('settings_resetWindowPositionButton')), 'reset pozycji zawsze widać');
     eq(items.filter(shown).length, 4, 'nic więcej');
@@ -116,9 +116,9 @@ test('rozwinięcie pokazuje wszystko; włączone 2 i 10, po zwinięciu zostają 
     const S = env.SH.store;
     let sec = section(env, 'window');
     sec.children[0].dispatch('click', {});
-    const hint = env.SH.I18n.get('statsWindow_moreLinesHint');
-    ok(content(sec).every(c => shown(c) === (String(c.textContent) !== hint)),
-       'rozwinięta: wszystko poza podpowiedzią o zwiniętej sekcji');
+    const button = env.SH.I18n.get('statsWindow_showAll', { n: 9 });
+    ok(content(sec).every(c => shown(c) === (String(c.textContent) !== button)),
+       'rozwinięta: wszystko poza przyciskiem „pokaż pozostałe”');
     eq(S.userConfig.panelSections.window, true, 'wybór zapamiętany');
     S.localTabConfig.linesConfig.line2_globalSummary.visible = true;
     S.localTabConfig.linesConfig.line10_target.visible = true;
@@ -133,25 +133,27 @@ test('rozwinięcie pokazuje wszystko; włączone 2 i 10, po zwinięciu zostają 
 
 test('zwykła sekcja zwinięta chowa wszystko poza nagłówkiem i pamięta to po przerysowaniu', () => {
     const env = panelEnv();
-    let sec = section(env, 'global');
+    let sec = section(env, 'lunch');
     ok(content(sec).every(shown), 'domyślnie rozwinięta');
     sec.children[0].dispatch('click', {});
     ok(content(sec).every(c => !shown(c)), 'zwinięta');
     env.SH.SettingsPanel.render();
-    sec = section(env, 'global');
+    sec = section(env, 'lunch');
     ok(content(sec).every(c => !shown(c)), 'po przerysowaniu dalej zwinięta');
 });
 
-test('domyślnie zwinięte (decyzja autora): zadania, karta, pomoce wizualne, skróty, moduł cen, karta ceny, auto-inkrementacja, kod, diagnostyka', () => {
+test('domyślnie zwinięte (decyzja autora): zadania, statystyki globalne, karta, pomoce wizualne, skróty, moduł cen, karta ceny, auto-inkrementacja, kod, diagnostyka', () => {
     const env = panelEnv({ href: 'https://trex-prod-eu.aka.amazon.com/?gradingMode=COS_NIEZNANEGO' });
-    const closed = ['tasks', 'current_tab', 'visual', 'keys', 'auto', 'price_module', 'price_card', 'code', 'diag'];
+    const closed = ['tasks', 'global', 'current_tab', 'visual', 'keys', 'auto', 'price_module', 'price_card', 'code', 'diag'];
     for (const id of closed) {
         const sec = section(env, id);
         ok(sec, 'sekcja ' + id);
         eq(sec.children[0].getAttribute('aria-expanded'), 'false', id);
-        ok(content(sec).every(c => !shown(c)), id + ': nic poza tytułem');
+        // W zadaniach zostają pola paczek i tempa — osobny test niżej.
+        const keep = id === 'tasks' ? 2 : 0;
+        eq(content(sec).filter(shown).length, keep, id + ': nic poza tytułem' + (keep ? ' i dwoma polami' : ''));
     }
-    for (const id of ['lunch', 'workflow', 'global', 'language', 'general']) {
+    for (const id of ['lunch', 'workflow', 'language', 'general']) {
         eq(section(env, id).children[0].getAttribute('aria-expanded'), 'true', id);
     }
 });
@@ -624,4 +626,39 @@ test('rozwinięcie sekcji nie zabiera wierszom ich display: flex', () => {
     sec.children[0].dispatch('click', {});
     sec.children[0].dispatch('click', {});
     ok(rows().every(r => r.style.display === 'flex'), 'flex po zwinięciu i rozwinięciu');
+});
+
+test('zwinięte zadania pokazują dalej pola paczek i tempa — i tylko je', () => {
+    // Paczki i tempo poprawia się w trakcie zmiany; reszta sekcji zadań
+    // (nazwa, początek, odcinki, historia) czeka pod tytułem.
+    const env = panelEnv();
+    const sec = section(env, 'tasks');
+    eq(sec.children[0].getAttribute('aria-expanded'), 'false', 'domyślnie zwinięta');
+    const visibleRows = content(sec).filter(shown);
+    eq(visibleRows.map(r => String(r.children[0].textContent)),
+       [env.SH.I18n.get('tasks_packages') + ':', env.SH.I18n.get('tasks_rate') + ':']);
+    ok(visibleRows.every(r => nodes(r).some(n => n.tagName === 'INPUT' && n.type === 'number')), 'z polami');
+    sec.children[0].dispatch('click', {});
+    ok(content(sec).every(shown), 'rozwinięta: wszystko');
+    sec.children[0].dispatch('click', {});
+    eq(content(sec).filter(shown).length, 2, 'po zwinięciu znów dwa pola');
+});
+
+test('przycisk „pokaż pozostałe linie” rozwija sekcję i liczy wyłączone linie przy każdym zwinięciu', () => {
+    // Sam tytuł z „+N” nie mówi wprost, że pod spodem są inne linie okna.
+    const env = panelEnv();
+    const S = env.SH.store;
+    const sec = section(env, 'window');
+    const btn = content(sec).find(c => c.dataset.shExpand);
+    eq(btn.textContent, env.SH.I18n.get('statsWindow_showAll', { n: 9 }));
+    btn.dispatch('click', {});
+    eq(sec.children[0].getAttribute('aria-expanded'), 'true', 'kliknięcie rozwija');
+    notOk(shown(btn), 'w rozwiniętej sekcji przycisku nie ma');
+    S.localTabConfig.linesConfig.line2_globalSummary.visible = true;
+    sec.children[0].dispatch('click', {});
+    eq(btn.textContent, env.SH.I18n.get('statsWindow_showAll', { n: 8 }), 'po zwinięciu: o jedną mniej');
+    for (const k of Object.keys(S.localTabConfig.linesConfig)) S.localTabConfig.linesConfig[k].visible = true;
+    sec.children[0].dispatch('click', {});
+    sec.children[0].dispatch('click', {});
+    eq(btn.textContent, env.SH.I18n.get('statsWindow_showSettings'), 'wszystkie włączone: „pokaż ustawienia okna”');
 });

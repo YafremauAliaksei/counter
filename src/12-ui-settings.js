@@ -1,7 +1,8 @@
     /**
-     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora
-     * na makiecie: na górze to, co zmienia się co zmianę (przerwa, cel,
-     * zadania), na dole to, co ustawia się raz (język, reset).
+     * Kolejność sekcji panelu i ich stan domyślny — ułożone przez autora:
+     * na górze to, co zmienia się co zmianę i częściowo widać od razu
+     * (przerwa, cel, pola zadania, włączone linie okna), niżej sekcje
+     * zwinięte w całości, na dole to, co ustawia się raz (język, reset).
      *
      * `open` — sekcja rozwinięta, póki człowiek jej nie zwinie; zwinięte
      * domyślnie jest to, czego nie ustawia się co zmianę (decyzja autora).
@@ -9,15 +10,13 @@
      * z nieprzeczytanym w zwiniętej kategorii): zwinięte okno statystyk
      * zostawia na widoku ustawienia samych włączonych linii. Element
      * z `data-sh-keep` widać zawsze, z `data-sh-collapsed-only` — tylko
-     * w sekcji zwiniętej (podpowiedź „rozwiń, żeby zobaczyć resztę”).
+     * w sekcji zwiniętej (przycisk „pokaż pozostałe linie”), z
+     * `data-sh-expand` — rozwija sekcję jak tytuł.
      */
     const PANEL_SECTIONS = [
         { id: 'lunch', open: true },
         { id: 'workflow', open: true },
         { id: 'tasks', open: false },
-        { id: 'global', open: true },
-        { id: 'current_tab', open: false },
-        { id: 'visual', open: false },
         {
             id: 'window', open: false,
             keep: (child) => {
@@ -26,6 +25,9 @@
                 return !!(cfg && cfg.visible);
             },
         },
+        { id: 'global', open: false },
+        { id: 'current_tab', open: false },
+        { id: 'visual', open: false },
         { id: 'keys', open: false },
         { id: 'auto', open: false },
         { id: 'price_module', open: false },
@@ -151,6 +153,8 @@
                     const show = open
                         ? !data.shCollapsedOnly
                         : !!(data.shKeep || data.shCollapsedOnly || (def.keep && def.keep(child)));
+                    // Napis liczony przy każdym zwinięciu (np. ile linii wyłączono).
+                    if (show && typeof child._shLabel === 'function') child.textContent = child._shLabel();
                     // Własny `display` elementu (flex wiersza) zostaje: pusty
                     // napis zamieniałby wiersz w blok i podpis spadałby nad pole.
                     if (child._shDisplay === undefined) child._shDisplay = child.style.display;
@@ -163,13 +167,15 @@
                 if (!open && hidden) head.appendChild(h('span', { textContent: `+${hidden}`, style: { fontSize: '0.8em', opacity: '0.6' } }));
                 head.setAttribute('aria-expanded', String(open));
             };
-            head.addEventListener('click', () => {
+            const toggle = () => {
                 // Zapis całym obiektem: spreparowany magazyn mógł zostawić
                 // w tym polu tekst albo liczbę zamiast mapy.
                 const chosen = Utils.isObject(store.userConfig.panelSections) ? store.userConfig.panelSections : {};
                 store.userConfig.panelSections = { ...chosen, [def.id]: !this.isOpen(def) };
                 apply();
-            });
+            };
+            head.addEventListener('click', toggle);
+            content.forEach(c => { if (c.dataset && c.dataset.shExpand) c.addEventListener('click', toggle); });
             apply();
             return wrap;
         },
@@ -378,15 +384,18 @@
                 // Wpisuje się jedno, drugie przelicza się samo. Po wpisaniu
                 // tempa pokazuje się wartość osiągalna przy całych paczkach:
                 // przy 1:17 pracy „118” to 151 paczek, czyli 117,7 na godzinę.
+                // Oba pola widać także w zwiniętej sekcji (data-sh-keep): to
+                // jedyne, co poprawia się w trakcie zmiany.
                 const totals = TaskManager.totals(task);
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
+                const packsRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
                     TaskManager.applyTaskTotal(task, cid, v);
                     this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                packsRow.dataset.shKeep = '1';
                 // Tempo to tempo wobec celu: z kart, które liczą się do tego
                 // zadania (to samo, co w linii 7).
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
+                const rateRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
                     type: 'number', min: 0, step: '0.1', value: TaskManager.countedRate(task).toFixed(1), inputMode: 'decimal',
                     style: { width: '100px', textAlign: 'right' },
                 }), text => {
@@ -394,6 +403,7 @@
                     if (applied !== null) this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                rateRow.dataset.shKeep = '1';
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_summary'), h('span', {
                     textContent: `${TaskManager.percent(task)}% · ${Utils.formatDuration(TaskManager.workedMs(task))}`,
                 })));
@@ -638,11 +648,6 @@
 
             // Stylizacja okna statystyk
             const secWin = UIBuilder.section(I18n.get('section_statsWindow'));
-            // Zwinięta sekcja pokazuje tylko linie włączone — trzeba powiedzieć,
-            // gdzie są pozostałe.
-            const moreLines = UIBuilder.hint(I18n.get('statsWindow_moreLinesHint'));
-            moreLines.dataset.shCollapsedOnly = '1';
-            secWin.appendChild(moreLines);
 
             secWin.appendChild(UIBuilder.row(I18n.get('windowBgSettings'), UIBuilder.colorPickerWithAlpha(
                 store.localTabConfig.statsWindowBgColorHex, store.localTabConfig.statsWindowBgAlpha,
@@ -705,6 +710,22 @@
 
                 secWin.appendChild(lineBox);
             });
+
+            // Zwinięta sekcja pokazuje tylko linie włączone. Sam tytuł z „+N”
+            // nie mówi, że pod spodem są pozostałe linie — mówi to przycisk na
+            // całą szerokość, tuż pod włączonymi liniami, i rozwija sekcję.
+            const showAll = UIBuilder.button('', () => {}, {
+                width: '100%', background: 'transparent', color: CONFIG.SETTINGS_PANEL_TEXT_COLOR,
+                border: `2px dashed ${CONFIG.SETTINGS_PANEL_TEXT_COLOR}66`, fontWeight: 'bold',
+            });
+            showAll.dataset.shCollapsedOnly = '1';
+            showAll.dataset.shExpand = '1';
+            showAll._shLabel = () => {
+                const off = Object.keys(DEFAULT_LINE_CONFIG)
+                    .filter(k => store.localTabConfig.linesConfig[k] && !store.localTabConfig.linesConfig[k].visible).length;
+                return off ? I18n.get('statsWindow_showAll', { n: off }) : I18n.get('statsWindow_showSettings');
+            };
+            secWin.appendChild(showAll);
 
             const isDragActive = store.uiFlags.isStatsWindowDragging;
             const dragBtnText = isDragActive ? I18n.get('dragStatsWindowActiveButton') : I18n.get('dragStatsWindowButton');
@@ -780,18 +801,14 @@
             const secPrice = UIBuilder.section(I18n.get('priceCard_section'));
             const pc = store.localTabConfig.priceCard;
 
-            // Sklep: jedno ustawienie na link, wykres i walutę.
-            const mkKey = store.userConfig.marketplace || CONFIG.DEFAULT_MARKETPLACE;
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_marketplace'), UIBuilder.select(
-                Object.entries(CONFIG.MARKETPLACES).map(([k, m]) => ({
-                    value: k, text: m.host.replace(/^www\./, '') + (PriceSources.coversMarket(k) ? '' : '  ⚠'),
-                })), mkKey, v => { store.userConfig.marketplace = v; this.rerender(); })));
-            if (!PriceSources.coversMarket(mkKey)) {
-                secPrice.appendChild(h('div', {
-                    textContent: '⚠ ' + I18n.get('priceCard_marketNoData'),
-                    style: { fontSize: '0.85em', color: '#b06a00', margin: '-4px 0 10px 0', lineHeight: '1.35' },
-                }));
-            }
+            // Cena z karty amazon.de obok: jedyne źródło w panelu. Dawne
+            // źródła sieciowe (Keepa, r.jina.ai) i wybór sklepu nie mają tu
+            // kontrolek — wchodzą tylko z kodu ustawień albo z konsoli.
+            const amazonOk = AmazonBridge.connected();
+            secPrice.appendChild(UIBuilder.hint(I18n.get('amazon_howTo')));
+            secPrice.appendChild(UIBuilder.button(I18n.get(amazonOk ? 'amazon_connected' : 'amazon_open'),
+                () => { AmazonBridge.open(); this.rerender(); },
+                { width: '100%', background: amazonOk ? '#2E7D32' : CONFIG.SETTINGS_PANEL_ACCENT_COLOR }));
 
             // Waluta, w której kwoty się pokazuje. Liczy się zawsze w euro,
             // więc przełączenie w trakcie zmiany niczego nie gubi. Ustawienie
@@ -804,14 +821,6 @@
                 v => { store.userConfig.displayCurrency = v; PriceCard.render(); this.rerender(); })));
             secPrice.appendChild(UIBuilder.hint(I18n.get('priceCard_displayCurrencyHint')));
 
-            // Źródło ceny — tryby z PriceSources, od zalecanego do zapasowych.
-            secPrice.appendChild(UIBuilder.row(I18n.get('priceCard_source'), UIBuilder.select(
-                PriceSources.modes.map(m => ({ value: m.value, text: I18n.get(m.labelKey) })),
-                pc.source, v => { store.localTabConfig.priceCard.source = v; this.rerender(); })));
-
-            secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
-                I18n.get('priceCard_fallback'), pc.marketFallback !== false,
-                v => store.localTabConfig.priceCard.marketFallback = v, I18n.get('priceCard_fallbackHint'))));
 
             secPrice.appendChild(UIBuilder.row('', UIBuilder.checkbox(
                 I18n.get('priceCard_showCard'), pc.visible,

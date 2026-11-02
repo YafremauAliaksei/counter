@@ -219,17 +219,22 @@ test('licznik audytów trafia do magazynu, więc przeżywa F5', () => {
     eq(env.sandbox.localStorage.getItem(key), String(SH.store.tabNeutral[cid]));
 });
 
-test('linia 7 pokazuje procent z pomniejszonego mianownika', () => {
+test('linia 2 pokazuje procent z pomniejszonego mianownika', () => {
     // Sprawdzenie na gotowym tekście, a nie na samej funkcji: mianownik składa
     // się w pętli po kartach i to właśnie tam najłatwiej pomylić liczby.
     const cid = resetCounters();
     SH.store.userConfig.globalStatsContributionKnown[cid] = true;
     item('CRITS-PRG2');
     item('AUDIT');
+    // Linia 2: suma zmiany; linia 7 — zadanie, które zbiera paczki
+    // z wcześniejszych testów, więc liczby zmiany czyta się z linii 2.
+    const cfg = SH.store.localTabConfig.linesConfig.line2_globalSummary;
+    cfg.visible = true;
     SH.StatsWindowRenderer.renderContent();
-    const text = SH.StatsWindowRenderer.lines.line7_compact.textContent;
-    ok(/\b2\b/.test(text), 'liczba sztuk to nadal 2, razem z audytem: ' + text);
-    ok(text.split(' · ')[2] === '100%', 'procent liczy się z jednej paczki: ' + text);
+    const text = SH.StatsWindowRenderer.lines.line2_globalSummary.textContent;
+    cfg.visible = false;
+    ok(/\(2\) /.test(text), 'liczba sztuk to nadal 2, razem z audytem: ' + text);
+    ok(/ 100%$/.test(text), 'procent liczy się z jednej paczki: ' + text);
 });
 
 test('reset zmiany kasuje licznik audytów razem z pozostałymi', () => {

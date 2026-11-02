@@ -133,6 +133,10 @@
       "desc": "Kod Data Matrix z tekstu zakładki — do zeskanowania zamiast przepisywania."
     },
     {
+      "file": "src/32-amazon-bridge.js",
+      "desc": "Most do karty amazon.de: wysyła ASIN, odbiera cenę rozebraną z własnej strony sklepu."
+    },
+    {
       "file": "src/31-clear-session.js",
       "desc": "Skrót „u”, „s” wykonuje „Usuń sesję” i wpisuje z powrotem ten sam LPN i stację roboczą."
     },
