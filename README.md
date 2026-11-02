@@ -4,18 +4,20 @@ Licznik obsłużonych przedmiotów dla T-REX. Siedzi cicho w rogu ekranu przez c
 zmianę, liczy sztuki ze wszystkich otwartych kart i domyślnie nie wychodzi do
 sieci ani nie pisze do konsoli.
 
-**Wersja 1.8.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
+**Wersja 1.9.0** · [Co nowego](CHANGELOG.md) · [Jak wprowadzać zmiany](CONTRIBUTING.md)
 
 ```
-34.3 z 47 · 236 z 470 · 14% · 2m 41s
+34.3 z 47 · 12 z 30 · 14% · 2m 41s
 ```
 
-To cały domyślny interfejs — jedna szara linia w lewym dolnym rogu:
+To cały domyślny interfejs — jedna szara linia w lewym dolnym rogu, cała
+o **bieżącym zadaniu**:
 
-- **tempo bieżącego zadania z celu działu** — `34.3 z 47`;
-- **paczki zmiany z celu zmiany** — `236 z 470` (wszystkie otwarte karty, cel ×
-  10 płatnych godzin; po starcie w połowie zmiany przybliżone, `≈`);
-- **procent sprzedaży**;
+- **tempo zadania z celu działu** — `34.3 z 47`;
+- **paczki zadania z celu zadania** — `12 z 30`: cel × czas zadania do końca
+  zmiany (kto przychodzi o 16:00 na godzinę przed końcem, przy celu 30 ma
+  `0 z 30`, a nie `0 z 300`);
+- **procent sprzedaży zadania**;
 - **czas od ostatniego pojemnika** — czerwony, gdy przerwa trwa za długo.
 
 Przy uruchomieniu otwiera się też panel ustawień; zamyka go pierwszy klik obok,
@@ -242,35 +244,39 @@ kolor, przezroczystość i rozmiar czcionki.
 | **4**  | wybrana przerwa: `Przerwa #4 (12:50 - 13:20)`                         | wył.      |
 | **5**  | zegar: `[ 14:32:07 ]`                                                 | wył.      |
 | **6**  | bilans pieniężny zmiany: `+6000.00 -1500.00 = 4500.00 € 113 szt ?1`   | wył.      |
-| **7**  | **licznik: `34.3 z 47 · 236 z 470 · 14% · 2m 41s`**                   | **wł.**   |
+| **7**  | **licznik zadania: `34.3 z 47 · 12 z 30 · 14% · 2m 41s`**             | **wł.**   |
 | **8**  | bieżące zadanie: `fast_process 12 34.3/h 58% 21m 00s`                 | wył.      |
 | **9**  | czas od ostatniego pojemnika: `2m 41s`, po limicie `7m 00s +3m 00s`   | wył.      |
-| **10** | cel działu: `47/h 85% 236/470`                                        | wył.      |
+| **10** | cel zadania: `47/h 85% 12/30`                                         | wył.      |
 
 Kolejność na ekranie od góry: 1–6, 10, 9, 7, 8.
 
 ### Linia 7 dokładniej
 
-Cztery człony oddzielone kropką:
+Cztery człony oddzielone kropką, wszystkie o **bieżącym zadaniu** — paczek
+innych zadań linia 7 nie pokazuje (całą zmianę opisują linie 1 i 2):
 
-- **tempo bieżącego zadania z celu działu** — `34.3 z 47`. Nie tempo całej
-  zmiany: zadania są po to, żeby procesy o różnych normach nie mieszały się
-  w jedną średnią (tempo zmiany jest w linii 1 i w panelu);
-- **paczki zmiany z celu zmiany** — `236 z 470`, suma ze wszystkich wliczanych
-  kart, cel to cel działu × 10 płatnych godzin. Gdy skrypt ruszył w połowie
-  zmiany (inne stanowisko, czysta przeglądarka), czas zmiany sprzed pierwszego
-  zadania — bez obiadu — dolicza się według celu działu i liczba dostaje `≈`:
-  zadanie od 23:50 w REFURB (30/h) daje o 23:58 `≈149 z 300`, a nie `4 z 300`;
-- **procent sprzedaży zmiany**;
+- **tempo zadania z celu działu** — `34.3 z 47`. Zadania są po to, żeby procesy
+  o różnych normach nie mieszały się w jedną średnią. Liczą się karty, które
+  to zadanie liczy do tempa;
+- **paczki zadania z celu zadania** — `12 z 30`. Cel zadania to cel działu ×
+  (czas już przepracowany w zadaniu + czas, który zostaje do końca zmiany, bez
+  obiadu). Koniec zmiany to początek + 10 płatnych godzin + obiad (06:30 →
+  17:00, 18:30 → 05:00). Przykłady przy celu 30:
+  - zadanie od 16:00, koniec o 17:00: `0 z 30`, po pół godzinie w tempie celu
+    `15 z 30`;
+  - pauza albo praca w innym zadaniu — zegar zmiany płynie, czas zadania nie:
+    półtorej godziny poza zadaniem to **45 paczek mniej** w celu;
+  - koniec odcinka wpisany naprzód (`18:30-22:00`) kończy cel o 22:00;
+  - obiad celu nie zabiera — był już odjęty z czasu do końca;
+  - bez rozpoznanej zmiany (nie wiadomo, kiedy koniec) człon „z …” znika;
+- **procent sprzedaży zadania**;
 - **czas od ostatniego pojemnika** — czerwony po podwójnym czasie przedmiotu
   (bez obiadu); do pierwszego pojemnika go nie ma.
 
 Spójnik zależy od języka (`z`, `of` i odpowiedniki ukraiński i rosyjski). Bez
-celu działu człon „z …” znika. Paczki to ta sama liczba, którą linia 2 pokazuje
-w ostatnim nawiasie. Odświeżanie raz na sekundę.
-
-Linia liczona jest w tym samym przebiegu co linia 2 — celowo. Dwa niezależne
-liczenia tego samego prędzej czy później się rozjadą.
+celu działu człon „z …” znika. Paczki to ta sama liczba, którą linia 8 pokazuje
+przy nazwie zadania. Odświeżanie raz na sekundę.
 
 ### Procent sprzedaży
 
@@ -287,8 +293,9 @@ Mówi, ile ze zrobionych przedmiotów pojechało na sprzedaż.
 - **część ułamkowa jest odrzucana, a nie zaokrąglana**: 1 z 17 to `5%`
   (5,88…%), a nie `6%`. Procent ma nie obiecywać więcej, niż zrobiono;
 - trzy niesprzedaże na początku zmiany dają `0%` — i tak ma być;
-- linia 1 liczy **bieżącą kartę**, linie 2 i 7 — wszystkie karty wliczane
-  do sumy globalnej;
+- linia 1 liczy **bieżącą kartę**, linia 2 — wszystkie karty wliczane do sumy
+  globalnej, linia 7 — **bieżące zadanie** (ze wszystkich kart, na których
+  zadanie zbierało paczki);
 - **działa przy wyłączonym module cen**: kierunek ustala się z tekstu strony,
   tak samo jak kod sortowania w linii 6, i nie wymaga ani jednego zapytania;
 - **ręczna poprawka licznika** (skróty klawiszowe, pola w panelu) **nie
@@ -410,8 +417,8 @@ spadałby do kilku procent i przestałby cokolwiek znaczyć.
 ### Zasada, na której to stoi
 
 **Suma paczek wszystkich zadań danej karty zawsze równa się licznikowi tej
-karty.** Liczniki zmiany zostają jedynym źródłem prawdy dla linii 1, 2 i 7,
-a zadania są ich rozbiciem w czasie. Rozjazd tych dwóch stron byłby cichy — obie
+karty.** Liczniki zmiany zostają jedynym źródłem prawdy dla linii 1 i 2,
+a zadania są ich rozbiciem w czasie (z nich liczą się linie 7, 8 i 10). Rozjazd tych dwóch stron byłby cichy — obie
 liczby wyglądałyby sensownie, tylko nie opisywałyby tego samego — więc pilnuje
 go osobne sprawdzenie w testach.
 
@@ -451,7 +458,9 @@ pół paczki na godzinę.
 
 Sekcja **Zadania** stoi na górze panelu, pod przerwą i celem, razem
 z licznikami działów — to miejsce otwierane _w trakcie_ pracy, reszta panelu to
-ustawienia, do których przez całą zmianę się nie wraca.
+ustawienia, do których przez całą zmianę się nie wraca. Sekcja jest domyślnie
+zwinięta, ale pola **Paczki** i **Tempo** widać zawsze — także w zwiniętej
+sekcji, bo to je poprawia się w trakcie zmiany.
 
 | Co                       | Jak                                                                                                   |
 | ------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -716,8 +725,8 @@ w sekcji „Cel i pomoce stanowiska”.
   4 min) robi się czerwona i dopisuje bezczynność: `7m 00s +3m 00s`. Pojemnik
   jest przybity, gdy po Enterze z nazwą `ts…`/`cs…`/`ws…` (do 15 znaków) pole
   pojemnika zniknie ze strony.
-- **Linia 10** — cel, procent bieżącego tempa od celu i sztuki wobec celu
-  zmiany: `47/h 85% 236/470`.
+- **Linia 10** — cel, procent tempa bieżącego zadania od celu i paczki zadania
+  wobec celu zadania (jak w linii 7): `47/h 85% 12/30`.
 - **Diagnostyka** — osobna sekcja na samym końcu panelu, domyślnie zwinięta
   (na produkcji niepotrzebna, ale jest). Przycisk w niej (albo `SH.debug()`) otwiera okno ze
   zdarzeniami cyklu przedmiotu (początek, koniec, pojemnik, zaliczenie,
@@ -879,7 +888,7 @@ spacji i parametrów (build odrzuci inny), a serwer — odpowiadać nagłówkiem
 `Access-Control-Allow-Origin`, z powodów opisanych w „Szybkim starcie”.
 
 ```
-javascript:(async()=>{try{window['statsHelper_v1_8_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper: '+e.message)}})();void 0;
+javascript:(async()=>{try{window['statsHelper_v1_9_0_CONFIG_CODE']='0x0101…';const r=await fetch('https://raw.githubusercontent.com/…/counter/release/counter.js',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);eval(await r.text())}catch(e){alert('StatsHelper: '+e.message)}})();void 0;
 ```
 
 Kolejność w tym adresie jest całym mechanizmem: **najpierw kod trafia do okna
@@ -1047,7 +1056,8 @@ Normalny tryb pracy to dwie–trzy otwarte karty (CRET, WHD, REFURB). Dzielą je
 `localStorage` i synchronizują się przez zdarzenie `storage`:
 
 - **liczniki** widać we wszystkich kartach od razu, bez przeładowania;
-- **linie 2 i 7** pokazują sumę ze wszystkich kart, a nie z własnej;
+- **linia 2** pokazuje sumę ze wszystkich kart, a nie z własnej; **linia 7**
+  — bieżące zadanie, które jest wspólne dla kart;
 - **dziennik wartości** jest jeden dla wszystkich kart — i to jest zasadnicze,
   bo jeden fizyczny przedmiot może dać dwa wpisy (pojechał z CRET do WHD ze
   znakiem minus, wrócił sprzedażą z karty WHD ze znakiem plus; poprawny wynik
@@ -1158,7 +1168,7 @@ counter/                    ← korzeń repozytorium
 ├── docs/przeplyw.md        ← cztery diagramy: co się dzieje i w jakiej kolejności
 ├── build.js                ← narzędzie budujące: src/ → counter.js
 ├── build.manifest.json     ← kolejność modułów = mapa projektu
-├── tests/                  ← 46 plików, 736 sprawdzeń
+├── tests/                  ← 46 plików, 744 sprawdzeń
 │   ├── run.js              ← runner
 │   ├── harness.js          ← describe/test/eq/ok
 │   ├── dom-stub.js         ← atrapa DOM, localStorage i sieci
@@ -1178,7 +1188,7 @@ się od przebudowy, bramka pada.
 ```bash
 npm run build        # src/ → counter.js
 npm run build:check  # zbudować w pamięci i porównać z counter.js
-npm test             # 736 sprawdzeń
+npm test             # 744 sprawdzeń
 npm run verify       # build:check + test  (to, co goni CI)
 npm run test:e2e     # testy stanowiska w Chromium (npm ci + przeglądarka)
 npm run lint         # ESLint (potrzebny npm ci)
@@ -1211,8 +1221,8 @@ w których to się psuje, i testów, które tego pilnują.
 | **PATCH** | naprawa bez nowych pól | można aktualizować w dowolnej chwili                                            |
 
 Prefiks magazynu niesie MAJOR i MINOR wersji: `statsHelper_v<MAJOR>_<MINOR>_0_`.
-Obecnie jest to `statsHelper_v1_8_0_` (od 1.8.0); wydania 1.8.x zostają przy nim,
-1.9.0 dostanie `statsHelper_v1_9_0_`. Zakładki z kodem ustawień rozdane przy starszym
+Obecnie jest to `statsHelper_v1_9_0_` (od 1.9.0); wydania 1.9.x zostają przy nim,
+1.10.0 dostanie `statsHelper_v1_10_0_`. Zakładki z kodem ustawień rozdane przy starszym
 prefiksie działają dalej — skrypt czyta kod także spod starej nazwy zmiennej.
 
 ---

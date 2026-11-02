@@ -220,7 +220,10 @@ test('CRET z profilem FAST bierze cel 80 i linia 10 liczy procent od tempa', () 
     S.sessionConfig.shiftType = 'day';
     S.sessionConfig.shiftCalculatedStartTime = env.clock.now() - 2 * 60 * MIN;
     S.sessionConfig.activeTabInstances = { CRET: env.clock.now() };
-    S.tabCounters.CRET = 81;
+    // Linia 10 mówi o bieżącym zadaniu: zadanie od początku zmiany, 81 paczek.
+    const task = env.SH.TaskManager.active();
+    task.segments = [{ from: S.sessionConfig.shiftCalculatedStartTime, to: null }];
+    S.taskCounters = { [task.id]: { CRET: { done: 81, sold: 0, neutral: 0 } } };
     env.SH.StatsWindowRenderer.renderContent();
     eq(env.SH.StatsWindowRenderer.lines.line10_target.textContent, '80/h 50% 81/800');
 });

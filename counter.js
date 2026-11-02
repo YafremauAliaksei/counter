@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         StatsHelper (Reactive Architecture Edition)
 // @namespace    statshelper.counter
-// @version      1.8.0
+// @version      1.9.0
 // @description  Stan reaktywny + EventBus + zmienne CSS. Licznik przetworzonych przedmiotów dla TREX.
 // @match        https://trex-prod-eu.aka.amazon.com/*
 // @run-at       document-end
@@ -113,7 +113,7 @@ const PAID_SHIFT_HOURS = 10;
     }
 
     const CONFIG = {
-        SCRIPT_VERSION: '1.8.0',
+        SCRIPT_VERSION: '1.9.0',
         SCRIPT_NAME: 'Helper (Reactive)',
         /**
          * Prefiks kluczy w localStorage. Niesie MAJOR i MINOR wersji
@@ -127,7 +127,7 @@ const PAID_SHIFT_HOURS = 10;
          * zapisie, a poprawka (PATCH) można przyjąć w trakcie zmiany. Zgodność
          * z package.json sprawdza tests/02-defaults.test.js.
          */
-        SCRIPT_ID_PREFIX: 'statsHelper_v1_8_0_',
+        SCRIPT_ID_PREFIX: 'statsHelper_v1_9_0_',
         // Prefiksy poprzednich schematów. Ich klucze są usuwane przy starcie,
         // żeby na maszynach bez resetu sesji nie zbierały się śmieci. Przy
         // każdej zmianie SCRIPT_ID_PREFIX poprzedni trafia tutaj — pilnuje
@@ -136,7 +136,7 @@ const PAID_SHIFT_HOURS = 10;
                              'statsHelper_v8_3_0_', 'statsHelper_v8_4_0_', 'statsHelper_v8_5_0_',
                              'statsHelper_v8_6_0_', 'statsHelper_v9_0_0_', 'statsHelper_v9_2_0_',
                              'statsHelper_v1_0_0_', 'statsHelper_v1_3_0_', 'statsHelper_v1_5_0_',
-                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_'],
+                             'statsHelper_v1_6_0_', 'statsHelper_v1_7_0_', 'statsHelper_v1_8_0_'],
         /**
          * Czy pisać do konsoli. Wartość startowa pochodzi z SCRIPT_LOGS_ENABLED
          * w nagłówku; tutaj żyje, bo SH.logsOn() i SH.logsOff() przełączają ją
@@ -2776,6 +2776,20 @@ const PAID_SHIFT_HOURS = 10;
             const aEnd = Math.min(to, lEndObj.getTime());
             return aEnd > aStart ? aEnd - aStart : 0;
         },
+        /**
+         * Koniec zmiany: początek, PAID_SHIFT_HOURS płatnych godzin i wybrany
+         * obiad (06:30 → 17:00, 18:30 → 05:00). Ten sam rachunek co cel
+         * zmiany „cel × płatne godziny”, więc obie liczby się zgadzają.
+         * null — zmiana nierozpoznana.
+         */
+        shiftEndMs() {
+            const start = store.sessionConfig.shiftCalculatedStartTime;
+            if (typeof start !== 'number') return null;
+            const paidEnd = start + CONFIG.PAID_SHIFT_HOURS * 3600000;
+            // Obiad wypada w środku zmiany; okno szukania sięga godzinę za
+            // płatny koniec, bo przesunięty obiadem koniec leży właśnie tam.
+            return paidEnd + this.lunchOverlapMs(start, paidEnd + 3600000);
+        },
         getWorkTime() {
             if (!store.sessionConfig.shiftCalculatedStartTime) return { workedMs: 0, lunchMs: 0 };
             const now = Date.now();
@@ -3097,37 +3111,35 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         /**
-         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy:
+         * LINIA 7 — wszystko, czego człowiek potrzebuje w trakcie pracy,
+         * wyłącznie o BIEŻĄCYM zadaniu:
          *
-         *     34.3 z 47 · 236 z 470 · 14% · 2m 41s
+         *     34.3 z 47 · 12 z 30 · 14% · 2m 41s
          *
-         *   - tempo BIEŻĄCEGO zadania z celu — zadania istnieją właśnie po to,
-         *     żeby procesy o różnych normach nie mieszały się w jedną średnią;
-         *     liczą się paczki kart, które to zadanie liczy (countedRate); tempo
-         *     całej zmiany jest w panelu i w linii 1;
-         *   - paczki zmiany (wszystkie wliczane karty) z celu zmiany
-         *     (cel × płatne godziny); czas zmiany sprzed pierwszego zadania
-         *     dolicza się według celu i liczba dostaje „≈”;
-         *   - procent sprzedaży zmiany;
+         *   - tempo zadania z celu — zadania istnieją po to, żeby procesy
+         *     o różnych normach nie mieszały się w jedną średnią; liczą się
+         *     paczki kart, które to zadanie liczy (countedRate);
+         *   - paczki zadania z celu zadania (TaskManager.taskGoal): zaczęte
+         *     o 16:00 przy końcu zmiany o 17:00 i celu 30 to „0 z 30”;
+         *   - procent sprzedaży zadania;
          *   - czas od ostatniego pojemnika, czerwony po przekroczeniu limitu
          *     (jak linia 9); do pierwszego pojemnika go nie ma.
-         * Bez celu działu znika „z …”. Spójnik („z”, „of” i odpowiedniki
-         * ukraiński i rosyjski) idzie ze słownika (statsOf).
+         * Paczek innych zadań tu nie ma — całą zmianę opisują linie 1 i 2.
+         * Bez celu albo bez rozpoznanej zmiany znika „z …”. Spójnik („z”,
+         * „of” i odpowiedniki ukraiński i rosyjski) idzie ze słownika (statsOf).
          */
-        renderCompact(gTotal, gSold, gRated) {
+        renderCompact() {
             const line = this.lines.line7_compact;
             const task = TaskManager.active() || store.tasks[store.tasks.length - 1];
             const target = ToteWatch.targetFor(store.currentTabType);
             const of = I18n.get('statsOf');
             const rate = (task ? TaskManager.countedRate(task) : 0).toFixed(1);
-            // Czas zmiany sprzed pierwszego zadania liczy się po celu działu
-            // i paczki są wtedy przybliżone (≈).
-            const assumed = target ? Math.round(target * TaskManager.untrackedWorkedMs() / 3600000) : 0;
-            const packs = assumed > 0 ? `≈${gTotal + assumed}` : String(gTotal);
+            const done = task ? TaskManager.countedDone(task) : 0;
+            const goal = TaskManager.taskGoal(task, target);
             const parts = [
                 target ? `${rate} ${of} ${target}` : rate,
-                target ? `${packs} ${of} ${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}` : String(gTotal),
-                `${Utils.percentFloor(gSold, gRated)}%`,
+                goal !== null ? `${done} ${of} ${goal}` : String(done),
+                `${task ? TaskManager.percent(task) : 0}%`,
             ];
             line.innerHTML = '';
             line.appendChild(document.createTextNode(parts.join(' · ')));
@@ -3298,7 +3310,7 @@ const PAID_SHIFT_HOURS = 10;
             if (this.isLineVisible('line6_valueSum')) this.renderValueSum();
             else this.lines.line6_valueSum.innerHTML = '';
 
-            this.renderCompact(gTotal, gSold, gRated);
+            this.renderCompact();
 
             /**
              * LINIA 8 — bieżące zadanie i jego własne liczby, z własnym
@@ -3314,19 +3326,21 @@ const PAID_SHIFT_HOURS = 10;
             this.renderOffTask();
 
             /**
-             * LINIA 10 — cel działu z RATE_TARGETS: cel, procent bieżącego
-             * tempa zmiany od celu i sztuki wobec celu zmiany (cel × płatne
-             * godziny, bez niepłatnego obiadu):
+             * LINIA 10 — cel bieżącego zadania: cel, procent tempa zadania od
+             * celu i paczki zadania wobec celu zadania (jak linia 7):
              *
-             *     47/h 85% 236/470
+             *     47/h 85% 12/30
              */
             const target = ToteWatch.targetFor(store.currentTabType);
+            const goalTask = TaskManager.active() || store.tasks[store.tasks.length - 1];
             if (!target) {
                 this.lines.line10_target.textContent = '';
             } else {
-                const pct = workedMs >= CONFIG.RATE_MIN_WORKED_MS ? Math.floor(gTotal / hWorked / target * 100) : 0;
+                const pct = goalTask ? Math.floor(TaskManager.countedRate(goalTask) / target * 100) : 0;
+                const goal = TaskManager.taskGoal(goalTask, target);
+                const done = goalTask ? TaskManager.countedDone(goalTask) : 0;
                 this.lines.line10_target.textContent =
-                    `${target}${I18n.get('statsPerHourUnit')} ${pct}% ${gTotal}/${Math.round(target * CONFIG.PAID_SHIFT_HOURS)}`;
+                    `${target}${I18n.get('statsPerHourUnit')} ${pct}% ${done}/${goal !== null ? goal : '—'}`;
             }
 
             const task = TaskManager.active();
@@ -3824,15 +3838,18 @@ const PAID_SHIFT_HOURS = 10;
                 // Wpisuje się jedno, drugie przelicza się samo. Po wpisaniu
                 // tempa pokazuje się wartość osiągalna przy całych paczkach:
                 // przy 1:17 pracy „118” to 151 paczek, czyli 117,7 na godzinę.
+                // Oba pola widać także w zwiniętej sekcji (data-sh-keep): to
+                // jedyne, co poprawia się w trakcie zmiany.
                 const totals = TaskManager.totals(task);
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
+                const packsRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
                     TaskManager.applyTaskTotal(task, cid, v);
                     this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                packsRow.dataset.shKeep = '1';
                 // Tempo to tempo wobec celu: z kart, które liczą się do tego
                 // zadania (to samo, co w linii 7).
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
+                const rateRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
                     type: 'number', min: 0, step: '0.1', value: TaskManager.countedRate(task).toFixed(1), inputMode: 'decimal',
                     style: { width: '100px', textAlign: 'right' },
                 }), text => {
@@ -3840,6 +3857,7 @@ const PAID_SHIFT_HOURS = 10;
                     if (applied !== null) this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                rateRow.dataset.shKeep = '1';
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_summary'), h('span', {
                     textContent: `${TaskManager.percent(task)}% · ${Utils.formatDuration(TaskManager.workedMs(task))}`,
                 })));
@@ -8979,23 +8997,28 @@ const PAID_SHIFT_HOURS = 10;
         },
 
         /**
-         * Przepracowany czas zmiany sprzed pierwszego odcinka wszystkich zadań
-         * (bez obiadu). Skrypt uruchomiony w połowie zmiany — inne stanowisko,
-         * czysta przeglądarka — nie ma danych o tym czasie, a człowiek przez
-         * niego pracował. Linia 7 dolicza za niego paczki według celu działu,
-         * żeby „z celu zmiany” nie zaczynało się od zera o północy.
-         * Przerwy między zadaniami się nie liczą — to były pauzy.
+         * CEL ZADANIA — ile paczek to zadanie ma dać do końca zmiany.
+         *
+         * Cel × (czas już przepracowany w zadaniu + czas, który zostaje do
+         * końca, bez obiadu). Kto zaczyna o 16:00, a zmiana kończy się o 17:00,
+         * przy celu 30 dostaje „0 z 30”, a nie „0 z 300” całej zmiany.
+         *   - pauza i praca w innym zadaniu nie wchodzą do przepracowanego
+         *     czasu, a czas do końca i tak płynie — cel maleje w tempie celu:
+         *     półtorej godziny poza zadaniem przy celu 30 to 45 paczek mniej;
+         *   - koniec ostatniego odcinka wpisany naprzód („18:30-22:00”)
+         *     kończy rachunek wcześniej niż zmiana;
+         *   - początek wpisany naprzód — czas do końca liczy się od niego.
+         * null — bez celu albo bez rozpoznanej zmiany (nie wiadomo, kiedy koniec).
          */
-        untrackedWorkedMs(nowMs) {
-            const floor = this.countedFrom();
-            if (!Number.isFinite(floor)) return 0;
+        taskGoal(task, target, nowMs) {
+            const end = ShiftManager.shiftEndMs();
+            if (!task || !target || end === null) return null;
             const now = Number(nowMs) || Date.now();
-            let first = now;
-            for (const task of store.tasks) {
-                for (const seg of task.segments) if (seg.from < first) first = seg.from;
-            }
-            if (first <= floor) return 0;
-            return Math.max(0, (first - floor) - ShiftManager.lunchOverlapMs(floor, first));
+            const last = task.segments[task.segments.length - 1];
+            const until = last.to !== null && last.to > now ? Math.min(last.to, end) : end;
+            const from = Math.max(now, task.segments[0].from, this.countedFrom());
+            const ahead = until > from ? (until - from) - ShiftManager.lunchOverlapMs(from, until) : 0;
+            return Math.round(target * (this.workedMs(task, now) + ahead) / 3600000);
         },
 
         /**
@@ -10502,7 +10525,7 @@ const PAID_SHIFT_HOURS = 10;
    STAŁE W CONFIG (zmiana wymaga edycji pliku)
    -----------------------------------------------------------------------------
    SCRIPT_VERSION             podstawiany przy budowaniu z package.json
-   SCRIPT_ID_PREFIX = 'statsHelper_v1_8_0_'
+   SCRIPT_ID_PREFIX = 'statsHelper_v1_9_0_'
        Prefiks wszystkich kluczy w localStorage: MAJOR i MINOR wersji.
        Zmienia się przy każdym wydaniu MINOR i MAJOR, PATCH go nie rusza.
        Zmiana prefiksu = start od zera

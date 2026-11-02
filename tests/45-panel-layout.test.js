@@ -149,7 +149,9 @@ test('domyślnie zwinięte (decyzja autora): zadania, karta, pomoce wizualne, sk
         const sec = section(env, id);
         ok(sec, 'sekcja ' + id);
         eq(sec.children[0].getAttribute('aria-expanded'), 'false', id);
-        ok(content(sec).every(c => !shown(c)), id + ': nic poza tytułem');
+        // W zadaniach zostają pola paczek i tempa — osobny test niżej.
+        const keep = id === 'tasks' ? 2 : 0;
+        eq(content(sec).filter(shown).length, keep, id + ': nic poza tytułem' + (keep ? ' i dwoma polami' : ''));
     }
     for (const id of ['lunch', 'workflow', 'global', 'language', 'general']) {
         eq(section(env, id).children[0].getAttribute('aria-expanded'), 'true', id);
@@ -624,4 +626,20 @@ test('rozwinięcie sekcji nie zabiera wierszom ich display: flex', () => {
     sec.children[0].dispatch('click', {});
     sec.children[0].dispatch('click', {});
     ok(rows().every(r => r.style.display === 'flex'), 'flex po zwinięciu i rozwinięciu');
+});
+
+test('zwinięte zadania pokazują dalej pola paczek i tempa — i tylko je', () => {
+    // Paczki i tempo poprawia się w trakcie zmiany; reszta sekcji zadań
+    // (nazwa, początek, odcinki, historia) czeka pod tytułem.
+    const env = panelEnv();
+    const sec = section(env, 'tasks');
+    eq(sec.children[0].getAttribute('aria-expanded'), 'false', 'domyślnie zwinięta');
+    const visibleRows = content(sec).filter(shown);
+    eq(visibleRows.map(r => String(r.children[0].textContent)),
+       [env.SH.I18n.get('tasks_packages') + ':', env.SH.I18n.get('tasks_rate') + ':']);
+    ok(visibleRows.every(r => nodes(r).some(n => n.tagName === 'INPUT' && n.type === 'number')), 'z polami');
+    sec.children[0].dispatch('click', {});
+    ok(content(sec).every(shown), 'rozwinięta: wszystko');
+    sec.children[0].dispatch('click', {});
+    eq(content(sec).filter(shown).length, 2, 'po zwinięciu znów dwa pola');
 });

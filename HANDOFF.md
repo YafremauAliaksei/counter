@@ -5,8 +5,8 @@ Ten plik jest napisany dla agenta, który przejmie pracę **na maszynie z dział
 
 Zacznij od przeczytania [`CLAUDE.md`](CLAUDE.md) — tam są zasady projektu.
 
-> **Stan na 26.10.2026:** ostatnie wydanie to **1.7.7**, gałąź `release` wskazuje na nie. Następne — **1.8.0** (MINOR: cel własny, panel ułożony przez autora ze zwijanymi sekcjami i polami pod palec, godziny zadania naprzód, okno przy samym dole) — czeka na wydanie. Prefiks
-> magazynu `statsHelper_v1_8_0_` — zasada: niesie MAJOR i MINOR (CLAUDE.md, §4). Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
+> **Stan na 02.11.2026:** ostatnie wydanie to **1.8.0**, gałąź `release` wskazuje na nie. Następne — **1.9.0** (MINOR: linie 7 i 10 liczą cel bieżącego zadania, pola paczek i tempa widoczne przy zwiniętych zadaniach) — czeka na wydanie. Prefiks
+> magazynu `statsHelper_v1_9_0_` — zasada: niesie MAJOR i MINOR (CLAUDE.md, §4). Zbudowane z pustym `config.releaseUrl`, więc panel nie podaje gotowej
 > zakładki — adres wydania wpisuje się przy pierwszym wydaniu na docelowym
 > serwerze. `main` i `release` mają ustawioną ochronę. Otwartych PR-ów i zgłoszeń
 > nie ma, CI na `main` jest zielone, ESLint nie zgłasza ani jednego ostrzeżenia.
@@ -35,7 +35,7 @@ i właśnie tak by to wyjaśniono (CHANGELOG 1.3.3, audyt G1.1).
 | `counter.js` w wersji z `package.json`                    | zbudowany ze `src/`, sprawdzony                                     |
 | 31 modułów w `src/` + cele tempa `src/00-targets.js`      | pocięte z monolitu, zweryfikowane linia po linii                    |
 | `build.js` + `build.manifest.json`                        | działają, zero zależności                                           |
-| 46 plików testów, 736 sprawdzeń + 18 testów stanowiska    | **wszystkie zielone**                                               |
+| 46 plików testów, 744 sprawdzeń + 18 testów stanowiska    | **wszystkie zielone**                                               |
 | README, CHANGELOG, CONTRIBUTING, `src/README.md`          | napisane, **po polsku**                                             |
 | `tests/10-language.test.js`                               | bramka językowa: cyrylica poza wyjątkami wywraca testy              |
 | `.github/`: CI, wydanie, szablony, CODEOWNERS, Dependabot | napisane, CODEOWNERS wskazuje `@YafremauAliaksei`                   |

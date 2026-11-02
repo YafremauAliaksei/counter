@@ -16,8 +16,16 @@
 
 'use strict';
 
-/** Paczki zmiany i procent z linii 7 („R z T · N z S · P%”) — tempo w niej jest tempem zadania. */
-const shiftOf = (t) => { const p = String(t).split(' · '); return p[1].split(' ')[0] + ' ' + p[2]; };
+/**
+ * Paczki zmiany i procent z linii 2 („… = ~R/h (N) P%”) — suma wszystkich
+ * wliczanych kart. Linia 7 mówi o bieżącym zadaniu, więc procent całej zmiany
+ * czyta się z linii 2. Bez renderowania: test przerysowania sprawdza, że
+ * okno odświeża się samo.
+ */
+const shiftOf = (SH) => {
+    const m = /\((\d+)\) (\d+%)$/.exec(SH.StatsWindowRenderer.lines.line2_globalSummary.textContent);
+    return m ? m[1] + ' ' + m[2] : 'brak sumy w linii 2';
+};
 
 
 const { describe, test, eq, ok } = require('./harness');
@@ -147,14 +155,15 @@ test('sieć nadal nietknięta — kierunek czyta się z tekstu strony', () => {
 
 describe('Procent na ekranie');
 
-test('linia 7 kończy się procentem liczonym po wszystkich kartach', () => {
+test('linia 2 kończy się procentem liczonym po wszystkich kartach', () => {
     const S = SH.store;
+    S.localTabConfig.linesConfig.line2_globalSummary.visible = true;
     setShift(env, 2);
     S.tabCounters.CRET = 20; S.tabSold.CRET = 3;
     S.tabCounters.WHD = 15;  S.tabSold.WHD = 2;
     SH.StatsWindowRenderer.renderContent();
     // 5 z 35 = 14,28% -> 14%
-    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent), '35 14%');
+    eq(shiftOf(SH), '35 14%');
 });
 
 test('linia 1 pokazuje procent BIEŻĄCEJ karty, a nie sumy', () => {
@@ -167,15 +176,13 @@ test('linia 1 pokazuje procent BIEŻĄCEJ karty, a nie sumy', () => {
     S.localTabConfig.linesConfig.line1_currentTab.visible = false;
 });
 
-test('linia 2 kończy się tym samym procentem, co linia 7', () => {
-    const S = SH.store;
-    S.localTabConfig.linesConfig.line2_globalSummary.visible = true;
+test('linia 7 pokazuje procent zadania, a nie zmiany', () => {
+    // Liczniki kart (14% zmiany) ustawiono bez zadania — zadanie nie ma
+    // sprzedanych, więc linia 7 ma 0%, choć linia 2 ma 14%.
     SH.StatsWindowRenderer.renderContent();
-    const l2 = SH.StatsWindowRenderer.lines.line2_globalSummary.textContent;
+    eq(shiftOf(SH), '35 14%');
     const l7 = SH.StatsWindowRenderer.lines.line7_compact.textContent;
-    ok(/ 14%$/.test(l2), 'linia 2 ma kończyć się na 14%, jest: ' + l2);
-    ok(shiftOf(l7).endsWith(' 14%'), 'i ma to być ta sama liczba co w linii 7: ' + l7);
-    S.localTabConfig.linesConfig.line2_globalSummary.visible = false;
+    eq(l7.split(' · ')[2], SH.TaskManager.percent(SH.TaskManager.active()) + '%', l7);
 });
 
 test('dział wyłączony z sumy globalnej nie wchodzi też do procentu', () => {
@@ -183,7 +190,7 @@ test('dział wyłączony z sumy globalnej nie wchodzi też do procentu', () => {
     S.userConfig.globalStatsContributionKnown.WHD = false;
     SH.StatsWindowRenderer.renderContent();
     // Zostaje sam CRET: 3 z 20 = 15%.
-    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent), '20 15%');
+    eq(shiftOf(SH), '20 15%');
     S.userConfig.globalStatsContributionKnown.WHD = true;
 });
 
@@ -196,11 +203,11 @@ test('zmiana licznika sprzedanych przerysowuje okno od razu', () => {
     S.tabCounters.CRET = 10; S.tabSold.CRET = 1;
     S.tabCounters.WHD = 0;   S.tabSold.WHD = 0;
     SH.StatsWindowRenderer.renderContent();
-    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent).split(' ')[1], '10%');
+    eq(shiftOf(SH).split(' ')[1], '10%');
 
     // Sam zapis do stanu, BEZ jawnego renderContent().
     S.tabSold.CRET = 3;
-    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent).split(' ')[1], '30%',
+    eq(shiftOf(SH).split(' ')[1], '30%',
        'okno ma się przerysować samo');
 });
 
@@ -212,5 +219,5 @@ test('reset zmiany zeruje procent razem z licznikami', () => {
     const klucz = SH.Persistence.getKey(SH.CONFIG.STORAGE_PREFIX_TAB_SOLD + 'CRET');
     eq(env.sandbox.localStorage.getItem(klucz), null, 'klucz w magazynie usunięty');
     SH.StatsWindowRenderer.renderContent();
-    eq(shiftOf(SH.StatsWindowRenderer.lines.line7_compact.textContent), '0 0%');
+    eq(shiftOf(SH), '0 0%');
 });

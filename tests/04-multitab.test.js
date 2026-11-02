@@ -2,9 +2,9 @@
  * 04-multitab.test.js — dwie karty naraz.
  *
  * Normalny tryb pracy to dwie otwarte karty (CRET i WHD) w jednej
- * przeglądarce, czyli na JEDNYM localStorage. Linia 7 ma pokazywać sumę
- * z obu — inaczej cały jej sens znika, bo człowiek i tak musiałby dodawać
- * w głowie.
+ * przeglądarce, czyli na JEDNYM localStorage. Linia 2 (suma zmiany) ma
+ * pokazywać sumę z obu — inaczej człowiek musiałby dodawać w głowie. Linia 7
+ * mówi o bieżącym zadaniu, więc sumę zmiany sprawdza się tutaj na linii 2.
  *
  * Atrapa nie rozsyła zdarzeń 'storage' sama, więc wstrzykujemy je ręcznie —
  * dokładnie tak, jak robi to przeglądarka, gdy sąsiednia karta coś zapisze.
@@ -12,8 +12,15 @@
 
 'use strict';
 
-/** Paczki zmiany i procent z linii 7 („R z T · N z S · P%”) — tempo w niej jest tempem zadania. */
-const shiftOf = (t) => { const p = String(t).split(' · '); return p[1].split(' ')[0] + ' ' + p[2]; };
+/** Paczki zmiany i procent z linii 2 („… = ~R/h (N) P%”) — suma wszystkich wliczanych kart. */
+function shiftOf(env) {
+    const cfg = env.SH.store.localTabConfig.linesConfig.line2_globalSummary;
+    cfg.visible = true;
+    env.SH.StatsWindowRenderer.renderContent();
+    const m = /\((\d+)\) (\d+%)$/.exec(env.SH.StatsWindowRenderer.lines.line2_globalSummary.textContent);
+    cfg.visible = false;
+    return m ? m[1] + ' ' + m[2] : 'brak sumy w linii 2';
+}
 
 
 const { describe, test, eq, ok } = require('./harness');
@@ -57,18 +64,18 @@ test('druga karta widzi licznik pierwszej po zdarzeniu storage', () => {
     eq(whd.SH.store.tabCounters.CRET, 12);
 });
 
-test('linia 7 sumuje OBIE karty, a nie tylko swoją', () => {
+test('linia 2 sumuje OBIE karty, a nie tylko swoją', () => {
     whd.SH.store.tabCounters.WHD = 8;
     whd.SH.Persistence.saveCounter('WHD', 8);
     whd.SH.StatsWindowRenderer.renderContent();
     // 12 + 8 = 20 sztuk przez 2 h = 10.0/h
-    eq(shiftOf(whd.SH.StatsWindowRenderer.lines.line7_compact.textContent), '20 0%');
+    eq(shiftOf(whd), '20 0%');
 });
 
 test('ta sama suma widoczna na pierwszej karcie', () => {
     cret.window._emit('storage', { key: key('WHD'), newValue: '8' });
     cret.SH.StatsWindowRenderer.renderContent();
-    eq(shiftOf(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent), '20 0%');
+    eq(shiftOf(cret), '20 0%');
 });
 
 test('nowa karta otwarta w trakcie zmiany od razu widzi cudze liczniki', () => {
@@ -78,17 +85,17 @@ test('nowa karta otwarta w trakcie zmiany od razu widzi cudze liczniki', () => {
 
     setShift(late, 2, { CRET: Date.now(), WHD: Date.now(), REFURB: Date.now() });
     late.SH.StatsWindowRenderer.renderContent();
-    eq(shiftOf(late.SH.StatsWindowRenderer.lines.line7_compact.textContent), '20 0%');
+    eq(shiftOf(late), '20 0%');
     eq(late.net.fetches, [], 'nowa karta też nie wchodzi do sieci');
 });
 
 test('wyłączenie działu z sumy działa lokalnie, nie zmienia sąsiada', () => {
     whd.SH.store.userConfig.globalStatsContributionKnown.CRET = false;
     whd.SH.StatsWindowRenderer.renderContent();
-    eq(shiftOf(whd.SH.StatsWindowRenderer.lines.line7_compact.textContent), '8 0%');
+    eq(shiftOf(whd), '8 0%');
 
     cret.SH.StatsWindowRenderer.renderContent();
-    eq(shiftOf(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent), '20 0%',
+    eq(shiftOf(cret), '20 0%',
        'ustawienie jednej karty nie może zmienić drugiej w tej samej chwili');
 
     whd.SH.store.userConfig.globalStatsContributionKnown.CRET = true;
@@ -102,7 +109,7 @@ test('reset liczników przez jedną kartę dociera do drugiej', () => {
     cret.window._emit('storage', { key: key('WHD'), newValue: null });
     eq(cret.SH.store.tabCounters.WHD, 0);
     cret.SH.StatsWindowRenderer.renderContent();
-    eq(shiftOf(cret.SH.StatsWindowRenderer.lines.line7_compact.textContent), '12 0%');
+    eq(shiftOf(cret), '12 0%');
 });
 
 test('karty nie depczą sobie po kluczach magazynu', () => {

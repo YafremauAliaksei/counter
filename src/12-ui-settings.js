@@ -378,15 +378,18 @@
                 // Wpisuje się jedno, drugie przelicza się samo. Po wpisaniu
                 // tempa pokazuje się wartość osiągalna przy całych paczkach:
                 // przy 1:17 pracy „118” to 151 paczek, czyli 117,7 na godzinę.
+                // Oba pola widać także w zwiniętej sekcji (data-sh-keep): to
+                // jedyne, co poprawia się w trakcie zmiany.
                 const totals = TaskManager.totals(task);
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
+                const packsRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_packages'), UIBuilder.numberInput(totals.done, v => {
                     TaskManager.applyTaskTotal(task, cid, v);
                     this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                packsRow.dataset.shKeep = '1';
                 // Tempo to tempo wobec celu: z kart, które liczą się do tego
                 // zadania (to samo, co w linii 7).
-                sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
+                const rateRow = sec.appendChild(UIBuilder.row(I18n.get('tasks_rate'), UIBuilder.live(h('input', {
                     type: 'number', min: 0, step: '0.1', value: TaskManager.countedRate(task).toFixed(1), inputMode: 'decimal',
                     style: { width: '100px', textAlign: 'right' },
                 }), text => {
@@ -394,6 +397,7 @@
                     if (applied !== null) this.syncTabCounters(cid);
                     this.rerender();
                 })));
+                rateRow.dataset.shKeep = '1';
                 sec.appendChild(UIBuilder.row(I18n.get('tasks_summary'), h('span', {
                     textContent: `${TaskManager.percent(task)}% · ${Utils.formatDuration(TaskManager.workedMs(task))}`,
                 })));

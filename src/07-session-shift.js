@@ -241,6 +241,20 @@
             const aEnd = Math.min(to, lEndObj.getTime());
             return aEnd > aStart ? aEnd - aStart : 0;
         },
+        /**
+         * Koniec zmiany: początek, PAID_SHIFT_HOURS płatnych godzin i wybrany
+         * obiad (06:30 → 17:00, 18:30 → 05:00). Ten sam rachunek co cel
+         * zmiany „cel × płatne godziny”, więc obie liczby się zgadzają.
+         * null — zmiana nierozpoznana.
+         */
+        shiftEndMs() {
+            const start = store.sessionConfig.shiftCalculatedStartTime;
+            if (typeof start !== 'number') return null;
+            const paidEnd = start + CONFIG.PAID_SHIFT_HOURS * 3600000;
+            // Obiad wypada w środku zmiany; okno szukania sięga godzinę za
+            // płatny koniec, bo przesunięty obiadem koniec leży właśnie tam.
+            return paidEnd + this.lunchOverlapMs(start, paidEnd + 3600000);
+        },
         getWorkTime() {
             if (!store.sessionConfig.shiftCalculatedStartTime) return { workedMs: 0, lunchMs: 0 };
             const now = Date.now();
